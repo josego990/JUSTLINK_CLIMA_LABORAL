@@ -1,0 +1,162 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'Plantillas de Correo'" [items]="['Home','CLIMAS']" [active_item]="'Plantillas'"></app-breadcrumb>
+    </div>
+
+   
+    
+    <!-- ngx editor -->
+    <div class="row clearfix">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+        <div class="card">
+  
+
+          <div class="row" style="margin-left: 4px; margin-top: 20px;">
+            <div class="col-md-4">
+              <mat-form-field appearance="fill" class="w-100">
+                <mat-label>Organización</mat-label>
+                <mat-select (selectionChange)="onOrganizationChange($event.value)">
+                  <mat-option
+                    
+                    *ngFor="let organization of dataSourceOrganizations"
+                    [value]="organization.Id"
+                  >
+                    {{ organization.Nombre }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+            </div>
+            <div class="col-md-4">
+              <mat-form-field appearance="fill" class="w-100">
+                <mat-label>Climas {{nombreOrganizacion}}</mat-label>
+                <mat-select (selectionChange)="onClimaChange($event.value)">
+                  <mat-option
+                    *ngFor="let climas of dataSourceClimas"
+                    [value]="climas.IdFlujo"
+                  >
+                    {{ climas.NombreFlujo }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: -15px; margin-left: 4px;">
+            <div class="col-4">
+              <mat-form-field appearance="fill" class="w-100">
+              <mat-label>Insertar variable</mat-label>
+              <mat-select (selectionChange)="insertToken($event.value)">
+                <mat-option *ngFor="let v of variables" [value]="v.token">
+                  {{ v.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            </div>
+            <div class="col-4">
+              <mat-form-field appearance="fill" class="w-100">
+                <mat-label>Iconos UTF-8</mat-label>
+          
+            <mat-select (selectionChange)="insertToken($event.value)" formControlName="iconoSeleccionado">
+              <!-- ACCIONES -->
+              <mat-option value="👋">👋 Saludo</mat-option>
+              <mat-option value="✉️">✉️ Enviar&nbsp;(envelope)</mat-option>  <!-- U+2709 :contentReference[oaicite:0]{index=0} -->
+              <mat-option value="➕">➕ Crear / Añadir</mat-option>             <!-- U+2795 :contentReference[oaicite:1]{index=1} -->
+              <mat-option value="✏️">✏️ Editar</mat-option>                   <!-- U+270F :contentReference[oaicite:2]{index=2} -->
+              <mat-option value="🗑️">🗑️ Borrar / Eliminar</mat-option>        <!-- U+1F5D1 :contentReference[oaicite:3]{index=3} -->
+              <mat-option value="♻️">♻️ Reciclar / Restaurar</mat-option>      <!-- U+267B :contentReference[oaicite:4]{index=4} -->
+              <mat-option value="📤">📤 Re-enviar</mat-option>                 <!-- U+1F4E4 :contentReference[oaicite:5]{index=5} -->
+          
+              <mat-divider></mat-divider>
+      
+              <mat-option value="📄">📄 Documento</mat-option>
+              <mat-option value="📑">📑 Marcapáginas</mat-option>
+              <mat-option value="📂">📂 Carpeta</mat-option>
+              <mat-option value="📁">📁 Carpeta abierta</mat-option>
+              <mat-option value="🗂️">🗂️ Archivador</mat-option>
+              <mat-option value="📝">📝 Editar / Nota</mat-option>
+              <mat-option value="🔍">🔍 Buscar / Filtrar</mat-option>
+              <mat-option value="📤">📤 Subir / Exportar</mat-option>
+              <mat-option value="📥">📥 Descargar / Importar</mat-option>
+      
+      
+                <mat-divider></mat-divider>
+              <!-- ESTADOS -->
+              <mat-option value="⌛">⌛ No procesado</mat-option>              <!-- U+231B :contentReference[oaicite:6]{index=6} -->
+              <mat-option value="🕓">🕓 Creado / Pendiente</mat-option>        <!-- U+1F553 :contentReference[oaicite:7]{index=7} -->
+              <mat-option value="✅">✅ Enviado / Correcto</mat-option>        <!-- U+2705 :contentReference[oaicite:8]{index=8} -->
+              <mat-option value="✔️">✔️ Contestada</mat-option>              <!-- U+2714 :contentReference[oaicite:9]{index=9} -->
+              <mat-option value="❌">❌ Error / Falló</mat-option>            <!-- U+274C :contentReference[oaicite:10]{index=10} -->
+              <mat-option value="⚠️">⚠️ Advertencia</mat-option>              <!-- U+26A0 :contentReference[oaicite:11]{index=11} -->
+              <mat-option value="ℹ️">ℹ️ Información</mat-option>              <!-- U+2139 :contentReference[oaicite:12]{index=12} -->
+              <mat-option value="🚀">🚀 En progreso / Lanzado</mat-option>     <!-- U+1F680 :contentReference[oaicite:13]{index=13} -->
+              <mat-option value="🟢">🟢 Activo / OK</mat-option>
+              <mat-option value="🔴">🔴 Inactivo / Bloqueado</mat-option>
+              <mat-option value="🟡">🟡 Pendiente / En espera</mat-option>
+              <mat-option value="🔵">🔵 Información</mat-option>
+              <mat-option value="🟣">🟣 En progreso</mat-option>
+              <mat-option value="🟠">🟠 Atención / Requiere acción</mat-option>
+              <mat-option value="🛑">🛑 Detenido / Cancelado</mat-option>
+              <mat-option value="🚫">🚫 Prohibido / Denegado</mat-option>
+              <mat-option value="💤">💤 En pausa / Suspendido</mat-option>
+          
+              <mat-divider></mat-divider>
+              <mat-option value="⚙️">⚙️ Configuración</mat-option>
+              <mat-option value="🗝️">🗝️ Clave / Token</mat-option>
+              <mat-option value="🔑">🔑 Acceso</mat-option>
+              <mat-option value="🛡️">🛡️ Seguridad</mat-option>
+              <mat-option value="🔒">🔒 Protegido</mat-option>
+              <mat-option value="🔓">🔓 Desprotegido</mat-option>
+              <mat-option value="🧯">🧯 Emergencia</mat-option>
+      
+              <mat-divider></mat-divider>
+      
+              <mat-option value="🎧">🎧 Audio / Voz</mat-option>
+              <mat-option value="🎤">🎤 Grabación</mat-option>
+              <mat-option value="🎬">🎬 Video</mat-option>
+              <mat-option value="🖼️">🖼️ Imagen</mat-option>
+              <mat-option value="📷">📷 Captura / Foto</mat-option>
+              <mat-option value="📹">📹 Cámara</mat-option>
+              <mat-option value="🎞️">🎞️ Galería</mat-option>
+              
+              <mat-divider></mat-divider>
+              
+              <!-- MISCELÁNEOS -->
+              <mat-option value="📞">📞 Teléfono</mat-option>                 <!-- U+1F4DE :contentReference[oaicite:14]{index=14} -->
+              <mat-option value="📅">📅 Calendario / Fecha</mat-option>       <!-- U+1F4C5 :contentReference[oaicite:15]{index=15} -->
+              <mat-option value="🔒">🔒 Bloqueado / Privado</mat-option>       <!-- U+1F512 :contentReference[oaicite:16]{index=16} -->
+              <mat-option value="🔓">🔓 Desbloqueado / Público</mat-option>    <!-- U+1F513 :contentReference[oaicite:17]{index=17} -->
+              <mat-option value="📈">📈 Creciente / Éxito</mat-option>
+              <mat-option value="📉">📉 Decreciente / Riesgo</mat-option>
+              <mat-option value="🗓️">🗓️ Calendario</mat-option>
+              <mat-option value="⏰">⏰ Tiempo / Alarma</mat-option>
+              <mat-option value="🚀">🚀 Lanzar / Implementar</mat-option>
+              <mat-option value="💡">💡 Idea / Sugerencia</mat-option>
+            </mat-select>
+              </mat-form-field>
+            </div>
+           
+          </div>
+
+
+          <div class="body" style="margin-top: -15px;">
+            <div  class="NgxEditor__Wrapper">
+              <ngx-editor-menu [editor]="editor!" [toolbar]="toolbar!"> </ngx-editor-menu>
+              <ngx-editor style="height: 500px;" [editor]="editor!" [placeholder]="'Escribe aquí..'" class=""></ngx-editor>
+            </div>
+          </div>
+
+          
+         
+          <button style="margin-left: auto; margin-right: 15px; margin-bottom: 15px; background-color: #f3f5f3;" mat-raised-button color="primary" (click)="saveTemplate()">
+            <mat-icon style="color:#355831">save</mat-icon> Guardar plantilla
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- #END# ngx editor -->
+  </div>
+</section>

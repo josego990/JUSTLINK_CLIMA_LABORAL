@@ -1,0 +1,456 @@
+import { Component, OnInit } from "@angular/core";
+import { FormBuilder, FormGroup, Validators, FormsModule,
+  ReactiveFormsModule, UntypedFormGroup, UntypedFormBuilder,
+ } from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  //MatDialogRef,
+} from "@angular/material/dialog";
+import {
+  MAT_DATE_LOCALE,
+  MatOptionModule,
+  MatRippleModule,
+} from '@angular/material/core';
+import { DialogformComponent } from "../dialogform/dialogform.component";
+import { DialogformSerieComponent } from "../dialogformserie/dialogformserie.component";
+import { DialogformItemsComponent } from "../dialogformitems/dialogformitems.component";
+import { DialogformSendComponent } from "../dialogformsend/dialogformsend.component";
+import { DialogDynamicFormComponent } from "../dialogdynamicform/dialogdynamicform.component";
+
+import { MatFormFieldModule } from '@angular/material/form-field';
+
+
+import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatTableModule } from '@angular/material/table';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { CommonModule, DatePipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { globalData } from "../global-data";
+import { globalDataItems } from "../global-data-items";
+//import { Item } from "../dynamic-form/item_model";
+import {
+  MatSnackBar,
+  MatSnackBarHorizontalPosition,
+  MatSnackBarVerticalPosition,
+} from '@angular/material/snack-bar';
+import {EstadisticasEnvio, Quiz, QuizBank} from "../models/quiz-models";
+
+import { OrganizacionService } from '../../organization/services/organizacion.service';
+import Swal from "sweetalert2";
+import { RouteInfo } from "app/layout/sidebar/sidebar.metadata";
+import { Router } from '@angular/router';
+
+@Component({
+  selector: "app-create",
+  templateUrl: "./create.component.html",
+  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
+  imports: [
+    BreadcrumbComponent,
+    MatDialogModule,
+    MatTableModule,
+    MatIconModule,
+    MatExpansionModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatDividerModule,
+    MatFormFieldModule,
+    MatCardModule,
+    MatTooltipModule,
+    MatChipsModule,
+    MatOptionModule,
+    MatRippleModule,
+    MatProgressSpinnerModule,
+    MatInputModule,
+    MatSelectModule,
+    CommonModule,
+    MatButtonModule
+    
+
+    ],
+})
+export class CreateComponent implements OnInit {
+
+  closeResult = "";
+  id_quiz_context = 0;
+  loading = false;
+
+  cardsData: Quiz[] = [
+  
+
+    
+    
+  ];
+
+  BankData: QuizBank[] = [
+    {"category": "Matemáticas",
+        "unit": 3,
+        "fields": []
+    },
+      
+  ];
+
+  //simpleDialog?: MatDialogRef<SimpleDialogComponent>;
+  public qname?: string = "cadejo";
+  public qdesc?: string = "Deo";
+  public addCusForm?: UntypedFormGroup;
+  quizName?: string;
+  quizDesc?: string;
+  dialogConfig?: MatDialogConfig;
+  public idOrganizacion: number = 1;
+
+  constructor(
+    private organizacionService: OrganizacionService,private router: Router,
+    private dialogModel: MatDialog, //dialog para agregar quiz
+    private dialogSerieModel: MatDialog, //dialog para agregar serie
+    private dialogItemModel: MatDialog, //dialog agregar ítems    
+    private fb: UntypedFormBuilder, // private modalService: NgbModal
+    private _snackBar: MatSnackBar 
+  ) {}
+
+  public getTooltipText(factor: any): string {
+    if (!factor.fields || factor.fields.length === 0) {
+      return 'Sin preguntas';
+    }
+  
+    return factor.fields.map((f: any) => `• ${f.label}`).join(`\n`);
+  }
+  
+  public getClimasLista():void {
+    this.loading = true;
+    this.organizacionService.getClimas(this.idOrganizacion).then((lista_climas)=> {
+        console.log('CLIMAS:: ', lista_climas.data);
+        const climas = lista_climas.data;
+        //crear nuevo clima
+        if(climas){this.cardsData = []}
+        climas.forEach((clima: 
+            {
+                Id: number;
+                IdOrganizacion: number;
+                NombreOrganizacion: string;
+                nombre_organizacion_oficial: string;
+                Nombre: string;
+                Objetivo: string;
+                FechaInicio: string; // o Date, si lo conviertes luego
+                FechaFin: string;    // o Date, igual que arriba
+                Frecuencia: string;
+                MetodoAplicacion: string;
+                EstimadoMinutos: number;
+                Anonimato: boolean;
+                FechaCreacion: string; // o Date
+                Imagen1Src: string;
+                Estado: number;
+                series: any;
+                estado_envio: string;
+                estadisticas_envio: EstadisticasEnvio | string;
+            })  => {
+
+            const quiz: Quiz = {
+                id: clima.Id,
+                idOrganization: clima.IdOrganizacion,
+                contestadas: 0,
+                totalEncuestas: 0,
+                pendientes: 0,
+                totalEmpleados: 0,
+                avatarSrc: clima.Imagen1Src,
+                title: clima.Nombre,
+                subtitle: clima.nombre_organizacion_oficial,
+                imageSrc1: '',
+                content: clima.Objetivo,
+                score : 0,
+                completed : false,
+                startDate: '',
+                endDate: '',
+                estado: 1,
+                series: clima.series,
+                fields: [],
+                estadoEnvio: clima.estado_envio,
+                estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
+                ? JSON.parse(clima.estadisticas_envio)
+                : clima.estadisticas_envio
+              }
+
+              this.cardsData.push(quiz);
+        });
+        this.loading = false;
+      }).catch((err)=> {
+        console.error(err);
+        this.loading = false;
+      })
+  }
+
+   showNotification(
+      colorName: string,
+      text: string,
+      placementFrom: MatSnackBarVerticalPosition,
+      placementAlign: MatSnackBarHorizontalPosition
+    ) {
+      this._snackBar.open(text, '', {
+        duration: 2000,
+        verticalPosition: placementFrom,
+        horizontalPosition: placementAlign,
+        panelClass: colorName,
+      });
+    }
+
+  getPorcentajeCompletado(card: any): number {
+    const creadas = card.estadisticasEnvio?.total_creadas || 0;
+    const contestadas = card.estadisticasEnvio?.total_contestadas || 0;
+  
+    if (creadas === 0) return 0;
+  
+    return Math.round((contestadas / creadas) * 100);
+  }
+  
+  public deleteFactor(factor: any): boolean {
+    console.log('FUNCIONA EL CLICK?:: ', factor);
+    this.loading = true;
+
+    this.organizacionService.deleteFactor(factor.Id).then((resutadi: any)=>{
+        if(resutadi.data.message === 'Factor eliminado correctamente'){
+            this.showNotification(
+                'bg-green',
+                resutadi.data.message,
+                'bottom',
+                'right'
+              );
+            this.getClimasLista();
+            
+        } else {
+            this.loading = false;
+        }
+        
+        
+    }).catch((err)=>{
+        this.showNotification(
+            'bg-red',
+            'Ocurrió un error al intentar eliminar el Factor. Error: ' + err,
+            'bottom',
+            'right'
+          );
+          this.loading = false;
+        
+        Swal.fire({
+          title: 'No fue posible eliminar el Factor',
+          text: 'Si el factor tiene preguntas asignadas, primero deberá eliminarlas para poder eliminar el factor.',
+          icon: 'warning',
+        });
+    })
+    return true;
+  }
+
+  existsRoute(routes: RouteInfo[], target: string): boolean {
+      return routes.some(route =>
+        route.path === target ||
+        this.existsRoute(route.submenu, target)
+      );
+    }
+    
+  ngOnInit() {
+    
+    const stored = sessionStorage.getItem('routes');
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      console.log('RUTAS DESDE sessionStorage:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/quiz/create');
+      console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
+      }
+
+    }
+    
+    this.getClimasLista();
+    this.addCusForm = this.fb.group({
+      IdProof: null,
+      quizName: [
+        this.qname,
+        [Validators.required],
+      ],
+      quizDesc: [
+        this.qdesc,
+        [Validators.required],
+      ],
+      urlImg: [null, [Validators.required]],
+      score: 0
+    });
+
+    globalData.subscribe(data => {
+      //console.log("Received data in CreateComponent:", data);
+      if(data) {
+        const quiz = data[0];
+        quiz.id = this.cardsData.length+1;
+        this.cardsData.push(quiz);
+
+        console.log("Se ingreso el item?:", this.cardsData);
+
+      }
+
+    });
+
+    globalDataItems.subscribe(data => {
+      if(data) {
+        //console.log("Received data in CreateComponent:", data);
+        this.cardsData[this.id_quiz_context].fields = data;
+        //console.log(this.cardsData);
+      }
+
+    });
+
+  }
+
+  verDetalles(card: Quiz) {
+    // Lógica para manejar el evento de "Detalles" para la tarjeta específica
+    console.log("Ver detalles:", card);
+
+    this.openDialogDynmicForm(card);
+
+  }
+
+  editarQuiz(card: Quiz) {
+    // Lógica para manejar el evento de "Tomar prueba" para la tarjeta específica
+    //console.log("Tomar prueba:", card);
+
+    this.openDialogItems(card);
+
+  }
+
+  adminEnvioQuizDialog(card: Quiz) {
+
+    this.id_quiz_context = this.cardsData.indexOf(card);
+  
+    const dialogRef = this.dialogItemModel.open(DialogformSendComponent, {
+      // anchura y altura relativas al viewport
+      width:  '95vw',
+      maxWidth: '95vw',      
+      height: 'auto',         
+      disableClose: true,
+      data: card,
+      
+    });
+  
+    // ✅ Escuchar el cierre del diálogo
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === true) {
+        console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
+        this.getClimasLista(); // O cualquier método que refresque los datos
+      }
+    });
+
+  }
+
+  //DIALOGO NUEVO CLIMA
+  openDialog(): void {
+    const dialogRef = this.dialogModel.open(DialogformComponent, {
+      width:  '95vw',
+      maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
+      height: 'auto', 
+        disableClose: true,
+        data: this.BankData
+      });
+    
+      dialogRef.afterClosed().subscribe(result => {
+        if (result === true) {
+            console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG');
+            
+          this.getClimasLista(); // Refrescar la lista
+        }
+      });
+    
+  }
+
+  //DIALOGO MODIFICAR CLIMA
+  openDialogItems(card: Quiz): void {
+    this.id_quiz_context = this.cardsData.indexOf(card);
+  
+    const dialogRef = this.dialogItemModel.open(DialogformItemsComponent, {
+      width:  '95vw',
+      maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
+      height: 'auto',         // o '100vh' si quieres pantalla completa
+      disableClose: true,
+      data: [card, this.BankData]
+    });
+  
+    // ✅ Escuchar el cierre del diálogo
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === true) {
+        console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
+        this.getClimasLista(); // O cualquier método que refresque los datos
+      }
+    });
+  }
+  
+
+  openDialogSerie(card: Quiz): void {
+    this.id_quiz_context = this.cardsData.indexOf(card);
+    this.dialogSerieModel.open(DialogformSerieComponent, {
+      width: "100%",
+
+      disableClose: true,
+      data: { card }
+    });
+  }
+
+  openDialogDynmicForm(quiz: Quiz): void {
+    this.id_quiz_context = this.cardsData.indexOf(quiz);
+    console.log("El quiz data: ", quiz);
+    this.dialogItemModel.open(DialogDynamicFormComponent, {
+      width: "100%",
+      //height: "100%",
+      disableClose: false,
+      data: quiz
+    });
+  }
+
+
+
+  //función para validar si el quiz está vigente a la fecha actual
+  validarVigencia(startDate: string, endDate: string): boolean {
+    // Obtener la fecha actual
+    const fechaActual = new Date();
+
+    //console.log("fechaActual: ", fechaActual);
+    //const fechaActualFormateada = this.formatDateTime(fechaActual.toString());
+
+    //const fechaActualFinal = new Date(fechaActualFormateada);
+
+    // Convertir las fechas de cadena a objetos Date
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+
+    // Verificar si la fecha actual está dentro del rango de startDate y endDate
+    return startDateObj <= fechaActual && fechaActual <= endDateObj;
+  }
+
+  formatDateTime(fechaOriginal: string) {
+    const fecha = new Date(fechaOriginal);
+
+    // Restar un día a la fecha
+    fecha.setUTCDate(fecha.getUTCDate() - 1);
+
+    // Sumar 12 horas a la fecha
+    fecha.setUTCHours(fecha.getUTCHours() + 12);
+
+    const dia = fecha.getUTCDate().toString().padStart(2, "0");
+    const mes = (fecha.getUTCMonth() + 1).toString().padStart(2, "0"); // Los meses comienzan desde 0
+    const anio = fecha.getUTCFullYear();
+    const horas = fecha.getUTCHours().toString().padStart(2, "0");
+    const minutos = fecha.getUTCMinutes().toString().padStart(2, "0");
+    const segundos = fecha.getUTCSeconds().toString().padStart(2, "0");
+
+    return `${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`;
+  }
+
+}

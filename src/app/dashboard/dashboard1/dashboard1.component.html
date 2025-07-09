@@ -1,0 +1,368 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'MENUITEMS.DASHBOARD.LIST.DASHBOARD1' | translate" [items]="['Home']" [active_item]="'Dashboad Climas'"></app-breadcrumb>
+    </div>
+    <div class="row" style="margin-left: 4px;">
+      <div class="col-md-3">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Organización</mat-label>
+          <mat-select (selectionChange)="onOrganizationChange($event.value)">
+            <mat-option
+              
+              *ngFor="let organization of dataSourceOrganizations"
+              [value]="organization.Id"
+            >
+              {{ organization.Nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+      </div>
+      <div class="col-md-3">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Climas {{nombreOrganizacion}}</mat-label>
+          <mat-select (selectionChange)="onClimaChange($event.value)">
+            <mat-option
+              *ngFor="let climas of dataSourceClimas"
+              [value]="climas.Id"
+            >
+              {{ climas.Nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+      </div>
+
+
+       <div class="col-md-4">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Filtros demográficos</mat-label>
+
+          <!-- multiple ⇒ Angular Material coloca checkbox automáticamente -->
+          <mat-select
+            multiple
+            (selectionChange)="onSelectionChange($event.value)"
+          >
+            <!-- Grupo por campo (“SEXO”, “MUNICIPIO”, …) -->
+            <mat-optgroup
+              *ngFor="let campo of campos"
+              [label]="campo.NombreCampo"
+            >
+              <!-- Cada valor (F, M, …) -->
+              <mat-option
+                *ngFor="let v of campo.Valores"
+                [value]="campo.IdCampoDemografico + '|' + v.Valor"
+              >
+                {{ v.Valor }}
+              </mat-option>
+            </mat-optgroup>
+          </mat-select>
+        </mat-form-field>
+
+      </div>
+
+      <div class="col-md-2">
+         <button [disabled]="btnDisabled" type="button" class="btn btn-outline-success" (click)="onGenerateReportClick()">Reporte Excel</button>
+             
+
+      </div>
+
+    </div>
+
+    <div class="row">
+
+      <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card">
+          <mat-card-header>
+            <img mat-card-avatar src={{imgFlujo}}>
+            <mat-card-title>{{nombreFlujo}}</mat-card-title>
+            <mat-card-subtitle>{{nombreOrganizacion}}</mat-card-subtitle>
+          </mat-card-header>
+          <ngx-gauge  
+            [value]="metricasSatisfaccionGeneralData.pct_general"  
+            [size]="200"  
+            [type]="guageType1"  
+            [thick]="15"  
+            class="guage-chart-center"
+            [foregroundColor]="gaugeColor"
+          >
+            <ngx-gauge-append>
+              <span class="font-25">%</span>
+            </ngx-gauge-append>
+
+            <ngx-gauge-label>
+              Calificación<br/>General
+            </ngx-gauge-label>
+
+            <ngx-gauge-value>
+              {{metricasSatisfaccionGeneralData.pct_general}}
+            </ngx-gauge-value>
+          </ngx-gauge>
+          <mat-card-content>
+            <p>{{objetivoFlujo}}</p>
+          </mat-card-content>
+      
+          
+        </mat-card>
+      </div>
+
+      <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card">
+          <mat-card-header>
+            <mat-card-title>Estado</mat-card-title>
+            <img mat-card-avatar src='https://w7.pngwing.com/pngs/10/412/png-transparent-computer-icons-send-miscellaneous-angle-rectangle-thumbnail.png'>
+            <mat-card-title>Envío</mat-card-title>
+            
+          </mat-card-header>
+          <ngx-gauge  
+            [value]="porcentajeEnvio"  
+            [size]="200"  
+            [type]="guageType1"  
+            [thick]="15"  
+            class="guage-chart-center"
+          >
+            <ngx-gauge-append>
+              <span class="font-25">%</span>
+            </ngx-gauge-append>
+
+            <ngx-gauge-label>
+              Enviadas<br/>Contestadas
+            </ngx-gauge-label>
+
+            <ngx-gauge-value>
+              {{porcentajeEnvio}}
+            </ngx-gauge-value>
+          </ngx-gauge>
+          
+
+          <mat-card-content>
+            <div class="metrics" style="display: flex; flex-wrap: wrap; gap: 12px; margin-left: 50px;">
+              <div style="flex: 1 1 45%; display: flex; align-items: center;">
+                <span
+                  [ngStyle]="{
+                    color: estadoEnvio === 'Creado' ? '#72dcf9' :
+                           (estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
+                    'font-size': '18px',
+                    'margin-right': '8px'
+                  }"
+                >
+                  {{ estadoEnvio === 'Creado' ? '🕓' :
+                     estadoEnvio === 'Enviado' ? '✅' : '⌛' }}
+                </span>
+                <strong
+                  [ngStyle]="{
+                    color: estadoEnvio === 'Creado' ? 'green' :
+                           (estadoEnvio === 'Enviado' ? '#13db4a' : 'red')
+                  }"
+                >
+                  {{ estadoEnvio }}
+                </strong>
+              </div>
+              <div style="flex: 1 1 45%;">
+                👥 <strong>Empleados:</strong> {{totalEmplados}}
+              </div>
+  
+              <div style="flex: 1 1 45%;">
+                📝 <strong>Encuestas:</strong> {{totalCreadas}}
+              </div>
+  
+              <div style="flex: 1 1 45%;">
+                📤 <strong>Enviadas:</strong> {{totalEnviadas}}
+              </div>
+              
+              <div style="flex: 1 1 45%;">
+                ✅ <strong>Contestadas:</strong> {{totalContestadas}}
+              </div>
+              <div style="flex: 1 1 45%;">
+                📋 <strong>Pendientes:</strong> {{totalCreadas - totalContestadas}}
+  
+              </div>
+            
+            </div>
+          </mat-card-content>
+         
+          
+        </mat-card>
+      </div>
+
+      <div class="col-lg-12 col-md-12 col-sm-6 col-xl-6">
+        <div class="card">
+          <div class="header">
+            <h2>PANORAMA GENERAL CLIMA</h2>
+          </div>
+          <div class="card-body">
+            <div style="height: 400px">
+              <ngx-charts-bar-vertical [scheme]="colorScheme" [results]="single" [gradient]="gradient"
+                [xAxis]="showXAxis" [yAxis]="showYAxis" [legend]="showLegend" [legendPosition]="legendPosition"
+                [showXAxisLabel]="showXAxisLabel" [showYAxisLabel]="showYAxisLabel" [xAxisLabel]="vbarxAxisLabel"
+                [yAxisLabel]="vbaryAxisLabel" [yAxisTickFormatting]="formatPercent"
+                [dataLabelFormatting]="formatPercent" >
+              </ngx-charts-bar-vertical>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+    </div>
+
+    <div class="col-12 col-md-12 col-sm-12 col-xs-12" >
+      <div class="row">
+        <div 
+          class="col-4 col-md-4 mb-4 col-sm-12 col-xs-12"
+            *ngFor="let m of metricasData"
+          >
+          <app-info-box-factor
+            [title]="m.Factor"
+            [value]="m.total_respuestas.toString()"
+            [gaugeValue]="m.pct_satisfaccion"
+            [gaugeSize]="65"
+            [gaugeType]="'full'"
+            [gaugeThick]="15"
+            [trendDirection]="m.pct_satisfaccion > 70 ? 'up' : 'down'"
+            [trendPercentage]="m.pct_satisfaccion + '%'"
+            [trendText]="'Satisfacción'"
+            [colorClass]="m.pct_satisfaccion > 70
+            ? 'green'
+            : m.pct_satisfaccion >= 50
+            ? 'orange'
+            : 'red'
+        "
+            [gaugeColor]="m.pct_satisfaccion > 70
+              ? 'green'
+              : m.pct_satisfaccion >= 50
+              ? 'orange'
+              : 'red'
+          "
+            
+          ></app-info-box-factor>
+    </div>
+  </div>
+    </div>
+    
+
+    <div class="row">
+      <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12">
+        <div class="card">
+          <div class="header">
+            <h2>Conteo Respuestas por Factor</h2>
+          </div>
+          <div class="body">
+            <div style="text-align:center">
+              <apx-chart #chart [series]="barChartOptions.series!" [chart]="barChartOptions.chart!"
+              [dataLabels]="barChartOptions.dataLabels!" [plotOptions]="barChartOptions.plotOptions!"
+              [yaxis]="barChartOptions.yaxis!"  [fill]="barChartOptions.fill!"
+              [stroke]="barChartOptions.stroke!" [tooltip]="barChartOptions.tooltip!" [grid]="barChartOptions.grid!"
+              [xaxis]="barChartOptions.xaxis!">
+            </apx-chart>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12">
+        <div class="card">
+          <div class="header">
+            <h2>Porcentajes Satisfacción Factor</h2>
+          </div>
+          <div class="body">
+            <div style="text-align:center">
+              <apx-chart [series]="barChartOptions2.series!" [chart]="barChartOptions2.chart!"
+              [dataLabels]="barChartOptions2.dataLabels!" [plotOptions]="barChartOptions2.plotOptions!"
+              [yaxis]="barChartOptions2.yaxis!"  [fill]="barChartOptions2.fill!"
+              [stroke]="barChartOptions2.stroke!" [tooltip]="barChartOptions2.tooltip!" [grid]="barChartOptions2.grid!"
+              [xaxis]="barChartOptions2.xaxis!" [colors]="barChartOptions2.colors!">
+            </apx-chart>
+            </div>
+          </div>
+        </div>
+      </div>
+
+     
+
+
+    </div>
+   
+
+
+
+
+    <div class="row">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Calificación por Pregunta</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-scrollbar style="height: 400px" visibility="hover">
+              <app-progress-table-factor [subjects]="subjects"></app-progress-table-factor>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+
+
+     <div 
+        class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12"
+        *ngFor="let m of commentsData"
+      >
+       
+       <mat-card >
+          <mat-card-header>
+            <mat-card-title>Pregunta abierta</mat-card-title>
+            <img mat-card-avatar src='https://cdn-icons-png.flaticon.com/512/1380/1380338.png'>
+            <mat-card-title>{{m.Pregunta}}</mat-card-title>
+            
+          </mat-card-header>
+                    
+          <mat-card-content>
+            <div class="row">
+              <div
+                class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
+                *ngFor="let c of m.ComentariosJSON"
+              >
+                <mat-card>
+                  <mat-card-header>
+                    <!-- Icono según sentimiento -->
+                    <mat-icon
+                      class="sentiment-icon"
+                      [ngClass]="{
+                        'icon-positive': c.Sentiment === 'POSITIVE',
+                        'icon-negative': c.Sentiment === 'NEGATIVE',
+                        'icon-neutral':  c.Sentiment === 'NEUTRAL'
+                      }"
+                    >
+                      {{
+                        c.Sentiment === 'POSITIVE'
+                          ? 'sentiment_satisfied'
+                          : c.Sentiment === 'NEGATIVE'
+                            ? 'sentiment_very_dissatisfied'
+                            : 'sentiment_neutral'
+                      }}
+                    </mat-icon>
+
+                    <!-- (Opcional) título o etiqueta junto al icono -->
+                    <span>{{ c.Sentiment | titlecase }}</span>
+                  </mat-card-header>
+
+                  <mat-card-content>
+                    {{ c.Comentario }}
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </div>
+          </mat-card-content>                 
+        </mat-card>
+
+
+
+      
+    </div>
+
+
+  </div>
+</section>

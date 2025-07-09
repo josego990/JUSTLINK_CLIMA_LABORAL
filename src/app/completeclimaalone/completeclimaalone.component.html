@@ -1,0 +1,27 @@
+<div class="body">
+              
+    <div >
+      <div class="survey-header" style="padding: 1.5rem; background-color: #f5f5f5; border-radius: 8px; margin-bottom: 1.5rem;">
+        <h1 style="margin: 0 0 0.5rem; font-size: 1.75rem; color: #2c3e50;">
+          ¡Bienvenido(a) {{nombreEmpleado}} a la Encuesta de {{nombreClima}}
+        </h1>
+        <p style="margin: 0 0 1rem; font-size: 1rem; color: #34495e;">
+          En {{nombreOrganizacion}} te agradecemos por ayudarnos a construir un mejor entorno de trabajo. Antes de comenzar, ten en cuenta:
+        </p>
+        <ul style="margin: 0; padding-left: 1.2rem; color: #34495e; line-height: 1.6;">
+          <li>*La encuesta solo se puede abrir una vez. Completa todas las preguntas en una sola sesión.</li>
+          <li>*No cierres ni recargues la pestaña hasta finalizar, o podrías perder tus respuestas.</li>
+          <li>*Sé honesto y sincero en tus respuestas; tu opinión es <strong>totalmente confidencial</strong> y muy valiosa.</li>
+          <li>*Tiempo estimado: <strong>5–7 minutos</strong>.</li>
+          <li>*Si necesitas detenerte, asegúrate de responder todas las preguntas antes de cerrar.</li>
+        </ul>
+      </div>
+      <div>
+        <app-dynamic-form *ngIf="formConfig.fields?.length" [formConfig]="formConfig" 
+        [idEmpleado]="idEmpleado" [idEncuestaEmpleado]="idEncuestaEmpleado"></app-dynamic-form>
+      </div>
+    </div>
+
+    
+
+  </div>

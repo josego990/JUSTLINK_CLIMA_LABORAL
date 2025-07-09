@@ -1,0 +1,36 @@
+[
+  {
+    "userId": 1,
+    "username": "jdoe",
+    "email": "jdoe@example.com",
+    "isActive": true,
+    "createdAt": "2025-06-20T10:15:30",
+    "nombres": "Juan",
+    "apellidos": "Pérez",
+    "telefono": "50255512345",
+    "imagenUrl": "https://example.com/avatars/jdoe.jpg",
+    "cargo": "Desarrollador Senior",
+    "organizacion": "CatarSys",
+    "genero": "M",
+    "ciudad": "Guatemala",
+    "roleId": 1,
+    "roleName": "Admin"
+  },
+  {
+    "userId": 2,
+    "username": "asmith",
+    "email": "asmith@example.com",
+    "isActive": false,
+    "createdAt": "2025-05-12T08:45:00",
+    "nombres": "Ana",
+    "apellidos": "Smith",
+    "telefono": "50255567890",
+    "imagenUrl": "https://example.com/avatars/asmith.jpg",
+    "cargo": "Analista de Datos",
+    "organizacion": "DataCorp",
+    "genero": "F",
+    "ciudad": "Quetzaltenango",
+    "roleId": 2,
+    "roleName": "Usuario"
+  }
+]

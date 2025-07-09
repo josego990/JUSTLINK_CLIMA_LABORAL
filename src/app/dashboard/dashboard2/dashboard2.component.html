@@ -1,0 +1,147 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'Dashboad 2'" [items]="['Home']" [active_item]="'Dashboad 2'"></app-breadcrumb>
+    </div>
+    <div class="row">
+      <div class="col-12 col-sm-6 col-md-3">
+        <app-income-info-box title="Today's Income" subtitle="Income For Today" value="$170" valueClass="text-info"
+          [progress]="75" progressClass="l-bg-purple" change="75%">
+        </app-income-info-box>
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <app-income-info-box title="Total Revenue" subtitle="Total Income" value="$120" valueClass="text-success"
+          [progress]="45" progressClass="l-bg-orange" change="25%">
+        </app-income-info-box>
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <app-income-info-box title="New Orders" subtitle="Fresh New Order" value="15" valueClass="text-danger"
+          [progress]="45" progressClass="l-bg-cyan" change="50%">
+        </app-income-info-box>
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <app-income-info-box title="New Users" subtitle="Joined New User" value="12" valueClass="text-secondary"
+          [progress]="45" progressClass="l-bg-red" change="25%">
+        </app-income-info-box>
+      </div>
+    </div>
+    <div class="row clearfix">
+      <!-- Bar chart with line -->
+      <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12">
+        <mat-card>
+          <mat-card-header class="header-style">
+            <mat-card-title>Projects Performance</mat-card-title>
+            <a mat-button color="primary" href="#" (click)="$event.preventDefault();">View All</a>
+          </mat-card-header>
+          <mat-card-content>
+            <apx-chart [series]="lineChartOptions.series!" [chart]="lineChartOptions.chart!"
+              [xaxis]="lineChartOptions.xaxis!" [stroke]="lineChartOptions.stroke!" [colors]="lineChartOptions.colors!"
+              [dataLabels]="lineChartOptions.dataLabels!" [legend]="lineChartOptions.legend!"
+              [tooltip]="lineChartOptions.tooltip!" [markers]="lineChartOptions.markers!"
+              [grid]="lineChartOptions.grid!" [yaxis]="lineChartOptions.yaxis!" [title]="lineChartOptions.title!"
+              [fill]="lineChartOptions.fill!">
+            </apx-chart>
+          </mat-card-content>
+        </mat-card>
+      </div>
+      <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Country Wise Clients</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div id="chart">
+              <apx-chart [series]="pieChartOptions.series2!" [chart]="pieChartOptions.chart!"
+                [labels]="pieChartOptions.labels!" [responsive]="pieChartOptions.responsive!"
+                [dataLabels]="pieChartOptions.dataLabels!" [legend]="pieChartOptions.legend!" class="apex-pie-center">
+              </apx-chart>
+            </div>
+            <div class="table-responsive m-t-15">
+              <table class="table align-items-center">
+                <tbody>
+                  <tr>
+                    <td><i class="fa fa-circle col-cyan msr-2"></i> India</td>
+                    <td>23</td>
+                    <td class="col-green">+32%</td>
+                  </tr>
+                  <tr>
+                    <td><i class="fa fa-circle col-blue msr-2"></i>USA</td>
+                    <td>32</td>
+                    <td class="col-green">+12%</td>
+                  </tr>
+                  <tr>
+                    <td><i class="fa fa-circle col-orange msr-2"></i>Shrilanka</td>
+                    <td>12</td>
+                    <td class="col-orange">-12%</td>
+                  </tr>
+                  <tr>
+                    <td><i class="fa fa-circle col-green msr-2"></i>Australia</td>
+                    <td>32</td>
+                    <td class="col-green">+3%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+    <div class="row clearfix">
+      <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+        <mat-card>
+          <mat-card-header class="header-style">
+            <mat-card-title>Recent Comments</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-scrollbar style="height: 400px" visibility="hover">
+              <app-recent-comments [comments]="comments"></app-recent-comments>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+      <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Project Status</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-scrollbar style="height: 400px" visibility="hover">
+              <app-progress-table [subjects]="subjects"></app-progress-table>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+      <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Earning Source</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-scrollbar style="height: 400px" visibility="hover">
+              <div class="totalEarning">
+                <h3>$90,808</h3>
+              </div>
+              <app-earning-source [earningSources]="sources"></app-earning-source>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+    <div class="row clearfix">
+      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+        <mat-card>
+          <mat-card-header class="header-style">
+            <mat-card-title>Recent Orders</mat-card-title>
+            <a mat-button color="primary" href="#" (click)="$event.preventDefault();">View All</a>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-scrollbar style="height: 400px" visibility="hover">
+              <app-table-card [dataSource]="orderData " [columnDefinitions]="orderColumnDefinitions"></app-table-card>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</section>

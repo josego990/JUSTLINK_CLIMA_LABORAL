@@ -1,0 +1,266 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'MENUITEMS.EMPLOYEE.TEXT' | translate" [items]="['Home','EMPLEADOS']" [active_item]="'Crear '"></app-breadcrumb>
+    </div>
+    <div class="row">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
+        <div style="margin-left: -50px;"  class="card">
+          
+          <div class="body">
+            
+
+
+            <!-- Envuélvelo con un form que use [formGroup]="orgForm" -->
+           
+              <div class="col-md-6">
+                <mat-form-field appearance="outline" >
+                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
+                  <mat-select (selectionChange)="onOrganizationChange($event.value)">
+                    <mat-option
+                      *ngFor="let organization of dataSourceOrganizations"
+                      [value]="organization.Id"
+                    >
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+
+                                
+              </div>
+
+
+
+              <div class="body table-responsive">
+                <table mat-table [dataSource]="dataSourceEmployees" class="table">
+
+                  <!-- Id -->
+                  <ng-container matColumnDef="Id">
+                    <th mat-header-cell *matHeaderCellDef> ID </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
+                  </ng-container>
+                
+                  <!-- IdOrganizacion -->
+                  <ng-container matColumnDef="IdOrganizacion">
+                    <th mat-header-cell *matHeaderCellDef> Id Org. </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
+                  </ng-container>
+                
+                  <!-- Nombres -->
+                  <ng-container matColumnDef="Nombres">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.NAME' | translate}} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Nombres }} </td>
+                  </ng-container>
+                
+                  <!-- Apellidos -->
+                  <ng-container matColumnDef="Apellidos">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.LNAME' | translate}} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Apellidos }} </td>
+                  </ng-container>
+                
+                
+                  <!-- Celular -->
+                  <ng-container matColumnDef="Celular">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.PHONE' | translate}} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Celular }} </td>
+                  </ng-container>
+                
+                  <!-- Email -->
+                  <ng-container matColumnDef="Email">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.MAIL' | translate}} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Email }} </td>
+                  </ng-container>
+                
+               
+                  <!-- TipoEnvioEncuesta -->
+                  <ng-container matColumnDef="TipoEnvioEncuesta">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.TipoEnvioEncuesta === 1
+                                                                                              ? 'Correo'
+                                                                                              : element.TipoEnvioEncuesta === 2
+                                                                                                ? 'Whatsapp'
+                                                                                                : 'Otro' }} </td>
+                  </ng-container>
+                
+                  <!-- FechaRegistro -->
+                  <ng-container matColumnDef="FechaRegistro">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.REGDATE' | translate}}</th>
+                    <td mat-cell *matCellDef="let element"> {{ element.FechaRegistro | date }} </td>
+                  </ng-container>
+                
+                  <ng-container matColumnDef="estado">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.STATUS' | translate}}</th>
+                    <td mat-cell *matCellDef="let element"> {{ element.estado == 1 ? 'Activo' : 'Inactivo' }} </td>
+                  </ng-container>
+
+                  <!-- Acciones -->
+                  <ng-container matColumnDef="Acciones">
+                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.ACTIONS' | translate}} </th>
+                    <td mat-cell *matCellDef="let element">
+                      <button mat-icon-button 
+                              [color]="element.estado === 1 ? 'warn' : 'accent'" 
+                              (click)="deleteItem(element)">
+                        <mat-icon>
+                          {{ element.estado === 1 ? 'delete' : 'loop' }}
+                        </mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+
+                  <ng-container *ngFor="let campo of camposDinamicos" [matColumnDef]="campo">
+                    <th mat-header-cell *matHeaderCellDef> {{ campo }} </th>
+                    <td mat-cell *matCellDef="let element"> {{ element[campo] }} </td>
+                  </ng-container>
+
+                
+                  <!-- Header & Row definitions -->
+                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+                
+              </div>
+            
+              <div class="mb-3">
+                <!-- Botón para abrir el selector de archivos -->
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="fileInput.click()"
+                  [disabled]="isButtonDisabled"
+                >
+                  {{'MENUITEMS.EMPLOYEE.UPLOAD' | translate}}
+                </button>
+              
+                <!-- Input de archivo, oculto visualmente -->
+                <input
+                  #fileInput
+                  type="file"
+                  accept=".xlsx, .xls"
+                  style="display: none"
+                  (change)="onFileSelected($event)"
+                />
+              </div>
+
+              <mat-accordion>
+                <mat-expansion-panel [expanded]="false">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      {{'MENUITEMS.EMPLOYEE.CREATENEW' | translate}}
+                    </mat-panel-title>
+                    <mat-panel-description>
+                      {{'MENUITEMS.EMPLOYEE.EXPAND' | translate}}
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+
+                  <!-- Nuestro formulario con [formGroup]="employeeForm" -->
+                  <form [formGroup]="employeeForm" >
+                 
+                   
+                    
+                    <div class="row">
+                   
+                      <div class="col-xl-2 col-lg-3 col-md-2 col-sm-3 mb-2">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>ID Org.</mat-label>
+                          <input matInput formControlName="IdOrganizacion"/>
+                        </mat-form-field>
+                      </div>
+                
+                      <div class="col-xl-5 col-lg-6 col-md-8 col-sm-12 mb-2">
+                        <div class="text-inside">
+                          <mat-form-field appearance="fill" class="w-100">
+                            <mat-label>{{'MENUITEMS.EMPLOYEE.NAME' | translate}}</mat-label>
+                            <input matInput formControlName="Nombres" required />
+                          </mat-form-field>
+                        </div>
+                      </div>
+                      
+                       <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>{{'MENUITEMS.EMPLOYEE.LNAME' | translate}}</mat-label>
+                          <input matInput formControlName="Apellidos" required />
+                        </mat-form-field>
+                      </div>
+
+                    </div>
+                
+                    <div class="row">
+            
+
+                      <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>{{'MENUITEMS.EMPLOYEE.PHONE' | translate}}</mat-label>
+                          <input matInput formControlName="Celular" />
+                        </mat-form-field>
+                      </div>
+
+                      <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>{{'MENUITEMS.EMPLOYEE.MAIL' | translate}}</mat-label>
+                          <input matInput formControlName="Email" type="email" />
+                        </mat-form-field>
+                      </div>
+
+                    <div class="col-xl-3 col-lg-6 col-md-8 col-sm-12 mb-2">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>{{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}}</mat-label>
+                          <mat-select formControlName="TipoEnvioEncuesta">
+                            <mat-option [value]="0">{{'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate}}</mat-option>
+                            <mat-option [value]="1">Email</mat-option>
+                            <mat-option [value]="2">WhatsApp</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      </div>
+
+                    </div>
+
+                
+                    
+
+               
+                      <div class="row" >
+                        <div class="col-xl-5 col-lg-5 col-md-10 col-sm-10 mb-2" 
+                          *ngFor="let field of camposDemograficosOrganizacion">
+                          <mat-form-field appearance="fill" class="w-100">
+                            <mat-label>{{ field.NombreCampo }}</mat-label>
+                            <input matInput [formControlName]="field.NombreCampo" />
+                          </mat-form-field>
+                        </div>
+                      </div>
+                 
+                  
+                     
+         
+                  </form>
+                  
+                  
+                  
+                  
+                  
+                  
+                  <!-- FIN formulario -->
+
+                  <mat-dialog-actions>
+                   
+                    <button [disabled]="isButtonDisabled" mat-raised-button color="primary" (click)="onSubmit()">
+                      {{'MENUITEMS.EMPLOYEE.SAVE' | translate}}
+                    </button>
+                  </mat-dialog-actions>
+
+
+                </mat-expansion-panel>
+              </mat-accordion>
+            
+
+            
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

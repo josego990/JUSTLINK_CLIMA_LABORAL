@@ -1,0 +1,37 @@
+/* 1) El contenedor de columnas */
+.card-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;                 /* hace que el mat-card llene la columna */
+  }
+  
+  /* 2) El mat-card */
+  .fixed-card {
+    flex: 1 1 auto;               /* todos crecen lo mismo en la fila flex */
+    height: 482px;            /* 👉 altura que desees compartir */
+    display: flex;
+    flex-direction: column;       /* para aislar el body del header/footer */
+  }
+  
+  /* 3) Zona que debe hacer scroll si se desborda */
+  .fixed-card .mat-card-content {
+    flex: 1 1 auto;               /* ocupa todo el espacio libre */
+    overflow-y: auto;             /* scroll vertical cuando sea necesario */
+  }
+
+  .icon-positive {
+  color: green;
+}
+.icon-negative {
+  color: red;
+}
+.icon-neutral {
+  color: gray;
+}
+
+/* opcional: un poco de espaciado */
+.sentiment-icon {
+  vertical-align: middle;
+  margin-right: 8px;
+  font-size: 24px;
+}

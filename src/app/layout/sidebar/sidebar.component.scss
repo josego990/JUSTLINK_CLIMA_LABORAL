@@ -1,0 +1,26 @@
+
+
+.navbar-brand img {
+    max-height: 25px; /* Ajusta la altura según sea necesario */
+    width: auto; /* Mantiene la proporción */
+  }
+  .navbar-brand {
+    display: flex;
+    flex-direction: column; /* Acomoda los elementos en columna */
+    align-items: center; /* Centra el contenido */
+    text-decoration: none; /* Elimina el subrayado del enlace */
+    margin-left: 50px;
+  }
+  
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espacio entre las imágenes */
+  }
+  
+  .navbar-text {
+    margin-top: 5px; /* Espaciado entre imágenes y texto */
+    font-size: 14px; /* Ajusta el tamaño del texto */
+    color: #fff; /* Cambia el color según necesidad */
+    text-align: center;
+  }

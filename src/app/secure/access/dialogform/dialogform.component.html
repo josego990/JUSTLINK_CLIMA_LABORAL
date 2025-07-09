@@ -1,0 +1,38 @@
+<div>
+  <h2 mat-dialog-title>Crear Nuevo Rol</h2>
+  <div mat-dialog-content>
+
+        
+        <form style="margin-top: 5px" [formGroup]="addCusForm!" (ngSubmit)="onSubmitClick()"> 
+
+          <div class="row">
+
+      
+            <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-2">
+              <div class="text-inside">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{'MENUITEMS.SECURE.ROLE_NAME' | translate}}</mat-label>
+                  <input matInput formControlName="Nombre" required />
+                </mat-form-field>
+              </div>
+            </div>
+            
+              <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 mb-2">
+              <mat-form-field appearance="fill" class="w-100">
+                <mat-label>{{'MENUITEMS.SECURE.ROLE_DESC' | translate}}</mat-label>
+                <input matInput formControlName="Descripcion" required />
+              </mat-form-field>
+            </div>
+
+          </div>
+    
+          
+          <div class="btn-sec">
+            <button type="submit" class="btn-space" mat-raised-button color="primary">Guardar</button>
+            <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+
+
+  </div>
+</div>

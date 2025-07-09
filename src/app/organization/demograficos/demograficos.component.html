@@ -1,0 +1,154 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'DEMOGRAFICOS'" [items]="['Home','DEMOGRAFICOS']" ></app-breadcrumb>
+    </div>
+    <div class="row">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
+        <div style="margin-left: -50px;" class="card">
+          
+          <div class="body">
+            
+
+
+            <!-- Envuélvelo con un form que use [formGroup]="orgForm" -->
+            <div>
+              <div class="col-md-6">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Organización</mat-label>
+                  <mat-select (selectionChange)="onOrganizationChange($event.value)">
+                    <mat-option
+                      *ngFor="let organization of dataSourceOrganizations"
+                      [value]="organization.Id"
+                    >
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                
+              </div>
+
+              <div class="body table-responsive">
+                <table mat-table [dataSource]="dataSourceDemograficos" class="table">
+
+                  <!-- Id -->
+                  <ng-container matColumnDef="Id">
+                    <th mat-header-cell *matHeaderCellDef> ID </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
+                  </ng-container>
+                
+                  <!-- IdOrganizacion -->
+                  <ng-container matColumnDef="IdOrganizacion">
+                    <th mat-header-cell *matHeaderCellDef> Id Org. </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
+                  </ng-container>
+                
+                  <!-- Nombres -->
+                  <ng-container matColumnDef="NombreCampo">
+                    <th mat-header-cell *matHeaderCellDef> Nombre Campo </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.NombreCampo }} </td>
+                  </ng-container>
+                
+                  <!-- Apellidos -->
+                  <ng-container matColumnDef="TipoDato">
+                    <th mat-header-cell *matHeaderCellDef> Tipo Dato </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.TipoDato }} </td>
+                  </ng-container>
+                
+                  <!-- NumeroIdentificacion -->
+                  <ng-container matColumnDef="FechaCreacion">
+                    <th mat-header-cell *matHeaderCellDef> Fecha Creación </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.FechaCreacion }} </td>
+                  </ng-container>
+                
+                  <!-- TipoIdentificacion -->
+                  <ng-container matColumnDef="Estado">
+                    <th mat-header-cell *matHeaderCellDef> Estado </th>
+                    <td mat-cell *matCellDef="let element"> {{ element.Estado }} </td>
+                  </ng-container>
+                
+                  <!-- Acciones -->
+                  <ng-container matColumnDef="Acciones">
+                    <th mat-header-cell *matHeaderCellDef> Acciones </th>
+                    <td mat-cell *matCellDef="let element">
+                      <a  mat-icon-button [color]="element.Estado === true ? 'warn' : 'accent'" 
+                              (click)="deleteItem(element)">
+                        <mat-icon>
+                          {{ element.Estado === true ? 'delete' : 'loop' }}
+                        </mat-icon>
+                      </a>
+                    </td>
+                  </ng-container>
+                
+                  <!-- Header & Row definitions -->
+                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+                
+              </div>
+
+            
+              <mat-accordion>
+                <mat-expansion-panel [expanded]="false">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      Crear Nuevo Campo Demográfico
+                    </mat-panel-title>
+                    <mat-panel-description>
+                      Expandir / Ocultar
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <!-- Nuestro formulario con [formGroup]="orgForm" -->
+                  <form class="m-4" [formGroup]="demograficosForm" >
+                 
+                   
+                    
+                    <div class="row">
+                   
+                      <div class="col-md-6">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>ID Organización</mat-label>
+                          <input matInput formControlName="IdOrganizacion"/>
+                        </mat-form-field>
+                      </div>
+                
+                      <div class="col-md-6">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>Nombre Campo</mat-label>
+                          <input matInput formControlName="NombreCampo" required />
+                        </mat-form-field>
+                      </div>
+                    </div>
+                
+                  
+                     
+         
+                  </form>
+                  
+                  
+                  
+                  
+                  
+                  
+                  <!-- FIN formulario -->
+
+                  <mat-dialog-actions align="end">
+                   
+                    <button mat-raised-button color="primary" (click)="onSubmit()">Guardar</button>
+                  </mat-dialog-actions>
+
+
+                </mat-expansion-panel>
+              </mat-accordion>
+            </div>
+
+            
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

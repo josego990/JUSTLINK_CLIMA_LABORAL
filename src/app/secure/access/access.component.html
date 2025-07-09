@@ -1,0 +1,63 @@
+<section class="content">
+  <div  class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'MENUITEMS.SECURE.ACCESS' | translate" [items]="['Home','CONFIGURACION']" [active_item]="'Accesos '"></app-breadcrumb>
+    </div>
+    <div class="row">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
+        <div  class="card">
+          <div class="header">
+         
+            <button style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialogNewRol()">
+              <mat-icon>add</mat-icon> Crear Nuevo Rol
+            </button>
+            
+          </div>
+          <div class="body">
+          
+      
+            <mat-accordion>
+              
+              <mat-expansion-panel *ngFor="let role of rolesAccess">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Rol [{{ role.roleName }}]</mat-panel-title>
+                  <mat-panel-description>{{ role.Description }}</mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="table-responsive">
+                  <table class="table">
+                    <tbody>
+                      <tr *ngFor="let access of role.accesses">
+                        <!-- Nombre y descripción -->
+                        <td>
+                          <strong>{{ access.actionName }}</strong><br/>
+                          <small class="text-muted">{{ access.actionDescription }}</small>
+                        </td>
+                        <!-- Toggle alineado a la derecha -->
+                        <td class="text-end">
+                          <mat-slide-toggle
+                            [checked]="access.hasAccess === 1"
+                            (change)="onToggleAccess(role.RoleId, access.ActionId, $event.checked)"
+                          ></mat-slide-toggle>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </mat-expansion-panel>
+            </mat-accordion>
+
+
+
+           
+
+            
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

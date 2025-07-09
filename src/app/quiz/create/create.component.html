@@ -1,0 +1,165 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'ADMINISTRAR CLIMAS'" [items]="['Home','CLIMAS']" [active_item]="'Administrar '"></app-breadcrumb>
+    </div>
+    <div class="row">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
+        <div>
+          <div class="header">
+         
+            <button style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialog()">
+              <mat-icon>add</mat-icon> Crear Nuevo Clima
+            </button>
+            
+          </div>
+          <mat-progress-spinner 
+            *ngIf="loading"
+            mode="indeterminate"
+            diameter="40"
+            color="primary"
+            style="margin: auto; display: block;">
+          </mat-progress-spinner>
+          <div class="body">
+            <div class="row">
+              <div *ngFor="let card of cardsData" class="col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-4 col-xxl-4">
+                <mat-card style="border: 1px solid #ccc;">
+                  
+                  <mat-card-header>
+                    <img mat-card-avatar [src]="card.avatarSrc" />
+                    <mat-card-title>{{ card.title }}</mat-card-title>
+                    <mat-card-subtitle style="color: #91a1a4">
+                      {{ card.subtitle }}
+                    </mat-card-subtitle>
+                  </mat-card-header>
+                
+                  <!-- Reemplazo de la imagen por un dashboard resumen -->
+                  <div style="padding: 16px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+
+                      <div style="flex: 1 1 45%; display: flex; align-items: center;">
+                        <span
+                          [ngStyle]="{
+                            color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
+                                   (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
+                            'font-size': '18px',
+                            'margin-right': '8px'
+                          }"
+                        >
+                          {{ card.estadoEnvio === 'Creado' ? '🕓' :
+                             card.estadoEnvio === 'Enviado' ? '✅' : '⌛' }}
+                        </span>
+                        <strong
+                          [ngStyle]="{
+                            color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
+                                   (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red')
+                          }"
+                        >
+                          {{ card.estadoEnvio }}
+                        </strong>
+                      </div>
+
+                      <div style="flex: 1 1 45%;">
+                        👥 <strong>Empleados:</strong> {{ card.estadisticasEnvio.total_empleados_activos  }}
+                      </div>
+
+                      <div style="flex: 1 1 45%;">
+                        📝 <strong>Encuestas:</strong> {{ card.estadisticasEnvio.total }}
+                      </div>
+
+                      <div style="flex: 1 1 45%;">
+                        📤 <strong>Enviadas:</strong> {{ card.estadisticasEnvio.total_enviadas  }}
+                      </div>
+
+                      <div style="flex: 1 1 45%;">
+                        📊 <strong>Iniciadas:</strong>  {{card.estadisticasEnvio.total_iniciadas}}
+                      </div>
+                      
+                      <div style="flex: 1 1 45%;">
+                        ✅ <strong>Contestadas:</strong> {{ card.estadisticasEnvio.total_contestadas }}
+                      </div>
+
+                      <div style="flex: 1 1 45%;">
+                        📋 <strong>Pendientes:</strong> {{ card.estadisticasEnvio.total - card.estadisticasEnvio.total_contestadas }}
+
+                      </div>
+                      
+                      <div style="flex: 1 1 45%;">
+                        📊 <strong>Completado:</strong>  {{card.estadisticasEnvio.porcentaje}} %
+                      </div>
+
+                      
+                      
+                      
+                      
+
+                    </div>
+                  </div>
+                
+                  <mat-card-content style="margin-bottom: 10px;">
+                    <p>{{ card.content }}</p>
+                  </mat-card-content>
+
+                   <!-- Chips de factores (series) -->
+                   <mat-card-content>
+                    Factores:
+                  
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
+                     
+                        <mat-chip *ngFor="let factor of card.series"
+                                  color="primary"
+                                  selected
+                                  [matTooltip]="getTooltipText(factor)"
+                                  matTooltipClass="tooltip-html"
+                                  matTooltipPosition="above"
+                                  removable="true"
+                                  (removed)="deleteFactor(factor)">
+                          {{ factor.label }} ({{factor.fields.length}})
+                          <button matChipRemove>
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        </mat-chip>
+
+                      
+                      
+                 
+                    </div>
+                  </mat-card-content>
+                  
+                  
+                  
+                  
+                
+                  <mat-divider style="margin-top: 5px;"></mat-divider>
+                
+                  <mat-card-actions>
+                    <div class="header" fxLayout="row">
+                      <span fxFlex></span>
+                      
+                      <button style="margin-left: auto" mat-raised-button color="primary" (click)="editarQuiz(card)">
+                        Editar
+                      </button>
+                      <!--
+                      <button style="color: #91a1a4; margin-left: 10px;" mat-button (click)="verDetalles(card)">
+                        Vista
+                      </button>
+                      -->
+                      <button style="margin-left: 5px" mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
+                        Envío
+                      </button>
+                      
+                    </div>
+                  </mat-card-actions>
+                </mat-card>
+                
+              </div>
+
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

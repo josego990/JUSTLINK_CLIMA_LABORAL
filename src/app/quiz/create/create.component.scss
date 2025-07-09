@@ -1,0 +1,31 @@
+// nombre.component.scss
+
+// Estilo general para todos los controles
+div {
+  margin-left: 5px;
+}
+
+// Estilo específico para el tipo de archivo
+input[type="file"] {
+  // Puedes agregar estilos específicos para el control de archivo aquí
+  margin-left: 5px;
+}
+
+input[type="textarea"] {
+  // Puedes agregar estilos específicos para el control de archivo aquí
+  margin-left: 10px;
+}
+
+// Estilo específico para el tipo de slider y su label
+input[type="range"], label {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.tooltip-html {
+  white-space: normal !important;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+

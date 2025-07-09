@@ -1,0 +1,40 @@
+<div class="card info-card">
+    <div class="info-box8">
+      <!-- Gauge en lugar del icono -->
+      <div class="card gauge-chart-factor">
+        <ngx-gauge
+            [value]="gaugeValue"
+            [size]="gaugeSize"
+            [type]="gaugeType"
+            [thick]="gaugeThick"
+            [foregroundColor]="gaugeColor"
+        >
+                       
+            <ngx-gauge-value style="margin-top: 25px;">
+            {{ gaugeValue }}
+            </ngx-gauge-value>
+        </ngx-gauge>
+    </div>
+      <h6 [ngClass]="'col-' + colorClass + ' font-b-500'">{{ title }}</h6>
+      <h5>Respuestas {{ value }}</h5>
+      <div>
+        <i
+          class="material-icons float-start me-1 ms-1"
+          [ngClass]="{
+            'col-red': trendDirection === 'down',
+            'col-green': trendDirection === 'up'
+          }"
+        >
+          trending_{{ trendDirection }}
+        </i>
+        <p class="float-start m-0">
+          <span
+            [ngClass]="trendDirection === 'down' ? 'col-orange' : 'col-green'"
+            >{{ trendPercentage }}</span
+          >
+          {{ trendText }}
+        </p>
+      </div>
+    </div>
+  </div>
+  

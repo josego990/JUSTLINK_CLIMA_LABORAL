@@ -1,0 +1,179 @@
+{
+  "HEADER":{
+    "SEARCH": {
+      "TEXT": "Search.."
+    }
+  },
+  "MENUITEMS": {
+    "USER":{
+      "POST": "Manager"
+    },
+    "MAIN": {
+      "TEXT": "Main"
+    },
+    "DASHBOARD": {
+      "TEXT": "Dashboard",
+      "LIST": {
+        "DASHBOARD1": "Climate Dashboard",
+        "DASHBOARD2": "Dashboard 2",
+        "DASHBOARD3": "Dashboard 3"
+      }
+    },
+     "ORGANIZATION": {
+      "TEXT": "ORGANIZATION",
+      "LIST": {
+        "CREAR": "Organizations",
+        "EMPLEADOS": "Employees",
+        "DEMOGRAFICOS": "Demographics"
+      },
+      "NAME": "NAME",
+      "COUNTRY": "COUNTRY",
+      "PHONE": "PHONE",
+      "MAIL": "CONTACT EMAIL",
+      "REPRESENT": "REPRESENTATIVE",
+      "SECTOR": "INDUSTRY",
+      "EMP_NUMBER": "EMPLOYEES",
+      "DELETE": "DELETE",
+      "CREATEORG": "Create Organization",
+          
+      "EXPAND": "Expand - Collapse",
+      "REASON": "Social Reasone",
+      "ADDRESS": "Address",
+
+      "SUCCESS": "SUCCESS",
+
+      "ORGDELETED": "Organization was deleted.",
+      "ERRORGDELETED": "Error deleting the organization:",
+      "SOMEWRONG": "Something went wrong",
+      "ERRDELETEORG": "An error occurred while deleting the organization",
+      "ORGADDSUCCESS": "New organization was added.",
+      "ERRCREATEORG": "An error occurred while creating the organization.",
+      "SAVE": "SAVE"
+
+
+
+  },
+
+
+  "EMPLOYEE": {
+    "TEXT": "EMPLOYEES",
+    "NAME": "FIRST NAME",
+      "LNAME": "LAST NAME",
+    "COUNTRY": "COUNTRY",
+    "PHONE": "PHONE",
+    "MAIL": "CONTACT EMAIL",
+    "DELETE": "DELETE",
+    "CREATE": "Create Employee",
+    "EXPAND": "Expand - Collapse",
+    "ADDRESS": "ADDRESS",
+    "POSITION": "POSITION",
+    "REGDATE": "REGISTRATION DATE",
+    "STATUS": "STATUS",
+    "SENDTYPE": "SEND TYPE",
+    "ACTIONS": "ACTIONS",
+    "UPLOAD": "UPLOAD EXCEL FILE",
+    "CREATENEW": "NEW EMPLOYEE",
+    "SAVE": "SAVE",
+    "SUCCESS": "SUCCESS",
+    "ADDED": "New employee added",
+
+    "SOMEWRONG": "Something went wrong",
+    "ERRMESSAGE": "An unexpected error occurred.",
+    "VERIFY": "Please verify the data",
+    "INVALIDFORM": "The form is not valid",
+    "EXCELERROR": "Errors found in the Excel file",
+    "UPLOADMESSAGE": "Uploading Employees Excel file...",
+    "PROCESSMESSAGE": "Processing data, please wait <b></b>",
+    "FINISHMSGH": "Finished!",
+    "FINISHMSGB": "Records were successfully inserted.",
+    "ERRFOUNDINSERT": "Errors found while inserting:",
+    "EMPLOYEINSERTSUCCESS": "Employees inserted successfully.",
+    "ERRUPLOADDATA": "An error occurred while uploading data.",
+    "INACTIVEEMPLOYEE": "Employee was deactivated.",
+    "ACTIVEEMPLOYEE": "Employee was activated.",
+    "ERRDELETEEMPLOYEE": "Error deleting employee.",
+    "ERRACTIVEEMPLOYEE": "Error activating employee.",
+    "ERRCREATEEMPLOYEE": "Error creating employee."
+
+
+
+
+
+
+
+  },
+
+
+  "QUIZ": {
+    "TEXT": "Work Climate",
+    "LIST": {
+      "CREAR": "Manage",
+      "LLENAR": "Take Survey",
+      "LLENARCLIMA": "Pre-Survey",
+      "CONFIG": "Settings",
+      "EDITOR": "Email Templates"
+    }
+  },
+    "ADVANCE-TABLE": {
+      "TEXT": "Advance Table"
+    },
+    "APPS": {
+      "TEXT": "Apps"
+    },
+    "CALENDAR": {
+      "TEXT": "Calendar"
+    },
+    "TASK": {
+      "TEXT": "Task"
+    },
+    "CONTACTS": {
+      "TEXT": "Contacts"
+    },
+    "EMAIL": {
+      "TEXT": "Email",
+      "LIST": {
+        "INBOX": "Inbox",
+        "COMPOSE": "Compose",
+        "READ": "Read Email"
+      }
+    },
+    "MORE-APPS": {
+      "TEXT": "More Apps",
+      "LIST": {
+        "CHAT": "Chat",
+        "SUPPORT": "Support",
+        "DRAG-DROP": "Drag & Drop",
+        "CONTACT-GRID": "Contact Grid"
+      }
+    },
+    "COMPONENTS": {
+      "TEXT": "Components"
+    },
+    "WIDGETS": {
+      "TEXT": "Widgets",
+      "LIST": {
+        "CHART-WIDGET": "Chart-Widget",
+        "DATA-WIDGET": "Data-Widget"
+      }
+    },
+    "FORMS": {
+      "TEXT": "Forms",
+      "LIST": {
+        "CONTROLS": "Form Controls",
+        "ADVANCE": "Advance Control",
+        "EXAMPLE": "Form Examples",
+        "VALIDATION": "Form Validation",
+        "WIZARD": "Wizard",
+        "EDITORS": "Editors"
+      }
+    },
+    "TABLES": {
+      "TEXT": "Tables",
+      "LIST": {
+        "BASIC": "Basic Tables",
+        "MATERIAL": "Material Tables",
+        "NGX-DATATABLE": "NGX-Datatable"
+      }
+    }
+  }
+}

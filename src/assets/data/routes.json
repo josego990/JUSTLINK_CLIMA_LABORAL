@@ -1,0 +1,161 @@
+{
+  "routes": [
+    {
+      "path": "",
+      "title": "MENUITEMS.MAIN.TEXT",
+      "iconType": "",
+      "icon": "",
+      "class": "",
+      "groupTitle": true,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "",
+      "title": "MENUITEMS.DASHBOARD.TEXT",
+      "iconType": "mat-icons",
+      "icon": "pie-chart",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "dashboard/dashboard1",
+          "title": "MENUITEMS.DASHBOARD.LIST.DASHBOARD1",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
+    },
+    {
+      "path": "",
+      "title": "MENUITEMS.ORGANIZATION.TEXT",
+      "iconType": "feather",
+      "icon": "home",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "/organization/create",
+          "title": "MENUITEMS.ORGANIZATION.LIST.CREAR",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": [] 
+          
+        },
+        {
+          "path": "/organization/employee",
+          "title": "MENUITEMS.ORGANIZATION.LIST.EMPLEADOS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/organization/demograficos",
+          "title": "MENUITEMS.ORGANIZATION.LIST.DEMOGRAFICOS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
+    },
+    
+    {
+      "path": "",
+      "title": "MENUITEMS.QUIZ.TEXT",
+      "iconType": "feather",
+      "icon": "check-circle",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "/quiz/create",
+          "title": "MENUITEMS.QUIZ.LIST.CREAR",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        
+        {
+          "path": "/quiz/editor",
+          "title": "MENUITEMS.QUIZ.LIST.EDITOR",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
+    },
+    
+    {
+      "path": "",
+      "title": "MENUITEMS.SECURE.TEXT",
+      "iconType": "feather",
+      "icon": "settings",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+           {
+          "path": "/secure/users",
+          "title": "MENUITEMS.USERS.TEXT",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/secure/access",
+          "title": "MENUITEMS.SECURE.ACCESS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+     
+        
+       
+      ]
+    }
+
+  
+
+  ]
+}

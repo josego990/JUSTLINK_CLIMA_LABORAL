@@ -1,0 +1,483 @@
+<div >
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    
+    <h2 mat-dialog-title>Gestionar Flujo {{card.title}}    
+    </h2>
+    
+    <button mat-icon-button [matMenuTriggerFor]="menu"> 
+      <mat-icon>settings</mat-icon>
+    </button>
+    
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item (click)="onMenuOptionClick('desactivar')">
+        <mat-icon>toggle_off</mat-icon>
+        <span>Desactivar Flujo</span>
+      </button>
+      <button mat-menu-item (click)="onMenuOptionClick('eliminar')" style="color: red;">
+        <mat-icon>delete</mat-icon>
+        <span>Eliminar Flujo</span>
+      </button>
+    
+      <!-- Botón para cargar Excel -->
+      <button mat-menu-item (click)="fileInput.click()">
+        <mat-icon style="color: #217346;">table_view</mat-icon>
+        <span style="color: #217346;">Cargar Excel</span>
+      </button>
+    
+      <input
+        #fileInput
+        type="file"
+        accept=".xlsx, .xls"
+        style="display: none"
+        (change)="onFileSelected($event)"
+      />
+    </mat-menu>
+    
+
+  </div>
+
+  <h6 style="margin-left: 30px;">{{card.subtitle}}</h6>
+
+  <div  mat-dialog-content>
+
+    <div class="text-inside">
+
+      <div class="row">
+        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+          <mat-form-field class="example-full-width" appearance="fill">
+            <mat-label>Factor</mat-label>
+            <mat-select [(ngModel)]="selectedSerie" (selectionChange)="onFactorChange($event)">
+              <mat-option *ngFor="let serie of seriesx" [value]="serie.Id" >
+                {{ serie.label  }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+          <button class="btn-space" mat-raised-button color="primary" 
+            (click)="openDialogSerie(series_data_send)">+ Factores</button>
+        </div>
+      </div>
+
+      <div *ngIf="loading" class="loading-overlay">
+        <mat-progress-spinner
+          mode="indeterminate"
+          diameter="60"
+          color="primary">
+        </mat-progress-spinner>
+      </div>
+
+      <mat-form-field class="example-full-width" appearance="fill">
+        <mat-label>Tipo de Campo</mat-label>
+        <mat-select [(ngModel)]="selectedFieldType">
+          <!--          
+          <mat-option value="text">Texto corto</mat-option>
+          -->
+          
+           <!--          
+          <mat-option value="select">Selección de lista</mat-option>
+          
+          -->
+          <mat-option value="radio">Escala de Likert</mat-option>
+          <mat-option value="text">Pregunta abierta</mat-option>
+
+          <mat-option value="text_ia">Pregunta abierta (Con análisis de IA)</mat-option>
+          <mat-option value="slider">Selección de rango</mat-option>
+
+           <!--                   
+          <mat-option value="checkboxes">Selección Múltiple</mat-option>
+          <mat-option value="date">Fecha</mat-option>
+          <mat-option value="file">Carga de archivo</mat-option>
+          -->
+        
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+
+    <!-- 
+    <form *ngIf="selectedFieldType === 'date'"  id="form_text" [formGroup]="addDateForm!" (ngSubmit)="onFormDateSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addDateForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'file'"  id="form_text" [formGroup]="addFileForm!" (ngSubmit)="onFormFileSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addFileForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'textarea'"  id="form_textarea" [formGroup]="addTextareaForm!" (ngSubmit)="onFormTextareaSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addTextareaForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'select'"  id="form_textarea" [formGroup]="addSelectForm!" (ngSubmit)="onFormSelectSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addSelectForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <button type="button" mat-raised-button (click)="openDialog()"color="primary" >
+              Agregar valores a la lista
+            </button>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="fill">
+              <mat-label>Vista previa</mat-label>
+              <mat-select [value]="selectedFieldType">
+                <mat-option *ngFor="let tipoDeCampo of options_context" [value]="tipoDeCampo.value">
+                  {{ tipoDeCampo.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="row">
+          
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <a mat-stroked-button class="stroked-btn-link"  
+            (click)="saveBank('select')">Agregar ítem al banco de preguntas</a>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'checkboxes'"  id="form_textarea" [formGroup]="addCheckboxesForm!" (ngSubmit)="onFormCheckboxesSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addCheckboxesForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <button type="button" mat-raised-button (click)="openDialog()"color="primary" >
+              Agregar valores a la lista
+            </button>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="fill">
+              <mat-label>Valores de checkbox ingresados</mat-label>
+              <mat-select [value]="selectedFieldType">
+                <mat-option *ngFor="let tipoDeCampo of options_context" [value]="tipoDeCampo.value">
+                  {{ tipoDeCampo.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="row">
+          
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <a mat-stroked-button class="stroked-btn-link"  
+            (click)="saveBank('checkboxes')">Agregar ítem al banco de preguntas</a>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    
+-->
+
+    <form *ngIf="selectedFieldType === 'slider'"  id="form_slider" [formGroup]="addSliderForm!" (ngSubmit)="onFormSliderSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addSliderForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="outline">
+              <mat-label>Valor mínimo</mat-label>
+              <input matInput value={{field.label}} formControlName="ifirstvalue" required>
+              <mat-error *ngIf="addSliderForm.controls?.['ifirstvalue']?.hasError('required')">
+                Por favor ingrese la descripción del Item
+              </mat-error>
+            </mat-form-field>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="outline">
+              <mat-label>Valor máximo</mat-label>
+              <input matInput value={{field.label}} formControlName="ilastvalue" required>
+              <mat-error *ngIf="addSliderForm.controls?.['ilastvalue']?.hasError('required')">
+                Por favor ingrese la descripción del Item
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+  
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+    
+    <form *ngIf="selectedFieldType === 'text'"  id="form_text" [formGroup]="addTextForm!" (ngSubmit)="onFormTextSubmitClick()">
+      <div class="text-inside">
+
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addTextForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+    
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-stroked-button class="stroked-btn-link" (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'text_ia'"  id="form_text_ia" [formGroup]="addTextFormIA!" (ngSubmit)="onFormTextIASubmitClick()">
+      <div class="text-inside">
+
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addTextForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+    
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4;" type="button" mat-stroked-button class="stroked-btn-link" (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'radio'"  id="form_textarea" [formGroup]="addRadioForm!" 
+      (ngSubmit)="onFormRadioSubmitClick()">
+      <div class="text-inside">
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Texto del campo</mat-label>
+          <input matInput value={{field.label}} formControlName="ilabel" required>
+          <mat-error *ngIf="addRadioForm.controls?.['ilabel']?.hasError('required')">
+            Por favor ingrese la descripción del Item
+          </mat-error>
+        </mat-form-field>
+
+
+        <!-- 
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <button type="button" mat-raised-button (click)="openDialog()"color="primary" >
+              Agregar valores a la lista
+            </button>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="fill">
+              <mat-label>Valores de radio ingresados</mat-label>
+              <mat-select [value]="selectedFieldType">
+                <mat-option *ngFor="let tipoDeCampo of options_context" [value]="tipoDeCampo.value">
+                  {{ tipoDeCampo.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="row">
+          
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-checkbox class="example-margin" formControlName="irequired">
+              ¿Es requrido?
+            </mat-checkbox>
+            <mat-checkbox class="example-margin" formControlName="israndom">
+              ¿Es aleatoria?
+            </mat-checkbox>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <a mat-stroked-button class="stroked-btn-link"  
+            (click)="saveBank('radio')">Agregar ítem al banco de preguntas</a>
+          </div>
+        </div>
+        -->
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary">Guardar</button>
+          
+        </div>
+      </div>
+    </form>
+
+
+  
+    <h2 style="margin-left:1px" mat-dialog-title>Items agregados</h2>
+    <table  mat-table [dataSource]="dataSource" class="w-100">
+      <!--  -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef> ID </th>
+        <td mat-cell *matCellDef="let element"> {{element.id}} </td>
+      </ng-container>
+
+
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef> Tipo campo </th>
+        <td mat-cell *matCellDef="let element">
+          {{ element.type === 'radio' ? 'Likert' : element.type === 'text' ? 'Pregunta Abierta' : element.type }}
+        </td>
+        
+      </ng-container>
+
+      <ng-container matColumnDef="label">
+        <th mat-header-cell *matHeaderCellDef> Descripción</th>
+        <td mat-cell *matCellDef="let element"> {{element.label}} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="serie">
+        <th mat-header-cell *matHeaderCellDef>Factor</th>
+        <td mat-cell *matCellDef="let element"> {{element.serie}} </td>
+      </ng-container>
+
+      
+      <ng-container matColumnDef="activate">
+        <th mat-header-cell *matHeaderCellDef> Activo </th>
+        <td mat-cell *matCellDef="let element">
+          <button
+            mat-icon-button
+            [color]="element.is_active === 1 ? 'primary' : 'warn'"
+            (click)="toggleEstado(element)"
+          >
+            <mat-icon>
+              {{ element.is_active === 1 ? 'toggle_on' : 'toggle_off' }}
+            </mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      
+      
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Borrar </th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button color="warn" (click)="swalConfirma(element)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+  </div>
+  <div mat-dialog-actions>
+    <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cerrar</button>
+  </div>
+</div>

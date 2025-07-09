@@ -1,0 +1,42 @@
+:host {
+  display: block;
+}
+
+/* Truncamiento en encabezados y celdas */
+.truncate-text {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Altura fija de filas */
+table.mat-table {
+  .mat-header-cell,
+  .mat-cell {
+    height: 48px;
+    line-height: 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+}
+
+/* Selecciona la columna por su clase que Angular Material añade automáticamente: */
+.mat-column-DetalleError {
+  flex: 0 0 150px;    /* ancho fijo de 150px */
+  max-width: 150px;   /* no se expanda más allá */
+  min-width: 150px;   /* no se encoja más acá */
+  overflow: hidden;   /* oculta contenido que desborde */
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mat-column-email {
+  flex: 1 1 250px;    /* ancho inicial 250px, pero puede crecer */
+  max-width: 300px;
+  min-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
