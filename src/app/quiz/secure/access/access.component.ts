@@ -111,7 +111,7 @@ export class AccessComponent implements OnInit {
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
         .then((response:any) => {
-          console.log('Organizaciones:', JSON.stringify(response.data));
+         //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
         })
@@ -123,7 +123,7 @@ export class AccessComponent implements OnInit {
   getCountries(): void {
     this.organizacionService.getCountries()
         .then((response:any) => {
-          console.log('Countries:', JSON.stringify(response.data));
+         //console.log('Countries:', JSON.stringify(response.data));
           
           this.dataSourceCountries = response.data;
         })
@@ -135,7 +135,7 @@ export class AccessComponent implements OnInit {
   deleteOrganization(idOrganization:number): void {
     this.organizacionService.deleteOrganization(idOrganization)
     .then((response:any) => {
-      console.log(response);
+     //console.log(response);
       this.getOrganizations();
       Swal.fire({
         title: this.translate.instant('MENUITEMS.ORGANIZATION.SUCCESS'),
@@ -156,11 +156,11 @@ export class AccessComponent implements OnInit {
   // Enviar datos al servicio:
   onSubmit(): void {
     if (this.orgForm.valid) {
-      console.log('CHORICITO!!', this.orgForm.value);
+     //console.log('CHORICITO!!', this.orgForm.value);
   
       this.organizacionService.saveNewOrganization(this.orgForm.value)
         .then((response:any) => {
-          console.log('Organización creada:', response.data);
+         //console.log('Organización creada:', response.data);
           this.getOrganizations();
           Swal.fire({
                       title: this.translate.instant('MENUITEMS.ORGANIZATION.SUCCESS'),
@@ -184,7 +184,7 @@ export class AccessComponent implements OnInit {
   }
 
   deleteItem(item:any){
-    console.log('DELETE ITEM:: ', item);
+   //console.log('DELETE ITEM:: ', item);
     this.deleteOrganization(item.Id);
   }
 

@@ -10,6 +10,7 @@ import { OrganizacionService } from 'app/organization/services/organizacion.serv
 })
 export class AdvanceTableService {
   private readonly API_URL = 'http://localhost:3030/get-users-json';
+  private readonly API_URL_BY_ID = 'http://localhost:3030/get-users-by-id-org-json';
   private readonly API_URL_SAVE_USER = 'http://localhost:3030/insert-user';
   private readonly API_URL_UPDATE_USER = 'http://localhost:3030/update-user';
 
@@ -25,12 +26,18 @@ export class AdvanceTableService {
       .get<UserModel[]>(this.API_URL)
       .pipe(catchError(this.handleError));
   }
+
+  getAllUsersById(idOrganization:any): Observable<UserModel[]> {
+    return this.httpClient
+      .post<UserModel[]>(this.API_URL_BY_ID,{idOrganization:idOrganization})
+      .pipe(catchError(this.handleError));
+  }
   
 
   /** POST: Add a new advance table */
   addUserTable(newUser: UserModel): Observable<UserModel> {
 
-    console.log('A GUARDAR:: ', newUser);
+   //console.log('A GUARDAR:: ', newUser);
 
      return this.httpClient.post<UserModel>(this.API_URL_SAVE_USER, newUser).pipe(
        map((response) => {

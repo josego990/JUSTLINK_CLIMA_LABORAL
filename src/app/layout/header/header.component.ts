@@ -133,7 +133,7 @@ export class HeaderComponent
       'assets/images/user/' + this.authService.currentUserValue!.img;
     this.docElement = document.documentElement;
 
-    console.log('CURRENT USER DESDE HEADER COMPONENT:: ', this.authService.currentUserValue);
+   //console.log('CURRENT USER DESDE HEADER COMPONENT:: ', this.authService.currentUserValue);
 
 
     this.getUserInfo();
@@ -155,7 +155,7 @@ export class HeaderComponent
   getUserInfo():void{
     this.organizationService.getUserById(this.authService.currentUserValue!.userId).then((resulx)=>{
       if(resulx.data){
-        console.log('resulx.data', resulx.data);
+       //console.log('resulx.data', resulx.data);
         this.userContext = resulx.data[0];
       }
     }).catch((err)=>{

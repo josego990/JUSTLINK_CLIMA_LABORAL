@@ -74,7 +74,7 @@ import { Color, ScaleType, BarChartModule, LineChartModule, AreaChartModule, Pie
 import { LegendPosition } from '@swimlane/ngx-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
-
+import { FormsModule } from '@angular/forms';
 import { ExcelXlsxService } from './excel-xlsx.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service'; 
@@ -85,6 +85,8 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+
+import { AuthService } from '@core';
 
 interface Todo {
   title: string;
@@ -264,7 +266,7 @@ function agruparPorCampo(seleccionados: string[], campos: {
   imports: [
     BreadcrumbComponent,MatFormFieldModule,MatSelectModule,CommonModule,
     MatButtonModule,TranslateModule,
-    MatMenuModule,
+    MatMenuModule,FormsModule,
     MatIconModule,
     ProgressTableFactorComponent,MatDividerModule,
     NgApexchartsModule,NgxGaugeModule,
@@ -273,7 +275,7 @@ function agruparPorCampo(seleccionados: string[], campos: {
     MatProgressBarModule,
     MatCheckboxModule,
     MatTooltipModule,
-  InfoBoxFactorComponent,
+    InfoBoxFactorComponent,
   
     BarChartModule, LineChartModule, AreaChartModule, PieChartModule 
   ],
@@ -392,6 +394,10 @@ export class Dashboard1Component implements OnInit {
   public gaugeColor: string = '#FF0000';
   public btnDisabled = true;
 
+  public accessToFilter = true;
+  public accessToExport = true;
+  public roleName = '';
+
   public campos:any = [
  
 ];
@@ -425,13 +431,14 @@ export class Dashboard1Component implements OnInit {
     areaxAxisLabel = 'Year';
     areayAxisLabel = 'Sales';
 
+    
 
 
 
   public seriess:any = []
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
-    private organizacionService: OrganizacionService, 
+    private organizacionService: OrganizacionService, private authService: AuthService,
     private excel: ExcelXlsxService, private router: Router,
     ) {
     
@@ -451,14 +458,16 @@ export class Dashboard1Component implements OnInit {
 
   ngOnInit() {
 
+   //console.log('CURRENT USER DESDE DASHBOARD:: ', this.authService.currentUserValue);
+
     const stored = sessionStorage.getItem('routes');
     if (stored) {
       const routes: RouteInfo[] = JSON.parse(stored);
-      console.log('RUTAS DESDE sessionStorage:: ', routes);
+     //console.log('RUTAS DESDE sessionStorage:: ', routes);
 
       //buscar path
       const found = this.existsRoute(routes, 'dashboard/dashboard1');
-      console.log(found);
+     //console.log(found);
 
       if(!found){
         this.router.navigate(['/authentication/page404']);
@@ -476,8 +485,38 @@ export class Dashboard1Component implements OnInit {
       this.translate.use(lang);
     });
 
-    this.getOrganizations();
-    
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.getOrganizations();
+    }
+    else {
+
+      //validar permisos de acciones
+      const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
+      const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'filterdash');
+
+      //console.log('permisofilter',permisofilter);
+
+      if(permisoexport){
+        this.accessToExport = true;
+        this.btnDisabled = false;
+      }else{
+        this.accessToExport = false;
+        this.btnDisabled = true;
+      }
+
+      if(permisofilter){
+        this.accessToFilter = true;
+        //this.btnDisabled = false;
+      }else{
+        this.accessToFilter = false;
+        //this.btnDisabled = true;
+      }
+
+      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+    }
+
+  
 
     this.chart1();
     this.chart3();
@@ -520,13 +559,13 @@ export class Dashboard1Component implements OnInit {
 
   getDemograficosOrg():void {
     this.organizacionService.getMetricaDemograficos(this.idOrganization).then((resulte) => {
-      console.log('DEMOGRAFICOS OBTENIDOS:: ', resulte.data.data[0]);
+     //console.log('DEMOGRAFICOS OBTENIDOS:: ', resulte.data.data[0]);
 
       if(resulte){
         const jsonText = Object.values(resulte.data.data[0])[0] as string; // primer y único valor
         const datos     = JSON.parse(jsonText);
         this.campos = datos;
-        console.log('this.campos:: ', this.campos );
+       //console.log('this.campos:: ', this.campos );
       }
 
     }).catch((err)=>{
@@ -543,7 +582,10 @@ export class Dashboard1Component implements OnInit {
     this.idFlujo = selectedId;
   
     const clima  = this.dataSourceClimas.find((c: { Id: number; }) => c.Id === this.idFlujo);
-    this.btnDisabled = false;
+    if(this.accessToExport){
+      this.btnDisabled = false;
+    }
+    
     ////console.log('clima:: ', clima);
     this.nombreFlujo = clima.Nombre;
     this.objetivoFlujo =  clima.Objetivo;
@@ -564,10 +606,31 @@ export class Dashboard1Component implements OnInit {
 
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
+      .then((response:any) => {
+        ////console.log('Organizaciones:', JSON.stringify(response.data));
+        
+        this.dataSourceOrganizations = response.data;
+
+        
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener organizaciones:', error);
+      });
+  }
+
+  getOrganizationById(idOrganization:any): void {
+    this.organizacionService.getOrganizationById(idOrganization)
         .then((response:any) => {
           ////console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
+
+          this.idOrganization = idOrganization;
+          this.dataSourceClimas = [];
+          this.nombreOrganizacion = 'cargando..'
+          this.getFlujosLista();
+          this.getDemograficosOrg();
 
          
 
@@ -787,7 +850,7 @@ export class Dashboard1Component implements OnInit {
 
     this.organizacionService.getMetricaSatisfaccionPreguntas(this.idFlujo)
         .then((response:any) => {
-          console.log('Metrica Satisfaccion Preguntas:', JSON.stringify(response.data));
+          //console.log('Metrica Satisfaccion Preguntas:', JSON.stringify(response.data));
           
           this.metricasSatisfaccionPreguntasData = response.data.data;
 
@@ -802,13 +865,13 @@ export class Dashboard1Component implements OnInit {
             }
 
             //agregar campos adicionales
-            console.log('this.campos:: ', this.campos);
+           //console.log('this.campos:: ', this.campos);
 
             //var camposDem = [];
 
             this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
 
-            console.log('resultado para excel:: ', this.resultadoParaExcel);
+           //console.log('resultado para excel:: ', this.resultadoParaExcel);
 
             this.metricasSatisfaccionPreguntasData.forEach((preguntax: { 
               Factor: string, Pregunta: string, total_respuestas: number, 
@@ -869,13 +932,13 @@ export class Dashboard1Component implements OnInit {
             }
 
             //agregar campos adicionales
-            console.log('this.campos:: ', this.campos);
+           //console.log('this.campos:: ', this.campos);
 
             //var camposDem = [];
 
             this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
 
-            console.log('resultado para excel:: ', this.resultadoParaExcel);
+           //console.log('resultado para excel:: ', this.resultadoParaExcel);
             
             this.metricasSatisfaccionPreguntasData.forEach((preguntax: { 
               Factor: string, Pregunta: string, total_respuestas: number, 
@@ -1210,7 +1273,7 @@ export class Dashboard1Component implements OnInit {
 
   onSelectionChange(values: string[]): void {
     //this.filtrosChange.emit(this.buildFiltroString(values));
-    console.log('filtros:: ',values);
+   //console.log('filtros:: ',values);
 
     var filters = '';
 
@@ -1218,7 +1281,7 @@ export class Dashboard1Component implements OnInit {
 
     this.camposDemograficosParaExcel = agruparPorCampo(values, this.campos);
 
-    console.log('this.camposDemograficosParaExcel::',this.camposDemograficosParaExcel);
+   //console.log('this.camposDemograficosParaExcel::',this.camposDemograficosParaExcel);
 
     values.forEach((item:any)=>{
       filters += item + ',';
@@ -1241,7 +1304,7 @@ export class Dashboard1Component implements OnInit {
 
   onGenerateReportClick():void{
    
-    console.log('this.resultadoParaExcel:: ', this.resultadoParaExcel);
+   //console.log('this.resultadoParaExcel:: ', this.resultadoParaExcel);
 
     this.excel.exportar(this.resultadoParaExcel);
   

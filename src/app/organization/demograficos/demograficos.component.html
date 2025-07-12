@@ -17,7 +17,7 @@
               <div class="col-md-6">
                 <mat-form-field appearance="fill" class="w-100">
                   <mat-label>Organización</mat-label>
-                  <mat-select (selectionChange)="onOrganizationChange($event.value)">
+                  <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
                     <mat-option
                       *ngFor="let organization of dataSourceOrganizations"
                       [value]="organization.Id"

@@ -77,12 +77,12 @@ export class CompleteclimaaloneComponent implements OnInit {
       //console.log('ngOnInit()');
       const codigo = this.route.snapshot.queryParamMap.get('key');
 
-      console.log('key:', codigo);
+     //console.log('key:', codigo);
 
       //decode base64 codigo here..
       if(codigo){
         const decode_key = atob(codigo);
-        console.log('decode_key = ', decode_key);
+       //console.log('decode_key = ', decode_key);
 
         const empleadoFlujo : string[] = decode_key.split('|');
 
@@ -90,11 +90,11 @@ export class CompleteclimaaloneComponent implements OnInit {
        
         this.idFlujo = +empleadoFlujo[1];
 
-        console.log(this.idEmpleado);
-        console.log(this.idFlujo);
+       //console.log(this.idEmpleado);
+       //console.log(this.idFlujo);
 
         this.organizacionService.getEmpleadoInfo(this.idEmpleado).then((resulte)=>{
-            console.log('datos empleado:: ', resulte.data);
+           //console.log('datos empleado:: ', resulte.data);
             this.nombreEmpleado = resulte.data.Nombres;
         }).catch((err)=>{});
 
@@ -104,10 +104,10 @@ export class CompleteclimaaloneComponent implements OnInit {
         }    
 
         this.organizacionService.getClimaInfo(climaInfo).then((resulsi)=>{
-            console.log('resulsi.data::', resulsi.data);
+           //console.log('resulsi.data::', resulsi.data);
 
             if(resulsi.data.Estado){
-                console.log('entra resulse..', resulsi.data.Estado);
+               //console.log('entra resulse..', resulsi.data.Estado);
                 if(resulsi.data.Estado !== 'Contestada') {
                     this.idEncuestaEmpleado = resulsi.data.Id;
                     this.getClima();
@@ -124,7 +124,7 @@ export class CompleteclimaaloneComponent implements OnInit {
             }
 
         }).catch((err)=>{
-            console.log('error garrafal!');
+           //console.log('error garrafal!');
         })
 
 
@@ -140,15 +140,15 @@ export class CompleteclimaaloneComponent implements OnInit {
 
     public getClima(): void {
         this.organizacionService.getPreguntasClima(this.idFlujo).then((ris)=> {
-            console.log(ris.data[0]);
+           //console.log(ris.data[0]);
 
             if(ris.data[0]){
-                console.log('entra risx..');
+               //console.log('entra risx..');
                 
                 this.quiz = ris.data[0];
                 this.nombreClima = this.quiz.Nombre;
                 this.nombreOrganizacion = this.quiz.NombreOrganizacion;
-                console.log('this.quiz::: ', this.quiz);
+               //console.log('this.quiz::: ', this.quiz);
                 this.formConfig = {
                   
                   ...this.quiz,

@@ -49,6 +49,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { relativeTimeThreshold } from 'moment';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
+import { AuthService } from '@core';
 
 @Component({
     selector: 'app-advance-table',
@@ -124,7 +125,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   constructor(
     private languageService: LanguageService,private translate: TranslateService,
-    public httpClient: HttpClient,
+    public httpClient: HttpClient,private authService: AuthService,
     public dialog: MatDialog,
     public advanceTableService: AdvanceTableService,
     private snackBar: MatSnackBar, private router: Router
@@ -132,7 +133,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   
   
 
-existsRoute(routes: RouteInfo[], target: string): boolean {
+  existsRoute(routes: RouteInfo[], target: string): boolean {
         return routes.some(route =>
           route.path === target ||
           this.existsRoute(route.submenu, target)
@@ -141,21 +142,21 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
       
   ngOnInit() {
     
-      const stored = sessionStorage.getItem('routes');
-      
-      if (stored) {
-        const routes: RouteInfo[] = JSON.parse(stored);
-        //console.log('RUTAS DESDE sessionStorage:: ', routes);
-  
-        //buscar path
-        const found = this.existsRoute(routes, '/secure/users');
-        //console.log(found);
-  
-        if(!found){
-          this.router.navigate(['/authentication/page404']);
-        }
-  
+    const stored = sessionStorage.getItem('routes');
+    
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      //console.log('RUTAS DESDE sessionStorage:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/secure/users');
+      //console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
       }
+
+    }
 
     this.langStoreValue = localStorage.getItem('lang') as string;
     this.languageService.setLanguage(this.langStoreValue);
@@ -165,7 +166,46 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
       this.translate.use(lang);
     });
-    this.loadData();
+
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.loadData();
+    }
+    else {
+
+      //validar permisos de acciones
+      const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
+      const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
+
+      //console.log('permisoexport',permisoexport);
+
+      /*
+      if(permisoexport){
+        this.accessToExport = true;
+        this.btnDisabled = false;
+      }else{
+        this.accessToExport = false;
+        this.btnDisabled = true;
+      }
+
+      if(permisofilter){
+        this.accessToFilter = true;
+        //this.btnDisabled = false;
+      }else{
+        this.accessToFilter = false;
+        //this.btnDisabled = true;
+      }
+      */
+
+      console.log('this.authService.currentUserValue?.idOrganization: ', this.authService.currentUserValue?.idOrganization);
+
+      this.loadDataById(this.authService.currentUserValue?.idOrganization);
+
+    }
+
+    
+
+
   }
 
   ngOnDestroy() {
@@ -174,7 +214,12 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
   }
 
   refresh() {
-    this.loadData();
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+        this.loadData();
+      }
+      else {
+        this.loadDataById(this.authService.currentUserValue?.idOrganization);
+      }
   }
 
   getDisplayedColumns(): string[] {
@@ -188,7 +233,7 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
   }
 
   editCall(row: UserModel) {
-    console.log('ROW::', row);
+    //console.log('ROW::', row);
     this.openDialog('edit', row);
   }
 
@@ -222,7 +267,13 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
           'bottom',
           'center'
         );
-        this.loadData();
+        
+        if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+          this.loadData();
+        }
+        else {
+          this.loadDataById(this.authService.currentUserValue?.idOrganization);
+        }
       }
     });
   }
@@ -254,6 +305,7 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
       }
     });
   }
+
   private refreshTable() {
     this.paginator.pageIndex = 0;
     this.dataSource.paginator = this.paginator;
@@ -295,6 +347,29 @@ existsRoute(routes: RouteInfo[], target: string): boolean {
     this.isLoading = true; // Start loading
 
     this.advanceTableService.getAllAdvanceTables().subscribe({
+      next: (data) => {
+        this.dataSource.data = data; // Assign the data to your data source
+        this.refreshTable();
+        this.dataSource.filterPredicate = (
+          data: UserModel,
+          filter: string
+        ) =>
+          Object.values(data).some((value) =>
+            value.toString().toLowerCase().includes(filter)
+          );
+        this.isLoading = false; // Stop loading
+      },
+      error: (err) => {
+        console.error(err);
+        this.isLoading = false; // Stop loading on error
+      },
+    });
+  }
+
+  loadDataById(idOrganization: any) {
+    this.isLoading = true; // Start loading
+
+    this.advanceTableService.getAllUsersById(idOrganization).subscribe({
       next: (data) => {
         this.dataSource.data = data; // Assign the data to your data source
         this.refreshTable();

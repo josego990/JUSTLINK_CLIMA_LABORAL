@@ -24,6 +24,7 @@ import { MatInputModule } from '@angular/material/input';
 import { CommonModule, DatePipe } from '@angular/common'; 
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
+import { AuthService } from '@core';
 
 @Component({
   selector: 'app-demograficos-organizacion',
@@ -69,7 +70,7 @@ export class CrearDemograficosComponent implements OnInit {
   ];
 
   constructor(
-    private fb: FormBuilder,private router: Router,
+    private fb: FormBuilder,private router: Router,private authService: AuthService,
     private organizacionService: OrganizacionService,
     
   ) {
@@ -88,15 +89,17 @@ export class CrearDemograficosComponent implements OnInit {
   }
   
   ngOnInit() {
+
+   //console.log('CURRENT USER DESDE EMPLOYEE:: ', this.authService.currentUserValue);
   
     const stored = sessionStorage.getItem('routes');
     if (stored) {
       const routes: RouteInfo[] = JSON.parse(stored);
-      console.log('RUTAS DESDE sessionStorage:: ', routes);
+     //console.log('RUTAS DESDE sessionStorage:: ', routes);
 
       //buscar path
       const found = this.existsRoute(routes, '/organization/demograficos');
-      console.log(found);
+     //console.log(found);
 
       if(!found){
         this.router.navigate(['/authentication/page404']);
@@ -104,12 +107,44 @@ export class CrearDemograficosComponent implements OnInit {
 
     }
 
-    this.getOrganizations()
+     if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.getOrganizations();
+    }
+    else {
+
+      //validar permisos de acciones
+      //const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
+      //const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
+
+      //console.log('permisoexport',permisoexport);
+
+      /*
+      if(permisoexport){
+        this.accessToExport = true;
+        this.btnDisabled = false;
+      }else{
+        this.accessToExport = false;
+        this.btnDisabled = true;
+      }
+
+      if(permisofilter){
+        this.accessToFilter = true;
+        //this.btnDisabled = false;
+      }else{
+        this.accessToFilter = false;
+        //this.btnDisabled = true;
+      }
+      */
+
+      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+    }
+
+    //this.getOrganizations()
     //this.getEmployeesByOrg();
   }
 
   onOrganizationChange(selectedId: number) {
-    console.log('Se seleccionó el la organización con Id:', selectedId);
+   //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     
     if(selectedId > 0){
@@ -124,9 +159,29 @@ export class CrearDemograficosComponent implements OnInit {
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
         .then((response:any) => {
-          console.log('Organizaciones:', JSON.stringify(response.data));
+         //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener organizaciones:', error);
+        });
+  }
+
+  getOrganizationById(idOrganization:any): void {
+    this.organizacionService.getOrganizationById(idOrganization)
+        .then((response:any) => {
+          ////console.log('Organizaciones:', JSON.stringify(response.data));
+          
+          this.dataSourceOrganizations = response.data;
+
+          this.idOrganization = idOrganization;
+       
+
+          //this.getEmployeesByOrg();
+          this.getDemograficosByOrg();
+         
+
         })
         .catch((error:any) => {
           console.error('Error al obtener organizaciones:', error);
@@ -148,7 +203,7 @@ export class CrearDemograficosComponent implements OnInit {
   deleteDemografico(idDemografico:number): void {
     this.organizacionService.deleteDemografico(idDemografico)
     .then((response:any) => {
-      console.log(response);
+     //console.log(response);
       this.getDemograficosByOrg();
       Swal.fire({
                   title: 'Realizado',
@@ -171,7 +226,7 @@ export class CrearDemograficosComponent implements OnInit {
   activeDemografico(idDemografico:number): void {
     this.organizacionService.activeDemografico(idDemografico)
     .then((response:any) => {
-      console.log(response);
+     //console.log(response);
       this.getDemograficosByOrg();
       Swal.fire({
                   title: 'Realizado',
@@ -197,7 +252,7 @@ export class CrearDemograficosComponent implements OnInit {
   
       this.organizacionService.saveNewDemografico(this.demograficosForm.value, this.idOrganization)
         .then((response:any) => {
-          console.log('Campo creado?:', response.data);
+         //console.log('Campo creado?:', response.data);
           this.getDemograficosByOrg();
           this.demograficosForm.get('IdOrganizacion')?.setValue('');
           Swal.fire({
@@ -223,7 +278,7 @@ export class CrearDemograficosComponent implements OnInit {
   }
 
   deleteItem(item:any){
-    console.log('DELETE ITEM:: ', item);
+   //console.log('DELETE ITEM:: ', item);
     
 
     if (item.Estado === true) {

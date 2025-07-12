@@ -28,6 +28,7 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
+import { AuthService } from '@core';
 
 @Component({
   selector: 'app-employee-organizacion',
@@ -108,7 +109,7 @@ export class CrearEmpleadosComponent implements OnInit {
 
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
-    private fb: FormBuilder, private router: Router,
+    private fb: FormBuilder, private router: Router, private authService: AuthService,
     private organizacionService: OrganizacionService,
     
   ) {
@@ -125,31 +126,33 @@ export class CrearEmpleadosComponent implements OnInit {
     });
   }
 
-   existsRoute(routes: RouteInfo[], target: string): boolean {
+  existsRoute(routes: RouteInfo[], target: string): boolean {
       return routes.some(route =>
         route.path === target ||
         this.existsRoute(route.submenu, target)
       );
-    }
+  }
     
-    ngOnInit() {
-    
-      const stored = sessionStorage.getItem('routes');
-      if (stored) {
-        const routes: RouteInfo[] = JSON.parse(stored);
-        console.log('RUTAS DESDE sessionStorage:: ', routes);
+  ngOnInit() {
+
+    //console.log('CURRENT USER DESDE EMPLOYEE:: ', this.authService.currentUserValue);
   
-        //buscar path
-        const found = this.existsRoute(routes, '/organization/employee');
-        console.log(found);
-  
-        if(!found){
-          this.router.navigate(['/authentication/page404']);
-        }
-  
+    const stored = sessionStorage.getItem('routes');
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      //console.log('RUTAS DESDE EMPLOYEE:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/organization/employee');
+      //console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
       }
 
-     //jjg aquí se cambia el idioma al cargar
+    }
+
+    //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
@@ -159,12 +162,45 @@ export class CrearEmpleadosComponent implements OnInit {
       this.translate.use(lang);
     });
 
-    this.getOrganizations();
+    //this.getOrganizations();
     //this.getEmployeesByOrg();
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.getOrganizations();
+    }
+    else {
+
+    //validar permisos de acciones
+    const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
+    const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
+
+    //console.log('permisoexport',permisoexport);
+
+    /*
+    if(permisoexport){
+      this.accessToExport = true;
+      this.btnDisabled = false;
+    }else{
+      this.accessToExport = false;
+      this.btnDisabled = true;
+    }
+
+    if(permisofilter){
+      this.accessToFilter = true;
+      //this.btnDisabled = false;
+    }else{
+      this.accessToFilter = false;
+      //this.btnDisabled = true;
+    }
+    */
+
+    this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+    }
+
   }
 
   onOrganizationChange(selectedId: number) {
-    console.log('Se seleccionó el la organización con Id:', selectedId);
+   //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     
     if(selectedId > 0){
@@ -182,7 +218,7 @@ export class CrearEmpleadosComponent implements OnInit {
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
       .then((response:any) => {
-        console.log('Organizaciones:', JSON.stringify(response.data));
+        //console.log('Organizaciones:', JSON.stringify(response.data));
         
         this.dataSourceOrganizations = response.data;
       })
@@ -191,14 +227,32 @@ export class CrearEmpleadosComponent implements OnInit {
       });
   }
 
+  getOrganizationById(idOrganization:any): void {
+    this.organizacionService.getOrganizationById(idOrganization)
+        .then((response:any) => {
+          ////console.log('Organizaciones:', JSON.stringify(response.data));
+          
+          this.dataSourceOrganizations = response.data;
+
+          this.idOrganization = idOrganization;
+       
+
+          this.getEmployeesByOrg();
+         
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener organizaciones:', error);
+        });
+  }
 
   getEmployeesByOrg(): void {
     this.organizacionService.getEmployees(this.idOrganization)
       .then((response: any) => {
         this.dataSourceEmployees = response.data;
 
-        console.log('EMPLOYEES BY ORG:: ', response.data);
-        console.log('this.dataSourceEmployees:: ', this.dataSourceEmployees)
+       //console.log('EMPLOYEES BY ORG:: ', response.data);
+       //console.log('this.dataSourceEmployees:: ', this.dataSourceEmployees)
         if (this.dataSourceEmployees.length > 0) {
           const todasLasClaves = Object.keys(this.dataSourceEmployees[0]);
           const columnasFijas = [
@@ -237,7 +291,7 @@ export class CrearEmpleadosComponent implements OnInit {
   deleteEmployee(idEmployee:number): void {
     this.organizacionService.deleteEmployee(idEmployee)
     .then((response:any) => {
-      console.log(response);
+     //console.log(response);
       this.getEmployeesByOrg();
       Swal.fire({
                   title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
@@ -258,7 +312,7 @@ export class CrearEmpleadosComponent implements OnInit {
   activeEmployee(idEmployee:number): void {
     this.organizacionService.activeEmployee(idEmployee)
     .then((response:any) => {
-      console.log(response);
+     //console.log(response);
       this.getEmployeesByOrg();
       Swal.fire({
                   title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
@@ -291,7 +345,7 @@ export class CrearEmpleadosComponent implements OnInit {
       
       this.organizacionService.saveNewEmployee(reordered)
         .then((response:any) => {
-          console.log('Empleado creada?:', response.data);
+         //console.log('Empleado creada?:', response.data);
           this.getEmployeesByOrg();
           Swal.fire({
                       title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
@@ -320,7 +374,7 @@ export class CrearEmpleadosComponent implements OnInit {
   }
 
   deleteItem(item:any){
-    console.log('DELETE ITEM:: ', item);
+   //console.log('DELETE ITEM:: ', item);
     
 
     if (item.estado === 1) {
@@ -363,10 +417,10 @@ export class CrearEmpleadosComponent implements OnInit {
   }
   
   convertExcelToJSON_sin_demograficos() {
-    console.log('this.workbook ', this.workbook);
+   //console.log('this.workbook ', this.workbook);
     return new Promise((resolve, reject) => {
       if (!this.workbook) {
-        console.log('NO WORKBOOK?');
+       //console.log('NO WORKBOOK?');
         return reject('No se encontró workbook');
       }
   
@@ -398,7 +452,7 @@ export class CrearEmpleadosComponent implements OnInit {
         const cargo = String(t.CARGO ?? 'SIN CARGO').trim();
         let fechaIngreso: string | null = null;
         
-        console.log('capullo: ', t.FECHA_INGRESO);
+       //console.log('capullo: ', t.FECHA_INGRESO);
 
         if (t.FECHA_INGRESO) {
           try {
@@ -430,7 +484,7 @@ export class CrearEmpleadosComponent implements OnInit {
   
         // Validar que la fecha esté presente y tenga el formato esperado
         const regexFecha = /^\d{2}\/\d{2}\/\d{4}$/; // Ej: 20/03/2025
-        console.log('fechaIngresox',fechaIngreso);
+       //console.log('fechaIngresox',fechaIngreso);
         if (!fechaIngreso) {
           errores.push(`Fila ${filaExcel}: FECHA_INGRESO está vacía o tiene formato inválido (DD/MM/YYYY).`);
         }
@@ -468,7 +522,7 @@ export class CrearEmpleadosComponent implements OnInit {
       }
   
       this.jsonData = excel_empleados;
-      console.log('this.jsonData:: ', this.jsonData);
+     //console.log('this.jsonData:: ', this.jsonData);
       resolve('success');
     }).catch((err) => {
       console.error(err);
@@ -477,10 +531,10 @@ export class CrearEmpleadosComponent implements OnInit {
   }
   
   convertExcelToJSON() {
-    console.log('this.workbook ', this.workbook);
+   //console.log('this.workbook ', this.workbook);
     return new Promise((resolve, reject) => {
       if (!this.workbook) {
-        console.log('NO WORKBOOK?');
+       //console.log('NO WORKBOOK?');
         return reject('No se encontró workbook');
       }
   
@@ -517,7 +571,7 @@ export class CrearEmpleadosComponent implements OnInit {
       // Detectar los campos demográficos
       const camposDemograficosDetectados = headers.filter(h => !camposFijos.includes(h.toUpperCase()));
   
-      console.log('camposDemograficosDetectados', camposDemograficosDetectados);
+     //console.log('camposDemograficosDetectados', camposDemograficosDetectados);
 
       // Guardar los campos demográficos únicos en el JSON
       excel_empleados.camposDemograficos = camposDemograficosDetectados;
@@ -597,7 +651,7 @@ export class CrearEmpleadosComponent implements OnInit {
       }
   
       this.jsonData = excel_empleados;
-      console.log('this.jsonData:: ', this.jsonData);
+     //console.log('this.jsonData:: ', this.jsonData);
       resolve('success');
     }).catch((err) => {
       console.error(err);
@@ -651,13 +705,13 @@ export class CrearEmpleadosComponent implements OnInit {
           // A) Directamente un ArrayBuffer: parseamos con XLSX
           try {
             const wb = XLSX.read(new Uint8Array(fileData), { type: 'array' });
-            console.log('Resultado de XLSX.read =>', wb);
+           //console.log('Resultado de XLSX.read =>', wb);
             this.workbook = wb;
 
             this.convertExcelToJSON().then(() => {
-              console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
+             //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
               this.organizacionService.saveNewEmployeesExcel(this.jsonData).then((result:any) => {
-                console.log('RESULTADO DEL ENVIO BATCH: ', result);
+               //console.log('RESULTADO DEL ENVIO BATCH: ', result);
 
                 if(result.data.message === 'Empleados insertados exitosamente'){
                   //Swal.close();
@@ -696,7 +750,7 @@ export class CrearEmpleadosComponent implements OnInit {
             console.error('Error leyendo el excel:', err);
           }
         } else {
-          console.log(' B) Si el resultado es otro tipo (ej. string, Blob)');
+         //console.log(' B) Si el resultado es otro tipo (ej. string, Blob)');
           // B) Si el resultado es otro tipo (ej. string, Blob)
           const blob = new Blob([fileData]);
           const fileReader = new FileReader();
@@ -722,7 +776,7 @@ export class CrearEmpleadosComponent implements OnInit {
     };
   
     reader.readAsArrayBuffer(file);
-    console.log('será????');
+   //console.log('será????');
     
   }
 
@@ -731,7 +785,7 @@ export class CrearEmpleadosComponent implements OnInit {
       .then((response: any) => {
         this.camposDemograficosOrganizacion = response.data;
   
-        console.log('SUERO ANTI PEPINILLO:: ', response.data);
+       //console.log('SUERO ANTI PEPINILLO:: ', response.data);
 
         // Agregar los campos demográficos al formulario reactivo
         this.camposDemograficosOrganizacion.forEach(field => {

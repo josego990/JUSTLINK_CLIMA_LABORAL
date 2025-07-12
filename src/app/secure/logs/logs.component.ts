@@ -74,7 +74,7 @@ export class LogsComponent implements OnInit {
     req.open('POST', 'http://localhost:3030/get-logs');
     req.onload = () => {
       const data = JSON.parse(req.response);
-      console.log('LOGS:: ', data);
+     //console.log('LOGS:: ', data);
       cb(data.data);
     };
     req.send();
@@ -108,7 +108,7 @@ export class LogsComponent implements OnInit {
 
    
     editCall(row: any) {
-       console.log('ROW::', row);
+      //console.log('ROW::', row);
        //this.openDialog('edit', row);
      }
 

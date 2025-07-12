@@ -21,11 +21,11 @@ export class DocumentListComponent {
 
   onDelete(document: Document) {
     // Handle document deletion
-    console.log('Deleting document:', document.title);
+   //console.log('Deleting document:', document.title);
   }
 
   onDownload(document: Document) {
     // Handle document download
-    console.log('Downloading document:', document.title);
+   //console.log('Downloading document:', document.title);
   }
 }

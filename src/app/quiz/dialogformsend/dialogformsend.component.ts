@@ -33,7 +33,7 @@ function renderizarPlantilla(
   plantilla: string,
   datos: Record<string, any>
   ): string {
-    console.log('Renderizando.. ', datos);
+   //console.log('Renderizando.. ', datos);
   // Expresión regular que captura el nombre de la propiedad entre comillas:
   const patron = /{{\s*DATOS\["([^"]+)"\]\s*}}/g;
 
@@ -120,7 +120,7 @@ export class DialogformSendComponent implements OnInit {
     private organizacionService: OrganizacionService,
     @Inject(MAT_DIALOG_DATA) public dataRecibida: Quiz,
     ) {
-      console.log('dataRecibeDialog::', dataRecibida );
+     //console.log('dataRecibeDialog::', dataRecibida );
 
       this.currentCard = dataRecibida;
 
@@ -149,7 +149,7 @@ export class DialogformSendComponent implements OnInit {
     }).then((result) => {
       if (result.isConfirmed) {
         this.loading = true;
-        console.log('✅ Confirmado: Crear encuestas');
+       //console.log('✅ Confirmado: Crear encuestas');
         this.organizacionService.crearEnvioEncuesta(this.currentCard.id).then((resulx) => {
 
           if(resulx.data.message === 'Envío de encuestas creado correctamente'){
@@ -175,7 +175,7 @@ export class DialogformSendComponent implements OnInit {
             this.loading = false;
         })
       } else {
-        console.log('❌ Cancelado por el usuario');
+       //console.log('❌ Cancelado por el usuario');
 
       }
     });
@@ -202,7 +202,7 @@ export class DialogformSendComponent implements OnInit {
   
     try {
 
-      console.log(this.tableDataSource);
+     //console.log(this.tableDataSource);
 
       for (const element of this.tableDataSource) {
 
@@ -223,31 +223,31 @@ export class DialogformSendComponent implements OnInit {
         
             };
 
-            console.log('ENTRA A ENVIAR CORREO.. element:', element);
+           //console.log('ENTRA A ENVIAR CORREO.. element:', element);
             
             //obtener plantilla..
             this.organizacionService.getFlujoPlantilla(this.dataRecibida.id).then((resilix) => {
             
-            console.log('resilix:: ', resilix.data[0]);
+           //console.log('resilix:: ', resilix.data[0]);
 
             if(resilix.data[0]){
               plantilla_con_variables = resilix.data[0].CuerpoHtml;
 
               var p = plantilla_con_variables.replaceAll('&quot;','"');
-              console.log('p',p);
+             //console.log('p',p);
               htmlFinal = renderizarPlantilla(p, DATOS);
 
-              console.log('htmlFinal:: ', htmlFinal);
+             //console.log('htmlFinal:: ', htmlFinal);
 
             }else{
-              console.log('creo que entó a undefined!'); //plantilla genérica
+             //console.log('creo que entó a undefined!'); //plantilla genérica
               plantilla_con_variables = '<h5>👋 Hola <strong>{{DATOS["nombre_empleado"]}},</strong></h5><p></p><h6>Has sido invitado completar la encuesta del Clima Laboral <em><strong>“{{DATOS["nombre_clima"]}}”</strong></em></h6><p></p><h6>🕓 Agradecemos de antemano el tiempo que te tomes en llenarla.</h6><p></p><p>🚀 <a href="{{DATOS[&quot;url_encuesta&quot;]}}" title="{{DATOS[&quot;url_encuesta&quot;]}}" target="_blank">LINK DE LA ENCUESTA</a></p><p></p><p>Atentamente el equipo de Just-Link.</p><p></p><p></p>';
               
               var p = plantilla_con_variables.replaceAll('&quot;','"');
-              console.log('p',p);
+             //console.log('p',p);
 
               htmlFinal = renderizarPlantilla(p, DATOS);
-              console.log('HTML-final default:: ', htmlFinal );
+             //console.log('HTML-final default:: ', htmlFinal );
             };
 
             const mail_body = { "destinatario": element.Email, 
@@ -259,11 +259,11 @@ export class DialogformSendComponent implements OnInit {
             
             this.organizacionService.sendEmail(mail_body).then((resulten)=>{
             
-              console.log('resultado enviado mail:: ', resulten);
+             //console.log('resultado enviado mail:: ', resulten);
 
               if(resulten.data.message === 'Correo enviado correctamente'){
     
-                console.log('ENTRA TIO==???:: ', resulten);
+               //console.log('ENTRA TIO==???:: ', resulten);
 
                 const updateData = {
                   Id              : 0,
@@ -289,7 +289,7 @@ export class DialogformSendComponent implements OnInit {
     
                 
               } else {
-                console.log('Error de envío a: ', );
+               //console.log('Error de envío a: ', );
               }
               
               this.loading = false;
@@ -304,7 +304,7 @@ export class DialogformSendComponent implements OnInit {
           }
   
           else if(element.TipoEnvioEncuesta == 2) { //whatsapp
-            console.log('ENTRA A ENVIAR WHATSAPP.. element:', element);
+           //console.log('ENTRA A ENVIAR WHATSAPP.. element:', element);
             //Cuerpecito del mensaje
             const whatsappBody: any = {
               "to": "502" + element.Celular,
@@ -357,7 +357,7 @@ export class DialogformSendComponent implements OnInit {
                 element.RespuestaEnvio = 'Error';
               }
             }).catch((err)=>{
-              console.log(err);
+             //console.log(err);
 
               element.RespuestaEnvio = 'Error al enviar el mensaje';
                 
@@ -393,7 +393,7 @@ export class DialogformSendComponent implements OnInit {
       };
 
       this.organizacionService.updateEncuestaEncabezado(upd_data).then((resulixis)=>{
-        console.log('resultixis:: ', resulixis);
+       //console.log('resultixis:: ', resulixis);
         this.currentCard.estadoEnvio = 'Enviado';
       }).catch((errr)=>{
         console.error(errr);
@@ -406,7 +406,7 @@ export class DialogformSendComponent implements OnInit {
       Swal.fire('Error', String(err), 'error');
     } finally {
       this.loading = false;
-      console.log('obteniendo encuestas en finally..');
+     //console.log('obteniendo encuestas en finally..');
       this.obtenerEncuestasEmpleados();
     }
   }
@@ -414,7 +414,7 @@ export class DialogformSendComponent implements OnInit {
  
   async swalCrearEncuesta(item: any): Promise<void> {
 
-    console.log(item);
+   //console.log(item);
     
     Swal.fire({
       title: 'Crear encuesta individual',
@@ -431,7 +431,7 @@ export class DialogformSendComponent implements OnInit {
         this.loading = true;
 
 
-        console.log('varela::', item);
+       //console.log('varela::', item);
 
         const sendData:any = {
           IdFlujo: this.currentCard.id,
@@ -465,7 +465,7 @@ export class DialogformSendComponent implements OnInit {
         
 
       } else {
-        console.log('❌ Cancelado por el usuario');
+       //console.log('❌ Cancelado por el usuario');
       }
     });
 
@@ -474,7 +474,7 @@ export class DialogformSendComponent implements OnInit {
   //envío encuesta individual
   swalConfirmaEnvio(item: any): void {
     
-    console.log(item);
+   //console.log(item);
 
     const DATOS:any = {
       "nombre_empleado": item.Empleado,
@@ -503,31 +503,31 @@ export class DialogformSendComponent implements OnInit {
           var plantilla_con_variables = '';
           var htmlFinal = '';
           this.loading = true;
-          console.log('✅ Confirmado: Enviar encuesta individual');
+         //console.log('✅ Confirmado: Enviar encuesta individual');
   
           //obtener plantilla..
           this.organizacionService.getFlujoPlantilla(this.dataRecibida.id).then((resilix) => {
             
-            console.log('resilix:: ', resilix.data[0]);
+           //console.log('resilix:: ', resilix.data[0]);
 
             if(resilix.data[0]){
               plantilla_con_variables = resilix.data[0].CuerpoHtml;
 
               var p = plantilla_con_variables.replaceAll('&quot;','"');
-              console.log('p',p);
+             //console.log('p',p);
               htmlFinal = renderizarPlantilla(p, DATOS);
 
-              console.log('htmlFinal:: ', htmlFinal);
+             //console.log('htmlFinal:: ', htmlFinal);
 
             }else{
-              console.log('creo que entó a undefined!'); //plantilla genérica
+             //console.log('creo que entó a undefined!'); //plantilla genérica
               plantilla_con_variables = '<h5>👋 Hola <strong>{{DATOS["nombre_empleado"]}},</strong></h5><p></p><h6>Has sido invitado completar la encuesta del Clima Laboral <em><strong>“{{DATOS["nombre_clima"]}}”</strong></em></h6><p></p><h6>🕓 Agradecemos de antemano el tiempo que te tomes en llenarla.</h6><p></p><p>🚀 <a href="{{DATOS[&quot;url_encuesta&quot;]}}" title="{{DATOS[&quot;url_encuesta&quot;]}}" target="_blank">LINK DE LA ENCUESTA</a></p><p></p><p>Atentamente el equipo de Just-Link.</p><p></p><p></p>';
               
               var p = plantilla_con_variables.replaceAll('&quot;','"');
-              console.log('p',p);
+             //console.log('p',p);
 
               htmlFinal = renderizarPlantilla(p, DATOS);
-              console.log('HTML-final default:: ', htmlFinal );
+             //console.log('HTML-final default:: ', htmlFinal );
             };
 
             const mail_body = { "destinatario": item.Email, 
@@ -600,7 +600,7 @@ export class DialogformSendComponent implements OnInit {
           });
         
         } else {
-          console.log('❌ Cancelado por el usuario');
+         //console.log('❌ Cancelado por el usuario');
         }
       });
 
@@ -619,7 +619,7 @@ export class DialogformSendComponent implements OnInit {
       }).then((result) => {
         if (result.isConfirmed) {
           this.loading = true;
-          console.log('✅ Confirmado: Enviar encuesta individual por Whatsapp');
+         //console.log('✅ Confirmado: Enviar encuesta individual por Whatsapp');
   
           //Cuerpecito del mensaje
           const whatsappBody: any = {
@@ -636,7 +636,7 @@ export class DialogformSendComponent implements OnInit {
           this.organizacionService.sendWhatsappMessage(whatsappBody).then((resiltixx)=>{
            
             if (resiltixx) {
-                 console.log('whatsapp resiltixx:: ', resiltixx);
+                //console.log('whatsapp resiltixx:: ', resiltixx);
 
               if(resiltixx.data.messages[0].message_status == 'accepted'){
                 //Actualizar registro en BD
@@ -690,7 +690,7 @@ export class DialogformSendComponent implements OnInit {
           
   
         } else {
-          console.log('❌ Cancelado por el usuario');
+         //console.log('❌ Cancelado por el usuario');
         }
       });
 
@@ -730,7 +730,7 @@ export class DialogformSendComponent implements OnInit {
     this.dataRecibida.id;
 
     this.organizacionService.getEncuestasFlujo(this.dataRecibida.id).then((resultix)=>{
-      console.log('resultix:: ', resultix);
+     //console.log('resultix:: ', resultix);
       if(resultix.data){
         this.tableDataSource = resultix.data;
         this.loading = false;

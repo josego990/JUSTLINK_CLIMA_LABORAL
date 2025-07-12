@@ -38,6 +38,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { DialogformComponent } from './dialogform/dialogform.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
+import { AuthService } from '@core';
 
 @Component({
   selector: 'app-crear-organizacion',
@@ -75,7 +76,7 @@ export class AccessComponent implements OnInit {
   constructor(private languageService: LanguageService,private translate: TranslateService,
     private fb: FormBuilder, private dialogModel: MatDialog, //dialog para agregar quiz
     private organizacionService: OrganizacionService,private snackBar: MatSnackBar,
-    private router: Router,
+    private router: Router, private authService: AuthService,
     
   ) {
    
@@ -91,19 +92,19 @@ export class AccessComponent implements OnInit {
   ngOnInit(): void {
 
     const stored = sessionStorage.getItem('routes');
-      if (stored) {
-        const routes: RouteInfo[] = JSON.parse(stored);
-        console.log('RUTAS DESDE sessionStorage:: ', routes);
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      //console.log('RUTAS DESDE sessionStorage:: ', routes);
 
-        //buscar path
-        const found = this.existsRoute(routes, '/secure/access');
-        console.log(found);
+      //buscar path
+      const found = this.existsRoute(routes, '/secure/access');
+      //console.log(found);
 
-        if(!found){
-          this.router.navigate(['/authentication/page404']);
-        }
-
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
       }
+
+    }
 
      //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
@@ -115,12 +116,63 @@ export class AccessComponent implements OnInit {
       this.translate.use(lang);
     });
 
-    this.getRolesAccess();
+    //this.getRolesAccess();
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+
+      this.getRolesAccess();
+
+    }
+    else {
+
+      //validar permisos de acciones
+      //const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
+      //const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
+
+      //console.log('permisoexport',permisoexport);
+
+      /*
+      if(permisoexport){
+        this.accessToExport = true;
+        this.btnDisabled = false;
+      }else{
+        this.accessToExport = false;
+        this.btnDisabled = true;
+      }
+
+      if(permisofilter){
+        this.accessToFilter = true;
+        //this.btnDisabled = false;
+      }else{
+        this.accessToFilter = false;
+        //this.btnDisabled = true;
+      }
+      */
+
+      console.log('this.authService.currentUserValue?.idOrganization: ', this.authService.currentUserValue?.idOrganization);
+
+      this.getRolesAccessByIdOrg(this.authService.currentUserValue?.idOrganization);
+
+
+    }
     
   }
 
   getRolesAccess(): void {
     this.organizacionService.getRolesAccess()
+        .then((response:any) => {
+          //console.log('RolesAccesos:', JSON.stringify(response.data));
+          
+          this.rolesAccess = response.data;
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener organizaciones:', error);
+        });
+  }
+
+  getRolesAccessByIdOrg(idOrganization:any): void {
+
+    this.organizacionService.getRolesAccessByIdOrg(idOrganization)
         .then((response:any) => {
           //console.log('RolesAccesos:', JSON.stringify(response.data));
           
@@ -141,9 +193,17 @@ export class AccessComponent implements OnInit {
       
       dialogRef.afterClosed().subscribe(result => {
         if (result === true) {
-            console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG AGREGAR ROL');
+           //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG AGREGAR ROL');
             
-          this.getRolesAccess(); // Refrescar la lista
+          if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+
+            this.getRolesAccess();
+
+          }
+          else {
+
+            this.getRolesAccessByIdOrg(this.authService.currentUserValue?.idOrganization)
+          }
         }
       });
       
@@ -169,7 +229,7 @@ export class AccessComponent implements OnInit {
     // Llamas al API para actualizar RoleMenuAction…
     //his.myService.updateRoleAccess(roleId, actionId, granted).subscribe();
 
-    console.log('TOGGLE:: ', roleId + ' ' + actionId + ' ' + granted);
+   //console.log('TOGGLE:: ', roleId + ' ' + actionId + ' ' + granted);
 
     const updRoleAccessData = {
       roleId: roleId,
@@ -179,7 +239,7 @@ export class AccessComponent implements OnInit {
 
     this.organizacionService.updateRoleAccess(updRoleAccessData).then((resules)=>{
 
-      console.log(resules);
+     //console.log(resules);
       if(resules.data){
 
         this.showNotification(
@@ -203,7 +263,7 @@ export class AccessComponent implements OnInit {
   }
 
   deleteItem(item:any){
-    console.log('DELETE ITEM:: ', item);
+   //console.log('DELETE ITEM:: ', item);
     //this.deleteOrganization(item.Id);
   }
 

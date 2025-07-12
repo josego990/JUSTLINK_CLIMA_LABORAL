@@ -41,6 +41,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '@core';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { AuthService } from '@core';
+
 export interface DialogData {
   id: number;
   action: string;
@@ -90,7 +92,7 @@ export class FormDialogComponent implements OnInit{
 
   constructor(
     private languageService: LanguageService,private translate: TranslateService,
-    private organizationService: OrganizacionService,
+    private organizationService: OrganizacionService,private authService: AuthService,
     public dialogRef: MatDialogRef<FormDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { action: string; user: UserModel },
     private fb: FormBuilder,
@@ -104,7 +106,7 @@ export class FormDialogComponent implements OnInit{
       //console.log('dataxx:: ', data);
       this.dialogTitle = `${data.user.nombres} ${data.user.apellidos}`;
       this.user = data.user;
-      console.log('this.user:: ', this.user);
+     //console.log('this.user:: ', this.user);
       this.url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/' + this.user.imagenUrl;
       this.fileName = this.user.imagenUrl;
 
@@ -145,15 +147,35 @@ export class FormDialogComponent implements OnInit{
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
       this.translate.use(lang);
     });
-    
-    this.getOrganizations();
-    
-    this.organizationService.getRoles().then((resulex)=>{
-      if(resulex.data){
-        console.log(resulex.data);
-        this.roles = resulex.data;
-      }
-    })
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+
+      this.getOrganizations();
+
+      this.organizationService.getRoles().then((resulex)=>{
+        if(resulex.data){
+        //console.log(resulex.data);
+          this.roles = resulex.data;
+        }
+        
+      });
+    }
+    else {
+
+      console.log('this.authService.currentUserValue?.idOrganization: ', this.authService.currentUserValue?.idOrganization);
+
+      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+
+      this.organizationService.getRolesByIdOrg(this.authService.currentUserValue?.idOrganization).then((resulex)=>{
+        if(resulex.data){
+        //console.log(resulex.data);
+          this.roles = resulex.data;
+          
+        }
+        
+      });
+
+    }
 
   }
 
@@ -169,8 +191,28 @@ export class FormDialogComponent implements OnInit{
         });
   }
 
+  getOrganizationById(idOrganization:any): void {
+    this.organizationService.getOrganizationById(idOrganization)
+      .then((response:any) => {
+        ////console.log('Organizaciones:', JSON.stringify(response.data));
+        
+        this.dataSourceOrganizations = response.data;
+
+        this.idOrganization = idOrganization;
+      
+        this.userForm.patchValue({ organizacionId: idOrganization });
+
+        //this.getEmployeesByOrg();
+        
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener organizaciones:', error);
+      });
+  }
+
   onOrganizationChange(selectedId: number) {
-    console.log('Se seleccionó el la organización con Id:', selectedId);
+   //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     
     if(selectedId > 0){
@@ -228,23 +270,22 @@ export class FormDialogComponent implements OnInit{
   }
 
   // Validador a nivel de grupo
- private matchPasswords(
+  private matchPasswords(
   passwordKey: string,
-  confirmKey: string
-): ValidatorFn {
-  return (group: AbstractControl): ValidationErrors | null => {
-    const passCtrl    = group.get(passwordKey);
-    const confirmCtrl = group.get(confirmKey);
+  confirmKey: string): ValidatorFn {
+    return (group: AbstractControl): ValidationErrors | null => {
+      const passCtrl    = group.get(passwordKey);
+      const confirmCtrl = group.get(confirmKey);
 
-    if (!passCtrl || !confirmCtrl) return null;
-    // Si alguno está deshabilitado, no aplicamos la validación de igualdad
-    if (passCtrl.disabled || confirmCtrl.disabled) return null;
+      if (!passCtrl || !confirmCtrl) return null;
+      // Si alguno está deshabilitado, no aplicamos la validación de igualdad
+      if (passCtrl.disabled || confirmCtrl.disabled) return null;
 
-    return passCtrl.value === confirmCtrl.value
-      ? null
-      : { passwordMismatch: true };
-  };
-}
+      return passCtrl.value === confirmCtrl.value
+        ? null
+        : { passwordMismatch: true };
+    };
+  }
 
   onNoClick(): void {
     this.dialogRef.close();
@@ -290,12 +331,12 @@ export class FormDialogComponent implements OnInit{
 
     if (this.action === 'edit') {
     
-      console.log(formData);
+     //console.log(formData);
 
       this.userService.updateUserTable(formData).subscribe({
         next: (response) => {
 
-          console.log('response:: ', response);
+         //console.log('response:: ', response);
           if(this.fileChange){
             // Si necesitas token/bearer agrégalo en headers
             axios.post('https://api.catarsysdev.com/upload-file-v2', this.formFileData, {
@@ -303,7 +344,7 @@ export class FormDialogComponent implements OnInit{
               // Con esto obtienes progreso opcional
               onUploadProgress: (e) => {
                 const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-                console.log(`Progreso: ${pct}%`);
+               //console.log(`Progreso: ${pct}%`);
               }
             })
             .then(() => console.log('Archivo subido'))
@@ -320,13 +361,13 @@ export class FormDialogComponent implements OnInit{
 
       this.userService.addUserTable(formData).subscribe({
         next: (response) => {
-          console.log('response gfuardado:: ', response);
+         //console.log('response gfuardado:: ', response);
           // Si necesitas token/bearer agrégalo en headers
           axios.post('https://api.catarsysdev.com/upload-file-v2', this.formFileData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (e) => {
               const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-              console.log(`Progreso: ${pct}%`);
+             //console.log(`Progreso: ${pct}%`);
             }
           })
           .then(() => console.log('Archivo subido'))

@@ -29,7 +29,7 @@ export class SidebarService {
     // Convertimos el Promise en Observable
     return from(this.organizationService.getMenuAccess(roleId)).pipe(
       map(res => {
-        console.log('resulen:: ', res);
+       //console.log('resulen:: ', res);
         // asumimos que la respuesta tiene shape { message, data: RouteInfo[] }
         return res.data || [];
       }),

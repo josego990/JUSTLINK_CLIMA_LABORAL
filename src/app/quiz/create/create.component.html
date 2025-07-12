@@ -9,7 +9,7 @@
         <div>
           <div class="header">
          
-            <button style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialog()">
+            <button [disabled]="!accessToCreate"  style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialog()">
               <mat-icon>add</mat-icon> Crear Nuevo Clima
             </button>
             
@@ -116,7 +116,7 @@
                                   removable="true"
                                   (removed)="deleteFactor(factor)">
                           {{ factor.label }} ({{factor.fields.length}})
-                          <button matChipRemove>
+                          <button [disabled]="!accessToDeleteFactor" matChipRemove>
                             <mat-icon>cancel</mat-icon>
                           </button>
                         </mat-chip>
@@ -137,7 +137,7 @@
                     <div class="header" fxLayout="row">
                       <span fxFlex></span>
                       
-                      <button style="margin-left: auto" mat-raised-button color="primary" (click)="editarQuiz(card)">
+                      <button [disabled]="!accessToEdit" style="margin-left: auto" mat-raised-button color="primary" (click)="editarQuiz(card)">
                         Editar
                       </button>
                       <!--
@@ -145,7 +145,7 @@
                         Vista
                       </button>
                       -->
-                      <button style="margin-left: 5px" mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
+                      <button [disabled]="!accessToSend" style="margin-left: 5px" mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
                         Envío
                       </button>
                       

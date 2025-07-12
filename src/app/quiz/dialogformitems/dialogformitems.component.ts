@@ -38,6 +38,8 @@ import { OrganizacionService } from '../../organization/services/organizacion.se
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { AuthService } from '@core';
+
 @Component({
   selector: 'app-dialogitemform',
   templateUrl: './dialogformitems.component.html',
@@ -196,8 +198,16 @@ export class DialogformItemsComponent implements OnInit {
     ],
   };
 
+  accessToCreateFactor = true;
+  accessToCreateQuestion = true;
+  accessToActiveQuestion = true;
+  accessToDeleteQuestion = true;
+  accessToActiveClima = true;
+  accessToDeleteClima = true;
+  accessToUploadExcelClima = true;
+
   constructor(
-    private organizacionService: OrganizacionService,
+    private organizacionService: OrganizacionService, private authService: AuthService,
     public dialogRef: MatDialogRef<DialogformItemsComponent>,
     private fb: UntypedFormBuilder,
     public dialog: MatDialog,
@@ -226,9 +236,9 @@ export class DialogformItemsComponent implements OnInit {
     this.seriesx = this.card.series;
     this.series = this.card.series;
 
-    console.log('data.card', this.card);
-    console.log('this.seriesx', this.seriesx);
-    console.log('this.dataSource', this.dataSource);
+   //console.log('data.card', this.card);
+   //console.log('this.seriesx', this.seriesx);
+   //console.log('this.dataSource', this.dataSource);
 
     this.idFlujo = this.card.id;
 
@@ -305,6 +315,81 @@ export class DialogformItemsComponent implements OnInit {
       irequired: false,
       israndom: false,
     });
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      //this.getOrganizations();
+    }
+    else {
+
+      //this.authService.currentUserValue?.permissions
+
+      //validar permisos de acciones
+      const permisioncreatefactor = this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'createfactor');
+
+      const permisioncreatequestion= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'createquestions');
+
+      const permisionactivequestion= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'activequestions');
+
+      const permisiondeletequestion= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'deletequestions');
+
+      const permisionactiveclima= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'activateclima');
+
+      const permisiondeleteclima= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'deleteclima');
+
+      const permisionuploadexcelclima= this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'cargaexcelclima');
+
+
+      if(permisioncreatefactor){
+        this.accessToCreateFactor = true;
+      }else{
+        this.accessToCreateFactor = false;
+      }
+
+      if(permisioncreatequestion){
+        this.accessToCreateQuestion = true;
+      }else{
+        this.accessToCreateQuestion = false;
+      }
+
+      if(permisionactivequestion){
+        this.accessToActiveQuestion = true;
+      }else{
+        this.accessToActiveQuestion = false;
+      }
+
+      if(permisiondeletequestion){
+        this.accessToDeleteQuestion = true;
+      }else{
+        this.accessToDeleteQuestion = false;
+      }
+
+      if(permisionactiveclima){
+        this.accessToActiveClima = true;
+      }else{
+        this.accessToActiveClima = false;
+      }
+
+      if(permisiondeleteclima){
+        this.accessToDeleteClima = true;
+      }else{
+        this.accessToDeleteClima = false;
+      }
+
+      if(permisionuploadexcelclima){
+        this.accessToUploadExcelClima = true;
+      }else{
+        this.accessToUploadExcelClima = false;
+      }
+
+    }
+
   }
 
   parseFechaManual(fechaTexto: string): string | null {
@@ -416,7 +501,7 @@ export class DialogformItemsComponent implements OnInit {
         return reject('Errores de validación.');
       }
   
-      console.log('Preguntas JSON:', preguntasJSON);
+     //console.log('Preguntas JSON:', preguntasJSON);
       resolve(preguntasJSON);
     });
   }
@@ -426,7 +511,7 @@ export class DialogformItemsComponent implements OnInit {
   //ARCHIVO EXCEL CARGADO
   onFileSelected(event: any): void {
 
-    console.log('archivo seleccionado!')
+   //console.log('archivo seleccionado!')
 
     let timerInterval: any;
 
@@ -469,16 +554,16 @@ export class DialogformItemsComponent implements OnInit {
           // A) Directamente un ArrayBuffer: parseamos con XLSX
           try {
             const wb = XLSX.read(new Uint8Array(fileData), { type: 'array' });
-            console.log('Resultado de XLSX.read =>', wb);
+           //console.log('Resultado de XLSX.read =>', wb);
             this.workbook = wb;
 
             this.convertExcelToJSONPreguntas().then((jsonReturned) => {
-              console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
-              console.log('jsonReturned:: ', jsonReturned);
+             //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
+             //console.log('jsonReturned:: ', jsonReturned);
            
 
               this.organizacionService.saveNewPreguntasExcel(jsonReturned).then((result:any) => {
-                console.log('RESULTADO DEL ENVIO BATCH: ', result);
+               //console.log('RESULTADO DEL ENVIO BATCH: ', result);
 
                 if(result.data.message === 'Inserción de lote completada correctamente'){
                   Swal.close();
@@ -523,7 +608,7 @@ export class DialogformItemsComponent implements OnInit {
             console.error('Error leyendo el excel:', err);
           }
         } else {
-          console.log(' B) Si el resultado es otro tipo (ej. string, Blob)');
+         //console.log(' B) Si el resultado es otro tipo (ej. string, Blob)');
           // B) Si el resultado es otro tipo (ej. string, Blob)
           const blob = new Blob([fileData]);
           const fileReader = new FileReader();
@@ -549,12 +634,12 @@ export class DialogformItemsComponent implements OnInit {
     };
   
     reader.readAsArrayBuffer(file);
-    console.log('será preguntas????');
+   //console.log('será preguntas????');
       
   }
 
   onFactorChange(factor:any): void {
-    console.log(factor);
+   //console.log(factor);
     this.idFactor = factor.value;
 
 
@@ -564,12 +649,12 @@ export class DialogformItemsComponent implements OnInit {
 
     this.factorName = label;
 
-    console.log(this.factorName);
+   //console.log(this.factorName);
 
   }
 
   onMenuOptionClick(opcion: string): void {
-    console.log('Opción seleccionada:', opcion);
+   //console.log('Opción seleccionada:', opcion);
     if(opcion === 'eliminar'){
       const clima_data = {
         idClima: this.idFlujo,
@@ -638,10 +723,10 @@ export class DialogformItemsComponent implements OnInit {
       cancelButtonText: 'Cancelar'
     }).then((result) => {
       if (result.isConfirmed) {
-        console.log('✅ Confirmado: Eliminar pregunta');
+       //console.log('✅ Confirmado: Eliminar pregunta');
         this.deleteItem(item);
       } else {
-        console.log('❌ Cancelado por el usuario');
+       //console.log('❌ Cancelado por el usuario');
       }
     });
 
@@ -652,7 +737,7 @@ export class DialogformItemsComponent implements OnInit {
     this.loading = true;
     const index = this.dataSource.indexOf(item);
 
-    console.log('item',item);
+   //console.log('item',item);
 
     const pregunta_updata_datra = { 
       "idPregunta": item.Id, 
@@ -693,17 +778,17 @@ export class DialogformItemsComponent implements OnInit {
   toggleEstado(element: any): void {
     this.loading = true;
     const index = this.dataSource.indexOf(element);
-    console.log('Toggle estado de:', element.is_active);
+   //console.log('Toggle estado de:', element.is_active);
     
     var nuevoEstado = false;
     var nuevoEstadoInt = 0;
 
     if(element.is_active === 0){
-      console.log('entre en is_active 0');
+     //console.log('entre en is_active 0');
       nuevoEstado = true;
       nuevoEstadoInt = 1;
     } else if(element.is_active === 1){
-      console.log('entre en is_active');
+     //console.log('entre en is_active');
       nuevoEstado = false;
       nuevoEstadoInt = 0;
     }
@@ -718,7 +803,7 @@ export class DialogformItemsComponent implements OnInit {
       if(resultix.data.message === 'Estado de la pregunta actualizado correctamente'){
 
         if (index !== -1) {
-          console.log('s index:: ', index);
+         //console.log('s index:: ', index);
           this.dataSource[index].is_active = nuevoEstadoInt;
         
           // Forzar actualización del dataSource
@@ -758,7 +843,7 @@ export class DialogformItemsComponent implements OnInit {
   }
 
   saveBank(fieldType: string) {
-    console.log('addBank');
+   //console.log('addBank');
 
     switch (fieldType) {
       case 'text':
@@ -782,7 +867,7 @@ export class DialogformItemsComponent implements OnInit {
 
       
         } else {
-          console.log('FORM NOT VALID..');
+         //console.log('FORM NOT VALID..');
         }
         break;
       case 'radio':
@@ -810,7 +895,7 @@ export class DialogformItemsComponent implements OnInit {
 
          
         } else {
-          console.log('FORM NOT VALID..');
+         //console.log('FORM NOT VALID..');
         }
         break;
       case 'select':
@@ -838,7 +923,7 @@ export class DialogformItemsComponent implements OnInit {
 
       
         } else {
-          console.log('FORM NOT VALID..');
+         //console.log('FORM NOT VALID..');
         }
         break;
       case 'checkboxes':
@@ -866,7 +951,7 @@ export class DialogformItemsComponent implements OnInit {
 
         
         } else {
-          console.log('FORM NOT VALID..');
+         //console.log('FORM NOT VALID..');
         }
     }
   }
@@ -887,7 +972,7 @@ export class DialogformItemsComponent implements OnInit {
   }
 
   onFormTextSubmitClick() {
-    console.log('Form Values', this.addTextForm.value);
+   //console.log('Form Values', this.addTextForm.value);
 
     if (this.selectedSerie === 'none') {
       alert('Debe seleccionar un Factor para la pregunta');
@@ -931,7 +1016,7 @@ export class DialogformItemsComponent implements OnInit {
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
-            console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
       
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
@@ -997,7 +1082,7 @@ export class DialogformItemsComponent implements OnInit {
 
         };
       } else {
-        console.log('form is not valid');
+       //console.log('form is not valid');
       }
     }
 
@@ -1005,7 +1090,7 @@ export class DialogformItemsComponent implements OnInit {
   }
 
   onFormTextIASubmitClick() {
-    console.log('Form Values', this.addTextFormIA.value);
+   //console.log('Form Values', this.addTextFormIA.value);
 
     if (this.selectedSerie === 'none') {
       alert('Debe seleccionar un Factor para la pregunta');
@@ -1049,7 +1134,7 @@ export class DialogformItemsComponent implements OnInit {
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
-            console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
       
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
@@ -1115,7 +1200,7 @@ export class DialogformItemsComponent implements OnInit {
 
         };
       } else {
-        console.log('form is not valid');
+       //console.log('form is not valid');
       }
     }
 
@@ -1185,7 +1270,7 @@ export class DialogformItemsComponent implements OnInit {
 
           this.dataSource = [...this.dataSource];
 
-          console.log(this.dataSource);
+         //console.log(this.dataSource);
 
           const clabel = this.addFileForm.get('ilabel');
 
@@ -1272,7 +1357,7 @@ export class DialogformItemsComponent implements OnInit {
 
           this.dataSource = [...this.dataSource];
 
-          console.log(this.dataSource);
+         //console.log(this.dataSource);
 
           const cname = this.addDateForm.get('iname');
           const clabel = this.addDateForm.get('ilabel');
@@ -1362,7 +1447,7 @@ export class DialogformItemsComponent implements OnInit {
 
           this.dataSource = [...this.dataSource];
 
-          console.log(this.dataSource);
+         //console.log(this.dataSource);
 
           const clabel = this.addTextareaForm.get('ilabel');
 
@@ -1452,7 +1537,7 @@ export class DialogformItemsComponent implements OnInit {
 
           this.dataSource = [...this.dataSource];
 
-          console.log(this.dataSource);
+         //console.log(this.dataSource);
 
           const clabel = this.addSelectForm.get('ilabel');
 
@@ -1479,8 +1564,8 @@ export class DialogformItemsComponent implements OnInit {
 */
   
   onFormRadioSubmitClick() {
-    console.log('onFormRadioSubmitClick', this.addTextForm.value);
-    console.log('SERIE SELECCIONADA:', this.selectedSerie);
+   //console.log('onFormRadioSubmitClick', this.addTextForm.value);
+   //console.log('SERIE SELECCIONADA:', this.selectedSerie);
     if (this.selectedSerie === 'none') {
       alert('Debe seleccionar un Factor para la pregunta');
     } else {
@@ -1523,7 +1608,7 @@ export class DialogformItemsComponent implements OnInit {
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
-            console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
       
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
@@ -1663,7 +1748,7 @@ export class DialogformItemsComponent implements OnInit {
 
           this.dataSource = [...this.dataSource];
 
-          console.log(this.dataSource);
+         //console.log(this.dataSource);
 
           const clabel = this.addCheckboxesForm.get('ilabel');
 
@@ -1744,7 +1829,7 @@ export class DialogformItemsComponent implements OnInit {
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
-            console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
       
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
@@ -1793,7 +1878,7 @@ export class DialogformItemsComponent implements OnInit {
               });
 
               this.dataSource = [...this.dataSource];
-              console.log(this.dataSource);
+             //console.log(this.dataSource);
               const clabel = this.addSliderForm.get('ilabel');
               clabel?.setValue('');
               globalDataItems.next(this.dataSource);
@@ -1843,7 +1928,7 @@ export class DialogformItemsComponent implements OnInit {
   
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE SERIE');
+       //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE SERIE');
         //this.getClimasLista(); // O el método que necesites para refrescar
       }
     });

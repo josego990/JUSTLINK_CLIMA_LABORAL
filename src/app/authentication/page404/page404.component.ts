@@ -21,7 +21,7 @@ export class Page404Component {
 
 
   LogoutAnRedirect():void{
-    console.log('CLIC');
+   //console.log('CLIC');
     this.aut.clearCurrentUser();
     this.router.navigate(['/authentication/signin']);
   }

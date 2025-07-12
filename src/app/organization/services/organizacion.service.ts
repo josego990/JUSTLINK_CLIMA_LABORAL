@@ -21,8 +21,13 @@ export class OrganizacionService {
       .get('https://api.catarsysdev.com/get-organizations');
   }
 
+  getOrganizationById(idOrganization: any) {
+    return axios
+      .post('http://localhost:3030/get-organization-by-id',{idOrganization:idOrganization});
+  }
+
   deleteOrganization(idOrganization:number) {
-    console.log('DR. HOUSE ',idOrganization);
+   //console.log('DR. HOUSE ',idOrganization);
 
     return axios.post('https://api.catarsysdev.com/delete-organization', {idOrganization:idOrganization});
   }
@@ -44,7 +49,7 @@ export class OrganizacionService {
 
   saveNewPreguntasExcel(preguntas: any) {
     return axios
-      .post('http://localhost:3030/insert-preguntas-excel', preguntas);
+      .post('https://localhost:3030/insert-preguntas-excel', preguntas);
   }
 
   getEmployees(idOrganization:number) {
@@ -92,14 +97,14 @@ export class OrganizacionService {
   }
 
   saveNewDemografico(campo: any, idOrganizacion: any) {    
-    console.log('CAMPO: ',campo);
+   //console.log('CAMPO: ',campo);
     const data = {idOrganizacion:idOrganizacion,campo:campo.NombreCampo}
-    console.log('data: ',data);
+   //console.log('data: ',data);
     return axios.post('https://api.catarsysdev.com/insert-demographic-field', data);
   }
 
   saveNewClima(data_clima: any) {    
-    console.log('DATA_CLIMA_A_GUARDAR: ', data_clima);
+   //console.log('DATA_CLIMA_A_GUARDAR: ', data_clima);
     //const data = {idOrganizacion:idOrganizacion,campo:campo.NombreCampo}
     //console.log('data: ',data);
 
@@ -111,13 +116,18 @@ export class OrganizacionService {
       .post('https://api.catarsysdev.com/get-flujos-clima-json', {idOrganizacion:idOrganization});
   }
 
+  getClimasById(idOrganization:number) {    
+    return axios
+      .post('http://localhost:3030/get-flujos-clima-by-id-json', {idOrganizacion:idOrganization});
+  }
+
   getFactores(idOrganization:number) {    
     return axios
       .post('https://api.catarsysdev.com/get-factores-json', {idOrganizacion:idOrganization});
   }
 
   saveNewFactor(data_factor: any) {    
-    console.log('DATA_FACTOR_A_GUARDAR: ', data_factor);
+   //console.log('DATA_FACTOR_A_GUARDAR: ', data_factor);
 
     return axios.post('https://api.catarsysdev.com/insert-factor', data_factor);
   }
@@ -135,7 +145,7 @@ export class OrganizacionService {
   }
 
   saveNewPregunta(data_pregunta: any) {    
-    console.log('DATA_PREGUNTA_A_GUARDAR: ', data_pregunta);
+   //console.log('DATA_PREGUNTA_A_GUARDAR: ', data_pregunta);
 
     return axios.post('https://api.catarsysdev.com/insert-pregunta', data_pregunta);
   }
@@ -189,7 +199,7 @@ export class OrganizacionService {
 
 
   saveNewTemplate(template_data: any) {    
-    console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
+   //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
     return axios.post('https://api.catarsysdev.com/insert-plantilla', template_data);
   }
@@ -333,7 +343,7 @@ export class OrganizacionService {
 
 
   logni13(user:any) {
-    console.log('ENTRA EN LOGIN..');
+   //console.log('ENTRA EN LOGIN..');
     return axios
       .post('https://api.catarsysdev.com/logni13', user);
 
@@ -346,19 +356,19 @@ export class OrganizacionService {
 
   }
 
-   getUsers() {
-  
+  getUsers() {
     return axios
       .post('https://api.catarsysdev.com/get-users-json');
-
   }
   
-
   getRoles() {
-  
     return axios
       .get('https://api.catarsysdev.com/get-roles-json');
+  }
 
+  getRolesByIdOrg(idOrganization:any) {
+    return axios
+      .post('http://localhost:3030/get-roles-by-id-org-json',{idOrganization:idOrganization});
   }
 
   saveUser(userData: any) {    
@@ -380,10 +390,17 @@ export class OrganizacionService {
 
   }
 
+  getRolesAccessByIdOrg(idOrganization:any) {
+  
+    return axios
+      .post('http://localhost:3030/get-roles-access-by-id-org-json', {idOrganization:idOrganization});
+
+  }
+
   saveRole(roleData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post('https://api.catarsysdev.com/insert-role', roleData);
+    return axios.post('http://localhost:3030/insert-role', roleData);
   }
 
    updateRoleAccess(updRoleData: any) {    

@@ -149,7 +149,7 @@ export class DialogformSerieComponent implements OnInit {
       this.ponderacion_rest = data.ponderation_rest;
       this.ponderacion = data.ponderation_total;
 
-      console.log('this.data_request:', this.data_request);
+     //console.log('this.data_request:', this.data_request);
 
   }
 
@@ -220,9 +220,9 @@ export class DialogformSerieComponent implements OnInit {
   }
 
   guardaSerie(){
-    console.log('guardaSerie');
+   //console.log('guardaSerie');
 
-    console.log('this.ponderacion_rest:', this.ponderacion_rest);
+   //console.log('this.ponderacion_rest:', this.ponderacion_rest);
 
 
     if(this.addSerieForm.valid) {
@@ -249,7 +249,7 @@ export class DialogformSerieComponent implements OnInit {
 
 
       this.organizacionService.saveNewFactor(newFactor).then((resulte: any) => {
-        console.log('RESULTADO DE GUARDADO DE FACTOR:: ', resulte);
+       //console.log('RESULTADO DE GUARDADO DE FACTOR:: ', resulte);
 
 
 

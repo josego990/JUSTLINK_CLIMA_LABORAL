@@ -25,10 +25,10 @@ export class AuthService {
    * Retorna un Observable<User> con el objeto de sesión.
    */
   public login(user: string, pass: string): Observable<User> {
-    console.log('user enviado:: ', { user, pass });
+    //console.log('user enviado:: ', { user, pass });
     return this.http
       .post<{ message: string; data: User }>(
-        'https://api.catarsysdev.com/logni13', // URL de tu API
+        'http://localhost:3030/logni13', // URL de tu API
         { user, pass }
       )
       .pipe(
@@ -38,7 +38,7 @@ export class AuthService {
             // guardar en localStorage y BehaviorSubject
             localStorage.setItem('currentUser', JSON.stringify(user));
 
-            console.log('user armado:: ',user);
+           //console.log('user armado:: ',user);
 
             this.currentUserSubject.next(user);
           } else {

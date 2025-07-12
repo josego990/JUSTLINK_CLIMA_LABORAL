@@ -15,7 +15,7 @@
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
                 <mat-form-field appearance="fill" class="w-100">
                   <mat-label>Organización</mat-label>
-                  <mat-select (selectionChange)="onOrganizationChange($event)">
+                  <mat-select formControlName="IdOrganization" (selectionChange)="onOrganizationChange($event)">
                     <mat-option
                       *ngFor="let organization of dataSourceOrganizations" 
                       [value]="organization.Id"
@@ -30,7 +30,7 @@
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="fill">
                   <mat-label>Seleccione el tipo de Evaluación</mat-label>
-                  <mat-select >
+                  <mat-select formControlName="IdProof" >
 
                     <mat-option value="1">Escala de Likert</mat-option>
 

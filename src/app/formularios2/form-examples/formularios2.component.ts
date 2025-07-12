@@ -89,12 +89,12 @@ export class FormExamplesComponent {
     });
   }
   onRegister() {
-    console.log('Form Value', this.register?.value);
+   //console.log('Form Value', this.register?.value);
   }
   onsecondFormSubmit() {
-    console.log('Form Value', this.secondForm?.value);
+   //console.log('Form Value', this.secondForm?.value);
   }
   onThirdFormSubmit() {
-    console.log('Form Value', this.thirdForm?.value);
+   //console.log('Form Value', this.thirdForm?.value);
   }
 }

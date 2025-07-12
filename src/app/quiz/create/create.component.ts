@@ -50,6 +50,8 @@ import Swal from "sweetalert2";
 import { RouteInfo } from "app/layout/sidebar/sidebar.metadata";
 import { Router } from '@angular/router';
 
+import { AuthService } from '@core';
+
 @Component({
   selector: "app-create",
   templateUrl: "./create.component.html",
@@ -107,15 +109,128 @@ export class CreateComponent implements OnInit {
   quizDesc?: string;
   dialogConfig?: MatDialogConfig;
   public idOrganizacion: number = 1;
+  accessToCreate = true;
+  accessToEdit = true;
+  accessToSend = true;
+  accessToDeleteFactor = true;
+  
 
   constructor(
-    private organizacionService: OrganizacionService,private router: Router,
+    private organizacionService: OrganizacionService,private router: Router, private authService: AuthService,
     private dialogModel: MatDialog, //dialog para agregar quiz
     private dialogSerieModel: MatDialog, //dialog para agregar serie
     private dialogItemModel: MatDialog, //dialog agregar ítems    
     private fb: UntypedFormBuilder, // private modalService: NgbModal
     private _snackBar: MatSnackBar 
   ) {}
+
+ngOnInit() {
+    
+    const stored = sessionStorage.getItem('routes');
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+     //console.log('RUTAS DESDE sessionStorage:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/quiz/create');
+     //console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
+      }
+
+    }
+    
+    this.addCusForm = this.fb.group({
+      IdProof: null,
+      quizName: [
+        this.qname,
+        [Validators.required],
+      ],
+      quizDesc: [
+        this.qdesc,
+        [Validators.required],
+      ],
+      urlImg: [null, [Validators.required]],
+      score: 0
+    });
+
+    globalData.subscribe(data => {
+      //console.log("Received data in CreateComponent:", data);
+      if(data) {
+        const quiz = data[0];
+        quiz.id = this.cardsData.length+1;
+        this.cardsData.push(quiz);
+
+       //console.log("Se ingreso el item?:", this.cardsData);
+
+      }
+
+    });
+
+    globalDataItems.subscribe(data => {
+      if(data) {
+        //console.log("Received data in CreateComponent:", data);
+        this.cardsData[this.id_quiz_context].fields = data;
+        //console.log(this.cardsData);
+      }
+
+    });
+
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+        this.getClimasLista();
+    }
+    else {
+
+      //validar permisos de acciones
+      const permisioncreate = this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'createclima');
+      
+      const permisionedit = this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'editclima');
+     
+      const permisionsend = this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'sendclima');
+
+      const permisiondeletefactor = this.authService.currentUserValue?.permissions.
+        find((p: { ActionCode: string; }) => p.ActionCode === 'deletefactor'); 
+
+      /*  */
+      if(permisioncreate){
+        this.accessToCreate = true;
+      }else{
+        this.accessToCreate = false;
+      }
+
+      if(permisionedit){
+        this.accessToEdit = true;
+      }else{
+        this.accessToEdit = false;
+      }
+
+      if(permisionsend){
+        this.accessToSend = true;
+      }else{
+        this.accessToSend = false;
+      }
+
+      if(permisiondeletefactor){
+        this.accessToDeleteFactor= true;
+      }else{
+        this.accessToDeleteFactor = false;
+      }
+
+      
+    
+
+
+      this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
+    }
+
+    //this.getClimasLista();
+
+  }
 
   public getTooltipText(factor: any): string {
     if (!factor.fields || factor.fields.length === 0) {
@@ -128,7 +243,7 @@ export class CreateComponent implements OnInit {
   public getClimasLista():void {
     this.loading = true;
     this.organizacionService.getClimas(this.idOrganizacion).then((lista_climas)=> {
-        console.log('CLIMAS:: ', lista_climas.data);
+       //console.log('CLIMAS:: ', lista_climas.data);
         const climas = lista_climas.data;
         //crear nuevo clima
         if(climas){this.cardsData = []}
@@ -188,7 +303,70 @@ export class CreateComponent implements OnInit {
       })
   }
 
-   showNotification(
+  public getClimasListaById(idOrganizacion:any):void {
+    this.loading = true;
+    this.organizacionService.getClimasById(idOrganizacion).then((lista_climas:any)=> {
+       //console.log('CLIMAS:: ', lista_climas.data);
+        const climas = lista_climas.data;
+        //crear nuevo clima
+        if(climas){this.cardsData = []}
+        climas.forEach((clima: 
+            {
+                Id: number;
+                IdOrganizacion: number;
+                NombreOrganizacion: string;
+                nombre_organizacion_oficial: string;
+                Nombre: string;
+                Objetivo: string;
+                FechaInicio: string; // o Date, si lo conviertes luego
+                FechaFin: string;    // o Date, igual que arriba
+                Frecuencia: string;
+                MetodoAplicacion: string;
+                EstimadoMinutos: number;
+                Anonimato: boolean;
+                FechaCreacion: string; // o Date
+                Imagen1Src: string;
+                Estado: number;
+                series: any;
+                estado_envio: string;
+                estadisticas_envio: EstadisticasEnvio | string;
+            })  => {
+
+            const quiz: Quiz = {
+                id: clima.Id,
+                idOrganization: clima.IdOrganizacion,
+                contestadas: 0,
+                totalEncuestas: 0,
+                pendientes: 0,
+                totalEmpleados: 0,
+                avatarSrc: clima.Imagen1Src,
+                title: clima.Nombre,
+                subtitle: clima.nombre_organizacion_oficial,
+                imageSrc1: '',
+                content: clima.Objetivo,
+                score : 0,
+                completed : false,
+                startDate: '',
+                endDate: '',
+                estado: 1,
+                series: clima.series,
+                fields: [],
+                estadoEnvio: clima.estado_envio,
+                estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
+                ? JSON.parse(clima.estadisticas_envio)
+                : clima.estadisticas_envio
+              }
+
+              this.cardsData.push(quiz);
+        });
+        this.loading = false;
+      }).catch((err)=> {
+        console.error(err);
+        this.loading = false;
+      })
+  }
+
+  showNotification(
       colorName: string,
       text: string,
       placementFrom: MatSnackBarVerticalPosition,
@@ -200,7 +378,7 @@ export class CreateComponent implements OnInit {
         horizontalPosition: placementAlign,
         panelClass: colorName,
       });
-    }
+  }
 
   getPorcentajeCompletado(card: any): number {
     const creadas = card.estadisticasEnvio?.total_creadas || 0;
@@ -212,7 +390,7 @@ export class CreateComponent implements OnInit {
   }
   
   public deleteFactor(factor: any): boolean {
-    console.log('FUNCIONA EL CLICK?:: ', factor);
+   //console.log('FUNCIONA EL CLICK?:: ', factor);
     this.loading = true;
 
     this.organizacionService.deleteFactor(factor.Id).then((resutadi: any)=>{
@@ -253,67 +431,11 @@ export class CreateComponent implements OnInit {
         route.path === target ||
         this.existsRoute(route.submenu, target)
       );
-    }
-    
-  ngOnInit() {
-    
-    const stored = sessionStorage.getItem('routes');
-    if (stored) {
-      const routes: RouteInfo[] = JSON.parse(stored);
-      console.log('RUTAS DESDE sessionStorage:: ', routes);
-
-      //buscar path
-      const found = this.existsRoute(routes, '/quiz/create');
-      console.log(found);
-
-      if(!found){
-        this.router.navigate(['/authentication/page404']);
-      }
-
-    }
-    
-    this.getClimasLista();
-    this.addCusForm = this.fb.group({
-      IdProof: null,
-      quizName: [
-        this.qname,
-        [Validators.required],
-      ],
-      quizDesc: [
-        this.qdesc,
-        [Validators.required],
-      ],
-      urlImg: [null, [Validators.required]],
-      score: 0
-    });
-
-    globalData.subscribe(data => {
-      //console.log("Received data in CreateComponent:", data);
-      if(data) {
-        const quiz = data[0];
-        quiz.id = this.cardsData.length+1;
-        this.cardsData.push(quiz);
-
-        console.log("Se ingreso el item?:", this.cardsData);
-
-      }
-
-    });
-
-    globalDataItems.subscribe(data => {
-      if(data) {
-        //console.log("Received data in CreateComponent:", data);
-        this.cardsData[this.id_quiz_context].fields = data;
-        //console.log(this.cardsData);
-      }
-
-    });
-
   }
-
+    
   verDetalles(card: Quiz) {
     // Lógica para manejar el evento de "Detalles" para la tarjeta específica
-    console.log("Ver detalles:", card);
+   //console.log("Ver detalles:", card);
 
     this.openDialogDynmicForm(card);
 
@@ -344,7 +466,7 @@ export class CreateComponent implements OnInit {
     // ✅ Escuchar el cierre del diálogo
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
+       //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
         this.getClimasLista(); // O cualquier método que refresque los datos
       }
     });
@@ -363,9 +485,18 @@ export class CreateComponent implements OnInit {
     
       dialogRef.afterClosed().subscribe(result => {
         if (result === true) {
-            console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG');
+           //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG');
             
-          this.getClimasLista(); // Refrescar la lista
+          if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+              this.getClimasLista();
+          }
+          else {
+
+        
+            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
+          }
+
+
         }
       });
     
@@ -386,8 +517,12 @@ export class CreateComponent implements OnInit {
     // ✅ Escuchar el cierre del diálogo
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
-        this.getClimasLista(); // O cualquier método que refresque los datos
+       if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+            this.getClimasLista();
+          }
+          else {        
+            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
+          }
       }
     });
   }
@@ -405,7 +540,7 @@ export class CreateComponent implements OnInit {
 
   openDialogDynmicForm(quiz: Quiz): void {
     this.id_quiz_context = this.cardsData.indexOf(quiz);
-    console.log("El quiz data: ", quiz);
+   //console.log("El quiz data: ", quiz);
     this.dialogItemModel.open(DialogDynamicFormComponent, {
       width: "100%",
       //height: "100%",

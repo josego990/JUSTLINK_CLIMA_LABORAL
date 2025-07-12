@@ -12,7 +12,7 @@ export class PlantillaCorreoService {
 
   guardarPlantilla(key: string, html: string): Observable<void> {
     // TODO: reemplazar con HttpClient.post/put
-    console.log('Guardando html:', html);
+   //console.log('Guardando html:', html);
     return of();
   }
 }

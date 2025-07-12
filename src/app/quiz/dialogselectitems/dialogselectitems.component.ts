@@ -79,7 +79,7 @@ export class DialogSelectItemsComponent implements OnInit {
     public dialogRef: MatDialogRef<DialogSelectItemsComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,) {
 
-    console.log(data);
+   //console.log(data);
     this.options = data;
 
   }

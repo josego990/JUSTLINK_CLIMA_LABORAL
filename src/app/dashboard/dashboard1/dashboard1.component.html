@@ -8,7 +8,7 @@
       <div class="col-md-3">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Organización</mat-label>
-          <mat-select (selectionChange)="onOrganizationChange($event.value)">
+          <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
             <mat-option
               
               *ngFor="let organization of dataSourceOrganizations"
@@ -41,7 +41,7 @@
           <mat-label>Filtros demográficos</mat-label>
 
           <!-- multiple ⇒ Angular Material coloca checkbox automáticamente -->
-          <mat-select
+          <mat-select [disabled]="!accessToFilter" 
             multiple
             (selectionChange)="onSelectionChange($event.value)"
           >
@@ -137,8 +137,9 @@
           </ngx-gauge>
           
 
-          <mat-card-content>
+          <mat-card-content style="margin-left: -35px;">
             <div class="metrics" style="display: flex; flex-wrap: wrap; gap: 12px; margin-left: 50px;">
+              
               <div style="flex: 1 1 45%; display: flex; align-items: center;">
                 <span
                   [ngStyle]="{

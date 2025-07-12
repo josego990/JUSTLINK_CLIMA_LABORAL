@@ -92,7 +92,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
   }
   ngOnInit() {
-    console.log('ngOninit sidebar.component.ts..');
+   //console.log('ngOninit sidebar.component.ts..');
     if (this.authService.currentUserValue) {
       this.userFullName =
         this.authService.currentUserValue.firstName +
@@ -102,7 +102,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       this.userType = 'Admin';
 
       this.sidebarService.getRouteInfo().subscribe((routes: RouteInfo[]) => {
-        console.log('routes en sidebar:: ', routes);
+       //console.log('routes en sidebar:: ', routes);
         sessionStorage.setItem('routes', JSON.stringify(routes));
         this.sidebarItems = routes.filter((sidebarItem) => sidebarItem);
       });
@@ -130,7 +130,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.listMaxWidth = '500px';
   }
   isOpen() {
-    console.log('MENU IS OPEN??');
+   //console.log('MENU IS OPEN??');
     return this.bodyTag.classList.contains('overlay-open');
   }
   checkStatuForResize(firstTime: boolean) {

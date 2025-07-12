@@ -187,23 +187,23 @@ export class DynamicFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.formBuilderService.buildForm(this.formConfig!);
-    console.log('this.formConfig:: ', this.formConfig);
-    console.log('this.idEmpleado', this.idEmpleado);
-    console.log('this.idEncuestaEmpleado', this.idEncuestaEmpleado);
+   //console.log('this.formConfig:: ', this.formConfig);
+   //console.log('this.idEmpleado', this.idEmpleado);
+   //console.log('this.idEncuestaEmpleado', this.idEncuestaEmpleado);
     this.idFlujo = this.formConfig!.Id;
 
-    console.log('this.idFlujo', this.idFlujo);
+   //console.log('this.idFlujo', this.idFlujo);
   }
 
   
   onSubmit() {
     if (this.form.valid) {
       const respuestas = this.form.value;
-      console.log('Respuestas del formulario:', respuestas);
+     //console.log('Respuestas del formulario:', respuestas);
 
       const entries: [string, string][] = Object.entries(respuestas);
 
-      console.log(entries);
+     //console.log(entries);
 
       //var global_data: any = [];
 
@@ -216,7 +216,7 @@ export class DynamicFormComponent implements OnInit {
 
         var tipo = e[0].substring(0,3);
 
-        console.log(newid);
+       //console.log(newid);
 
         let idp = newid?.toString() ?? '';
         g_d.res.push({ "idPregunta": idp, "valor": e[1], "tipo": tipo });
@@ -224,8 +224,8 @@ export class DynamicFormComponent implements OnInit {
 
       });
 
-      console.log('global_data', g_d);
-      console.log('this.idEmpleado',this.idEmpleado);
+     //console.log('global_data', g_d);
+     //console.log('this.idEmpleado',this.idEmpleado);
       
       Swal.fire({
         title: 'Guardando..',
@@ -249,7 +249,7 @@ export class DynamicFormComponent implements OnInit {
             "FechaFinalizacion": new Date
         };
 
-        console.log('update antes de actualizar:: ', datasUpdate);
+       //console.log('update antes de actualizar:: ', datasUpdate);
           this.updateClimaEncuesta(datasUpdate);
 
           Swal.fire({

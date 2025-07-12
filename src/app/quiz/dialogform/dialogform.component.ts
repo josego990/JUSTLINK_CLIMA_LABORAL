@@ -25,9 +25,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { AuthService } from '@core';
 
 @Component({
   selector: 'app-dialogform',
+  standalone: true, 
   templateUrl: './dialogform.component.html',
   styleUrls: ['./dialogform.component.scss'],
   imports: [
@@ -51,7 +53,7 @@ import { MatButtonModule } from '@angular/material/button';
 // Aquí se crea el nuevo quiz
 export class DialogformComponent implements OnInit {
 
-  public idOrganization =  0;
+  public idOrganization =  1;
   public organizationName = '';
   public dataSourceOrganizations:any = [];
 
@@ -75,10 +77,11 @@ export class DialogformComponent implements OnInit {
     private fb: UntypedFormBuilder, 
     public dialog: MatDialog,
     public dialogRef: MatDialogRef<DialogformComponent>, 
-    private organizacionService: OrganizacionService,
+    private organizacionService: OrganizacionService, private authService: AuthService,
+
     @Inject(MAT_DIALOG_DATA) public data: QuizBank[],
     ) {
-      console.log('data:', data );
+     //console.log('data:', data );
 
       this.bankData = data;
 
@@ -88,11 +91,12 @@ export class DialogformComponent implements OnInit {
     }
 
   public ngOnInit(): void {
-    this.getOrganizations();
+
+    
 
     this.addCusForm = this.fb.group({
-      IdOrganization: this.idOrganization,
-      IdProof: null,
+      IdOrganization: [this.idOrganization, Validators.required],
+      IdProof: ["1", Validators.required],
       quizName: [this.qname, [Validators.required]],
       quizDesc: [this.qdesc, [Validators.required]],
       urlImg: [null],
@@ -123,19 +127,51 @@ export class DialogformComponent implements OnInit {
       totalQuestions: [0, [Validators.required , this.questionRestValidator.bind(this)]],
       units: [0, [Validators.required]],
     });
+
+    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.getOrganizations();
+    }
+    else {
+      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+    }
+
     
   }
 
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
         .then((response:any) => {
-          console.log('Organizaciones:', JSON.stringify(response.data));
+         //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
         })
         .catch((error:any) => {
           console.error('Error al obtener organizaciones:', error);
         });
+  }
+
+  getOrganizationById(idOrganization:any): void {
+
+    //console.log('idOrganization', idOrganization);
+
+    this.organizacionService.getOrganizationById(idOrganization)
+      .then((response:any) => {
+        ////console.log('Organizaciones:', JSON.stringify(response.data));
+        
+        this.dataSourceOrganizations = response.data;
+
+        this.idOrganization = idOrganization;
+      
+
+
+        this.addCusForm.patchValue({ IdOrganization: idOrganization });
+        //this.addCusForm.patchValue({ IdProof: "1" });
+        
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener organizaciones:', error);
+      });
   }
 
   getCategoriesDistinctList() {
@@ -146,19 +182,16 @@ export class DialogformComponent implements OnInit {
       }
     });
 
-    console.log('this.categoriesList',this.categoriesList);
+   //console.log('this.categoriesList',this.categoriesList);
     
   }
-
-
- 
 
   questionRestValidator(control: any) {
     const enteredValue = parseFloat(control.value);
     const maxQuestions = this.totalQuestionsSelected;
 
-    console.log('enteredValue',enteredValue);
-    console.log('maxQuestions',maxQuestions);
+   //console.log('enteredValue',enteredValue);
+   //console.log('maxQuestions',maxQuestions);
 
     if (!isNaN(enteredValue) && enteredValue > maxQuestions) {
       return { 'preguntasExcede': true };
@@ -184,11 +217,11 @@ export class DialogformComponent implements OnInit {
   }
 
   onOrganizationChange(event: any) {
-    console.log('Se seleccionó el evento:', event);
+   //console.log('Se seleccionó el evento:', event);
     // Aquí haces lo que necesites con el ID
     const selectedText = event.source.selected.viewValue;
 
-    console.log('selectedTex:: ', selectedText);
+   //console.log('selectedTex:: ', selectedText);
 
     if(event.value > 0){
       this.idOrganization = event.value;      
@@ -200,14 +233,14 @@ export class DialogformComponent implements OnInit {
   unitsChange() {
     const totalPreguntasDisponibles = this.sumarValoresNumericos(this.selectedUnits.toString());
     this.totalQuestionsSelected = totalPreguntasDisponibles;
-    console.log('Preguntas:',this.totalQuestionsSelected);
+   //console.log('Preguntas:',this.totalQuestionsSelected);
   }
 
   //nuevo quiz / encuesta
   onSubmitClick() {
 
     if(this.addCusForm.valid){
-      console.log('Form Values', this.addCusForm.value);
+     //console.log('Form Values', this.addCusForm.value);
       
       const quiz: Quiz = {
         id: 0,
@@ -240,11 +273,11 @@ export class DialogformComponent implements OnInit {
           porcentaje: 0
         }
       }
-      console.log('nuevo quiz armado::', quiz);
+     //console.log('nuevo quiz armado::', quiz);
       /** */
 
       this.organizacionService.saveNewClima(quiz).then((amber:any) => {
-        console.log('RESULTADO saveNewClima:: ', amber);
+       //console.log('RESULTADO saveNewClima:: ', amber);
         //OBTENER DE NUEVO EL LISTADO DE CLIMAS
         // ✅ Cerramos el diálogo y devolvemos un valor de éxito
 
@@ -273,7 +306,7 @@ export class DialogformComponent implements OnInit {
 
       
     } else {
-      console.log('FALTAN CAMPOS');
+     //console.log('FALTAN CAMPOS');
     }
 
     
@@ -360,7 +393,7 @@ export class DialogformComponent implements OnInit {
 
     }
     else {
-      console.log('Complete los datos..');
+     //console.log('Complete los datos..');
     }
     
   }
@@ -392,7 +425,7 @@ export class DialogformComponent implements OnInit {
     const camposAleatorios = indicesAleatorios.map(indice => totalFields[indice]);
 
 
-    console.log('fields creados dinamicamente tío:', camposAleatorios);
+   //console.log('fields creados dinamicamente tío:', camposAleatorios);
 
     return camposAleatorios;
 
@@ -434,7 +467,7 @@ export class DialogformComponent implements OnInit {
     const minutos = fecha.getUTCMinutes().toString().padStart(2, '0');
     const segundos = fecha.getUTCSeconds().toString().padStart(2, '0');
 
-    console.log('FECHA ARMADA',`${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`);
+   //console.log('FECHA ARMADA',`${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`);
 
     return `${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`;
   }

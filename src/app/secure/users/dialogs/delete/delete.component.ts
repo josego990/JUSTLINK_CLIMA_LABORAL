@@ -35,10 +35,10 @@ export class DeleteDialogComponent {
     public advanceTableService: AdvanceTableService
   ) {}
   confirmDelete(): void {
-    console.log(this.data);
+   //console.log(this.data);
     this.advanceTableService.deleteAdvanceTable(this.data.id).subscribe({
       next: (response) => {
-        // console.log('Delete Response:', response);
+        ////console.log('Delete Response:', response);
         this.dialogRef.close(response); // Close with the response data
         // Handle successful deletion, e.g., refresh the table or show a notification
       },

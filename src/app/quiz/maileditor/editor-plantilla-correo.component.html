@@ -17,7 +17,7 @@
             <div class="col-md-4">
               <mat-form-field appearance="fill" class="w-100">
                 <mat-label>Organización</mat-label>
-                <mat-select (selectionChange)="onOrganizationChange($event.value)">
+                <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
                   <mat-option
                     
                     *ngFor="let organization of dataSourceOrganizations"
@@ -60,7 +60,7 @@
               <mat-form-field appearance="fill" class="w-100">
                 <mat-label>Iconos UTF-8</mat-label>
           
-            <mat-select (selectionChange)="insertToken($event.value)" formControlName="iconoSeleccionado">
+            <mat-select (selectionChange)="insertToken($event.value)" >
               <!-- ACCIONES -->
               <mat-option value="👋">👋 Saludo</mat-option>
               <mat-option value="✉️">✉️ Enviar&nbsp;(envelope)</mat-option>  <!-- U+2709 :contentReference[oaicite:0]{index=0} -->
@@ -151,7 +151,7 @@
 
           
          
-          <button style="margin-left: auto; margin-right: 15px; margin-bottom: 15px; background-color: #f3f5f3;" mat-raised-button color="primary" (click)="saveTemplate()">
+          <button [disabled]="!accessToSave" style="margin-left: auto; margin-right: 15px; margin-bottom: 15px; background-color: #f3f5f3;" mat-raised-button color="primary" (click)="saveTemplate()">
             <mat-icon style="color:#355831">save</mat-icon> Guardar plantilla
           </button>
         </div>

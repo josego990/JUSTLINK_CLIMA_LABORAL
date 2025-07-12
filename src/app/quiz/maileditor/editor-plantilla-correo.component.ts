@@ -12,18 +12,23 @@ import { HTML } from 'ngx-editor/lib/trustedTypesUtil';
 import { MatButtonModule } from '@angular/material/button';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
+import { AuthService } from '@core';
+import { FormsModule, ReactiveFormsModule, FormGroup } from '@angular/forms';
 
 @Component({
     selector: 'app-editors',
     templateUrl: './editor-plantilla-correo.component.html',
     styleUrls: ['./editor-plantilla-correo.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    imports: [BreadcrumbComponent, NgxEditorModule, MatFormFieldModule, MatSelectModule,CommonModule,
+    imports: [
+      FormsModule,ReactiveFormsModule,
+      BreadcrumbComponent, NgxEditorModule, MatFormFieldModule, MatSelectModule,CommonModule,
       MatDividerModule,MatIconModule,MatButtonModule
     ]
 })
 export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy { 
-  constructor(private organizacionService: OrganizacionService,
+
+  constructor(private organizacionService: OrganizacionService, private authService: AuthService,
     private router: Router
    ) {
     //constructor
@@ -37,6 +42,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   public dataSourceOrganizations:any = [];
   public dataSourceClimas:any = [];
   public html = '';
+  accessToSave = true;
 
   readonly variables = [
     { label: 'Nombre del empleado', token: '{{DATOS["nombre_empleado"]}}' },
@@ -96,23 +102,57 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   
       }
 
-   
+      this.editor =  new Editor({
+        linkValidationPattern: '',
+        inputRules: true, 
+      });
+      
+      this.editor.valueChanges.subscribe(doc => {
+        this.html = toHTML(doc, this.editor?.schema); 
+       //console.log('HTML 👉', this.html);
+      });
 
-  
+      this.editor.valueChanges.subscribe();
 
-    this.getOrganizations();
-    this.editor =  new Editor({
-      linkValidationPattern: '',
-      inputRules: true, 
-    });
-    this.editor.valueChanges.subscribe(doc => {
-      this.html = toHTML(doc, this.editor?.schema); 
-      console.log('HTML 👉', this.html);
-    });
+      //this.getOrganizations();
 
-    this.editor.valueChanges.subscribe();
+      if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.getOrganizations();
+      }
+      else {
 
+        //validar permisos de acciones
+        const permisionsave = this.authService.currentUserValue?.permissions.
+          find((p: { ActionCode: string; }) => p.ActionCode === 'guardarplantillas');
+
+        /**/
+        if(permisionsave){
+          this.accessToSave = true;
+        }else{
+          this.accessToSave = false;
+        }
+
+        this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+      }
   }; 
+
+  getOrganizationById(idOrganization:any): void {
+    this.organizacionService.getOrganizationById(idOrganization)
+        .then((response:any) => {
+          ////console.log('Organizaciones:', JSON.stringify(response.data));
+          
+          this.dataSourceOrganizations = response.data;
+
+          this.idOrganization = idOrganization;
+          this.dataSourceClimas = [];
+          this.nombreOrganizacion = 'cargando..'
+          this.getFlujosPlantilla();
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener organizaciones:', error);
+        });
+  }
 
   insertToken(token: string): void {
     this.editor?.commands
@@ -123,9 +163,9 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
 
   saveTemplate(): void {
 
-    console.log('idOrg: ', this.idOrganization);
-    console.log('idFlujo: ', this.idFlujo);
-    console.log('html: ', this.html.length);
+   //console.log('idOrg: ', this.idOrganization);
+   //console.log('idFlujo: ', this.idFlujo);
+   //console.log('html: ', this.html.length);
     
     const flujo = this.dataSourceClimas.find((c: { IdFlujo: number; }) => c.IdFlujo === this.idFlujo);
     this.nombreFlujo = flujo.NombreFlujo;
@@ -142,7 +182,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   
       this.organizacionService.saveNewTemplate(send_data)
           .then((response:any) => {
-            console.log('Respuesta guardado plantilla:', JSON.stringify(response.data));
+           //console.log('Respuesta guardado plantilla:', JSON.stringify(response.data));
             
             if(response.data.message === 'Plantilla guardada correctamente'){
               this.getFlujosPlantilla();
@@ -189,7 +229,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   };
 
   onOrganizationChange(selectedId: number) {
-    console.log('Se seleccionó el la organización con Id:', selectedId);
+   //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     
     
@@ -206,7 +246,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   }
 
   onClimaChange(selectedId: number) {
-    console.log('Se seleccionó el clima con Id:', selectedId);
+   //console.log('Se seleccionó el clima con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     this.idFlujo = selectedId;
   
@@ -225,7 +265,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
         .then((response:any) => {
-          console.log('Organizaciones:', JSON.stringify(response.data));
+         //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
         })
@@ -238,7 +278,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
 
     this.organizacionService.getFlujosPlantilla(this.idOrganization)
         .then((response:any) => {
-          console.log('Flujos Plantillas:', JSON.stringify(response.data));
+         //console.log('Flujos Plantillas:', JSON.stringify(response.data));
           
           this.dataSourceClimas = response.data.data;
           var org = this.dataSourceOrganizations.find((o: { Id: number; }) => o.Id === this.idOrganization);
