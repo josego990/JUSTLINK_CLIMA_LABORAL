@@ -1,25 +1,45 @@
-import { Component, OnInit, } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { UntypedFormBuilder } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { DynamicFormComponent } from '../quiz/dynamic-form/dynamic-form.component';
 import { OrganizacionService } from 'app/organization/services/organizacion.service';
-import { CommonModule, DatePipe } from '@angular/common'; 
+import { CommonModule } from '@angular/common'; 
 import { Quiz } from 'app/quiz/models/quiz-models';
 import Swal from 'sweetalert2';
+
+import { ConfigService } from '@config';
+import { AuthService, LanguageService } from '@core'; 
+import { MatMenuModule } from '@angular/material/menu';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core'; 
+
 @Component({
   selector: 'app-completeclimaalone',
   templateUrl: './completeclimaalone.component.html',
   styleUrls: ['./completeclimaalone.component.scss'],
   
     imports: [
-  
+      MatButtonModule,
+
+        MatMenuModule,
+        TranslateModule,
+        MatIconModule,
       DynamicFormComponent,CommonModule
       
   
       ],
 })
 export class CompleteclimaaloneComponent implements OnInit {
- 
+    @ViewChild(DynamicFormComponent)
+  dynamicFormComponent!: DynamicFormComponent;
+    flagvalue: string | string[] | undefined;
+    countryName: string | string[] = [];
+    langStoreValue?: any;
+    defaultFlag?: string;
+
     public idEmpleado = 0;
     public idFlujo = 0;
     public idEncuestaEmpleado = 0;
@@ -45,6 +65,7 @@ export class CompleteclimaaloneComponent implements OnInit {
       endDate: ' ',
       estado:1,
       estadoEnvio: ' ',
+      granFactores: [],
       series: [],
       fields: [
      
@@ -66,14 +87,42 @@ export class CompleteclimaaloneComponent implements OnInit {
   public quiz: any = {};
 
   constructor(private fb: UntypedFormBuilder,private route: ActivatedRoute, 
-    private organizacionService: OrganizacionService,)
+    private organizacionService: OrganizacionService,
+
+    private configService: ConfigService,
+    private authService: AuthService,
+
+    public languageService: LanguageService, private translate: TranslateService,
+  )
     {
       
       
   
     }
 
+     listLang = [
+      { text: 'English', flag: 'assets/images/flags/us.jpg', lang: 'en' },
+      { text: 'Spanish', flag: 'assets/images/flags/spain.jpg', lang: 'es' },
+      
+    ];
+
     public ngOnInit(): void {
+
+      this.languageService.setLanguage(this.langStoreValue);
+      this.translate.use(this.langStoreValue);
+
+      //jjg aquí se maneja el cambio desde el componente header
+      this.languageService.getLanguageChangeSubject().subscribe(lang => {
+        this.translate.use(lang);
+      });
+
+      //this.setLanguage('Spanish','es', 'assets/images/flags/spain.jpg');
+
+      this.countryName = 'Spanish';
+      this.flagvalue = 'assets/images/flags/spain.jpg';
+      this.langStoreValue = 'es';
+      this.languageService.setLanguage('es');
+
       //console.log('ngOnInit()');
       const codigo = this.route.snapshot.queryParamMap.get('key');
 
@@ -113,13 +162,13 @@ export class CompleteclimaaloneComponent implements OnInit {
                     this.getClima();
 
                 } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Aviso',
-                        text: 'La encuesta ya fue respondida.',
-                        timer: 3000,
-                        showConfirmButton: false
-                        });
+                  Swal.fire({
+                      icon: 'warning',
+                      title: 'Aviso',
+                      text: this.translate.instant('MENUITEMS.ALONE.NOTVALID'),
+                      timer: 3000,
+                      showConfirmButton: false
+                    });
                 }
             }
 
@@ -139,42 +188,66 @@ export class CompleteclimaaloneComponent implements OnInit {
     }
 
     public getClima(): void {
-        this.organizacionService.getPreguntasClima(this.idFlujo).then((ris)=> {
-           //console.log(ris.data[0]);
+  this.organizacionService.getPreguntasClimaGF(this.idFlujo, this.idEmpleado).then((ris) => {
+    if (ris.data[0]) {
+      this.quiz = ris.data[0];
+      this.nombreClima = this.quiz.Nombre;
+      this.nombreOrganizacion = this.quiz.nombre_organizacion_oficial;
 
-            if(ris.data[0]){
-               //console.log('entra risx..');
-                
-                this.quiz = ris.data[0];
-                this.nombreClima = this.quiz.Nombre;
-                this.nombreOrganizacion = this.quiz.NombreOrganizacion;
-               //console.log('this.quiz::: ', this.quiz);
-                this.formConfig = {
-                  
-                  ...this.quiz,
-                  series: [...this.quiz.series],
-                  // flatten de todos los fields para que formBuilderService los vea:
-                  fields: this.quiz.series.reduce((all:any, serie:any) => all.concat(serie.fields), [])
-                };
+      console.log('this.quiz::: ', this.quiz);
 
-                  const datasUpdate: any = {
-                    "IdEncuestaEmpleado": this.idEncuestaEmpleado,
-                    "Estado": 'Iniciada',
-                    "FechaInicio": new Date,
-                    "FechaFinalizacion": null
-                  };
-                  this.updateClimaEncuesta(datasUpdate);
-                
-            }
-        }).catch((err)=> {
-            console.error(err);
-        })
+      // 🔹 aplanamos todos los series de todos los GranFactores
+      const allSeries = this.quiz.GranFactores.reduce(
+        (acc: any[], gf: any) => acc.concat(gf.series || []),
+        []
+      );
+
+      // 🔹 aplanamos todos los fields de todos los series
+      const allFields = allSeries.reduce(
+        (acc: any[], serie: any) => acc.concat(serie.fields || []),
+        []
+      );
+
+      this.formConfig = {
+        ...this.quiz,
+        GranFactores: this.quiz.GranFactores, // mantenemos la jerarquía para la vista
+        series: allSeries,                    // por compatibilidad si en algún lado sigues usando series planas
+        fields: allFields                     // flatten para que el FormBuilderService genere los controles
+      };
+
+      // Actualizar estado de encuesta
+      const datasUpdate: any = {
+        "IdEncuestaEmpleado": this.idEncuestaEmpleado,
+        "Estado": 'Iniciada',
+        "FechaInicio": new Date(),
+        "FechaFinalizacion": null
+      };
+      this.updateClimaEncuesta(datasUpdate);
     }
+  }).catch((err) => {
+    console.error(err);
+  });
+}
+
 
     public updateClimaEncuesta(data:any): void {
         
 
           this.organizacionService.updateClimaEncuesta(data);
+    }
+
+     setLanguage(text: string, lang: string, flag: string) {
+
+      console.log('text: ' + text + ' lang: ' + lang + ' flag: ' + flag);
+      this.countryName = text;
+      this.flagvalue = flag;
+      this.langStoreValue = lang;
+      this.languageService.setLanguage(lang);
+      
+      if (lang) {
+        this.dynamicFormComponent.translateRadioOptionLabels(this.dynamicFormComponent.formConfig, lang);
+      }
+
     }
 
 

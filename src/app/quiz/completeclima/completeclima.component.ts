@@ -58,6 +58,7 @@ export class CompleteClimaComponent implements OnInit {
     endDate: ' ',
     estado:1,
     estadoEnvio: ' ',
+    granFactores:[],
     series: [],
     fields: [
    
@@ -105,721 +106,721 @@ export class CompleteClimaComponent implements OnInit {
   public id_card = 0;
   public title_card = '';
   public quiz: any = {
-    "id": 22,
-    "idOrganization": 1,
-    "contestadas": 0,
-    "totalEncuestas": 0,
-    "pendientes": 0,
-    "totalEmpleados": 0,
-    "avatarSrc": "https://i0.wp.com/imgs.hipertextual.com/wp-content/uploads/2021/11/ovnis.jpg?fit=1600%2C967&quality=70&strip=all&ssl=1",
-    "title": "OTRO CLIMA",
-    "subtitle": "JUSTLINK",
-    "imageSrc1": "",
-    "content": "AL SUR COMO A 10 GRADOS, DEBE SER UN SATELITE.",
-    "score": 0,
-    "completed": false,
-    "startDate": "",
-    "endDate": "",
-    "estado": 1,
-    "series": [
-        {
-            "Id": 44,
+    "Id": 65,
+    "IdOrganizacion": 4,
+    "NombreOrganizacion": "CATAR-SYS",
+    "nombre_organizacion_oficial": "CATAR-SYS",
+    "Nombre": "TRANSLATE TO LOAD FILE TEST",
+    "Objetivo": "A test to validate translates on climate excel files upload.",
+    "FechaInicio": "2025-01-01",
+    "FechaFin": "2025-01-01",
+    "Frecuencia": "ANUAL",
+    "MetodoAplicacion": "Likert",
+    "EstimadoMinutos": 60,
+    "Anonimato": true,
+    "FechaCreacion": "2025-07-18T06:25:19.590",
+    "Imagen1Src": "asdf",
+    "Imagen2Src": "",
+    "Estado": 1,
+    "estado_envio": "Creado",
+    "estadisticas_envio": "{\"total\":7,\"total_creadas\":0,\"total_enviadas\":7,\"total_iniciadas\":0,\"total_contestadas\":7,\"total_error\":0,\"porcentaje\":100.0,\"total_empleados_activos\":31}",
+    "granFactores": [
+      {
+        "Id": 1,
+        "value": "gfactor_1",
+        "label": "Gran Factor 1",
+        "desc": "Primer gran factor solo para empleados del interior.",
+        "FechaCreacion": "2025-08-05T03:30:25.237",
+        "series": [
+          {
+            "Id": 149,
             "value": "serie_0",
-            "label": "COMUNICACION ORGANIZACIONAL",
+            "label": "FUNCTIONALITY",
             "desc": "na",
             "score": 0,
-            "FechaCreacion": "2025-04-28T01:45:23.393",
+            "FechaCreacion": "2025-07-18T06:51:24.967",
             "fields": [
-                {
-                    "Id": 96,
-                    "type": "radio",
-                    "name": "p_38411",
-                    "label": "¿Recibes la información necesaria para realizar tu trabajo?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 97,
-                    "type": "radio",
-                    "name": "p_99732",
-                    "label": "¿La comunicación entre departamentos es efectiva?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 98,
-                    "type": "radio",
-                    "name": "p_85842",
-                    "label": "¿Tus superiores comunican claramente las expectativas?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 99,
-                    "type": "radio",
-                    "name": "p_5476",
-                    "label": "¿Tienes oportunidad de expresar tus ideas en tu equipo?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 100,
-                    "type": "radio",
-                    "name": "p_12288",
-                    "label": "¿La retroalimentación que recibes es clara y útil?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                }
+              {
+                "Id": 556,
+                "type": "radio",
+                "name": "rad_2",
+                "label": "The system covers all the tasks I need to perform in my daily work.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 557,
+                "type": "radio",
+                "name": "rad_3",
+                "label": "The available features behave exactly as described in the documentation.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 558,
+                "type": "radio",
+                "name": "rad_4",
+                "label": "I can complete my processes without having to resort to alternative solutions or \"shortcuts.\"",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 559,
+                "type": "radio",
+                "name": "rad_5",
+                "label": "Integration between the different modules or screens is smooth and consistent.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 560,
+                "type": "radio",
+                "name": "rad_6",
+                "label": "Updates provide useful improvements without removing features I use.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 561,
+                "type": "iatext",
+                "name": "iatxt_7",
+                "label": "Write a personal comment about the FUNCTIONALITY of the system.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [],
+                "is_active": 1
+              }
             ]
-        },
-        {
-            "Id": 45,
+          },
+          {
+            "Id": 150,
             "value": "serie_1",
-            "label": "LIDERAZGO Y GESTION",
+            "label": "RELIABILITY",
             "desc": "na",
             "score": 0,
-            "FechaCreacion": "2025-04-28T01:45:23.957",
+            "FechaCreacion": "2025-07-18T06:51:26.610",
             "fields": [
-                {
-                    "Id": 101,
-                    "type": "radio",
-                    "name": "p_34083",
-                    "label": "¿Tu jefe inmediato te apoya en la resolución de problemas?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 102,
-                    "type": "radio",
-                    "name": "p_65378",
-                    "label": "¿Recibes reconocimiento por tu trabajo?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 103,
-                    "type": "radio",
-                    "name": "p_41163",
-                    "label": "¿Tu líder actúa con equidad ante situaciones similares?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 104,
-                    "type": "radio",
-                    "name": "p_94546",
-                    "label": "¿Te sientes valorado por tu jefe inmediato?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 105,
-                    "type": "radio",
-                    "name": "p_50750",
-                    "label": "¿Tu supervisor da el ejemplo con su conducta?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                }
+              {
+                "Id": 562,
+                "type": "radio",
+                "name": "rad_9",
+                "label": "The application rarely crashes or encounters critical errors.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 563,
+                "type": "radio",
+                "name": "rad_10",
+                "label": "The data I enter is saved correctly without loss or corruption.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 564,
+                "type": "radio",
+                "name": "rad_11",
+                "label": "When a failure occurs, the system recovers the information or resumes operation without issues.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 565,
+                "type": "radio",
+                "name": "rad_12",
+                "label": "he system's response speed remains stable even during peak hours.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 566,
+                "type": "radio",
+                "name": "rad_13",
+                "label": "Notifications or error messages are clear and allow me to continue working quickly.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 567,
+                "type": "iatext",
+                "name": "iatxt_14",
+                "label": "Write a personal comment about the RELIABILITY of the system.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [],
+                "is_active": 1
+              }
             ]
-        },
-        {
-            "Id": 46,
+          }
+        ]
+      },
+      {
+        "Id": 2,
+        "value": "gfactor_2",
+        "label": "Gran Factor 2",
+        "desc": "Segundo gran factor para todos los empleados.",
+        "FechaCreacion": "2025-08-05T03:31:19.973",
+        "series": [
+          {
+            "Id": 151,
             "value": "serie_2",
-            "label": "CONDICIONES DEL ENTORNO LABORAL",
+            "label": "USABILITY",
             "desc": "na",
             "score": 0,
-            "FechaCreacion": "2025-04-28T01:45:24.497",
+            "FechaCreacion": "2025-07-18T06:51:28.193",
             "fields": [
-                {
-                    "Id": 106,
-                    "type": "radio",
-                    "name": "p_57702",
-                    "label": "¿Tu espacio de trabajo es cómodo y seguro?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 107,
-                    "type": "radio",
-                    "name": "p_54666",
-                    "label": "¿Cuentas con los recursos necesarios para trabajar eficientemente?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 108,
-                    "type": "radio",
-                    "name": "p_26455",
-                    "label": "¿Las herramientas de trabajo están en buen estado?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 109,
-                    "type": "radio",
-                    "name": "p_32014",
-                    "label": "¿La carga de trabajo es adecuada a tus capacidades?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 110,
-                    "type": "radio",
-                    "name": "p_66079",
-                    "label": "¿El ambiente físico (iluminación, ruido, temperatura) es apropiado?",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                },
-                {
-                    "Id": 111,
-                    "type": "radio",
-                    "name": "p_50727",
-                    "label": "PREGUNTA EXTRA!!",
-                    "required": false,
-                    "score": 0,
-                    "min": 0,
-                    "max": 0,
-                    "value_correct": "",
-                    "is_random": false,
-                    "file_type": "",
-                    "serie": "",
-                    "options": [
-                        {
-                            "value": "opt_1",
-                            "label": "TOTALMENTE DE ACUERDO",
-                            "name": "opt_1",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_2",
-                            "label": "DE ACUERDO",
-                            "name": "opt_2",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_3",
-                            "label": "EN DESACUERDO",
-                            "name": "opt_3",
-                            "is_correct": false
-                        },
-                        {
-                            "value": "opt_4",
-                            "label": "TOTALMENTE EN DESACUERDO",
-                            "name": "opt_4",
-                            "is_correct": false
-                        }
-                    ],
-                    "is_active": 1
-                }
+              {
+                "Id": 568,
+                "type": "radio",
+                "name": "rad_16",
+                "label": "The interface is intuitive and I can find the options I need without difficulty.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 569,
+                "type": "radio",
+                "name": "rad_17",
+                "label": "Texts, icons, and buttons are clear and understandable.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 570,
+                "type": "radio",
+                "name": "rad_18",
+                "label": "It is easy to learn how to use the system without extensive training.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 571,
+                "type": "radio",
+                "name": "rad_19",
+                "label": "Workflows require the minimum number of steps possible to complete a task.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              },
+              {
+                "Id": 572,
+                "type": "radio",
+                "name": "rad_20",
+                "label": "I can customize the view (e.g., filters or columns) according to my preferences without complications.",
+                "required": false,
+                "score": 0,
+                "min": 0,
+                "max": 0,
+                "value_correct": "",
+                "is_random": false,
+                "file_type": "",
+                "serie": "",
+                "options": [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
+                "is_active": 1
+              }
             ]
-        }
-    ],
-    "fields": [],
-    "estadoEnvio": "No procesado",
-    "estadisticasEnvio": {
-        "total": 0,
-        "total_creadas": 0,
-        "total_enviadas": 0,
-        "total_iniciadas": 0,
-        "total_contestadas": 0,
-        "total_error": 0,
-        "total_empleados_activos": 35
-    }
+          }
+        ]
+      }
+    ]
   };
 
   constructor(private fb: UntypedFormBuilder)

@@ -1,5 +1,5 @@
 <div>
-  <h2 mat-dialog-title>Crear Nuevo Clima Laboral</h2>
+  <h2 mat-dialog-title>{{'MENUITEMS.QUIZ.CREATE' | translate}}</h2>
   <div mat-dialog-content>
 <!--
     <mat-tab-group>
@@ -14,7 +14,7 @@
           
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
                 <mat-form-field appearance="fill" class="w-100">
-                  <mat-label>Organización</mat-label>
+                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
                   <mat-select formControlName="IdOrganization" (selectionChange)="onOrganizationChange($event)">
                     <mat-option
                       *ngFor="let organization of dataSourceOrganizations" 
@@ -29,10 +29,10 @@
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="fill">
-                  <mat-label>Seleccione el tipo de Evaluación</mat-label>
+                  <mat-label>{{'MENUITEMS.QUIZ.SELECTTYPE' | translate}}</mat-label>
                   <mat-select formControlName="IdProof" >
 
-                    <mat-option value="1">Escala de Likert</mat-option>
+                    <mat-option value="1">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
 
 
                   </mat-select>
@@ -43,10 +43,10 @@
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">          
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="outline">
-                <mat-label>Nombre del clima</mat-label>
+                <mat-label>{{'MENUITEMS.QUIZ.CLIMATENAME' | translate}}</mat-label>
                 <input matInput value={{qname}} formControlName="quizName" required>
                 <mat-error *ngIf="addCusForm.controls?.['quizName']?.hasError('required')">
-                  Por favor ingrese el nombre del clima!
+                  {{'MENUITEMS.QUIZ.PLEASEINSERTCLIMATE' | translate}}
                 </mat-error>
                 </mat-form-field>
               </div>
@@ -59,10 +59,10 @@
             <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2"> 
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="outline">
-                  <mat-label>Descripción</mat-label>
+                  <mat-label>{{'MENUITEMS.QUIZ.DESCRIPTION' | translate}}</mat-label>
                   <input matInput value={{qdesc}} formControlName="quizDesc" required>
                   <mat-error *ngIf="addCusForm.controls?.['quizDesc']?.hasError('required')">
-                    Por favor ingrese una descripción
+                    {{'MENUITEMS.QUIZ.PLEASEINSERTDESC' | translate}}
                   </mat-error>
                 </mat-form-field>
               </div>
@@ -71,10 +71,10 @@
             <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="outline">
-                  <mat-label>Url Imágen</mat-label>
+                  <mat-label>{{'MENUITEMS.QUIZ.URLIMAGE' | translate}}</mat-label>
                   <input matInput formControlName="urlImg" required>
                   <mat-error *ngIf="addCusForm.controls?.['urlImg']?.hasError('required')">
-                    Por favor ingrese una URL de imágen.
+                    {{'MENUITEMS.QUIZ.PLEASEINSERTIMAGE' | translate}}
                   </mat-error>
                 </mat-form-field>
               </div>
@@ -123,8 +123,8 @@
     
           
           <div class="btn-sec">
-            <button type="submit" class="btn-space" mat-raised-button color="primary">Guardar</button>
-            <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+            <button type="submit" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVE' | translate}}</button>
+            <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CANCEL' | translate}}</button>
           </div>
         </form>
 

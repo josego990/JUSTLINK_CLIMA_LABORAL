@@ -12,6 +12,7 @@ export interface Quiz {
   endDate: string;
   series: Serie[];
   fields: Field[];
+  granFactores: GFactor[];
   contestadas: number;
   totalEncuestas: number;
   pendientes: number;
@@ -60,6 +61,8 @@ export interface FieldOption {
   is_correct: boolean;
 }
 
+
+
 export interface Serie {
   Id: number;
   id_flujo: number;
@@ -70,10 +73,25 @@ export interface Serie {
   score: number;
 }
 
+export interface GFactor {
+  Id: number;
+  id_flujo: number;
+  value: string;
+  label: string;
+  desc: string;
+  series: Serie[];
+}
+
 export interface QuizBank {
   category: string;
   unit: number;
   fields: Field[];
+}
+
+export interface GFactorsDataSend {
+  gfactores: GFactor[];
+  idFlujo: number;
+  
 }
 
 export interface SeriesDataSend {
@@ -81,5 +99,6 @@ export interface SeriesDataSend {
   ponderation_rest: number;
   ponderation_total: number;
   idFlujo: number;
-  
+  idGFactor: number;
+  gfactores: any[];
 }

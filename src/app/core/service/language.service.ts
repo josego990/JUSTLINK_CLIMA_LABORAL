@@ -34,6 +34,6 @@ export class LanguageService {
   }
   //jjg
   getLanguageChangeSubject() {
-    return this.languageChangeSubject.asObservable();
+    return this.languageChangeSubject.asObservable(); 
   }
 }

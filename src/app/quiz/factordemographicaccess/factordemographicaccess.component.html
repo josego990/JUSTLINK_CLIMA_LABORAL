@@ -1,0 +1,129 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <!-- breadcrumb -->
+      <app-breadcrumb [title]="'MENUITEMS.QUIZ.GFACCESSBYDEMOGRAPHIC' | translate" [items]="['Home']" [active_item]="'Factor Access'"></app-breadcrumb>
+    </div>
+    <div class="row" style="margin-left: 4px;">
+      <div class="col-md-4">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Organización</mat-label>
+          <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
+            <mat-option
+              
+              *ngFor="let organization of dataSourceOrganizations"
+              [value]="organization.Id"
+            >
+              {{ organization.Nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+      </div>
+      <div class="col-md-4">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Climas {{nombreOrganizacion}}</mat-label>
+          <mat-select (selectionChange)="onClimaChange($event.value)">
+            <mat-option
+              *ngFor="let climas of dataSourceClimas"
+              [value]="climas.Id"
+            >
+              {{ climas.Nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+      </div>
+
+      <div class="restricciones-wrapper">
+        <ng-container *ngIf="loading">
+          <div class="center">
+            <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="!loading && error">
+          <div class="error">{{ error }}</div>
+        </ng-container>
+
+        <ng-container *ngIf="!loading && !error && data">
+          <mat-accordion multi>
+            <mat-expansion-panel [expanded]="true" *ngFor="let gf of data.GranFactores; trackBy: trackByGF">
+              <mat-expansion-panel-header >
+                <mat-panel-title>
+                  {{ gf.Etiqueta }}
+                </mat-panel-title>
+                <mat-panel-description class="gf-sub">
+                  {{ gf.Descripcion || ' ' }}
+                  <span class="dot"></span>
+                  <span class="muted">Restringidos: {{ getRestrCountGF(gf) }}</span>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+             
+               Campos demográficos
+              <div  class="cd-grid ">
+                
+                <mat-card style="border: 1px solid #ccc; border-radius: 8px;"  
+                    *ngFor="let cd of gf.CamposDemograficos; trackBy: trackByCD">
+                  <mat-card-header class="cd-header">
+                    <mat-card-title>{{ cd.NombreCampo }}</mat-card-title>
+                    <mat-card-subtitle style="color: #91a1a4">
+                      Tipo: {{ cd.TipoDato }}
+                    </mat-card-subtitle>
+                    
+                  </mat-card-header>
+
+                   
+                  <mat-card-content 
+                      *ngIf="cd.Valores?.length; else noValores" class="table-responsive">
+                    <table class="table">
+                      <tbody>
+                        <tr *ngFor="let v of cd.Valores; trackBy: trackByVal">
+                          <td>
+                            <strong>{{ v.Valor }}</strong>
+                          </td>
+                          <td class="text-end">
+                            <mat-slide-toggle
+                              [checked]="!v.Restringido"
+                              (change)="onToggle(gf, cd, v, $event.checked)"
+                              [disabled]="v._saving">
+                              <span class="muted">{{ !v.Restringido ? 'Permitido' : 'Restringido' }}</span>
+                            </mat-slide-toggle>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </mat-card-content >
+
+                  <ng-template #noValores>
+                    <div style="padding: 10px;" class="muted small">Sin valores registrados para este campo.</div>
+                  </ng-template>
+                </mat-card >
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
+        </ng-container>
+      </div>
+
+
+
+    
+
+    </div>
+
+  
+
+   
+
+
+
+
+
+    
+
+
+
+
+  </div>
+</section>

@@ -1,0 +1,50 @@
+<div >
+    <h1 mat-dialog-title>Agregar Gran Factor</h1>
+    <form id="form_textarea" [formGroup]="addSerieForm!" style="margin-left: 20px; margin-right: 20px;">
+      
+
+      <div class="row">
+        <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="outline">
+              <mat-label>Nombre del Gran Factor</mat-label>
+              <input matInput formControlName="iname" required>
+              <mat-error *ngIf="addSerieForm.controls?.['iname']?.hasError('required')">
+                Por favor ingrese el nombre para el Gran Factor
+              </mat-error>
+            </mat-form-field>
+        </div>
+        <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 mb-2">
+          <mat-form-field class="example-full-width" appearance="outline">
+            <mat-label>Descripción del Gran Factor</mat-label>
+            <input matInput formControlName="idesc" required>
+            <mat-error *ngIf="addSerieForm.controls?.['idesc']?.hasError('required')">
+              Por favor ingrese descripción para el Gran Factor
+            </mat-error>
+          </mat-form-field> 
+        </div>
+      </div>
+      <!-- 
+      <mat-form-field class="example-full-width" appearance="outline">
+        <mat-label>Ponderación (Un valor del 1 al {{ponderacion_rest}} para un total de {{ponderacion}} puntos)</mat-label>
+        <input matInput [value]="field.label" formControlName="iscore" [readonly]="ponderacion_rest === 0" required>
+        <mat-error *ngIf="addSerieForm.controls?.['iscore']?.hasError('required')">
+          Por favor ingrese la ponderación del Item
+        </mat-error>
+        <mat-error *ngIf="addSerieForm.controls?.['iscore']?.hasError('ponderacionExcede')"> 
+          La ponderación no puede superar {{ ponderacion_rest }}
+        </mat-error>
+      </mat-form-field>
+      -->
+      <div mat-dialog-actions>
+        <button class="btn-space" mat-raised-button color="primary" style="border-radius: 5px;" (click)="guardaGFactor()">Guardar</button>
+        <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cerrar</button>
+      </div>
+    </form>
+    <mat-progress-spinner
+      *ngIf="loading"
+      mode="indeterminate"
+      diameter="40"
+      color="primary"
+      style="margin: auto; display: block;">
+    </mat-progress-spinner>
+  </div>

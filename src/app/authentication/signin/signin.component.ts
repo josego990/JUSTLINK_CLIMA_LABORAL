@@ -10,12 +10,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { OrganizacionService } from 'app/organization/services/organizacion.service';
 import Swal from 'sweetalert2';
 
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
 @Component({
     selector: 'app-signin',
     templateUrl: './signin.component.html',
     styleUrls: ['./signin.component.scss'],
     imports: [
-        FormsModule,
+        FormsModule, TranslateModule,
         ReactiveFormsModule,
         MatFormFieldModule,
         MatInputModule,
@@ -31,7 +35,10 @@ export class SigninComponent
   loading = false;
   error = '';
   hide = true;
+  langStoreValue?: string;
+
   constructor(
+    private languageService: LanguageService,private translate: TranslateService,
     private organizationService: OrganizacionService,
     private formBuilder: UntypedFormBuilder,
     private route: ActivatedRoute,
@@ -42,9 +49,20 @@ export class SigninComponent
   }
 
   ngOnInit() {
+
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
+
     this.authForm = this.formBuilder.group({
-      username: ['josego', Validators.required],
-      password: ['30749', Validators.required],
+      username: ['josego', Validators.required],//borrar en producción
+      password: ['30749', Validators.required], //borrar en producción
     });
   }
   get f() {
@@ -80,8 +98,8 @@ export class SigninComponent
               // credenciales incorrectas
               this.error = 'Invalid Login';
               Swal.fire({
-                title: 'Usuario o contraseña inválido',
-                text: 'No se ingresaron credenciales válidas.',
+                title: this.translate.instant('MENUITEMS.LOGIN.INVALIDACCESS'),
+                text: this.translate.instant('MENUITEMS.LOGIN.INVALIDACCESSMSG'),
                 icon: 'warning',
               }); 
             }

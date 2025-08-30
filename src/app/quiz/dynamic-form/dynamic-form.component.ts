@@ -2,23 +2,15 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormBuilderService } from '../form-builder.service';
 
 import Swal from 'sweetalert2';
-import { Quiz } from './../models/quiz-models';
 
-import { FormBuilder, FormGroup, Validators, FormsModule,
-  ReactiveFormsModule, UntypedFormGroup, UntypedFormBuilder,
+import { FormGroup, FormsModule,
+  ReactiveFormsModule,
  } from '@angular/forms';
 import {
-  MatDialog,
-  MatDialogConfig,
-  //MatDialogRef,
-} from "@angular/material/dialog";
-import {
-  MAT_DATE_LOCALE,
   MatOptionModule,
   MatRippleModule,
 } from '@angular/material/core';
 
-import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -28,15 +20,17 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { OrganizacionService } from 'app/organization/services/organizacion.service';
-import { relativeTimeThreshold } from 'moment';
+
+import { LanguageService } from '@core'; 
+import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core'; 
 
 @Component({
   selector: 'app-dynamic-form',
@@ -45,7 +39,7 @@ import { relativeTimeThreshold } from 'moment';
     MatDialogModule,
     MatTableModule,
     MatIconModule,
-    MatExpansionModule,
+    MatExpansionModule,TranslateModule,
     FormsModule,
     ReactiveFormsModule,
     MatDividerModule,
@@ -65,96 +59,118 @@ import { relativeTimeThreshold } from 'moment';
 
     ],
   template: `
-    <div class="body"  >
-      <div class="card" style="padding: 20px">
-      
+    <div class="body">
+  <div class="card" style="padding: 20px">
 
-      <div *ngFor="let serie of formConfig!.series">
-        <mat-card class="mb-4">
-          <mat-card-header>
-            <mat-card-title>
-              Factor {{ serie.label }}
-            </mat-card-title>
-            <mat-card-subtitle>
-              {{ serie.desc }}
-            </mat-card-subtitle>
-          </mat-card-header>
+    <!-- Un único form para todo -->
+    <form [formGroup]="form">
 
-          <mat-card-content>
-            <ng-container *ngFor="let field of serie.fields; let i = index">
-              <form [formGroup]="form" class="mb-3">
+      <!-- 🔹 Iteramos Gran Factores -->
+      <div *ngFor="let gf of formConfig!.GranFactores">
+        <!-- Título del Gran Factor -->
+        <h2 style="margin: 20px 0; font-weight: 600;">
+          {{ gf.Etiqueta }}
+        </h2>
+
+        <!-- 🔹 Iteramos Factores (series) -->
+        <div *ngFor="let serie of gf.series">
+          <mat-card class="mb-4">
+            <mat-card-header>
+              <mat-card-title>
+                Factor {{ serie.label }}
+              </mat-card-title>
+            </mat-card-header>
+
+            <mat-card-content>
+              <!-- 🔹 Iteramos Preguntas (fields) -->
+              <ng-container *ngFor="let field of serie.fields; let i = index">
+
                 <!-- Tipo Text -->
                 <ng-container *ngIf="field.type === 'text'">
                   <mat-form-field appearance="outline" class="w-100">
                     <mat-label>{{ field.label }}</mat-label>
                     <input matInput [formControlName]="field.name" required>
                     <mat-error *ngIf="form.get(field.name)?.hasError('required')">
-                      {{ field.label }} es requerido
+                      {{ field.label }} {{'MENUITEMS.ALONE.REQUIRED' | translate}}
                     </mat-error>
                   </mat-form-field>
                 </ng-container>
 
                 <!-- Tipo Text con análisis IA -->
                 <ng-container *ngIf="field.type === 'iatext'">
-                  <mat-form-field appearance="outline" class="w-100">
+                  <mat-form-field appearance="outline" class="w-100" style="margin-top:10px">
                     <mat-label>{{ field.label }}</mat-label>
                     <input matInput [formControlName]="field.name" required>
                     <mat-error *ngIf="form.get(field.name)?.hasError('required')">
-                      {{ field.label }} es requerido
+                      {{ field.label }} {{'MENUITEMS.ALONE.REQUIRED' | translate}}
                     </mat-error>
                   </mat-form-field>
                 </ng-container>
 
                 <!-- Tipo Radio -->
-                <ng-container  *ngIf="field.type === 'radio'">
+                <ng-container *ngIf="field.type === 'radio'">
                   <label class="d-block mb-2" style="font-size: 20px; margin-top: 20px">
-                  {{ i + 1 }}.- {{ field.label }} 
+                    {{ i + 1 }}.- {{ field.label }}
                   </label>
                   <mat-radio-group [formControlName]="field.name">
                     <mat-radio-button
                       *ngFor="let option of field.options"
                       [value]="option.value"
-                      class="mr-3"
-                    >
-                       {{ option.label }}
+                      class="mr-3">
+                      {{ option.label }}
                     </mat-radio-button>
                   </mat-radio-group>
                   <mat-error *ngIf="form.get(field.name)?.hasError('required')">
-                    <span style="color: rgb(225, 9, 9)">Campo requerido</span>
+                    <span style="color: rgb(225, 9, 9)">
+                      {{'MENUITEMS.ALONE.REQUIRED' | translate}}
+                    </span>
                   </mat-error>
                 </ng-container>
 
-                 <!-- Tipo Slider -->
+                <!-- Tipo Slider -->
                 <ng-container *ngIf="field.type === 'slider'">
-                  <mat-label style="font-size:20px;margin-top:20px" >{{ field.label }}</mat-label>
+                  <mat-label style="font-size:20px;margin-top:20px">{{ field.label }}</mat-label>
                   <div>
-                    <input style="width:100%" *ngIf="field.type === 'slider'" [formControlName]="field.name" type="range" [min]="field.min" [max]="field.max" />
+                    <input style="width:100%"
+                           [formControlName]="field.name"
+                           type="range"
+                           [min]="field.min"
+                           [max]="field.max" />
                   </div>
                   <div>
-                    <label style="font-size:20px" *ngIf="field.type === 'slider'">{{ form.get(field.name)?.value }}</label>
+                    <label style="font-size:20px">{{ form.get(field.name)?.value }}</label>
                   </div>
-                  <!-- Agrega un mensaje de error si el campo es requerido -->
                   <mat-error *ngIf="form.get(field.name)?.hasError('required')">
-                    {{ field.label }} es requerido
+                    {{ field.label }} {{'MENUITEMS.ALONE.REQUIRED' | translate}}
                   </mat-error>
-                  <div style="background-color: cadetblue;widht:100%;height:1px" ></div>
+                  <div style="background-color: cadetblue;width:100%;height:1px"></div>
                 </ng-container>
 
-              </form>
-              <mat-divider></mat-divider>
-            </ng-container>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-        <!-- Botón de envío -->
-        <div style="margin-top:20px">
-          <button type="submit" [disabled]="form.invalid" (click)="onSubmit()" mat-raised-button color="primary">
-            Enviar
-          </button>
+                <mat-divider></mat-divider>
+              </ng-container>
+            </mat-card-content>
+          </mat-card>
         </div>
       </div>
-    </div>
+
+      <!-- Botón de envío -->
+      <div style="margin-top:20px">
+        <button type="submit"
+                [disabled]="form.invalid"
+                (click)="onSubmit()"
+                mat-raised-button
+                color="primary">
+          {{'MENUITEMS.ALONE.SEND' | translate}}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+
+
   `,
   styles: [`
     .card {
@@ -177,17 +193,39 @@ export class DynamicFormComponent implements OnInit {
   @Input() formConfig!: any | null;
   @Input() idEmpleado!: number;
   @Input() idEncuestaEmpleado!: number;
+  @Input() lang!: string;
 
   form!: FormGroup;
 
   idFlujo = 0;
 
+  langStoreValue?: any;
+
   constructor(private formBuilderService: FormBuilderService,
+    public languageService: LanguageService, 
+    private translate: TranslateService,
     private organizacionService: OrganizacionService) {}
 
   ngOnInit(): void {
+
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+    //console.log('this.langStoreValue:: ', this.langStoreValue);
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
+
+    this.langStoreValue = this.lang;
+
+    console.log('this.lang', this.lang);
+    if(this.lang === "en"){
+      //this.translateRadioOptionLabels(this.formConfig, 'es');
+    }
+    //
+
     this.form = this.formBuilderService.buildForm(this.formConfig!);
-   //console.log('this.formConfig:: ', this.formConfig);
+    console.log('this.formConfig:: ', this.formConfig);
    //console.log('this.idEmpleado', this.idEmpleado);
    //console.log('this.idEncuestaEmpleado', this.idEncuestaEmpleado);
     this.idFlujo = this.formConfig!.Id;
@@ -195,6 +233,45 @@ export class DynamicFormComponent implements OnInit {
    //console.log('this.idFlujo', this.idFlujo);
   }
 
+  translateRadioOptionLabels(config: any, lang: string): void {
+    this.lang = lang;
+    this.langStoreValue = this.lang;
+
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+    //console.log('this.langStoreValue:: ', this.langStoreValue);
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
+
+    const translationMap: { [key: string]: string } = {
+      'TOTALMENTE DE ACUERDO': 'TOTALLY AGREE',
+      'DE ACUERDO': 'AGREE',
+      'EN DESACUERDO': 'DISAGREE',
+      'TOTALMENTE EN DESACUERDO': 'TOTALLY DISAGREE'
+    };
+
+    const reverseMap = Object.fromEntries(
+      Object.entries(translationMap).map(([es, en]) => [en.toUpperCase(), es])
+    );
+
+    if (!config?.fields) return;
+
+    config.fields.forEach((field: any) => {
+      if (field.type === 'radio' && Array.isArray(field.options)) {
+        field.options.forEach((option: any) => {
+          const label = option.label?.trim().toUpperCase();
+
+          if (lang === 'en' && translationMap[label]) {
+            option.label = translationMap[label];
+          } else if (lang === 'es' && reverseMap[label]) {
+            option.label = reverseMap[label];
+          }
+        });
+      }
+    });
+  }
   
   onSubmit() {
     if (this.form.valid) {
@@ -228,8 +305,8 @@ export class DynamicFormComponent implements OnInit {
      //console.log('this.idEmpleado',this.idEmpleado);
       
       Swal.fire({
-        title: 'Guardando..',
-        html: 'Se están guardando los datos, por favor espera ',
+        title: this.translate.instant('MENUITEMS.DYNAMIC.UPLOAD'),
+        html: this.translate.instant('MENUITEMS.DYNAMIC.SAVING'),
         timerProgressBar: true,
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -254,8 +331,8 @@ export class DynamicFormComponent implements OnInit {
 
           Swal.fire({
             icon: 'success',
-            title: '¡Encuesta enviada!',
-            text: 'Gracias por completar la encuesta.',
+            title: this.translate.instant('MENUITEMS.DYNAMIC.SURVEYSUCCESS'),
+            text: this.translate.instant('MENUITEMS.DYNAMIC.THANKS'),
             timer: 3000,
             showConfirmButton: false
           });
@@ -264,7 +341,7 @@ export class DynamicFormComponent implements OnInit {
       }).catch((err)=>{
         Swal.fire({
           icon: 'error',
-          title: 'Ocurrió un error al guardar las respuestas',
+          title: this.translate.instant('MENUITEMS.DYNAMIC.SURVEYERROR'),
           text: err,
           timer: 3000,
           showConfirmButton: false
@@ -274,8 +351,8 @@ export class DynamicFormComponent implements OnInit {
     } else {
       Swal.fire({
         icon: 'error',
-        title: 'Formulario incompleto',
-        text: 'Por favor, responde todas las preguntas requeridas.',
+        title: this.translate.instant('MENUITEMS.DYNAMIC.INVALIDFORM'),
+        text: this.translate.instant('MENUITEMS.DYNAMIC.INVALIDFORMMESSAGE'),
         timer: 3000,
         showConfirmButton: false
       });
@@ -298,6 +375,24 @@ export class DynamicFormComponent implements OnInit {
         
 
     this.organizacionService.updateClimaEncuesta(data);
+  }
+
+  getSeriesGroupedByGranFactor() {
+  if (!this.formConfig?.series) return [];
+
+  const grupos: { idGranFactor: number; etiqueta: string; series: any[] }[] = [];
+
+  this.formConfig.series.forEach((serie: any) => {
+    let grupo = grupos.find(g => g.idGranFactor === serie.IdGranFactor);
+    if (!grupo) {
+      grupo = { idGranFactor: serie.IdGranFactor, etiqueta: serie.Etiqueta, series: [] };
+      grupos.push(grupo);
+    }
+    grupo.series.push(serie);
+  });
+
+  return grupos;
 }
+
 
 }

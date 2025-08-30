@@ -26,6 +26,11 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
 
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
+
 @Component({
   selector: 'app-demograficos-organizacion',
   templateUrl: './demograficos.component.html',
@@ -46,6 +51,7 @@ import { AuthService } from '@core';
     MatButtonModule,
     MatInputModule,
     CommonModule,
+    TranslateModule,
 ],
 })
 export class CrearDemograficosComponent implements OnInit {
@@ -59,6 +65,8 @@ export class CrearDemograficosComponent implements OnInit {
   public selectedFile = {};
   public isButtonDisabled: boolean = true;
 
+   langStoreValue?: string;
+
   displayedColumns: string[] = [
     'Id',
     'IdOrganizacion',
@@ -71,7 +79,7 @@ export class CrearDemograficosComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,private router: Router,private authService: AuthService,
-    private organizacionService: OrganizacionService,
+    private organizacionService: OrganizacionService,private languageService: LanguageService,private translate: TranslateService,
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -89,6 +97,16 @@ export class CrearDemograficosComponent implements OnInit {
   }
   
   ngOnInit() {
+
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
 
    //console.log('CURRENT USER DESDE EMPLOYEE:: ', this.authService.currentUserValue);
   
@@ -206,18 +224,16 @@ export class CrearDemograficosComponent implements OnInit {
      //console.log(response);
       this.getDemograficosByOrg();
       Swal.fire({
-                  title: 'Realizado',
-                  text:
-                  'Se desactivó el campo.',
+                  title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
+                  text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDDEACTIVATE'),
                   icon: 'success',
                 });      
     })
     .catch((error:any) => {
-      console.error('Error al eliminar empleado:', error);
+      console.error('Error al eliminar campo:', error);
       Swal.fire({
-        title: 'Error!',
-        text:
-        'Ha ocurrido un error al eliminar empleado ' + 'Error: ' + error,
+        title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERROR'),
+        text:  this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERRORMESSAGE') + 'Error: ' + error,
         icon: 'error',
       });
     });
@@ -229,18 +245,16 @@ export class CrearDemograficosComponent implements OnInit {
      //console.log(response);
       this.getDemograficosByOrg();
       Swal.fire({
-                  title: 'Realizado',
-                  text:
-                  'Se activó el campo.',
-                  icon: 'success',
-                });      
+        title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
+        text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDACTIVATE'),
+        icon: 'success',
+      });      
     })
     .catch((error:any) => {
       console.error('Error al activar campo:', error);
       Swal.fire({
-        title: 'Error!',
-        text:
-        'Ha ocurrido un error al activar campo ' + 'Error: ' + error,
+       title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERROR'),
+        text:  this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERRORMESSAGE') + 'Error: ' + error,
         icon: 'error',
       });
     });
@@ -256,18 +270,16 @@ export class CrearDemograficosComponent implements OnInit {
           this.getDemograficosByOrg();
           this.demograficosForm.get('IdOrganizacion')?.setValue('');
           Swal.fire({
-            title: 'Realizado',
-            text:
-            'Se agregó el campo.',
+            title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
+            text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDADDED'),
             icon: 'success',
           });          
         })
         .catch((error:any) => {
           console.error('Error al crear campo:', error.response.data.error);
           Swal.fire({
-            title: 'Error!',
-            text:
-            'Ha ocurrido un error al crear campo ' + 'Error: ' + error.response.data.error,
+           title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERROR'),
+            text:  this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERRORMESSAGE') + 'Error: ' + error,
             icon: 'error',
           });
         });

@@ -87,6 +87,36 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '@core';
+import { relativeTimeThreshold } from 'moment';
+
+import { MatChipInputEvent, MatChipsModule } from '@angular/material/chips';
+
+import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
+
+type Sent = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' | 'MIXED';
+
+interface ComentarioAbierto {
+  IdRespuesta: number;
+  Comentario: string;
+  Sentiment: Sent;
+  Positive?: number;
+  Negative?: number;
+  Neutral?: number;
+  Mixxed?: number;
+  FechaRespuesta?: string;
+}
+
+interface ComentarioPregunta {
+  IdFactor: number;
+  Factor: string;
+  IdPregunta: number;
+  Pregunta: string;
+  ComentariosJSON: ComentarioAbierto[];
+  // calculados:
+  _total?: number;
+  _overall?: Sent;
+  _counts?: Record<Sent, number>;
+}
 
 interface Todo {
   title: string;
@@ -95,37 +125,45 @@ interface Todo {
 }
 
 interface ItemOriginal {
-  IdPregunta: number;
   Factor: string;
   Pregunta: string;
+  IdPregunta?: number;
   total_respuestas: number;
-  total_opt1: number;
-  total_opt2: number;
-  total_opt3: number;
-  total_opt4: number;
-  pct_satisfaccion: number;
+  total_opt1: number; // Muy de acuerdo
+  total_opt2: number; // De acuerdo
+  total_opt3: number; // En desacuerdo
+  total_opt4: number; // Muy en desacuerdo
+  // (opcionales si vinieran del SP)
+  pct_favorable?: number;
+  pct_desfavorable?: number;
+  nsat?: number;
+  mean_0_100?: number;
+  mean_1_4?: number;
 }
 
-interface ItemTransformado extends ItemOriginal {
+export interface ItemTransformado {
+  Pregunta: string;
   pct_opt1: number;
   pct_opt2: number;
   pct_opt3: number;
   pct_opt4: number;
-  pct_insatisfaccion: number;
+  // NUEVO esquema:
+  pctFav: number;   // %Favorable (Top-2)
+  pctDesf: number;  // %Desfavorable (Bottom-2)
+  nsat?: number;    // opcional
+  mean?: number;    // Índice 0–100 (opcional)
 }
 
-interface ResumenFactor {
-  total_respuestas: number;
-  total_opt1: number;
-  total_opt2: number;
-  total_opt3: number;
-  total_opt4: number;
+export interface ResumenFactor {
   pct_opt1: number;
   pct_opt2: number;
   pct_opt3: number;
   pct_opt4: number;
-  pct_satisfaccion: number;
-  pct_insatisfaccion: number;
+  // NUEVO esquema:
+  pctFav: number;
+  pctDesf: number;
+  nsat?: number;
+  mean?: number;
 }
 
 interface FactorGroup {
@@ -133,87 +171,97 @@ interface FactorGroup {
   resumen: ResumenFactor;
 }
 
-type Resultado = Record<string, FactorGroup>;
+export type Resultado = {
+  [factor: string]: {
+    preguntas: ItemTransformado[];
+    resumen: ResumenFactor;
+  };
+};
 
 
-function transformData(data: ItemOriginal[]): Resultado {
+export function transformData(data: ItemOriginal[]): Resultado {
   const out: Resultado = {};
 
-  // 1) Recorremos cada ítem
+  // acumuladores internos por factor (no se devuelven)
+  const acc: Record<string, { t: number; o1: number; o2: number; o3: number; o4: number }> = {};
+
+  // helpers
+  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const safePct = (num: number, den: number) => (den > 0 ? round2((num / den) * 100) : 0);
+  const mean0to100 = (o1: number, o2: number, o3: number, o4: number, t: number) => {
+    if (t <= 0) return 0;
+    const sum03 = (3 * o1) + (2 * o2) + (1 * o3) + (0 * o4);
+    return round2((sum03 / (3 * t)) * 100);
+  };
+
+  // 1) Recorremos cada ítem (pregunta)
   data.forEach(item => {
     const {
       Factor,
+      Pregunta,
       total_respuestas: total,
-      total_opt1,
-      total_opt2,
-      total_opt3,
-      total_opt4,
-      pct_satisfaccion
+      total_opt1, total_opt2, total_opt3, total_opt4
     } = item;
 
-    // calculamos porcentajes por opción
-    const pct_opt1 = parseFloat(((total_opt1 / total) * 100).toFixed(2));
-    const pct_opt2 = parseFloat(((total_opt2 / total) * 100).toFixed(2));
-    const pct_opt3 = parseFloat(((total_opt3 / total) * 100).toFixed(2));
-    const pct_opt4 = parseFloat(((total_opt4 / total) * 100).toFixed(2));
-    const pct_insatisfaccion = parseFloat((100 - pct_satisfaccion).toFixed(2));
+    // % por opción
+    const pct_opt1 = safePct(total_opt1, total);
+    const pct_opt2 = safePct(total_opt2, total);
+    const pct_opt3 = safePct(total_opt3, total);
+    const pct_opt4 = safePct(total_opt4, total);
+
+    // % Favorable / % Desfavorable
+    const pctFav  = item.pct_favorable    ?? safePct(total_opt1 + total_opt2, total);
+    const pctDesf = item.pct_desfavorable ?? safePct(total_opt3 + total_opt4, total);
+
+    const nsat = item.nsat != null ? round2(item.nsat) : round2(pctFav - pctDesf);
+    const mean = item.mean_0_100 != null ? round2(item.mean_0_100)
+                                         : mean0to100(total_opt1, total_opt2, total_opt3, total_opt4, total);
 
     const nuevo: ItemTransformado = {
-      ...item,
-      pct_opt1,
-      pct_opt2,
-      pct_opt3,
-      pct_opt4,
-      pct_insatisfaccion
+      Pregunta,
+      pct_opt1, pct_opt2, pct_opt3, pct_opt4,
+      pctFav, pctDesf,
+      nsat, mean
     };
 
-    // inicializar grupo si no existe
+    // Inicializa grupo si no existe
     if (!out[Factor]) {
       out[Factor] = {
         preguntas: [],
-        resumen: {
-          total_respuestas: 0,
-          total_opt1: 0,
-          total_opt2: 0,
-          total_opt3: 0,
-          total_opt4: 0,
-          pct_opt1: 0,
-          pct_opt2: 0,
-          pct_opt3: 0,
-          pct_opt4: 0,
-          pct_satisfaccion: 0,
-          pct_insatisfaccion: 0
-        }
+        resumen: { pct_opt1: 0, pct_opt2: 0, pct_opt3: 0, pct_opt4: 0, pctFav: 0, pctDesf: 0, nsat: 0, mean: 0 }
       };
+      acc[Factor] = { t: 0, o1: 0, o2: 0, o3: 0, o4: 0 };
     }
 
-    // añadir la pregunta transformada
     out[Factor].preguntas.push(nuevo);
 
-    // acumular totales para el resumen
-    const r = out[Factor].resumen;
-    r.total_respuestas += total;
-    r.total_opt1         += total_opt1;
-    r.total_opt2         += total_opt2;
-    r.total_opt3         += total_opt3;
-    r.total_opt4         += total_opt4;
+    // acumula conteos para el resumen del factor
+    acc[Factor].t  += total;
+    acc[Factor].o1 += total_opt1;
+    acc[Factor].o2 += total_opt2;
+    acc[Factor].o3 += total_opt3;
+    acc[Factor].o4 += total_opt4;
   });
 
-  // 2) Calculamos los porcentajes finales por factor
-  Object.values(out).forEach(({ resumen: r }) => {
-    const t = r.total_respuestas;
-    if (t > 0) {
-      r.pct_opt1 = parseFloat(((r.total_opt1 / t) * 100).toFixed(2));
-      r.pct_opt2 = parseFloat(((r.total_opt2 / t) * 100).toFixed(2));
-      r.pct_opt3 = parseFloat(((r.total_opt3 / t) * 100).toFixed(2));
-      r.pct_opt4 = parseFloat(((r.total_opt4 / t) * 100).toFixed(2));
-      r.pct_satisfaccion    = parseFloat((((r.total_opt1 + r.total_opt2) / t) * 100).toFixed(2));
-      r.pct_insatisfaccion  = parseFloat((100 - r.pct_satisfaccion).toFixed(2));
-    }
+  // 2) Calcula resumen por factor desde los acumulados
+  Object.keys(out).forEach(factor => {
+    const a = acc[factor];
+    const t = a.t;
+    const pct_opt1 = safePct(a.o1, t);
+    const pct_opt2 = safePct(a.o2, t);
+    const pct_opt3 = safePct(a.o3, t);
+    const pct_opt4 = safePct(a.o4, t);
+    const pctFav   = safePct(a.o1 + a.o2, t);
+    const pctDesf  = safePct(a.o3 + a.o4, t);
+    const nsat     = round2(pctFav - pctDesf);
+    const mean     = mean0to100(a.o1, a.o2, a.o3, a.o4, t);
+
+    out[factor].resumen = { pct_opt1, pct_opt2, pct_opt3, pct_opt4, pctFav, pctDesf, nsat, mean };
   });
 
   return out;
-};
+}
+
 
 function agruparPorCampo(seleccionados: string[], campos: {
     IdCampoDemografico: number;
@@ -265,8 +313,8 @@ function agruparPorCampo(seleccionados: string[], campos: {
   styleUrls: ['./dashboard1.component.scss'],
   imports: [
     BreadcrumbComponent,MatFormFieldModule,MatSelectModule,CommonModule,
-    MatButtonModule,TranslateModule,
-    MatMenuModule,FormsModule,
+    MatButtonModule,TranslateModule,MatRadioModule,
+    MatMenuModule,FormsModule,MatChipsModule,
     MatIconModule,
     ProgressTableFactorComponent,MatDividerModule,
     NgApexchartsModule,NgxGaugeModule,
@@ -286,6 +334,8 @@ export class Dashboard1Component implements OnInit {
   public earningOptions!: Partial<ChartOptions>;
   public performanceRateChartOptions!: Partial<ChartOptions>;
   
+  filtrosDemograficos = '';
+  filtrosGrandesFactores = '';
 
   langStoreValue?: string;
 
@@ -370,6 +420,8 @@ export class Dashboard1Component implements OnInit {
   public nombreFlujo = ''; 
   public objetivoFlujo = '';
   public imgFlujo = '';
+  public tipoFiltro = 'AND';
+  selectedGFactors: number[] = [];
 
   public estadoEnvio = '';
   public totalCreadas = 0;
@@ -382,10 +434,12 @@ export class Dashboard1Component implements OnInit {
 
   public isButtonDisabled = true;
   public dataSourceOrganizations:any = [];
+  public dataGrandesFactores:any = [];
   public dataSourceClimas:any = [];
   public html = '';
   public metricasData:any =[];
   public commentsData:any =[];
+  public commentsDataNorm:any =[];
   public metricasFactoresPreguntasData:any = [];
   public metricasSatisfaccionPreguntasData:any = [];
   public metricasSatisfaccionGeneralData:any = {};
@@ -397,41 +451,42 @@ export class Dashboard1Component implements OnInit {
   public accessToFilter = true;
   public accessToExport = true;
   public roleName = '';
+  
 
   public campos:any = [
  
 ];
 
   showXAxis = true;
-    showYAxis = true;
-    gradient = false;
-    showLegend = false;
-    showXAxisLabel = true;
-    showYAxisLabel = true;
-    public legendPosition: LegendPosition = LegendPosition.Right;
-    timeline = true;
-  
-    showLabels = true;
-    // data goes here
-    public single:any = [
-      
-    ];
-    // line chart start
-  
-    // vaericle bar chart start
-    vbarxAxisLabel = 'Tipos Respuestas';
-    vbaryAxisLabel = 'Porcentaje';
-    // horizontal bar chart start
-    hbarxAxisLabel = 'Sales';
-    hbaryAxisLabel = 'Country';
-    autoScale = true;
-    linexAxisLabel = 'Year';
-    lineyAxisLabel = 'Sales';
-    // area chart
-    areaxAxisLabel = 'Year';
-    areayAxisLabel = 'Sales';
+  showYAxis = true;
+  gradient = false;
+  showLegend = false;
+  showXAxisLabel = true;
+  showYAxisLabel = true;
+  public legendPosition: LegendPosition = LegendPosition.Right;
+  timeline = true;
 
+  showLabels = true;
+  // data goes here
+  public single:any = [
     
+  ];
+  // line chart start
+
+  // vaericle bar chart start
+  vbarxAxisLabel = 'Tipos Respuestas';
+  vbaryAxisLabel = 'Porcentaje';
+  // horizontal bar chart start
+  hbarxAxisLabel = 'Sales';
+  hbaryAxisLabel = 'Country';
+  autoScale = true;
+  linexAxisLabel = 'Year';
+  lineyAxisLabel = 'Sales';
+  // area chart
+  areaxAxisLabel = 'Year';
+  areayAxisLabel = 'Sales';
+
+  gFactoresFiltrados = '';
 
 
 
@@ -463,7 +518,7 @@ export class Dashboard1Component implements OnInit {
     const stored = sessionStorage.getItem('routes');
     if (stored) {
       const routes: RouteInfo[] = JSON.parse(stored);
-     //console.log('RUTAS DESDE sessionStorage:: ', routes);
+     console.log('RUTAS DESDE DASHBOARD:: ', routes);
 
       //buscar path
       const found = this.existsRoute(routes, 'dashboard/dashboard1');
@@ -479,6 +534,8 @@ export class Dashboard1Component implements OnInit {
     this.langStoreValue = localStorage.getItem('lang') as string;
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
+
+    console.log('this.langStoreValue dash:: ', this.langStoreValue);
 
     //jjg aquí se maneja el cambio desde el componente header
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
@@ -514,14 +571,12 @@ export class Dashboard1Component implements OnInit {
       }
 
       this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
+
+
     }
 
   
 
-    this.chart1();
-    this.chart3();
-
-    this.chart4();
     this.chartFactores();
 
 
@@ -551,7 +606,7 @@ export class Dashboard1Component implements OnInit {
       this.dataSourceClimas = [];
       this.nombreOrganizacion = 'cargando..'
       this.getFlujosLista();
-      this.getDemograficosOrg();
+      
 
     }
     
@@ -566,6 +621,24 @@ export class Dashboard1Component implements OnInit {
         const datos     = JSON.parse(jsonText);
         this.campos = datos;
        //console.log('this.campos:: ', this.campos );
+      }
+
+    }).catch((err)=>{
+      console.error(err);
+    })
+  }
+
+  getDemograficosOrgRestrictivo():void {
+
+    this.organizacionService.getFiltrosDemograficosRestrictivo(this.idOrganization, this.idFlujo, 1 )
+     .then((resulte) => {
+     console.log('DEMOGRAFICOS RESTRINGIDOS OBTENIDOS:: ', resulte.data.data[0]);
+
+      if(resulte) {
+        const jsonText = Object.values(resulte.data.data[0])[0] as string; // primer y único valor
+        const datos     = JSON.parse(jsonText);
+        this.campos = datos;
+        console.log('this.campos:: ', this.campos );
       }
 
     }).catch((err)=>{
@@ -596,13 +669,45 @@ export class Dashboard1Component implements OnInit {
     this.getMetricaSatisfaccionPreguntas();
     this.getMetricaCalificacionGeneralClima();
     this.getMetricaEstadoEnvio();
+    this.getMetricaCommentsia();
     this.getMetricaComments();
     this.getMetricaPrcentajeSatisfaccionFactores();
 
 
-   
+    this.getGrandesFactores();
+
+    this.getDemograficosOrgRestrictivo();
 
   };
+
+ 
+
+  getGrandesFactores(): void {
+
+    this.organizacionService.getGrandesFactores(this.idFlujo)
+      .then((response:any) => {
+        console.log('GrandesFactores:', JSON.stringify(response.data));
+        
+        this.filtrosGrandesFactores = '';
+
+        this.dataGrandesFactores = response.data.data;
+
+        this.selectedGFactors = this.dataGrandesFactores.map((g:any) => g.Id);
+
+        console.log('this.dataGrandesFactores:: ', this.dataGrandesFactores);
+
+        this.dataGrandesFactores.forEach((gf:any) => {
+          this.filtrosGrandesFactores = this.filtrosGrandesFactores + gf.Id + ',';
+        });
+
+        console.log('this.filtrosGrandesFactores::: ', this.filtrosGrandesFactores);
+        
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener organizaciones:', error);
+      });
+  }
+
 
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
@@ -630,7 +735,7 @@ export class Dashboard1Component implements OnInit {
           this.dataSourceClimas = [];
           this.nombreOrganizacion = 'cargando..'
           this.getFlujosLista();
-          this.getDemograficosOrg();
+          //this.getDemograficosOrgRestrictivo();
 
          
 
@@ -656,13 +761,20 @@ export class Dashboard1Component implements OnInit {
         });
   };
 
+  //porcentaje satisfacción por factores
   getMetricaFactores(): void {
+
+    this.metricasData = [];
 
     this.organizacionService.getMetricaFactores(this.idFlujo)
         .then((response:any) => {
           ////console.log('Metrica Factores:', JSON.stringify(response.data));
           
           this.metricasData = response.data.data;
+
+          this.gMetricasData = this.groupByGranFactor(this.metricasData);
+
+          
 
         })
         .catch((error:any) => {
@@ -672,22 +784,137 @@ export class Dashboard1Component implements OnInit {
 
   getMetricaFactoresFiltrado(filtro:string): void {
 
-  this.organizacionService.getMetricaFactoresFiltrado(this.idFlujo, filtro)
+    this.organizacionService.getMetricaFactoresFiltrado(this.idFlujo, filtro)
       .then((response:any) => {
         //console.log('Metrica Factores FILTRADO:', response.data);
         
         this.metricasData = response.data.data;
         this.metricasData = [...this.metricasData]
 
+        this.gMetricasData = this.groupByGranFactor(this.metricasData);
+
       })
       .catch((error:any) => {
-        console.error('Error al obtener los flujos plantillas:', error);
+        console.error('Error al obtener las métricasl:', error);
       });
   };
+
+  getMetricaFactoresFiltradoGF(filtro:string,filtroGf:string): void {
+
+    this.metricasData = [];
+
+    //this.metricasData = [...this.metricasData]
+
+    this.organizacionService.getMetricaFactoresFiltradoGF(this.idFlujo, filtro,filtroGf, this.tipoFiltro)
+      .then((response:any) => {
+        console.log('Metrica Factores FILTRADO GF:', response.data);
+        
+        this.metricasData = response.data.data;
+        this.metricasData = [...this.metricasData]
+
+        this.gMetricasData = this.groupByGranFactor(this.metricasData);
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener las métricasl:', error);
+      });
+  };
+
+  //public metricasData: any[] = []; // ya lo tienes
+  public gMetricasData: Array<{ id: number; etiqueta: string; factores: any[] }> = [];
+
+  private groupByGranFactor(list: any[]) {
+    const map = new Map<number, { id: number; etiqueta: string; factores: any[] }>();
+    for (const m of (list || [])) {
+      const id = m.IdGranFactor ?? m.idGranFactor ?? -1;
+      const etiqueta = m.EtiquetaGranFactor ?? m.etiquetaGranFactor ?? 'Gran factor';
+      if (!map.has(id)) {
+        map.set(id, { id, etiqueta, factores: [] });
+      }
+      map.get(id)!.factores.push(m);
+    }
+    return Array.from(map.values());
+  }
+
+  getGFPct(g: { factores?: any[] } | null | undefined): number {
+  const factores = g?.factores ?? [];
+  const total = factores.reduce((s, m) => s + (m.total_respuestas ?? 0), 0);
+  if (total <= 0) return 0;
+  const ponderado = factores.reduce(
+    (s, m) => s + ((m.pct_satisfaccion ?? 0) * (m.total_respuestas ?? 0)),
+    0
+  );
+  // 2 decimales
+  return Math.round((ponderado / total) * 100) / 100;
+}
+
+getGFColor(pct: number): string {
+  return pct > 70 ? '#2ecc71' : pct >= 50 ? '#f39c12' : '#e74c3c';
+}
+
+getGFStyle(g: any) {
+  const pct = this.getGFPct(g);
+  return {
+    'background-color': this.getGFColor(pct),
+    color: '#fff',
+    padding: '2px 8px',
+    'border-radius': '999px',
+    'font-weight': '600',
+    'font-size': '0.85rem',
+  };
+}
 
   getMetricaComments(): void {
 
     this.organizacionService.getMetricaComments(this.idFlujo)
+        .then((response:any) => {
+          //console.log('Metrica Factores:', JSON.stringify(response.data));
+          
+          this.commentsDataNorm = response.data.data;
+
+          this.commentsDataNorm.forEach((factor:any) => {
+            factor.ComentariosJSON = JSON.parse(factor.ComentariosJSON);
+          });
+
+          this.commentsDataNorm = this.enrichCommentsData(this.commentsDataNorm);
+
+          //console.log('commentsData ahora::' , this.commentsData);
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener los flujos plantillas:', error);
+        });
+  };
+
+  getMetricaCommentsGF(): void {
+
+    this.commentsDataNorm = [];
+
+    this.organizacionService.getMetricaCommentsGF(this.idFlujo, this.filtrosGrandesFactores)
+        .then((response:any) => {
+          //console.log('Metrica Factores:', JSON.stringify(response.data));
+          
+          this.commentsDataNorm = response.data.data;
+
+          this.commentsDataNorm.forEach((factor:any) => {
+            factor.ComentariosJSON = JSON.parse(factor.ComentariosJSON);
+          });
+
+          this.commentsDataNorm = this.enrichCommentsData(this.commentsDataNorm);
+
+          //this.commentsDataNorm = [...this.commentsDataNorm];
+
+          console.log('commentsDataNorm ahora::' , this.commentsDataNorm);
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener los flujos plantillas:', error);
+        });
+  };
+
+  getMetricaCommentsia(): void {
+
+    this.organizacionService.getMetricaCommentsia(this.idFlujo)
         .then((response:any) => {
           //console.log('Metrica Factores:', JSON.stringify(response.data));
           
@@ -697,9 +924,35 @@ export class Dashboard1Component implements OnInit {
             factor.ComentariosJSON = JSON.parse(factor.ComentariosJSON);
           });
 
-          this.commentsData = [...this.commentsData];
+          this.commentsData = this.enrichCommentsData(this.commentsData);
 
-          //console.log('commentsData ahora::' , this.commentsData);
+          console.log('commentsData ahora::' , this.commentsData);
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener los flujos plantillas:', error);
+        });
+  };
+
+  getMetricaCommentsIAGF(): void {
+
+    this.commentsData = [];
+
+    this.organizacionService.getMetricaCommentsIAGF(this.idFlujo, this.filtrosGrandesFactores)
+        .then((response:any) => {
+          //console.log('Metrica Factores:', JSON.stringify(response.data));
+          
+          this.commentsData = response.data.data;
+
+          this.commentsData.forEach((factor:any) => {
+            factor.ComentariosJSON = JSON.parse(factor.ComentariosJSON);
+          });
+
+          this.commentsData = this.enrichCommentsData(this.commentsData);
+
+          //this.commentsData = [...this.commentsData];
+
+          console.log('commentsData ahora::' , this.commentsData);
 
         })
         .catch((error:any) => {
@@ -844,140 +1097,277 @@ export class Dashboard1Component implements OnInit {
       });
   };
 
+  getMetricaConteoPreguntasFactoresFiltradoGF(filtro:string,filtroGf:string): void {
+    this.organizacionService.getMetricaConteoPreguntasFactoresFILTRADOGF(this.idFlujo,filtro,filtroGf)
+      .then((response:any) => {
+        ////console.log('Metrica Preguntas Factores:', JSON.stringify(response.data));
+        
+        this.metricasFactoresPreguntasData = response.data.data;
+
+        if(this.metricasFactoresPreguntasData){
+          
+
+          var seriessx:any = [
+            {
+              name: 'Totalmente en Desacuerdo',
+              data:[],
+            },
+            {
+              name: 'En Desacuerdo',
+              data:[],
+            },
+            {
+              name: 'De Acuerdo',
+              data:[],
+            },
+            {
+              name: 'Totalmente de Acuerdo',
+              data:[],
+            },
+          ];
+        
+
+          this.barChartOptions.xaxis  = { categories: [] };
+
+          this.metricasFactoresPreguntasData.forEach((factorx: { 
+            Factor: string, total_totalmente_de_acuerdo: number, total_de_acuerdo: number, 
+            total_en_desacuerdo: number, total_totalmente_en_desacuerdo: number  }) => {
+            
+            this.barChartOptions.xaxis?.categories.push(factorx.Factor);
+
+            var totdeacuerdo = factorx.total_totalmente_de_acuerdo;
+            var deacuerd = factorx.total_de_acuerdo;
+            var desacuerd = factorx.total_en_desacuerdo;
+            var totdesacuerd = factorx.total_totalmente_en_desacuerdo;
+
+            if(this.barChartOptions.series){
+
+              //console.log('SOPHIE');
+
+              seriessx[3].data.push(totdeacuerdo);
+              seriessx[2].data.push(deacuerd);
+              seriessx[1].data.push(desacuerd);
+              seriessx[0].data.push(totdesacuerd);
+
+            };
+            
+            
+
+          });
+
+          this.barChartOptions.series = seriessx;
+          
+        
+        }
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener los flujos plantillas:', error);
+      });
+  };
+
   getMetricaSatisfaccionPreguntas(): void {
+  this.subjects = [];
+
+  this.organizacionService.getMetricaSatisfaccionPreguntas(this.idFlujo)
+    .then((response: any) => {
+
+      this.metricasSatisfaccionPreguntasData = response.data.data;
+
+      if (this.metricasSatisfaccionPreguntasData) {
+        // Armado para exportación (usa la nueva transformData)
+        this.resultadoParaExcel = transformData(this.metricasSatisfaccionPreguntasData);
+        this.resultadoParaExcel.header = {
+          nombre_clima: this.nombreFlujo,
+          nombre_organizacion: this.nombreOrganizacion
+        };
+        this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
+
+        // Mapeo a la tabla (usa mean/pctFav/pctDesf/nsat)
+        this.metricasSatisfaccionPreguntasData.forEach((preguntax: {
+          IdPregunta: number;
+          Factor: string;
+          Pregunta: string;
+          total_respuestas: number;
+          total_opt1: number;
+          total_opt2: number;
+          total_opt3: number;
+          total_opt4: number;
+          // Nuevos campos esperados desde el SP
+          pct_favorable?: number;
+          pct_desfavorable?: number;
+          nsat?: number;
+          mean_0_100?: number;
+          mean_1_4?: number;
+          // Compat (si todavía llega el alias camelCase)
+          pctFav?: number;
+          pctDesf?: number;
+          mean?: number;
+          mean14?: number;
+        }) => {
+
+          // Normaliza nombres (acepta snake_case o camelCase)
+          const total = Number(preguntax.total_respuestas ?? 0);
+          const opt1 = Number(preguntax.total_opt1 ?? 0);
+          const opt2 = Number(preguntax.total_opt2 ?? 0);
+          const opt3 = Number(preguntax.total_opt3 ?? 0);
+          const opt4 = Number(preguntax.total_opt4 ?? 0);
+
+          const pctFav = preguntax.pctFav ?? preguntax.pct_favorable ??
+                         this.safePct(opt1 + opt2, total);
+          const pctDesf = preguntax.pctDesf ?? preguntax.pct_desfavorable ??
+                          this.safePct(opt3 + opt4, total);
+          const nsat = (preguntax.nsat != null)
+            ? Number(preguntax.nsat)
+            : this.round2(pctFav - pctDesf);
+
+          const mean = (preguntax.mean ?? preguntax.mean_0_100) ??
+            // fallback: calcula índice 0–100 a partir de conteos
+            this.calcMean0to100FromCounts(opt1, opt2, opt3, opt4, total);
+
+          const mean14 = (preguntax.mean14 ?? preguntax.mean_1_4) ??
+            this.calcMean1to4FromCounts(opt1, opt2, opt3, opt4, total);
+
+          const subj: SubjectProgress = {
+            subject: preguntax.Pregunta,
+            factor: preguntax.Factor,
+            duration: total,
+
+            totacuerdo: opt1,
+            acuerdo: opt2,
+            desacuerdo: opt3,
+            totdesacuerdo: opt4,
+
+            pctFav: Number(pctFav),
+            pctDesf: Number(pctDesf),
+            nsat: Number(nsat),
+            mean: Number(mean),
+            mean14: Number(mean14)
+          };
+
+          this.subjects.push(subj);
+        });
+
+        this.subjects = [...this.subjects];
+      }
+    })
+    .catch((error: any) => {
+      console.error('Error al obtener las métricas de satisfacción:', error);
+    });
+  }
+
+  // === Helpers usados arriba ===
+  round2(n: number): number {
+    return Math.round((n + Number.EPSILON) * 100) / 100;
+  }
+  safePct(num: number, den: number): number {
+    return den > 0 ? this.round2((num / den) * 100) : 0;
+  }
+  calcMean0to100FromCounts(opt1: number, opt2: number, opt3: number, opt4: number, total: number): number {
+    // Índice 0–100: (3*opt1 + 2*opt2 + 1*opt3 + 0*opt4) / (3*total) * 100
+    if (total <= 0) return 0;
+    const sum03 = (3 * opt1) + (2 * opt2) + (1 * opt3) + (0 * opt4);
+    return this.round2((sum03 / (3 * total)) * 100);
+  }
+  calcMean1to4FromCounts(opt1: number, opt2: number, opt3: number, opt4: number, total: number): number {
+    // media 1..4 = 1 + (sum_0_3 / total)
+    if (total <= 0) return 0;
+    const sum03 = (3 * opt1) + (2 * opt2) + (1 * opt3) + (0 * opt4);
+    return this.round2(1 + (sum03 / total));
+  }
+
+  getMetricaSatisfaccionPreguntasFiltradoGF(filtro:string,filtroGf:string): void {
 
     this.subjects = [];
 
-    this.organizacionService.getMetricaSatisfaccionPreguntas(this.idFlujo)
-        .then((response:any) => {
-          //console.log('Metrica Satisfaccion Preguntas:', JSON.stringify(response.data));
-          
-          this.metricasSatisfaccionPreguntasData = response.data.data;
+    this.organizacionService.getMetricaSatisfaccionPreguntasFILTRADOGF(this.idFlujo,filtro,filtroGf,this.tipoFiltro)
+        .then((response: any) => {
 
-          if(this.metricasSatisfaccionPreguntasData){
-                        
-            this.resultadoParaExcel = transformData(this.metricasSatisfaccionPreguntasData);
+      this.metricasSatisfaccionPreguntasData = response.data.data;
 
-            //agregar encabezado
-            this.resultadoParaExcel.header = {
-              "nombre_clima": this.nombreFlujo,
-              "nombre_organizacion": this.nombreOrganizacion
-            }
+      if (this.metricasSatisfaccionPreguntasData) {
+        // Armado para exportación (usa la nueva transformData)
+        this.resultadoParaExcel = transformData(this.metricasSatisfaccionPreguntasData);
+        this.resultadoParaExcel.header = {
+          nombre_clima: this.nombreFlujo,
+          nombre_organizacion: this.nombreOrganizacion
+        };
+        this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
 
-            //agregar campos adicionales
-           //console.log('this.campos:: ', this.campos);
+        // Mapeo a la tabla (usa mean/pctFav/pctDesf/nsat)
+        this.metricasSatisfaccionPreguntasData.forEach((preguntax: {
+          IdPregunta: number;
+          Factor: string;
+          Pregunta: string;
+          total_respuestas: number;
+          total_opt1: number;
+          total_opt2: number;
+          total_opt3: number;
+          total_opt4: number;
+          // Nuevos campos esperados desde el SP
+          pct_favorable?: number;
+          pct_desfavorable?: number;
+          nsat?: number;
+          mean_0_100?: number;
+          mean_1_4?: number;
+          // Compat (si todavía llega el alias camelCase)
+          pctFav?: number;
+          pctDesf?: number;
+          mean?: number;
+          mean14?: number;
+        }) => {
 
-            //var camposDem = [];
+          // Normaliza nombres (acepta snake_case o camelCase)
+          const total = Number(preguntax.total_respuestas ?? 0);
+          const opt1 = Number(preguntax.total_opt1 ?? 0);
+          const opt2 = Number(preguntax.total_opt2 ?? 0);
+          const opt3 = Number(preguntax.total_opt3 ?? 0);
+          const opt4 = Number(preguntax.total_opt4 ?? 0);
 
-            this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
+          const pctFav = preguntax.pctFav ?? preguntax.pct_favorable ??
+                         this.safePct(opt1 + opt2, total);
+          const pctDesf = preguntax.pctDesf ?? preguntax.pct_desfavorable ??
+                          this.safePct(opt3 + opt4, total);
+          const nsat = (preguntax.nsat != null)
+            ? Number(preguntax.nsat)
+            : this.round2(pctFav - pctDesf);
 
-           //console.log('resultado para excel:: ', this.resultadoParaExcel);
+          const mean = (preguntax.mean ?? preguntax.mean_0_100) ??
+            // fallback: calcula índice 0–100 a partir de conteos
+            this.calcMean0to100FromCounts(opt1, opt2, opt3, opt4, total);
 
-            this.metricasSatisfaccionPreguntasData.forEach((preguntax: { 
-              Factor: string, Pregunta: string, total_respuestas: number, 
-              pct_satisfaccion: number, IdPregunta: number,
-              total_opt1: number,
-              total_opt2: number, 
-              total_opt3: number,
-              total_opt4: number
-            
-            }) => {
-              
-                var subj: SubjectProgress = 
-                  { subject: preguntax.Pregunta, 
-                    progress: preguntax.pct_satisfaccion, 
-                    duration: preguntax.total_respuestas + ' Respuestas',
-                    factor: preguntax.Factor,
-                    
-                    totacuerdo: preguntax.total_opt1,
-                    acuerdo: preguntax.total_opt2,
-                    desacuerdo: preguntax.total_opt3,
-                    totdesacuerdo: preguntax.total_opt4,
-                  
-                                    
-                  };
+          const mean14 = (preguntax.mean14 ?? preguntax.mean_1_4) ??
+            this.calcMean1to4FromCounts(opt1, opt2, opt3, opt4, total);
 
-                this.subjects.push(subj);                
+          const subj: SubjectProgress = {
+            subject: preguntax.Pregunta,
+            factor: preguntax.Factor,
+            duration: total,
 
-            });
+            totacuerdo: opt1,
+            acuerdo: opt2,
+            desacuerdo: opt3,
+            totdesacuerdo: opt4,
 
-            this.subjects = [ ...this.subjects ];
-           
-          }
+            pctFav: Number(pctFav),
+            pctDesf: Number(pctDesf),
+            nsat: Number(nsat),
+            mean: Number(mean),
+            mean14: Number(mean14)
+          };
 
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener los flujos plantillas:', error);
+          this.subjects.push(subj);
         });
+
+        this.subjects = [...this.subjects];
+      }
+    })
+    .catch((error: any) => {
+      console.error('Error al obtener las métricas de satisfacción:', error);
+    });
   };
 
-   getMetricaSatisfaccionPreguntasFiltrado(filtro:string): void {
-
-    this.subjects = [];
-
-    this.organizacionService.getMetricaSatisfaccionPreguntasFILTRADO(this.idFlujo,filtro)
-        .then((response:any) => {
-          ////console.log('Metrica Satisfaccion Preguntas:', JSON.stringify(response.data));
-          
-          this.metricasSatisfaccionPreguntasData = response.data.data;
-
-          if(this.metricasSatisfaccionPreguntasData){
-            
-            this.resultadoParaExcel = transformData(this.metricasSatisfaccionPreguntasData);
-
-            //agregar encabezado
-            this.resultadoParaExcel.header = {
-              "nombre_clima": this.nombreFlujo,
-              "nombre_organizacion": this.nombreOrganizacion
-            }
-
-            //agregar campos adicionales
-           //console.log('this.campos:: ', this.campos);
-
-            //var camposDem = [];
-
-            this.resultadoParaExcel.camposDemograficos = this.camposDemograficosParaExcel;
-
-           //console.log('resultado para excel:: ', this.resultadoParaExcel);
-            
-            this.metricasSatisfaccionPreguntasData.forEach((preguntax: { 
-              Factor: string, Pregunta: string, total_respuestas: number, 
-              pct_satisfaccion: number, IdPregunta: number,
-              total_opt1: number,
-              total_opt2: number, 
-              total_opt3: number,
-              total_opt4: number
-            
-            }) => {
-              
-                var subj: SubjectProgress = 
-                  { subject: preguntax.Pregunta, 
-                    progress: preguntax.pct_satisfaccion, 
-                    duration: preguntax.total_respuestas + ' Respuestas',
-                    factor: preguntax.Factor,
-                    
-                    totacuerdo: preguntax.total_opt1,
-                    acuerdo: preguntax.total_opt2,
-                    desacuerdo: preguntax.total_opt3,
-                    totdesacuerdo: preguntax.total_opt4,
-                  
-                                    
-                  };
-
-                this.subjects.push(subj);                
-
-            });
-
-            this.subjects = [ ...this.subjects ];
-           
-          }
-
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener los flujos plantillas:', error);
-        });
-  };
-
+  //porcentaje general
   getMetricaCalificacionGeneralClima(): void {
 
     this.organizacionService.getMetricaCalificacionGeneralClima(this.idFlujo)
@@ -1008,9 +1398,11 @@ export class Dashboard1Component implements OnInit {
         });
   };
 
-  getMetricaCalificacionGeneralClimaFiltrado(filtro:string): void {
 
-    this.organizacionService.getMetricaCalificacionGeneralClimaFiltrado(this.idFlujo,filtro)
+
+  getMetricaCalificacionGeneralClimaFiltradoGF(filtro:string,filtroGf:string): void {
+
+    this.organizacionService.getMetricaCalificacionGeneralClimaFiltradoGF(this.idFlujo,filtro,filtroGf, this.tipoFiltro)
         .then((response:any) => {
           //console.log('Metrica Satisfaccion General:', JSON.stringify(response.data));
           
@@ -1100,6 +1492,44 @@ export class Dashboard1Component implements OnInit {
   getMetricaPorcentajeRespuestasFiltrado(filtro:string): void {
 
     this.organizacionService.getMetricaPorcentajeRespuestasFiltrado(this.idFlujo,filtro)
+        .then((response:any) => {
+          //console.log('Metrica Porcentaje Respuestas:', JSON.stringify(response.data));
+          
+          if(response.data.data[0]){
+           
+            var single = [
+              {
+                name: 'Muy Desacuerdo',
+                value: response.data.data[0].opt_4_pct,
+              },
+              {
+                name: 'Desacuerdo',
+                value: response.data.data[0].opt_3_pct,
+              },
+              {
+                name: 'De Acuerdo',
+                value: response.data.data[0].opt_2_pct,
+              },
+              {
+                name: 'Muy Acuerdo',
+                value: response.data.data[0].opt_1_pct,
+              }
+            ];
+
+            this.single = [...single]; 
+
+          }
+
+        })
+        .catch((error:any) => {
+          console.error('Error al obtener los flujos plantillas:', error);
+        });
+  };
+
+  
+  getMetricaPorcentajeRespuestasFiltradoGF(filtro:string,filtroGf:string): void {
+
+    this.organizacionService.getMetricaPorcentajeRespuestasFiltradoGF(this.idFlujo,filtro,filtroGf)
         .then((response:any) => {
           //console.log('Metrica Porcentaje Respuestas:', JSON.stringify(response.data));
           
@@ -1271,34 +1701,68 @@ export class Dashboard1Component implements OnInit {
       });
   };
 
+  getMetricaPrcentajeSatisfaccionFactoresFiltradoGF(filtro:string,filtroGf:string): void {
+    this.organizacionService.getMetricaPorcentajeSatisfaccionFactorFiltradoGF(this.idFlujo,filtro,filtroGf)
+      .then((response:any) => {
+        //console.log('Metrica porcentaje satisfaccion Factores:', JSON.stringify(response.data));
+        const factores: any[] = response.data.data;
+        this.construirSeries(factores);
+
+      })
+      .catch((error:any) => {
+        console.error('Error al obtener los flujos plantillas:', error);
+      });
+  };
+
+  //seleccion filtros demograficos
   onSelectionChange(values: string[]): void {
     //this.filtrosChange.emit(this.buildFiltroString(values));
    //console.log('filtros:: ',values);
 
     var filters = '';
 
-
-
     this.camposDemograficosParaExcel = agruparPorCampo(values, this.campos);
-
-   //console.log('this.camposDemograficosParaExcel::',this.camposDemograficosParaExcel);
 
     values.forEach((item:any)=>{
       filters += item + ',';
 
     });
 
+    this.filtrosDemograficos = filters;
 
+    this.getMetricaFactoresFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaConteoPreguntasFactoresFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaSatisfaccionPreguntasFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaCalificacionGeneralClimaFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaPorcentajeRespuestasFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaPrcentajeSatisfaccionFactoresFiltradoGF(filters, this.filtrosGrandesFactores);
+    this.getMetricaCommentsIAGF();
+    this.getMetricaCommentsGF();
+  };
 
+   onGFactorChange(values: string[]): void {
 
+    console.log(values);
 
+    const gFactoresFiltro = values.join(',');
 
-    this.getMetricaFactoresFiltrado(filters);
-    this.getMetricaConteoPreguntasFactoresFiltrado(filters);
-    this.getMetricaSatisfaccionPreguntasFiltrado(filters);
-    this.getMetricaCalificacionGeneralClimaFiltrado(filters);
-    this.getMetricaPorcentajeRespuestasFiltrado(filters);
-    this.getMetricaPrcentajeSatisfaccionFactoresFiltrado(filters);
+    this.gFactoresFiltrados = gFactoresFiltro;
+
+    console.log('gFactoresFiltro:: ', gFactoresFiltro);
+
+    this.filtrosGrandesFactores = gFactoresFiltro;
+
+    /* */ 
+
+    this.getMetricaFactoresFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaConteoPreguntasFactoresFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaSatisfaccionPreguntasFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaCalificacionGeneralClimaFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaPorcentajeRespuestasFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaPrcentajeSatisfaccionFactoresFiltradoGF(this.filtrosDemograficos,gFactoresFiltro);
+    this.getMetricaCommentsIAGF();
+    this.getMetricaCommentsGF();
+  
   };
 
 
@@ -1312,9 +1776,53 @@ export class Dashboard1Component implements OnInit {
 
   };
 
+  onTipoFiltroSelected(event:MatRadioChange):void{
+    console.log(event.value);
+
+    this.tipoFiltro = event.value;
+
+    this.getAllByFilterType();
+
+  }
+
+  getAllByFilterType():void{
+    //satisfacción por preguntas
+    this.getMetricaSatisfaccionPreguntasFiltradoGF(this.filtrosDemograficos,this.filtrosGrandesFactores);
+    this.getMetricaCalificacionGeneralClimaFiltradoGF(this.filtrosDemograficos,this.filtrosGrandesFactores);
+    this.getMetricaFactoresFiltradoGF(this.filtrosDemograficos,this.filtrosGrandesFactores);
+
+  }
+
+  
+  private enrichCommentsData(data: ComentarioPregunta[]): ComentarioPregunta[] {
+    return (data || []).map((m) => {
+      const list = Array.isArray(m.ComentariosJSON) ? m.ComentariosJSON : [];
+      const counts: Record<Sent, number> = { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0, MIXED: 0 };
+      for (const c of list) {
+        const s = ((c?.Sentiment || 'MIXTO') as string).toUpperCase() as Sent;
+        if (counts[s] !== undefined) counts[s]++;
+      }
+
+      const total = list.length;
+      const max = Math.max(...Object.values(counts));
+      const winners = (Object.entries(counts) as [Sent, number][])
+        .filter(([, c]) => c === max)
+        .map(([s]) => s as Sent);
+
+      // Regla: si no hay respuestas -> NEUTRAL; si hay empate -> NEUTRAL; si hay ganador único -> ese.
+      const overall: Sent =
+        total === 0 ? 'MIXED' :
+        winners.length > 1 ? 'MIXED' :
+        winners[0];
+
+      return { ...m, ComentariosJSON: list, _total: total, _overall: overall, _counts: counts };
+    });
+  }
 
 
 
+
+  
 
 
 
@@ -1340,467 +1848,6 @@ export class Dashboard1Component implements OnInit {
 
   ///////////////////////////////////////
 
-  private chart1() {
-    this.areaChartOptions = {
-      series: [
-        {
-          name: 'New Clients',
-          data: [31, 40, 28, 51, 42, 85, 77],
-        },
-        {
-          name: 'Old Clients',
-          data: [11, 32, 45, 32, 34, 52, 41],
-        },
-      ],
-      chart: {
-        height: 350,
-        type: 'area',
-        toolbar: {
-          show: false,
-        },
-        foreColor: '#9aa0ac',
-      },
-      colors: ['#4FC3F7', '#7460EE'],
-      dataLabels: {
-        enabled: false,
-      },
-      stroke: {
-        curve: 'smooth',
-      },
-      grid: {
-        show: true,
-        borderColor: '#9aa0ac',
-        strokeDashArray: 1,
-      },
-      xaxis: {
-        type: 'datetime',
-        categories: [
-          '2018-09-19',
-          '2018-09-20',
-          '2018-09-21',
-          '2018-09-22',
-          '2018-09-23',
-          '2018-09-24',
-          '2018-09-25',
-        ],
-      },
-      legend: {
-        show: true,
-        position: 'top',
-        horizontalAlign: 'center',
-        offsetX: 0,
-        offsetY: 0,
-      },
-
-      tooltip: {
-        theme: 'dark',
-        marker: {
-          show: true,
-        },
-        x: {
-          show: true,
-        },
-      },
-    };
-  }
-
-  private chart3() {
-    this.earningOptions = {
-      series: [
-        {
-          name: '2019',
-          data: [15, 48, 36, 20, 40, 60, 35, 20, 16, 31, 22, 11],
-        },
-        {
-          name: '2018',
-          data: [8, 22, 60, 35, 17, 24, 48, 37, 56, 22, 32, 38],
-        },
-      ],
-      chart: {
-        height: 320,
-        type: 'line',
-        zoom: {
-          enabled: false,
-        },
-        toolbar: {
-          show: false,
-        },
-      },
-      dataLabels: {
-        enabled: false,
-      },
-      stroke: {
-        width: 3,
-        curve: 'smooth',
-        dashArray: [0, 8],
-      },
-      colors: ['#8793ea', '#4caf50'],
-      fill: {
-        opacity: [1, 0.5],
-      },
-      markers: {
-        size: 0,
-        hover: {
-          sizeOffset: 6,
-        },
-      },
-      xaxis: {
-        categories: [
-          'Jan',
-          'Feb',
-          'Mar',
-          'Apr',
-          'May',
-          'Jun',
-          'Jul',
-          'Aug',
-          'Sep',
-          'Oct',
-          'Nov',
-          'Dec',
-        ],
-        labels: {
-          style: {
-            colors: '#8e8da4',
-          },
-        },
-      },
-      yaxis: {
-        labels: {
-          style: {
-            colors: '#8e8da4',
-          },
-        },
-      },
-      grid: {
-        show: true,
-        borderColor: '#9aa0ac',
-        strokeDashArray: 1,
-      },
-      tooltip: {
-        theme: 'dark',
-      },
-    };
-  }
-
-  private chart4() {
-    this.performanceRateChartOptions = {
-      series: [
-        {
-          name: 'Bill Amount',
-          data: [113, 120, 130, 120, 125, 119, 126],
-        },
-      ],
-      chart: {
-        height: 360,
-        type: 'line',
-        dropShadow: {
-          enabled: true,
-          color: '#000',
-          top: 18,
-          left: 7,
-          blur: 10,
-          opacity: 0.2,
-        },
-        foreColor: '#9aa0ac',
-        toolbar: {
-          show: false,
-        },
-      },
-      colors: ['#6777EF'],
-      dataLabels: {
-        enabled: true,
-      },
-      stroke: {
-        curve: 'smooth',
-      },
-      markers: {
-        size: 1,
-      },
-      xaxis: {
-        categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-        title: {
-          text: 'Weekday',
-        },
-      },
-      yaxis: {
-        title: {
-          text: 'Bill Amount($)',
-        },
-      },
-      grid: {
-        show: true,
-        borderColor: '#9aa0ac',
-        strokeDashArray: 1,
-      },
-      tooltip: {
-        theme: 'dark',
-        marker: {
-          show: true,
-        },
-        x: {
-          show: true,
-        },
-      },
-    };
-  }
-  // transactions
-
-  transactions: Transaction[] = [
-    {
-      type: 'Bank Transfer',
-      category: 'Bank Transfer',
-      description: 'Send money',
-      amount: 100.65,
-      icon: 'account_balance',
-      iconColor: 'green',
-      textColor: 'orange',
-    },
-    {
-      type: 'Wallet',
-      category: 'Wallet',
-      description: 'Wallet recharge',
-      amount: 2000,
-      icon: 'account_balance_wallet',
-      iconColor: 'orange',
-      textColor: 'green',
-    },
-    {
-      type: 'Credit Card',
-      category: 'Credit Card',
-      description: 'Ordered Food',
-      amount: 25.69,
-      icon: 'credit_card',
-      iconColor: 'purple',
-      textColor: 'orange',
-    },
-    {
-      type: 'Cash Payment',
-      category: 'Cash Payment',
-      description: 'Sell Stationery',
-      amount: 148.47,
-      icon: 'attach_money',
-      iconColor: 'blue',
-      textColor: 'green',
-    },
-    {
-      type: 'Debit Card',
-      category: 'Debit Card',
-      description: 'ATM Withdraw',
-      amount: 100.65,
-      icon: 'credit_card',
-      iconColor: 'red',
-      textColor: 'orange',
-    },
-    {
-      type: 'Bank Transfer',
-      category: 'Bank Transfer',
-      description: 'Send money',
-      amount: 100.65,
-      icon: 'account_balance',
-      iconColor: 'green',
-      textColor: 'orange',
-    },
-  ];
-
-  // invoice data
-
-  invoiceData = [
-    {
-      invoiceNo: '#IN7865',
-      clientName: 'John Doe',
-      dueDate: '12/05/2016',
-      status: 'Paid',
-      total: '$500',
-      img: 'assets/images/user/user1.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN2301',
-      clientName: 'Sarah Smith',
-      dueDate: '03/31/2016',
-      status: 'Not Paid',
-      total: '$372',
-      img: 'assets/images/user/user2.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN7239',
-      clientName: 'Airi Satou',
-      dueDate: '04/14/2017',
-      status: 'Partially Paid',
-      total: '$1038',
-      img: 'assets/images/user/user3.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN1482',
-      clientName: 'Angelica Ramos',
-      dueDate: '08/11/2017',
-      status: 'Paid',
-      total: '$872',
-      img: 'assets/images/user/user4.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN8526',
-      clientName: 'Ashton Cox',
-      dueDate: '02/15/2018',
-      status: 'Not Paid',
-      total: '$2398',
-      img: 'assets/images/user/user5.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN2473',
-      clientName: 'Cara Stevens',
-      dueDate: '01/28/2017',
-      status: 'Paid',
-      total: '$834',
-      img: 'assets/images/user/user6.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN7366',
-      clientName: 'Jacob Ryan',
-      dueDate: '03/11/2017',
-      status: 'Partially Paid',
-      total: '$147',
-      img: 'assets/images/user/user7.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN5642',
-      clientName: 'Emily Walker',
-      dueDate: '09/12/2018',
-      status: 'Paid',
-      total: '$650',
-      img: 'assets/images/user/user8.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN1457',
-      clientName: 'Michael Brown',
-      dueDate: '04/20/2019',
-      status: 'Not Paid',
-      total: '$1220',
-      img: 'assets/images/user/user9.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN9083',
-      clientName: 'Olivia Green',
-      dueDate: '10/03/2020',
-      status: 'Partially Paid',
-      total: '$850',
-      img: 'assets/images/user/user10.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN3379',
-      clientName: 'David Lee',
-      dueDate: '06/25/2021',
-      status: 'Paid',
-      total: '$1295',
-      img: 'assets/images/user/user11.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-    {
-      invoiceNo: '#IN9874',
-      clientName: 'Sophia Johnson',
-      dueDate: '01/18/2022',
-      status: 'Not Paid',
-      total: '$320',
-      img: 'assets/images/user/user2.jpg',
-      invoiceLink: '#/admin/accounts/invoice',
-    },
-  ];
-
-  invoiceColumnDefinitions = [
-    { def: 'invoiceNo', label: 'Invoice No', type: 'text' },
-    { def: 'clientName', label: 'Client Name', type: 'text' },
-    { def: 'dueDate', label: 'Due Date', type: 'date' },
-    { def: 'status', label: 'Status', type: 'badge' },
-    { def: 'total', label: 'Total', type: 'currency' },
-    { def: 'actions', label: 'Actions', type: 'actionBtn' },
-  ];
-
-  // project status
-
-  projects: Project[] = [
-    {
-      name: 'Angular App',
-      progress: 90,
-      progressColor: 'green-progress',
-    },
-    {
-      name: 'Java Software',
-      progress: 54,
-      progressColor: 'red-progress',
-    },
-    {
-      name: 'Html Website',
-      progress: 68,
-      progressColor: 'sky-progress',
-    },
-    {
-      name: 'IOS App',
-      progress: 40,
-      progressColor: 'orange-progress',
-    },
-    {
-      name: 'Python Project',
-      progress: 28,
-      progressColor: 'green-progress',
-    },
-    {
-      name: 'Reactjs App',
-      progress: 89,
-      progressColor: 'sky-progress',
-    },
-    {
-      name: 'Node.js API',
-      progress: 75,
-      progressColor: 'green-progress',
-    },
-    {
-      name: 'Flutter App',
-      progress: 56,
-      progressColor: 'orange-progress',
-    },
-    {
-      name: 'C# Application',
-      progress: 63,
-      progressColor: 'red-progress',
-    },
-    {
-      name: 'JavaScript Tutorial',
-      progress: 80,
-      progressColor: 'sky-progress',
-    },
-    {
-      name: 'Vue.js Project',
-      progress: 45,
-      progressColor: 'green-progress',
-    },
-  ];
-
-  // TODO start
-  tasks: Todo[] = [
-    { title: 'Buy groceries', done: false, priority: 'Normal' },
-    { title: 'Finish project report', done: false, priority: 'High' },
-    { title: 'Clean the house', done: true, priority: 'Low' },
-    { title: 'Call the bank', done: false, priority: 'Normal' },
-    { title: 'Read a book', done: false, priority: 'Low' },
-    { title: 'Schedule doctor appointment', done: false, priority: 'High' },
-    { title: 'Prepare for presentation', done: false, priority: 'Normal' },
-    { title: 'Exercise for 30 minutes', done: false, priority: 'Normal' },
-    { title: 'Finish laundry', done: true, priority: 'Low' },
-    { title: 'Write blog post', done: false, priority: 'High' },
-    { title: 'Organize workspace', done: false, priority: 'Normal' },
-    { title: 'Plan weekend trip', done: false, priority: 'High' },
-    { title: 'Buy gifts for friends', done: false, priority: 'Low' },
-  ];
 
   onTodoToggled(todo: any) {
     //console.log('Todo toggled:', todo);
@@ -1809,191 +1856,5 @@ export class Dashboard1Component implements OnInit {
   onTodosUpdated(updatedTodos: any[]) {
     //console.log('Todos updated:', updatedTodos);
   }
-  // TODO end
 
-  // document list
-
-  documentList = [
-    {
-      title: 'Java Programming',
-      type: '.doc',
-      size: 4.3,
-      icon: 'far fa-file-word',
-      iconClass: 'primary-rgba text-primary',
-      textClass: '',
-    },
-    {
-      title: 'Angular Theory',
-      type: '.xls',
-      size: 2.5,
-      icon: 'far fa-file-excel',
-      iconClass: 'success-rgba text-success',
-      textClass: '',
-    },
-    {
-      title: 'Maths Sums Solution',
-      type: '.pdf',
-      size: 10.5,
-      icon: 'far fa-file-pdf',
-      iconClass: 'danger-rgba text-danger',
-      textClass: '',
-    },
-    {
-      title: 'Submit Science Journal',
-      type: '.zip',
-      size: 53.2,
-      icon: 'far fa-file-archive',
-      iconClass: 'info-rgba text-info',
-      textClass: '',
-    },
-    {
-      title: 'Marketing Instructions',
-      type: '.doc',
-      size: 5.3,
-      icon: 'far fa-file-word',
-      iconClass: 'primary-rgba text-primary',
-      textClass: '',
-    },
-  ];
-
-  // projects
-
-  projectData = [
-    {
-      projectName: 'Project A',
-      employeesTeam: [
-        { name: 'John Doe', avatar: 'user1.jpg' },
-        { name: 'Jane Smith', avatar: 'user2.jpg' },
-        { name: 'Bob Johnson', avatar: 'user3.jpg' },
-        { name: 'Alice Williams', avatar: 'user4.jpg' },
-      ],
-      teamLeader: 'John Doe',
-      priority: 'Medium',
-      openTask: 19,
-      completedTask: 10,
-      status: 'Pending',
-      documents: 'Contract.pdf',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project B',
-      employeesTeam: [
-        { name: 'Sarah Smith', avatar: 'user7.jpg' },
-        { name: 'Michael Johnson', avatar: 'user2.jpg' },
-        { name: 'Emily Davis', avatar: 'user8.jpg' },
-      ],
-      teamLeader: 'Sarah Smith',
-      priority: 'Low',
-      openTask: 25,
-      completedTask: 18,
-      status: 'In Progress',
-      documents: 'Proposal.pdf',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project C',
-      employeesTeam: [
-        { name: 'Olivia Brown', avatar: 'user9.jpg' },
-        { name: 'James Lee', avatar: 'user10.jpg' },
-        { name: 'Sophia Wilson', avatar: 'user11.jpg' },
-      ],
-      teamLeader: 'Olivia Brown',
-      priority: 'High',
-      openTask: 30,
-      completedTask: 25,
-      status: 'Completed',
-      documents: 'Final_Report.pdf',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project D',
-      employeesTeam: [
-        { name: 'David Martinez', avatar: 'user2.jpg' },
-        { name: 'Isabella Taylor', avatar: 'user8.jpg' },
-        { name: 'Lucas White', avatar: 'user7.jpg' },
-      ],
-      teamLeader: 'David Martinez',
-      priority: 'Low',
-      openTask: 15,
-      completedTask: 10,
-      status: 'Pending',
-      documents: 'Initial_Design.pdf',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project E',
-      employeesTeam: [
-        { name: 'Ethan Green', avatar: 'user5.jpg' },
-        { name: 'Mia Clark', avatar: 'user6.jpg' },
-        { name: 'Daniel Harris', avatar: 'user9.jpg' },
-        { name: 'Charlotte Lewis', avatar: 'user8.jpg' },
-      ],
-      teamLeader: 'Ethan Green',
-      priority: 'Medium',
-      openTask: 40,
-      completedTask: 30,
-      status: 'Completed',
-      documents: 'Budget_Sheet.xlsx',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project F',
-      employeesTeam: [
-        { name: 'Jack Robinson', avatar: 'user2.jpg' },
-        { name: 'Lily Walker', avatar: 'user1.jpg' },
-        { name: 'Henry Adams', avatar: 'user4.jpg' },
-      ],
-      teamLeader: 'Jack Robinson',
-      priority: 'High',
-      openTask: 12,
-      completedTask: 10,
-      status: 'In Progress',
-      documents: 'Timeline_GanttChart.xlsx',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project G',
-      employeesTeam: [
-        { name: 'Ava Scott', avatar: 'user2.jpg' },
-        { name: 'David Moore', avatar: 'user5.jpg' },
-        { name: 'Emma Taylor', avatar: 'user4.jpg' },
-        { name: 'Lucas White', avatar: 'user7.jpg' },
-        { name: 'Pankaj Patel', avatar: 'user3.jpg' },
-      ],
-      teamLeader: 'Ava Scott',
-      priority: 'Low',
-      openTask: 22,
-      completedTask: 14,
-      status: 'Completed',
-      documents: 'Research_Notes.pdf',
-      actions: 'Edit, Delete',
-    },
-    {
-      projectName: 'Project H',
-      employeesTeam: [
-        { name: 'Sophia Miller', avatar: 'user10.jpg' },
-        { name: 'Jackson Harris', avatar: 'user11.jpg' },
-        { name: 'Ella Clark', avatar: 'user2.jpg' },
-      ],
-      teamLeader: 'Sophia Miller',
-      priority: 'High',
-      openTask: 17,
-      completedTask: 16,
-      status: 'Completed',
-      documents: 'User_Guide.pdf',
-      actions: 'Edit, Delete',
-    },
-  ];
-
-  projectColumnDefinitions = [
-    { def: 'projectName', label: 'Project Name', type: 'text' },
-    { def: 'employeesTeam', label: 'Employee Team', type: 'team' },
-    { def: 'teamLeader', label: 'Team Leaders', type: 'text' },
-    { def: 'priority', label: 'Priority', type: 'priority' },
-    { def: 'openTask', label: 'Open Task', type: 'text' },
-    { def: 'completedTask', label: 'Completed Task', type: 'text' },
-    { def: 'status', label: 'Status', type: 'text' },
-    { def: 'documents', label: 'Documents', type: 'file' },
-    { def: 'actions', label: 'Actions', type: 'actionBtn' },
-  ];
 }

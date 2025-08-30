@@ -73,6 +73,7 @@
             <app-feather-icons [icon]="'maximize'" [class]="'header-icon'"></app-feather-icons>
           </button>
         </li>
+
         <!-- #END# Full Screen Button -->
         <li class="nav-item m-l-5 m-r-5">
           <button mat-icon-button [matMenuTriggerFor]="languagemenu" class="lang-dropdown nav-notification-icons"> @if
@@ -95,13 +96,14 @@
             }
           </mat-menu>
         </li>
-        <!-- #START# Notifications-->
+
+        <!-- #START# Notifications
         <li class="m-l-5 m-r-5">
-          <!-- 
+         
           <button mat-icon-button [matMenuTriggerFor]="notificationMenu" class="nav-notification-icons">
             <app-feather-icons [icon]="'bell'" [class]="'header-icon'"></app-feather-icons>
           </button>
-          -->
+      
           <mat-menu #notificationMenu="matMenu" class="nfc-menu">
             <div class="nfc-header">
               <h5 class="mb-0">Notitications</h5>
@@ -140,7 +142,10 @@
             </div>
           </mat-menu>
         </li>
+-->
         <!-- #END# Notifications-->
+
+        
         <li class="nav-item user_profile">
           <button mat-button [matMenuTriggerFor]="profilemenu">
             <div class="chip dropdown-toggle" ngbDropdownToggle class="">

@@ -28,7 +28,7 @@ export class AuthService {
     //console.log('user enviado:: ', { user, pass });
     return this.http
       .post<{ message: string; data: User }>(
-        'http://localhost:3030/logni13', // URL de tu API
+        'https://api.catarsysdev.com/logni13', // URL de tu API
         { user, pass }
       )
       .pipe(

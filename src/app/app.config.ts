@@ -25,12 +25,15 @@ import { allIcons } from 'angular-feather/icons';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
+import { JoyrideModule } from 'ngx-joyride';
+
 export function createTranslateLoader(http: HttpClient): TranslateHttpLoader {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
 }
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    importProvidersFrom(JoyrideModule.forRoot()),
     provideHttpClient(),
     provideRouter(APP_ROUTE),
     provideAnimations(),

@@ -27,7 +27,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatChipsModule, MatChipListbox } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -52,12 +52,21 @@ import { Router } from '@angular/router';
 
 import { AuthService } from '@core';
 
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
+import { JoyrideService } from 'ngx-joyride';
+import { JoyrideModule } from 'ngx-joyride';
+
 @Component({
   selector: "app-create",
   templateUrl: "./create.component.html",
+  styleUrl:"./create.component.scss",
   providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
   imports: [
-    BreadcrumbComponent,
+    JoyrideModule,
+    BreadcrumbComponent,TranslateModule,
     MatDialogModule,
     MatTableModule,
     MatIconModule,
@@ -79,6 +88,8 @@ import { AuthService } from '@core';
     
 
     ],
+
+
 })
 export class CreateComponent implements OnInit {
 
@@ -114,17 +125,56 @@ export class CreateComponent implements OnInit {
   accessToSend = true;
   accessToDeleteFactor = true;
   
+   langStoreValue?: string;
 
   constructor(
+    private joyrideService: JoyrideService,
     private organizacionService: OrganizacionService,private router: Router, private authService: AuthService,
     private dialogModel: MatDialog, //dialog para agregar quiz
     private dialogSerieModel: MatDialog, //dialog para agregar serie
     private dialogItemModel: MatDialog, //dialog agregar ítems    
     private fb: UntypedFormBuilder, // private modalService: NgbModal
-    private _snackBar: MatSnackBar 
+    private _snackBar: MatSnackBar, private languageService: LanguageService,private translate: TranslateService,
   ) {}
 
-ngOnInit() {
+   startTour() {
+    //console.log('entra pálido...');
+
+    setTimeout(() => {
+      this.joyrideService.startTour({
+        steps: ['step1', 'step2', 'step3', 'step4', 'step5'],
+        showPrevButton: true,
+         customTexts: {
+            prev: 'Anterior',
+            next: 'Siguiente',
+            done: 'Finalizar',
+            close: 'Cerrar'
+          }
+      }).subscribe({
+        complete: () => console.log('✅ Tour finalizado'),
+        error: (err) => console.error('❌ Error en el tour:', err)
+      });
+    }, 100); // Pequeña pausa para esperar al renderizado final
+  }
+
+  ngAfterViewInit() {
+    const step1 = document.querySelector('[joyrideStep="step1"]');
+    console.log('step1 en DOM:', !!step1);
+  }
+
+  ngOnInit() {
+
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
+
+    console.log('this.langStoreValue quiz:: ', this.langStoreValue);
     
     const stored = sessionStorage.getItem('routes');
     if (stored) {
@@ -264,6 +314,7 @@ ngOnInit() {
                 FechaCreacion: string; // o Date
                 Imagen1Src: string;
                 Estado: number;
+                granFactores: any;
                 series: any;
                 estado_envio: string;
                 estadisticas_envio: EstadisticasEnvio | string;
@@ -286,6 +337,7 @@ ngOnInit() {
                 startDate: '',
                 endDate: '',
                 estado: 1,
+                granFactores: clima.granFactores,
                 series: clima.series,
                 fields: [],
                 estadoEnvio: clima.estado_envio,
@@ -327,6 +379,7 @@ ngOnInit() {
                 FechaCreacion: string; // o Date
                 Imagen1Src: string;
                 Estado: number;
+                granFactores: any;
                 series: any;
                 estado_envio: string;
                 estadisticas_envio: EstadisticasEnvio | string;
@@ -349,6 +402,7 @@ ngOnInit() {
                 startDate: '',
                 endDate: '',
                 estado: 1,
+                granFactores:clima.granFactores,
                 series: clima.series,
                 fields: [],
                 estadoEnvio: clima.estado_envio,
@@ -394,34 +448,25 @@ ngOnInit() {
     this.loading = true;
 
     this.organizacionService.deleteFactor(factor.Id).then((resutadi: any)=>{
-        if(resutadi.data.message === 'Factor eliminado correctamente'){
-            this.showNotification(
-                'bg-green',
-                resutadi.data.message,
-                'bottom',
-                'right'
-              );
-            this.getClimasLista();
-            
-        } else {
-            this.loading = false;
-        }
-        
-        
-    }).catch((err)=>{
-        this.showNotification(
-            'bg-red',
-            'Ocurrió un error al intentar eliminar el Factor. Error: ' + err,
-            'bottom',
-            'right'
-          );
-          this.loading = false;
-        
+      if(resutadi.data.message === 'Factor eliminado correctamente'){          
         Swal.fire({
-          title: 'No fue posible eliminar el Factor',
-          text: 'Si el factor tiene preguntas asignadas, primero deberá eliminarlas para poder eliminar el factor.',
-          icon: 'warning',
-        });
+          title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
+          text: this.translate.instant('MENUITEMS.QUIZ.DELETEDFACTOR'),
+          icon: 'success',
+        }); 
+
+        this.getClimasLista();
+          
+      } else {
+          this.loading = false;
+      }                
+    }).catch((err)=>{              
+      this.loading = false;        
+      Swal.fire({
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FACTORWARNING'),
+        text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FACTORWARNINGMESSAGE'),
+        icon: 'warning',
+      });
     })
     return true;
   }

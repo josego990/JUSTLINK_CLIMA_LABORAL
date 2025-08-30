@@ -7,23 +7,23 @@
     <div class="col-sm-6 auth-form-section">
       <div class="form-section">
         <div class="auth-wrapper">
-          <h6 style="color: #ff9629 " class="welcome-msg"> Bienvenido </h6>
+          <h6 style="color: #ff9629 " class="welcome-msg"> {{'MENUITEMS.LOGIN.WELCOME' | translate}} </h6>
           <!-- 
           <p class="auth-signup-text text-muted">Necesitas una cuenta?<a routerLink="/authentication/signup"
               class="sign-up-link">Obtener una
             </a></p>
 -->
-          <h2 class="login-title">Ingresar</h2>
+          <h2 class="login-title">{{'MENUITEMS.LOGIN.ACCESS' | translate}}</h2>
           <form class="validate-form" [formGroup]="authForm" (ngSubmit)="onSubmit()">
             <div class="row">
               <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 mb-2">
                 <mat-form-field class="example-full-width" appearance="outline">
-                  <mat-label>Username</mat-label>
+                  <mat-label>{{'MENUITEMS.LOGIN.USERNAME' | translate}}</mat-label>
                   <input matInput formControlName="username" />
                   <mat-icon class="material-icons-two-tone color-icon p-3" matSuffix>face</mat-icon>
                   @if (authForm.get('username')?.hasError('required')) {
                   <mat-error>
-                    Username es requerido
+                    {{'MENUITEMS.LOGIN.USERNAMEREQUIRED' | translate}}
                   </mat-error>
                   }
                 </mat-form-field>
@@ -32,7 +32,7 @@
             <div class="row">
               <div class="col-xl-12col-lg-12 col-md-12 col-sm-12 mb-2">
                 <mat-form-field class="example-full-width" appearance="outline">
-                  <mat-label>Password</mat-label>
+                  <mat-label>{{'MENUITEMS.LOGIN.PASSWORD' | translate}}</mat-label>
                   <input matInput [type]="hide ? 'password' : 'text'" formControlName="password">
                   <a href="#" onClick="return false;" matSuffix (click)="hide = !hide"
                     [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hide">
@@ -41,7 +41,7 @@
                   </a>
                   @if (authForm.get('password')?.hasError('required')) {
                   <mat-error>
-                    Password es requerido
+                    {{'MENUITEMS.LOGIN.PASSWORDREQUIRED' | translate}}
                   </mat-error>
                   }
                 </mat-form-field>
@@ -69,7 +69,7 @@
               <div style="text-align:center">
                 <button mat-flat-button color="accent" [class.auth-spinner]="loading" [disabled]="loading"
                   class="auth-form-btn" style="background-color: #002737" [disabled]="!authForm.valid " 
-                  type="submit">INGRESAR</button>
+                  type="submit">{{'MENUITEMS.LOGIN.ACCESS' | translate}}</button>
               </div>
             </div>
           </form>
@@ -77,7 +77,7 @@
 
 
           <footer style="text-align: center; padding: 10px; font-size: 14px; color: #555;">
-            © <span id="anio"></span> Just-Link Guatemala. Todos los derechos reservados.
+            © <span id="anio"></span> Just-Link Guatemala. {{'MENUITEMS.LOGIN.ALLRIGHTS' | translate}}
           </footer>
 
       

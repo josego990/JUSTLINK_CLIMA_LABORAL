@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Inject } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -10,17 +10,15 @@ import {
   MatSnackBarVerticalPosition,
 } from '@angular/material/snack-bar';
 
-import { CommonModule, DatePipe } from '@angular/common'; 
-import { FormBuilder, FormGroup, Validators, FormsModule,
-  ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,UntypedFormBuilder, 
+import { CommonModule } from '@angular/common'; 
+import { Validators, FormsModule,
+  ReactiveFormsModule, UntypedFormGroup, UntypedFormBuilder, 
  } from '@angular/forms';
  import {
-  MAT_DATE_LOCALE,
   MatOptionModule,
   MatRippleModule,
 } from '@angular/material/core';
  import { MatFormFieldModule } from '@angular/material/form-field';
-import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,8 +29,9 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { globalDataItems } from '../global-data-items';
 import { DialogSelectItemsComponent } from '../dialogselectitems/dialogselectitems.component';
-import { Field, Serie, SeriesDataSend, QuizBank } from '../models/quiz-models';
+import { Field, Serie, SeriesDataSend, QuizBank, GFactorsDataSend } from '../models/quiz-models';
 import { DialogformSerieComponent } from '../dialogformserie/dialogformserie.component';
+import { DialogformGFactorComponent } from '../dialogformgfactor/dialogformgfactor.component';
 
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import Swal from 'sweetalert2';
@@ -40,12 +39,16 @@ import * as XLSX from 'xlsx';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '@core';
 
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+import { GFactor } from '../models/quiz-models';
+
 @Component({
   selector: 'app-dialogitemform',
   templateUrl: './dialogformitems.component.html',
   styleUrls: ['./dialogformitems.component.scss'],
   imports: [
-
     MatDialogModule,
     MatTableModule,
     MatIconModule,
@@ -60,7 +63,7 @@ import { AuthService } from '@core';
     MatButtonModule,
     CommonModule,
     MatProgressSpinnerModule,
-    
+    TranslateModule,
     MatInputModule
 ],
 
@@ -78,18 +81,30 @@ export class DialogformItemsComponent implements OnInit {
 
   public idFlujo = 0;
   public idFactor = 0;
+    public idGFactor = 0;
   public factorName = '';
+  public gfactorName = '';
   public selectedFile = {};
 
   public ponderacion_rest = 0;
   public seriesx: Serie[] = [];
+  public gfactorsx: GFactor[] = [];
+
+
+  public gfactors_data_send: GFactorsDataSend = {
+    gfactores: this.gfactorsx,
+    idFlujo: this.idFlujo
+  };
+
+  public selectedGFactor = 0;
 
   public series_data_send: SeriesDataSend = {
     series: this.seriesx,
     ponderation_rest: this.ponderacion_rest,
     ponderation_total: this.ponderacion,
     idFlujo: this.idFlujo,
-
+    idGFactor: this.idGFactor,
+    gfactores: this.gfactorsx
   };
 
   public workbook: any | null = null;
@@ -121,9 +136,9 @@ export class DialogformItemsComponent implements OnInit {
   };
 
   displayedColumns: string[] = [
-   
     'type',
     'label',
+    'gfactor',
     'serie',
     'activate',
     'actions',
@@ -138,6 +153,7 @@ export class DialogformItemsComponent implements OnInit {
 
   public selectedFieldType = 'radio';
   public selectedSerie = 'none';
+
   public qname = '';
   public qdesc = '';
   public addTextForm!: UntypedFormGroup;
@@ -153,7 +169,7 @@ export class DialogformItemsComponent implements OnInit {
   public title_card = '';
   public idOrganization = 0;
 
-  public card = {
+  public card:any = {
     id: 0,
     avatarSrc: '',
     title: '',
@@ -163,6 +179,7 @@ export class DialogformItemsComponent implements OnInit {
     score: 0,
     completed: false,
     fields: [],
+    granFactores: [],
     series: [],
     idOrganization: 0
   };
@@ -206,12 +223,16 @@ export class DialogformItemsComponent implements OnInit {
   accessToDeleteClima = true;
   accessToUploadExcelClima = true;
 
+  langStoreValue?: string;
+
   constructor(
     private organizacionService: OrganizacionService, private authService: AuthService,
     public dialogRef: MatDialogRef<DialogformItemsComponent>,
-    private fb: UntypedFormBuilder,
+    private fb: UntypedFormBuilder,private languageService: LanguageService,private translate: TranslateService,
     public dialog: MatDialog,
+    public gfactordialog: MatDialog,
     public seriedialog: MatDialog,
+
     public bankdialog: MatDialog,
     public fdialog: MatDialog,
     @Inject(MAT_DIALOG_DATA) public data: any,
@@ -220,27 +241,40 @@ export class DialogformItemsComponent implements OnInit {
     this.options_context = [];
     this.card = data[0];
     this.bankData = data[1];
-    //this.dataSource = this.card.fields;
 
     //magia negra ;)
-    this.dataSource = this.card.series?.reduce((acc: any[], serie: any) => {
-      const enrichedFields = (serie.fields || []).map((field: any) => ({
-        ...field,
-        serie: serie.label 
-      }));
-      return acc.concat(enrichedFields);
-    }, []) || [];
+    this.dataSource = this.card.granFactores
+    .flatMap((granFactor: any) =>
+      (granFactor.series || []).flatMap((serie: any) =>
+        (serie.fields || []).map((field: any) => ({
+          ...field,
+          serie: serie.label,         // Nombre del factor hijo
+          granFactor: granFactor.label // También puedes agregar el nombre del gran factor si lo quieres
+        }))
+      )
+    );
+
+  this.series_data_send.gfactores = this.card.granFactores;
     
+  this.idFlujo = this.card.id;
 
-    this.dataSourceSerie = this.card.series;
-    this.seriesx = this.card.series;
-    this.series = this.card.series;
+  const allSeries = this.card.granFactores
 
-   //console.log('data.card', this.card);
-   //console.log('this.seriesx', this.seriesx);
-   //console.log('this.dataSource', this.dataSource);
+  .map((gf:any) => gf.series)
+  .reduce((acc:any, curr:any) => acc.concat(curr), []);
 
-    this.idFlujo = this.card.id;
+  //this.seriesx = allSeries;
+  
+  this.gfactorsx = this.card.granFactores?.map((gf: any) => ({
+    Id: gf.Id,
+    label: gf.label,
+    desc: gf.desc,
+    ...gf
+  })) || [];
+
+  this.dataSourceSerie = allSeries;
+  //this.seriesx = allSeries;
+  this.series = allSeries;
 
     let pon = 0;
     this.dataSourceSerie.forEach((serie) => {
@@ -255,9 +289,27 @@ export class DialogformItemsComponent implements OnInit {
     this.series_data_send.ponderation_rest = this.ponderacion_rest;
     this.series_data_send.ponderation_total = this.ponderacion;
     this.series_data_send.idFlujo = this.idFlujo;
+
+    this.gfactors_data_send.idFlujo = this.idFlujo;
+    this.gfactors_data_send.gfactores = this.gfactorsx;
+
   }
 
   public ngOnInit(): void {
+
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+
+    console.log('this.langStoreValue dialogformitem:: ', this.langStoreValue);
+
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
+
     this.options_context = [];
 
     this.addTextForm = this.fb.group({
@@ -421,7 +473,7 @@ export class DialogformItemsComponent implements OnInit {
     return fecha.toISOString().split('T')[0];
   }
   
-  convertExcelToJSONPreguntas(): Promise<any> {
+  convertExcelToJSONPreguntas13(): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.workbook) {
         return reject('No se encontró workbook');
@@ -444,16 +496,39 @@ export class DialogformItemsComponent implements OnInit {
         const tipo = row.TIPO;
         const etiqueta = String(row.ETIQUETA).trim();
   
-        if (!['FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)) {
-          errores.push(`Fila ${fila}: Tipo inválido (${tipo}). Solo se permiten 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`);
-          return;
-        }
-  
+        switch(localStorage.getItem('lang')){
+          case 'es':
+            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)  ) {
+              errores.push(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}:`  
+              +this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE')+ 
+              
+              `(${tipo}).`+ this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
+              `'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`);
+              return;
+            }
+          break;
+          case 'en':
+            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'].includes(tipo)  ) {
+              errores.push(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}:`  
+              +this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE')+ 
+              
+              `(${tipo}).`+ this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
+              `'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'`);
+              return;
+            }
+          break;
+        };
+
         if (!etiqueta) {
-          errores.push(`Fila ${fila}: ETIQUETA es obligatoria.`);
+          errores.push(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` + 
+          this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDISREQUIRED'));
           return;
         }
   
+        if(tipo == 'PRINCIPAL FACTOR'){
+          //aqui la funcionalidad nueva..
+        }
+
         if (tipo === 'FACTOR') {
           // Registrar nuevo factor (sin validar existencia)
           const newFactor = {
@@ -466,10 +541,47 @@ export class DialogformItemsComponent implements OnInit {
   
           preguntasJSON.preguntas.push({ tipo: 'factor', data: newFactor });
           currentFactorKey++; // Avanzar para la siguiente clave
-        } else {
+        } 
+        else { //PREGUNTAS..
           // Agregar pregunta ligada al último factor insertado
-          const tipoCampo = tipo === 'LIKERT' ? 'radio' : 'text';
-          const tipoAbrev = tipo === 'LIKERT' ? 'rad_' : 'txt_';
+          var tipoCampo = '';  
+          var tipoAbrev = '';  
+
+          switch(localStorage.getItem('lang')){
+            case 'es':
+              switch(tipo) {
+              case 'LIKERT':
+                tipoCampo = 'radio';
+                tipoAbrev = 'rad_';
+              break;
+              case 'PREGUNTA ABIERTA':
+                tipoCampo = 'text';
+                tipoAbrev = 'txt_';
+              break;
+              case 'PREGUNTA IA':
+                tipoCampo = 'iatext';
+                tipoAbrev = 'iatxt_';
+              break;
+            }
+           
+            break;
+            case 'en':
+              switch(tipo) {
+                case 'LIKERT':
+                  tipoCampo = 'radio';
+                  tipoAbrev = 'rad_';
+                break;
+                case 'OPEN QUESTION':
+                  tipoCampo = 'text';
+                  tipoAbrev = 'txt_';
+                break;
+                case 'QUESTION IA':
+                  tipoCampo = 'iatext';
+                  tipoAbrev = 'iatxt_';
+                break;
+              }
+            break;
+          };
 
           const pregunta = {
             IdFactor: 0, // Se actualizará en el backend luego del insert del factor
@@ -494,7 +606,7 @@ export class DialogformItemsComponent implements OnInit {
   
       if (errores.length > 0) {
         Swal.fire({
-          title: 'Errores encontrados',
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ISSUESFIND'),
           html: '<pre style="text-align:left">' + errores.join('\n') + '</pre>',
           icon: 'error',
         });
@@ -505,9 +617,199 @@ export class DialogformItemsComponent implements OnInit {
       resolve(preguntasJSON);
     });
   }
-  
-  
 
+  convertExcelToJSONPreguntas(): Promise<any> {
+    
+    return new Promise((resolve, reject) => {
+      if (!this.workbook) {
+        return reject('No se encontró workbook');
+      }
+
+      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      const preguntasJSON: any = {
+        idFlujo: this.idFlujo,
+        preguntas: [],
+      };
+
+      const errores: string[] = [];
+      let currentGFactorKey = 0;  // contador de gran factor
+      let currentFactorKey  = 0;  // contador de factor
+      let index = 1;
+
+      // banderas de contexto
+      let hasCurrentGranFactor = false;
+      let hasCurrentFactor     = false;
+
+      rawData.forEach((row: any, idx: number) => {
+        const fila = idx + 2;
+        const tipo = String(row.TIPO || '').trim();
+        const etiqueta = String(row.ETIQUETA || '').trim();
+        const desc = String(row.DESCRIPCION || '').trim();
+
+        // Validación de tipos permitidos por idioma
+        switch (localStorage.getItem('lang')) {
+          case 'es':
+            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)) {
+              errores.push(
+                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
+                ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
+                ` 'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`
+              );
+              return;
+            }
+            break;
+          case 'en':
+            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'].includes(tipo)) {
+              errores.push(
+                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
+                ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
+                ` 'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'`
+              );
+              return;
+            }
+            break;
+        }
+
+        if (!etiqueta) {
+          errores.push(
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDISREQUIRED')
+          );
+          return;
+        }
+
+        // ===== NUEVO: principal factor (gran factor) =====
+        if (tipo === 'PRINCIPAL FACTOR') {
+          const newGFactor = {
+            idFlujo: this.idFlujo,
+            Clave: `gfac_${currentGFactorKey}`,
+            Etiqueta: etiqueta,
+            Descripcion: desc
+          };
+
+          preguntasJSON.preguntas.push({ tipo: 'gran_factor', data: newGFactor });
+
+          // Actualiza contexto
+          currentGFactorKey++;
+          hasCurrentGranFactor = true;
+          hasCurrentFactor = false; // hasta que llegue el siguiente FACTOR
+          return; // siguiente fila
+        }
+
+        // ===== FACTOR =====
+        if (tipo === 'FACTOR') {
+          if (!hasCurrentGranFactor) {
+            // No puede haber FACTOR sin un gran factor activo
+            errores.push(
+              this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+              `Se encontró 'FACTOR' sin un 'PRINCIPAL FACTOR' previo.`
+            );
+            return;
+          }
+
+          const newFactor = {
+            idFlujo: this.idFlujo,
+            Clave: `serie_${currentFactorKey}`,
+            Etiqueta: etiqueta,
+            Descripcion: desc,
+            Puntaje: 0,
+            IdGranFactor: 0
+          };
+
+          preguntasJSON.preguntas.push({ tipo: 'factor', data: newFactor });
+
+          currentFactorKey++;
+          hasCurrentFactor = true;
+          return;
+        }
+
+        // ===== PREGUNTAS (LIKERT / ABIERTA / IA) =====
+        // Validar que exista FACTOR activo
+        if (!hasCurrentFactor) {
+          errores.push(
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+            `Se encontró una pregunta sin un 'FACTOR' definido previamente.`
+          );
+          return;
+        }
+
+        // Mapear tipo de pregunta
+        let tipoCampo = '';
+        let tipoAbrev = '';
+        let currentLang = localStorage.getItem('lang');
+        console.log('LOS DE INFORMATICA SOIS GENIALES:: ', currentLang);
+        switch (currentLang) {
+          case 'es':
+            switch (tipo) {
+              case 'LIKERT':
+                tipoCampo = 'radio';
+                tipoAbrev = 'rad_';
+                break;
+              case 'PREGUNTA ABIERTA':
+                tipoCampo = 'text';
+                tipoAbrev = 'txt_';
+                break;
+              case 'PREGUNTA IA':
+                tipoCampo = 'iatext';
+                tipoAbrev = 'iatxt_';
+                break;
+            }
+            break;
+          case 'en':
+            switch (tipo) {
+              case 'LIKERT':
+                tipoCampo = 'radio';
+                tipoAbrev = 'rad_';
+                break;
+              case 'OPEN QUESTION':
+                tipoCampo = 'text';
+                tipoAbrev = 'txt_';
+                break;
+              case 'QUESTION IA':
+                tipoCampo = 'iatext';
+                tipoAbrev = 'iatxt_';
+                break;
+            }
+            break;
+        }
+
+        const pregunta = {
+          IdFactor: 0, // el backend lo asignará al último 'factor' insertado
+          Tipo: tipoCampo,
+          NombreCampo: tipoAbrev + index,
+          Etiqueta: etiqueta,
+          Obligatoria: false,
+          Puntaje: 0,
+          ValorCorrecto: '',
+          Aleatorio: false,
+          Estado: 1,
+          RangoMin: 0,
+          RangoMax: 0
+        };
+
+        preguntasJSON.preguntas.push({ tipo: 'pregunta', data: pregunta });
+        index++;
+      });
+
+      if (errores.length > 0) {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ISSUESFIND'),
+          html: '<pre style="text-align:left">' + errores.join('\n') + '</pre>',
+          icon: 'error',
+        });
+        return reject('Errores de validación.');
+      }
+
+      resolve(preguntasJSON);
+    });
+  }
+
+  
+  
   //ARCHIVO EXCEL CARGADO
   onFileSelected(event: any): void {
 
@@ -516,8 +818,8 @@ export class DialogformItemsComponent implements OnInit {
     let timerInterval: any;
 
     Swal.fire({
-      title: 'Cargando archivo Excel Encuesta...',
-      html: 'Procesando datos, por favor espera <b></b>',
+      title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.LOADINGFILESURVEY'),
+      html:  + ' <b></b>',
       timerProgressBar: true,
       allowOutsideClick: false,
       allowEscapeKey: false,
@@ -525,7 +827,7 @@ export class DialogformItemsComponent implements OnInit {
         Swal.showLoading();
         const b = Swal.getHtmlContainer()?.querySelector('b');
         timerInterval = setInterval(() => {
-          if (b) b.textContent = `un momento..`;
+          if (b) b.textContent = this.translate.instant('MENUITEMS.QUIZ.MESSAGES.AMOMENT');
         }, 100);
       },
       willClose: () => {
@@ -559,9 +861,9 @@ export class DialogformItemsComponent implements OnInit {
 
             this.convertExcelToJSONPreguntas().then((jsonReturned) => {
              //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
-             //console.log('jsonReturned:: ', jsonReturned);
+             console.log('jsonReturned:: ', jsonReturned);
            
-
+/* */
               this.organizacionService.saveNewPreguntasExcel(jsonReturned).then((result:any) => {
                //console.log('RESULTADO DEL ENVIO BATCH: ', result);
 
@@ -569,9 +871,8 @@ export class DialogformItemsComponent implements OnInit {
                   Swal.close();
                   
                   Swal.fire({
-                    title: 'Finalizado!',
-                    text:
-                    'Se ingresaron los registros con éxito.',
+                    title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                    text:  this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SECCESSMESSAGE'),
                     icon: 'success',
                   });
 
@@ -581,7 +882,7 @@ export class DialogformItemsComponent implements OnInit {
                   if (result.data.errores && result.data.errores.length > 0) {
                     Swal.fire({
                       title: 'Error!',
-                      html: 'Se encontraron errores al insertar:<br><pre style="text-align:left">' + result.data.errores.join('<br>') + '</pre>',
+                      html: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FINDERROR') + '<br><pre style="text-align:left">' + result.data.errores.join('<br>') + '</pre>',
                       icon: 'error',
                       width: 600,
                     });
@@ -593,13 +894,12 @@ export class DialogformItemsComponent implements OnInit {
 
               }).catch((error)=> {
                 Swal.fire({
-                  title: 'Error!',
-                  text:
-                  'Ha ocurrido un error al cargar los datos. ' + error,
+                  title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+                  text:  this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERRORLOADDATA') + error,
                   icon: 'error',
                 });
-              }) 
-          
+              });
+         
 
             }).catch((error) => {
               console.error('Error al convertir excel a json!');
@@ -638,7 +938,49 @@ export class DialogformItemsComponent implements OnInit {
       
   }
 
-  onFactorChange(factor:any): void {
+  downloadExcelTemplate(): void {
+
+    let url = '';
+
+    switch(this.langStoreValue){
+      case 'es':
+        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+        break;
+      case 'en':
+        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx';
+    }
+
+    //const url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+    // Esto abrirá el archivo en una nueva pestaña o descargará el archivo, dependiendo del navegador
+    window.open(url, '_blank');
+
+    // Alternativamente, para forzar descarga (descargar en vez de abrir):
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'EmployeeTemplate.xlsx'; // nombre sugerido
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  onGranFactorChange(event: any): void {
+
+  this.idGFactor = event.value;
+
+  console.log('this.idGFactor:: ', this.idGFactor);
+
+  this.series_data_send.idGFactor = event.value;
+
+  const selectedGF = this.card.granFactores.find((gf: GFactor) => gf.Id === this.idGFactor);
+
+  //console.log('comou meu llamo?.. ', selectedGF);
+  this.gfactorName = selectedGF.label;
+
+  this.seriesx = selectedGF ? selectedGF.series : [];
+
+}
+
+   onFactorChange(factor:any): void {
    //console.log(factor);
     this.idFactor = factor.value;
 
@@ -663,8 +1005,8 @@ export class DialogformItemsComponent implements OnInit {
       this.organizacionService.updateClima(clima_data).then((resultex)=>{
         if(resultex.data.message === 'Estado del clima actualizado correctamente.'){
           Swal.fire({
-            title: 'Realizado',
-            text: resultex.data.message,
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMAUPDATED'),
             icon: 'success',
           });
 
@@ -672,9 +1014,9 @@ export class DialogformItemsComponent implements OnInit {
         }
       }).catch((err)=>{
         Swal.fire({
-          title: 'Error',
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
           text: err,
-          icon: 'success',
+          icon: 'error',
         });
       })
     }
@@ -686,8 +1028,8 @@ export class DialogformItemsComponent implements OnInit {
       this.organizacionService.updateClima(clima_data).then((resultex)=>{
         if(resultex.data.message === 'Estado del clima actualizado correctamente.'){
           Swal.fire({
-            title: 'Realizado',
-            text: resultex.data.message,
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMAUPDATED'),
             icon: 'success',
           });
 
@@ -695,9 +1037,9 @@ export class DialogformItemsComponent implements OnInit {
         }
       }).catch((err)=>{
         Swal.fire({
-          title: 'Error',
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
           text: err,
-          icon: 'success',
+          icon: 'error',
         });
       })
     }
@@ -713,14 +1055,14 @@ export class DialogformItemsComponent implements OnInit {
   swalConfirma(item: any): void {
     
     Swal.fire({
-      title: '¿Estás seguro?',
-      text: 'Esta acción eliminará permanentemente la pregunta incluso de la base de datos.',
+      title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.YOUSURE'),
+      text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.YOUSUREMESSAGE'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',       // Rojo para eliminar
       cancelButtonColor: '#3085d6',     // Azul para cancelar
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETECONFIRM'),
+      cancelButtonText: this.translate.instant('MENUITEMS.QUIZ.CANCEL')
     }).then((result) => {
       if (result.isConfirmed) {
        //console.log('✅ Confirmado: Eliminar pregunta');
@@ -756,8 +1098,8 @@ export class DialogformItemsComponent implements OnInit {
           this.loading = false;
 
           Swal.fire({
-            title: 'Realizado',
-            text: 'La pregunta se ha eliminado correctamente',
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDMESSAGE'),
             icon: 'success',
           });
 
@@ -767,8 +1109,8 @@ export class DialogformItemsComponent implements OnInit {
     }).catch((err)=>{
       this.loading = false;
       Swal.fire({
-        title: 'Algo anda mal..',
-        text: 'Ocurrió un error al intentar eliminar la pregunta. Error:: ' + err,
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+        text:  err,
         icon: 'error',
       });
     });
@@ -818,8 +1160,8 @@ export class DialogformItemsComponent implements OnInit {
       this.loading = false;
 
       Swal.fire({
-        title: 'Algo anda mal..',
-        text: 'Ocurrió un error al intentar actualizar el estado de la pregunta. Error:: ' + err,
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+        text: err,
         icon: 'error',
       });
     });
@@ -975,7 +1317,7 @@ export class DialogformItemsComponent implements OnInit {
    //console.log('Form Values', this.addTextForm.value);
 
     if (this.selectedSerie === 'none') {
-      alert('Debe seleccionar un Factor para la pregunta');
+      alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addTextForm.valid) {
         //console.log('valid');
@@ -988,9 +1330,9 @@ export class DialogformItemsComponent implements OnInit {
         ) {
           this.showNotification(
             'bg-red',
-            'Ya existe un nombre de campo "' +
-              this.addTextForm.value.iname +
-              '"',
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
+              this.addTextForm.value.iname,
+              
             'bottom',
             'right'
           );
@@ -1021,8 +1363,8 @@ export class DialogformItemsComponent implements OnInit {
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
               Swal.fire({
-                title: 'Realizado',
-                text: 'Se agregó la pregnta con éxito',
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
 
@@ -1074,8 +1416,8 @@ export class DialogformItemsComponent implements OnInit {
           }).catch((err)=>{
             this.loading = false;
             Swal.fire({
-              title: 'Algo anda mal..',
-              text: 'Ocurrión un error al ingresar la pregunta. Error:: ' + err,
+              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+              text: err,
               icon: 'warning',
             });
           });
@@ -1093,7 +1435,7 @@ export class DialogformItemsComponent implements OnInit {
    //console.log('Form Values', this.addTextFormIA.value);
 
     if (this.selectedSerie === 'none') {
-      alert('Debe seleccionar un Factor para la pregunta');
+      alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addTextFormIA.valid) {
         //console.log('valid');
@@ -1106,7 +1448,7 @@ export class DialogformItemsComponent implements OnInit {
         ) {
           this.showNotification(
             'bg-red',
-            'Ya existe un nombre de campo "' +
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST')  +
               this.addTextFormIA.value.iname +
               '"',
             'bottom',
@@ -1139,8 +1481,8 @@ export class DialogformItemsComponent implements OnInit {
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
               Swal.fire({
-                title: 'Realizado',
-                text: 'Se agregó la pregnta con éxito',
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
 
@@ -1192,8 +1534,8 @@ export class DialogformItemsComponent implements OnInit {
           }).catch((err)=>{
             this.loading = false;
             Swal.fire({
-              title: 'Algo anda mal..',
-              text: 'Ocurrión un error al ingresar la pregunta. Error:: ' + err,
+              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+              text: err,
               icon: 'warning',
             });
           });
@@ -1567,7 +1909,7 @@ export class DialogformItemsComponent implements OnInit {
    //console.log('onFormRadioSubmitClick', this.addTextForm.value);
    //console.log('SERIE SELECCIONADA:', this.selectedSerie);
     if (this.selectedSerie === 'none') {
-      alert('Debe seleccionar un Factor para la pregunta');
+      alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addRadioForm.valid) {
         this.loading = true;
@@ -1580,8 +1922,8 @@ export class DialogformItemsComponent implements OnInit {
         ) {
           this.loading = false;
           Swal.fire({
-            title: 'No permitido',
-            text: 'Ya existe un nombre de campo "' +
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NOTPERMMITED'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
               this.addRadioForm.value.iname +
               '"',
             icon: 'warning',
@@ -1613,13 +1955,14 @@ export class DialogformItemsComponent implements OnInit {
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
               Swal.fire({
-                title: 'Realizado',
-                text: 'Se agregó la pregnta con éxito',
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
 
               const v_p = {
                 id: itemlength,
+                granFactor: this.gfactorName,
                 type: 'radio',
                 name: 'rad_' + itemlength.toString(),
                 label: this.addRadioForm.value.ilabel,
@@ -1640,12 +1983,14 @@ export class DialogformItemsComponent implements OnInit {
               const serieEncontrada = this.dataSourceSerie.find(
                 (serie) => serie.label  === this.selectedSerie
               );
+
               serieEncontrada?.fields.push({
                 id: itemlength,
                 type: 'radio',
                 name: 'rad_' + itemlength.toString(),
                 label: this.addRadioForm.value.ilabel,
                 required: isrequired,
+                
                 score: 0,
                 options: this.options_context,
                 min: 0,
@@ -1658,6 +2003,7 @@ export class DialogformItemsComponent implements OnInit {
               });
     
               this.dataSource = [...this.dataSource];
+              console.log('this.dataSource, se supone?.. ', this.dataSource);
               const clabel = this.addRadioForm.get('ilabel');  
               clabel?.setValue('');  
               globalDataItems.next(this.dataSource);  
@@ -1666,9 +2012,9 @@ export class DialogformItemsComponent implements OnInit {
           }).catch((err)=>{
             this.loading = false;
             Swal.fire({
-              title: 'Algo anda mal..',
-              text: 'Ocurrión un error al ingresar la pregunta. Error:: ' + err,
-              icon: 'warning',
+              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+              text: err,
+              icon: 'error',
             });
           });
 
@@ -1790,7 +2136,7 @@ export class DialogformItemsComponent implements OnInit {
   onFormSliderSubmitClick() {
     //console.log('Form Values', this.addTextForm.value);
     if (this.selectedSerie === 'none') {
-      alert('Debe seleccionar un Factor para la pregunta');
+      alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addSliderForm.valid) {
         //console.log('valid');
@@ -1802,7 +2148,7 @@ export class DialogformItemsComponent implements OnInit {
         ) {
           this.showNotification(
             'bg-red',
-            'Ya existe un nombre de campo "' +
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
               this.addSliderForm.value.iname +
               '"',
             'bottom',
@@ -1834,8 +2180,8 @@ export class DialogformItemsComponent implements OnInit {
             if(responsy.data.message === 'Pregunta insertada correctamente'){
               this.loading = false;
               Swal.fire({
-                title: 'Realizado',
-                text: 'Se agregó la pregnta con éxito',
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
 
@@ -1894,8 +2240,8 @@ export class DialogformItemsComponent implements OnInit {
           }).catch((err)=>{
             this.loading = false;
             Swal.fire({
-              title: 'Algo anda mal..',
-              text: 'Ocurrión un error al ingresar la pregunta. Error:: ' + err,
+              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+              text: err,
               icon: 'warning',
             });
           });
@@ -1919,6 +2265,8 @@ export class DialogformItemsComponent implements OnInit {
   //DIALOGO AGREGARE FACTORES / SERIES
   openDialogSerie(data_sent: SeriesDataSend): void {
     
+    console.log('series_data_send::', this.series_data_send);
+
     const dialogRef = this.seriedialog.open(DialogformSerieComponent, {
       id: 'dialogserie',
       width: '50%',
@@ -1928,8 +2276,23 @@ export class DialogformItemsComponent implements OnInit {
   
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
+      }
+    });
+  }
+
+  openDialogGFactor(gfactors_data_send: GFactorsDataSend): void {
+    
+    const dialogRef = this.gfactordialog.open(DialogformGFactorComponent, {
+      id: 'dialoggfactor',
+      width: '50%',
+      disableClose: true,
+      data: gfactors_data_send,
+    });
+  
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === true) {
        //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE SERIE');
-        //this.getClimasLista(); // O el método que necesites para refrescar
+       //this.getClimasLista(); // O el método que necesites para refrescar
       }
     });
   }

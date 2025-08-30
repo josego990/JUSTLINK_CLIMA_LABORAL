@@ -157,6 +157,19 @@ export class CrearOrganizacionComponent implements OnInit {
         });
   }
 
+  onCountryChange(selectedId: number) {
+    //console.log('Se seleccionó el pais con Id:', selectedId);
+
+    const selectedCountry = this.dataSourceCountries.find((pais:any) => pais.Id  === selectedId);
+
+    if(selectedCountry){
+      
+      console.log('pais:: ', selectedCountry);
+
+    }
+    
+  }
+
   deleteOrganization(idOrganization:number): void {
     this.organizacionService.deleteOrganization(idOrganization)
     .then((response:any) => {

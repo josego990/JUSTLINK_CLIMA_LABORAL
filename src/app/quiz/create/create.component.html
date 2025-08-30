@@ -1,19 +1,50 @@
 <section class="content">
   <div class="content-block">
+
     <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'ADMINISTRAR CLIMAS'" [items]="['Home','CLIMAS']" [active_item]="'Administrar '"></app-breadcrumb>
+      <div class="header-content">
+        <div class="breadcrumb-container">
+          <app-breadcrumb
+            [title]="'MENUITEMS.QUIZ.TEXT' | translate"
+            [items]="['Home','CLIMAS']"
+            [active_item]="'Administrar '"
+          ></app-breadcrumb>
+        </div>
+
+    
+      </div>
     </div>
+
     <div class="row">
       <div class="col-lg-12 col-md-12 col-sm-12 col-12">
         <div>
-          <div class="header">
-         
-            <button [disabled]="!accessToCreate"  style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialog()">
-              <mat-icon>add</mat-icon> Crear Nuevo Clima
-            </button>
-            
-          </div>
+          <div class="headerx">
+        <button
+          style="border-radius: 8px;"
+          joyrideStep="step1"
+          [title]= "'MENUITEMS.TOUR.BTNADDQUIZ' | translate"
+          text="Agrega un nuevo clima para luego agregar preguntas a la encuesta."
+          [disabled]="!accessToCreate"
+          mat-raised-button
+          color="primary"
+          (click)="openDialog()"
+        >
+          <mat-icon>add</mat-icon>
+          {{ 'MENUITEMS.QUIZ.CREATE' | translate }}
+        </button>
+
+        <button
+          mat-icon-button
+          (click)="startTour()"
+          matTooltip="Guía del sistema"
+          class="help-button"
+        >
+          <span class="material-icons">help_outline</span>
+        </button>
+      </div>
+
+          
+
           <mat-progress-spinner 
             *ngIf="loading"
             mode="indeterminate"
@@ -21,12 +52,16 @@
             color="primary"
             style="margin: auto; display: block;">
           </mat-progress-spinner>
-          <div class="body">
+
+          <div style="overflow-y: auto; max-height: 800px; margin-top: 15px;" class="body">
             <div class="row">
               <div *ngFor="let card of cardsData" class="col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-4 col-xxl-4">
-                <mat-card style="border: 1px solid #ccc;">
+                
+                <mat-card style="border: 1px solid #ccc; border-radius: 8px;" 
+                  joyrideStep="step4" title="Visualiza" 
+                  text="Aquí verás la información del clima">
                   
-                  <mat-card-header>
+                  <mat-card-header >
                     <img mat-card-avatar [src]="card.avatarSrc" />
                     <mat-card-title>{{ card.title }}</mat-card-title>
                     <mat-card-subtitle style="color: #91a1a4">
@@ -35,58 +70,65 @@
                   </mat-card-header>
                 
                   <!-- Reemplazo de la imagen por un dashboard resumen -->
-                  <div style="padding: 16px;">
+                  <div joyrideStep="step5" title="Seguimiento" 
+                    text="Este es el estado en tiempo real de las encuestas del clima." 
+                    style="padding: 16px;">
                     <div style="display: flex; flex-wrap: wrap; gap: 12px;">
 
                       <div style="flex: 1 1 45%; display: flex; align-items: center;">
                         <span
+                          class="material-icons"
                           [ngStyle]="{
                             color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
-                                   (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
+                                  (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
                             'font-size': '18px',
                             'margin-right': '8px'
                           }"
                         >
-                          {{ card.estadoEnvio === 'Creado' ? '🕓' :
-                             card.estadoEnvio === 'Enviado' ? '✅' : '⌛' }}
+                          {{ card.estadoEnvio === 'Creado' ? 'access_time' :
+                            card.estadoEnvio === 'Enviado' ? 'check' : 'hourglass_empty' }}
                         </span>
                         <strong
                           [ngStyle]="{
                             color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
-                                   (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red')
-                          }"
-                        >
-                          {{ card.estadoEnvio }}
+                                  (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red')}">
+                          {{ ('MENUITEMS.QUIZ.ESTADOS.' + card.estadoEnvio.toUpperCase().replace(' ', '_')) | translate }}
                         </strong>
                       </div>
 
-                      <div style="flex: 1 1 45%;">
-                        👥 <strong>Empleados:</strong> {{ card.estadisticasEnvio.total_empleados_activos  }}
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">group</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.EMPLOYEES' | translate }}</strong> {{ card.estadisticasEnvio.total_empleados_activos }}
                       </div>
 
-                      <div style="flex: 1 1 45%;">
-                        📝 <strong>Encuestas:</strong> {{ card.estadisticasEnvio.total }}
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">assignment</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.QUIZES' | translate }}</strong> {{ card.estadisticasEnvio.total }}
                       </div>
 
-                      <div style="flex: 1 1 45%;">
-                        📤 <strong>Enviadas:</strong> {{ card.estadisticasEnvio.total_enviadas  }}
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">send</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.SENDS' | translate }}</strong> {{ card.estadisticasEnvio.total_enviadas }}
                       </div>
 
-                      <div style="flex: 1 1 45%;">
-                        📊 <strong>Iniciadas:</strong>  {{card.estadisticasEnvio.total_iniciadas}}
-                      </div>
-                      
-                      <div style="flex: 1 1 45%;">
-                        ✅ <strong>Contestadas:</strong> {{ card.estadisticasEnvio.total_contestadas }}
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">bar_chart</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.INITILIZES' | translate }}</strong> {{ card.estadisticasEnvio.total_iniciadas }}
                       </div>
 
-                      <div style="flex: 1 1 45%;">
-                        📋 <strong>Pendientes:</strong> {{ card.estadisticasEnvio.total - card.estadisticasEnvio.total_contestadas }}
-
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">check</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETED' | translate }}</strong> {{ card.estadisticasEnvio.total_contestadas }}
                       </div>
-                      
-                      <div style="flex: 1 1 45%;">
-                        📊 <strong>Completado:</strong>  {{card.estadisticasEnvio.porcentaje}} %
+
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">playlist_add_check</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.PENDING' | translate }}</strong> {{ card.estadisticasEnvio.total - card.estadisticasEnvio.total_contestadas }}
+                      </div>
+
+                      <div style="flex: 1 1 40%;">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">bar_chart</span>
+                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETEDPERCENT' | translate }}</strong> {{ card.estadisticasEnvio.porcentaje }} %
                       </div>
 
                       
@@ -102,54 +144,59 @@
                   </mat-card-content>
 
                    <!-- Chips de factores (series) -->
-                   <mat-card-content>
-                    Factores:
-                  
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
-                     
-                        <mat-chip *ngFor="let factor of card.series"
-                                  color="primary"
-                                  selected
-                                  [matTooltip]="getTooltipText(factor)"
-                                  matTooltipClass="tooltip-html"
-                                  matTooltipPosition="above"
-                                  removable="true"
-                                  (removed)="deleteFactor(factor)">
-                          {{ factor.label }} ({{factor.fields.length}})
-                          <button [disabled]="!accessToDeleteFactor" matChipRemove>
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        </mat-chip>
-
-                      
-                      
-                 
-                    </div>
-                  </mat-card-content>
-                  
-                  
-                  
-                  
+                  <mat-card-content >
+                   
                 
+                     
+                      <div *ngFor="let cardx of card.granFactores" 
+                          style=" border-radius:5px; margin-bottom:5px; box-shadow:0 1px 4px #0001; border-style: double; padding:18px 24px;">
+                        <div style="font-weight:600; font-size:1.1em; margin-bottom:4px;">
+                          {{ cardx.label }}
+                        </div>
+                        <div style="color:#778; font-size:0.96em; margin-bottom:8px;">
+                          {{ cardx.desc }}
+                        </div>
+                        
+                            <mat-chip *ngFor="let factor of cardx.series"
+                                      style="margin-top: 5px; margin-right: 5px;"
+                                      color="primary"
+                                      selected
+                                      [matTooltip]="getTooltipText(factor)"
+                                      matTooltipClass="tooltip-html"
+                                      matTooltipPosition="above"
+                                      removable="true"
+                                      (removed)="deleteFactor(factor)">
+                              {{ factor.label }} ({{factor.fields.length}})
+                              <button [disabled]="!accessToDeleteFactor" matChipRemove>
+                                <mat-icon>cancel</mat-icon>
+                              </button>
+                            </mat-chip>
+
+                   
+                      </div>
+                 
+                   
+                  </mat-card-content>
+                                  
                   <mat-divider style="margin-top: 5px;"></mat-divider>
                 
                   <mat-card-actions>
-                    <div class="header" fxLayout="row">
-                      <span fxFlex></span>
+
+                      <button joyrideStep="step2" title="Edita" 
+                       text="Aquí podrás editar la encuesta del clima como agregar factores y preguntas."  
+                       [disabled]="!accessToEdit" style="margin-left: auto; border-radius: 8px;" 
+                        mat-raised-button color="primary" (click)="editarQuiz(card)">
+                        {{'MENUITEMS.QUIZ.EDIT' | translate}}
+                      </button>
+                    
+                      <button joyrideStep="step3" title="Envía" 
+                        text="Con este botón podras administrar el envío de las encuestas."
+                        [disabled]="!accessToSend" style="margin-left: 20px; border-radius: 8px;" 
+                        mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
+                        {{'MENUITEMS.QUIZ.SEND' | translate}}
+                      </button>
                       
-                      <button [disabled]="!accessToEdit" style="margin-left: auto" mat-raised-button color="primary" (click)="editarQuiz(card)">
-                        Editar
-                      </button>
-                      <!--
-                      <button style="color: #91a1a4; margin-left: 10px;" mat-button (click)="verDetalles(card)">
-                        Vista
-                      </button>
-                      -->
-                      <button [disabled]="!accessToSend" style="margin-left: 5px" mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
-                        Envío
-                      </button>
-                      
-                    </div>
+                   
                   </mat-card-actions>
                 </mat-card>
                 

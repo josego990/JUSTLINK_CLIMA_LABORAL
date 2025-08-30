@@ -5,6 +5,7 @@ import { DynamicFormComponent } from './dynamic-form/dynamic-form.component';
 import { CreateComponent } from './create/create.component';
 import { CompleteClimaComponent } from './completeclima/completeclima.component';
 import { EditorPlantillaCorreoComponent } from './maileditor/editor-plantilla-correo.component';
+import { FactorDemographicAccessComponent } from "./factordemographicaccess/factordemographicaccess.component";
 
 export const QUIZ_ROUTE: Route[] = [
   {
@@ -28,6 +29,10 @@ export const QUIZ_ROUTE: Route[] = [
   {
     path: "editor",
     component: EditorPlantillaCorreoComponent,
+  },
+  {
+    path: "factordemographicaccess",
+    component: FactorDemographicAccessComponent,
   },
  
 ];

@@ -2,11 +2,12 @@
 import { Component } from '@angular/core';
 import { Event, Router, NavigationStart, NavigationEnd, RouterModule } from '@angular/router';
 import { PageLoaderComponent } from './layout/page-loader/page-loader.component';
-
+import { JoyrideModule } from 'ngx-joyride';
 
 @Component({
     selector: 'app-root',
     imports: [
+      JoyrideModule,
         RouterModule,
         PageLoaderComponent
     ],

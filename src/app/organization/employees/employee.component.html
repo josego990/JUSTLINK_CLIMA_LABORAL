@@ -6,143 +6,146 @@
     </div>
     <div class="row">
       <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
-        <div style="margin-left: -50px;"  class="card">
+        <div style="margin-left: -40px;"  class="card">
           
           <div class="body">
-            
-
-
-            <!-- Envuélvelo con un form que use [formGroup]="orgForm" -->
-           
-              <div class="col-md-6">
-                <mat-form-field appearance="outline" >
-                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
+          
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <!-- Columna 1: selector de organización -->
+              <div class="col-6">
+                <mat-form-field appearance="outline" class="w-75">
+                  <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
                   <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
-                    <mat-option
-                      *ngFor="let organization of dataSourceOrganizations"
-                      [value]="organization.Id"
-                    >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
                       {{ organization.Nombre }}
                     </mat-option>
                   </mat-select>
                 </mat-form-field>
-
-
-                                
               </div>
 
-
-
-              <div class="body table-responsive">
-                <table mat-table [dataSource]="dataSourceEmployees" class="table">
-
-                  <!-- Id -->
-                  <ng-container matColumnDef="Id">
-                    <th mat-header-cell *matHeaderCellDef> ID </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
-                  </ng-container>
-                
-                  <!-- IdOrganizacion -->
-                  <ng-container matColumnDef="IdOrganizacion">
-                    <th mat-header-cell *matHeaderCellDef> Id Org. </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
-                  </ng-container>
-                
-                  <!-- Nombres -->
-                  <ng-container matColumnDef="Nombres">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.NAME' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Nombres }} </td>
-                  </ng-container>
-                
-                  <!-- Apellidos -->
-                  <ng-container matColumnDef="Apellidos">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.LNAME' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Apellidos }} </td>
-                  </ng-container>
-                
-                
-                  <!-- Celular -->
-                  <ng-container matColumnDef="Celular">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.PHONE' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Celular }} </td>
-                  </ng-container>
-                
-                  <!-- Email -->
-                  <ng-container matColumnDef="Email">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.MAIL' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Email }} </td>
-                  </ng-container>
-                
-               
-                  <!-- TipoEnvioEncuesta -->
-                  <ng-container matColumnDef="TipoEnvioEncuesta">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.TipoEnvioEncuesta === 1
-                                                                                              ? 'Correo'
-                                                                                              : element.TipoEnvioEncuesta === 2
-                                                                                                ? 'Whatsapp'
-                                                                                                : 'Otro' }} </td>
-                  </ng-container>
-                
-                  <!-- FechaRegistro -->
-                  <ng-container matColumnDef="FechaRegistro">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.REGDATE' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{ element.FechaRegistro | date }} </td>
-                  </ng-container>
-                
-                  <ng-container matColumnDef="estado">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.STATUS' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{ element.estado == 1 ? 'Activo' : 'Inactivo' }} </td>
-                  </ng-container>
-
-                  <!-- Acciones -->
-                  <ng-container matColumnDef="Acciones">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.ACTIONS' | translate}} </th>
-                    <td mat-cell *matCellDef="let element">
-                      <button mat-icon-button 
-                              [color]="element.estado === 1 ? 'warn' : 'accent'" 
-                              (click)="deleteItem(element)">
-                        <mat-icon>
-                          {{ element.estado === 1 ? 'delete' : 'loop' }}
-                        </mat-icon>
-                      </button>
-                    </td>
-                  </ng-container>
-
-
-                  <ng-container *ngFor="let campo of camposDinamicos" [matColumnDef]="campo">
-                    <th mat-header-cell *matHeaderCellDef> {{ campo }} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element[campo] }} </td>
-                  </ng-container>
-
-                
-                  <!-- Header & Row definitions -->
-                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
-                
-              </div>
-            
-              <div class="mb-3">
-                <!-- Botón para abrir el selector de archivos -->
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="fileInput.click()"
-                  [disabled]="isButtonDisabled"
-                >
-                  {{'MENUITEMS.EMPLOYEE.UPLOAD' | translate}}
+              <!-- Columna 2: botón de settings alineado a la derecha -->
+              <div class="col-6 d-flex justify-content-end align-items-center" >
+                <button mat-icon-button [matMenuTriggerFor]="menu" style="margin-right: 20px;">
+                  <mat-icon>settings</mat-icon>
                 </button>
-              
-                <!-- Input de archivo, oculto visualmente -->
-                <input
-                  #fileInput
-                  type="file"
-                  accept=".xlsx, .xls"
-                  style="display: none"
-                  (change)="onFileSelected($event)"
-                />
+
+                <mat-menu #menu="matMenu">
+                  <!-- Cargar Excel -->
+                  <button [disabled]="!accessToUploadExcelEmployee || isButtonDisabled" mat-menu-item (click)="fileInput.click()">
+                    <mat-icon style="color:#217346;">table_view</mat-icon>
+                    <span style="color:#217346;">{{ 'MENUITEMS.EMPLOYEE.UPLOADEXCELEMPLOYEE' | translate }}</span>
+                  </button>
+
+                  <input
+                    #fileInput
+                    type="file"
+                    accept=".xlsx,.xls"
+                    style="display:none"
+                    (change)="onFileSelected($event)"
+                  />
+
+                  <!-- Descargar plantilla Excel -->
+                  <button [disabled]="!accessToDownloadExcelEmployee || isButtonDisabled" mat-menu-item (click)="downloadExcelEmployeeTemplate()">
+                    <mat-icon style="color:#217346;">file_download</mat-icon>
+                    <span style="color:#217346;">{{ 'MENUITEMS.EMPLOYEE.DOWNLOADEXCELEMPLOYEE' | translate }}</span>
+                  </button>
+                </mat-menu>
               </div>
+            </div>
+
+
+
+            <div class="body table-responsive">
+              <table mat-table [dataSource]="dataSourceEmployees" class="table">
+
+                <!-- Id -->
+                <ng-container matColumnDef="Id">
+                  <th mat-header-cell *matHeaderCellDef> ID </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
+                </ng-container>
+              
+                <!-- IdOrganizacion -->
+                <ng-container matColumnDef="IdOrganizacion">
+                  <th mat-header-cell *matHeaderCellDef> Id Org. </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
+                </ng-container>
+              
+                <!-- Nombres -->
+                <ng-container matColumnDef="Nombres">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.NAME' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Nombres }} </td>
+                </ng-container>
+              
+                <!-- Apellidos -->
+                <ng-container matColumnDef="Apellidos">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.LNAME' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Apellidos }} </td>
+                </ng-container>
+              
+              
+                <!-- Celular -->
+                <ng-container matColumnDef="Celular">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.PHONE' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Celular }} </td>
+                </ng-container>
+              
+                <!-- Email -->
+                <ng-container matColumnDef="Email">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.MAIL' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Email }} </td>
+                </ng-container>
+              
+              
+                <!-- TipoEnvioEncuesta -->
+                <ng-container matColumnDef="TipoEnvioEncuesta">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.TipoEnvioEncuesta === 1
+                                                                                            ? 'Correo'
+                                                                                            : element.TipoEnvioEncuesta === 2
+                                                                                              ? 'Whatsapp'
+                                                                                              : 'Otro' }} </td>
+                </ng-container>
+              
+                <!-- FechaRegistro -->
+                <ng-container matColumnDef="FechaRegistro">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.REGDATE' | translate}}</th>
+                  <td mat-cell *matCellDef="let element"> {{ element.FechaRegistro | date }} </td>
+                </ng-container>
+              
+                <ng-container matColumnDef="estado">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.STATUS' | translate}}</th>
+                  <td mat-cell *matCellDef="let element"> {{ element.estado == 1 ? 'Activo' : 'Inactivo' }} </td>
+                </ng-container>
+
+                <!-- Acciones -->
+                <ng-container matColumnDef="Acciones">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.ACTIONS' | translate}} </th>
+                  <td mat-cell *matCellDef="let element">
+                    <button mat-icon-button 
+                            [color]="element.estado === 1 ? 'warn' : 'accent'" 
+                            (click)="deleteItem(element)">
+                      <mat-icon>
+                        {{ element.estado === 1 ? 'delete' : 'loop' }}
+                      </mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+
+
+                <ng-container *ngFor="let campo of camposDinamicos" [matColumnDef]="campo">
+                  <th mat-header-cell *matHeaderCellDef> {{ campo }} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element[campo] }} </td>
+                </ng-container>
+
+              
+                <!-- Header & Row definitions -->
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+              </table>
+              
+            </div>
+            
+             
 
               <mat-accordion>
                 <mat-expansion-panel [expanded]="false">

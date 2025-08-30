@@ -39,7 +39,8 @@
                           <mat-slide-toggle
                             [checked]="access.hasAccess === 1"
                             (change)="onToggleAccess(role.RoleId, access.ActionId, $event.checked)"
-                          ></mat-slide-toggle>
+                            [disabled]="role.roleName?.toLowerCase() === 'admin'">
+                          </mat-slide-toggle>
                         </td>
                       </tr>
                     </tbody>

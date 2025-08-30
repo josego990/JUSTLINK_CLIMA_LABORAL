@@ -29,6 +29,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
+import { MatMenuModule } from '@angular/material/menu';
 
 @Component({
   selector: 'app-employee-organizacion',
@@ -38,7 +39,7 @@ import { AuthService } from '@core';
 
   imports: [
     BreadcrumbComponent,TranslateModule,
-    MatDialogModule,
+    MatDialogModule, MatMenuModule,
     MatTableModule,
     MatIconModule,
     MatExpansionModule,
@@ -106,6 +107,9 @@ export class CrearEmpleadosComponent implements OnInit {
     'Acciones'
   ];
 
+  //accesos
+  accessToUploadExcelEmployee = true;
+  accessToDownloadExcelEmployee = true;
 
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
@@ -157,45 +161,44 @@ export class CrearEmpleadosComponent implements OnInit {
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
 
-    //jjg aquí se maneja el cambio desde el componente header
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
       this.translate.use(lang);
     });
 
-    //this.getOrganizations();
-    //this.getEmployeesByOrg();
-
+    //validar primero si es admin
     if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      console.log('ES ADMIN EL WEY!');
       this.getOrganizations();
     }
     else {
 
     //validar permisos de acciones
-    const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
-    const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
+    const permisonDownloadExcelEmployee = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'descargaexcelempleado');
+    const permisoUploadExcelEmployee = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'cargaexcelempleado');
 
     //console.log('permisoexport',permisoexport);
 
-    /*
-    if(permisoexport){
-      this.accessToExport = true;
-      this.btnDisabled = false;
+    /*    */
+    if(permisonDownloadExcelEmployee){
+      this.accessToDownloadExcelEmployee = true;
+      this.isButtonDisabled = false;
     }else{
-      this.accessToExport = false;
-      this.btnDisabled = true;
+      this.accessToDownloadExcelEmployee = false;
+      this.isButtonDisabled = true;
     }
 
-    if(permisofilter){
-      this.accessToFilter = true;
-      //this.btnDisabled = false;
+    if(permisoUploadExcelEmployee){
+      this.accessToUploadExcelEmployee = true;
+      this.isButtonDisabled = false;
     }else{
-      this.accessToFilter = false;
-      //this.btnDisabled = true;
+      this.accessToUploadExcelEmployee = false;
+      this.isButtonDisabled = true;
     }
-    */
+
 
     this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
     }
+
 
   }
 
@@ -416,120 +419,6 @@ export class CrearEmpleadosComponent implements OnInit {
     return fecha.toISOString().split('T')[0];
   }
   
-  convertExcelToJSON_sin_demograficos() {
-   //console.log('this.workbook ', this.workbook);
-    return new Promise((resolve, reject) => {
-      if (!this.workbook) {
-       //console.log('NO WORKBOOK?');
-        return reject('No se encontró workbook');
-      }
-  
-      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
-      this.jsonDatax = XLSX.utils.sheet_to_json(worksheet);
-  
-      const excel_empleados: any = {
-        idOrganizacion: this.idOrganization,
-        empleados: [],
-      };
-  
-      // Expresiones regulares para validación
-      const nameRegex = /^[A-Za-z ]+$/;
-      const phoneRegex = /^[0-9]{8}$/;
-      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-  
-      const errores: string[] = [];
-  
-      this.jsonDatax.forEach((t: any, idx: number) => {
-        const filaExcel = idx + 2;
-  
-        const nombres = String(t.NOMBRES ?? '').trim();
-        const apellidos = String(t.APELLIDOS ?? '').trim();
-        const telefono = String(t.TELEFONO ?? '').trim();
-        const email = String(t.EMAIL ?? '').trim();
-  
-        const numIdentificacion = String(t.IDENTIFICACION ?? 'NA').trim();
-        const tipoIdentificacion = String(t.TIPO_IDENTIFICACION ?? 'NA').trim();
-        const cargo = String(t.CARGO ?? 'SIN CARGO').trim();
-        let fechaIngreso: string | null = null;
-        
-       //console.log('capullo: ', t.FECHA_INGRESO);
-
-        if (t.FECHA_INGRESO) {
-          try {
-            fechaIngreso = this.parseFechaManual(t.FECHA_INGRESO);
-          } catch (err) {
-            errores.push(`Fila ${filaExcel}: FECHA_INGRESO tiene un formato incorrecto.`);
-          }
-        }
-
-        const tipoEnvioEncuesta = Number(t.TIPO_ENVIO_ENCUESTA ?? 0);
-  
-        // Validaciones
-        if (!nombres) errores.push(`Fila ${filaExcel}: El campo NOMBRES es obligatorio.`);
-        else if (!nameRegex.test(nombres)) errores.push(`Fila ${filaExcel}: NOMBRES contiene caracteres no permitidos.`);
-  
-        if (!apellidos) errores.push(`Fila ${filaExcel}: El campo APELLIDOS es obligatorio.`);
-        else if (!nameRegex.test(apellidos)) errores.push(`Fila ${filaExcel}: APELLIDOS contiene caracteres no permitidos.`);
-  
-        if (!telefono) errores.push(`Fila ${filaExcel}: El campo TELEFONO es obligatorio.`);
-        else if (!phoneRegex.test(telefono)) errores.push(`Fila ${filaExcel}: TELEFONO debe tener 8 dígitos numéricos.`);
-  
-        if (!email) errores.push(`Fila ${filaExcel}: El campo EMAIL es obligatorio.`);
-        else if (!emailRegex.test(email)) errores.push(`Fila ${filaExcel}: EMAIL tiene un formato inválido.`);
-  
-        if (!numIdentificacion) errores.push(`Fila ${filaExcel}: El campo NUMERO_IDENTIFICACION es obligatorio.`);
-        if (!tipoIdentificacion) errores.push(`Fila ${filaExcel}: El campo TIPO_IDENTIFICACION es obligatorio.`);
-  
-        if (!cargo) errores.push(`Fila ${filaExcel}: El campo CARGO es obligatorio.`);
-  
-        // Validar que la fecha esté presente y tenga el formato esperado
-        const regexFecha = /^\d{2}\/\d{2}\/\d{4}$/; // Ej: 20/03/2025
-       //console.log('fechaIngresox',fechaIngreso);
-        if (!fechaIngreso) {
-          errores.push(`Fila ${filaExcel}: FECHA_INGRESO está vacía o tiene formato inválido (DD/MM/YYYY).`);
-        }
-
-  
-        if (![0, 1, 2].includes(tipoEnvioEncuesta)) {
-          errores.push(`Fila ${filaExcel}: TIPO_ENVIO_ENCUESTA debe ser 0, 1 o 2.`);
-        }
-  
-        // Si no hubo errores en esta fila, se agrega
-        if (errores.length === 0 || errores.filter(e => e.includes(`Fila ${filaExcel}`)).length === 0) {
-          excel_empleados.empleados.push({
-            nombres,
-            apellidos,
-            numIdentificacion,
-            tipoIdentificacion,
-            celular: telefono,
-            email,
-            cargo,
-            fechaIngreso,
-            tipoEnvioEncuesta,
-          });
-        }
-      });
-  
-      if (errores.length > 0) {
-        errores.forEach((err) => console.error(err));
-        Swal.fire({
-          title: 'Error!',
-          html: 'Se encontraron errores en el archivo Excel:<br><pre style="text-align:left">' + errores.join('<br>') + '</pre>',
-          icon: 'error',
-          width: 600,
-        });
-        return reject('Errores de validación.');
-      }
-  
-      this.jsonData = excel_empleados;
-     //console.log('this.jsonData:: ', this.jsonData);
-      resolve('success');
-    }).catch((err) => {
-      console.error(err);
-      return Promise.reject(err);
-    });
-  }
-  
   convertExcelToJSON() {
    //console.log('this.workbook ', this.workbook);
     return new Promise((resolve, reject) => {
@@ -659,7 +548,6 @@ export class CrearEmpleadosComponent implements OnInit {
     });
   }
   
-
   onFileSelected(event: any): void {
     let timerInterval: any;
 
@@ -795,6 +683,31 @@ export class CrearEmpleadosComponent implements OnInit {
       .catch((error: any) => {
         console.error('Error al obtener demográficos:', error);
       });
+  }
+
+  downloadExcelEmployeeTemplate(): void {
+
+    let url = '';
+
+    switch(this.langStoreValue){
+      case 'es':
+        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+        break;
+      case 'en':
+        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx';
+    }
+
+    //const url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+    // Esto abrirá el archivo en una nueva pestaña o descargará el archivo, dependiendo del navegador
+    window.open(url, '_blank');
+
+    // Alternativamente, para forzar descarga (descargar en vez de abrir):
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'EmployeeTemplate.xlsx'; // nombre sugerido
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
   
  

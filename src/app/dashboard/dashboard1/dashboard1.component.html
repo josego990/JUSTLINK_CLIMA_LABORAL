@@ -5,7 +5,7 @@
       <app-breadcrumb [title]="'MENUITEMS.DASHBOARD.LIST.DASHBOARD1' | translate" [items]="['Home']" [active_item]="'Dashboad Climas'"></app-breadcrumb>
     </div>
     <div class="row" style="margin-left: 4px;">
-      <div class="col-md-3">
+      <div class="col-md-2 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Organización</mat-label>
           <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
@@ -20,7 +20,7 @@
         </mat-form-field>
 
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Climas {{nombreOrganizacion}}</mat-label>
           <mat-select (selectionChange)="onClimaChange($event.value)">
@@ -36,26 +36,26 @@
       </div>
 
 
-       <div class="col-md-4">
+       <div class="col-md-3 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Filtros demográficos</mat-label>
 
-          <!-- multiple ⇒ Angular Material coloca checkbox automáticamente -->
-          <mat-select [disabled]="!accessToFilter" 
+          <mat-select
+            [disabled]="!accessToFilter"
             multiple
-            (selectionChange)="onSelectionChange($event.value)"
-          >
-            <!-- Grupo por campo (“SEXO”, “MUNICIPIO”, …) -->
-            <mat-optgroup
-              *ngFor="let campo of campos"
-              [label]="campo.NombreCampo"
-            >
-              <!-- Cada valor (F, M, …) -->
+            (selectionChange)="onSelectionChange($event.value)">
+            
+            <mat-optgroup *ngFor="let campo of campos" [label]="campo.NombreCampo">
               <mat-option
-                *ngFor="let v of campo.Valores"
+                *ngFor="let v of (campo.Valores || [])"
                 [value]="campo.IdCampoDemografico + '|' + v.Valor"
-              >
+                [disabled]="+v.PermiteFiltro !== 1"
+                [matTooltip]="(+v.PermiteFiltro !== 1) ? 'Disponible cuando haya ≥ 6 respuestas' : ''"
+                matTooltipPosition="above"
+                [matTooltipDisabled]="+v.PermiteFiltro === 1">
+
                 {{ v.Valor }}
+                <span *ngIf="+v.PermiteFiltro !== 1" class="text-muted"> (no disponible)</span>
               </mat-option>
             </mat-optgroup>
           </mat-select>
@@ -63,12 +63,46 @@
 
       </div>
 
-      <div class="col-md-2">
-         <button [disabled]="btnDisabled" type="button" class="btn btn-outline-success" (click)="onGenerateReportClick()">Reporte Excel</button>
+      <div class="col-md-3 g-1">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>Grandes Factores</mat-label>
+          <mat-select [(ngModel)]="selectedGFactors"  multiple (selectionChange)="onGFactorChange($event.value)">
+            <mat-option 
+              *ngFor="let gfactores of dataGrandesFactores"
+              [value]="gfactores.Id"
+            >
+              {{ gfactores.Etiqueta }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+             
+      </div>
+
+      <div class="col-md-2 g-1">
+         <button [disabled]="btnDisabled" type="button" class="btn btn-outline-success" 
+         (click)="onGenerateReportClick()">Reporte Excel</button>
              
 
       </div>
+     
 
+    </div>
+
+    <div class="row">
+     <div class="col-6 g-1" style="margin-left: 10px;">
+        <h6 >Tipo Filtrado</h6>
+        <section class="example-section">
+          <mat-radio-group [(ngModel)]="tipoFiltro" (change)="onTipoFiltroSelected($event)">
+            <mat-radio-button class="example-margin" value="AND">
+              Restrictivo
+            </mat-radio-button>
+            <mat-radio-button class="example-margin" value="OR">
+              Unir
+            </mat-radio-button>
+          </mat-radio-group>
+        </section>
+        
+      </div>
     </div>
 
     <div class="row">
@@ -188,7 +222,7 @@
         </mat-card>
       </div>
 
-      <div class="col-lg-12 col-md-12 col-sm-6 col-xl-6">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-xl-6">
         <div class="card">
           <div class="header">
             <h2>PANORAMA GENERAL CLIMA</h2>
@@ -209,39 +243,56 @@
       
     </div>
 
-    <div class="col-12 col-md-12 col-sm-12 col-xs-12" >
-      <div class="row">
-        <div 
-          class="col-4 col-md-4 mb-4 col-sm-12 col-xs-12"
-            *ngFor="let m of metricasData"
+   
+
+    <div class="col-12 col-md-12 col-sm-12 col-xs-12">
+     
+      <div *ngFor="let g of gMetricasData;" class="mb-3">
+        <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
+  <span>{{ g.etiqueta }}</span>
+
+  <!-- Indicador de % de Satisfacción ponderada del Gran Factor -->
+  <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
+    {{ getGFPct(g) | number:'1.0-2' }}%
+  </span>
+</h5>
+
+        <div class="row">
+          <div
+            class="col-12 col-sm-6 col-md-6 col-lg-6 mb-6"
+            *ngFor="let m of g.factores;"
           >
-          <app-info-box-factor
-            [title]="m.Factor"
-            [value]="m.total_respuestas.toString()"
-            [gaugeValue]="m.pct_satisfaccion"
-            [gaugeSize]="65"
-            [gaugeType]="'full'"
-            [gaugeThick]="15"
-            [trendDirection]="m.pct_satisfaccion > 70 ? 'up' : 'down'"
-            [trendPercentage]="m.pct_satisfaccion + '%'"
-            [trendText]="'Satisfacción'"
-            [colorClass]="m.pct_satisfaccion > 70
-            ? 'green'
-            : m.pct_satisfaccion >= 50
-            ? 'orange'
-            : 'red'
-        "
-            [gaugeColor]="m.pct_satisfaccion > 70
-              ? 'green'
-              : m.pct_satisfaccion >= 50
-              ? 'orange'
-              : 'red'
-          "
-            
-          ></app-info-box-factor>
+            <app-info-box-factor
+              [title]="m.Factor"
+              [value]="(m.total_respuestas || 0).toString()"
+              [gaugeValue]="m.pct_satisfaccion"
+              [gaugeSize]="65"
+              [gaugeType]="'full'"
+              [gaugeThick]="15"
+              [trendDirection]="m.pct_satisfaccion > 70 ? 'up' : 'down'"
+              [trendPercentage]="m.pct_satisfaccion + '%'"
+              [trendText]="'Satisfacción'"
+              [colorClass]="m.pct_satisfaccion > 70
+                ? 'green'
+                : m.pct_satisfaccion >= 50
+                  ? 'orange'
+                  : 'red'"
+              [gaugeColor]="m.pct_satisfaccion > 70
+                ? 'green'
+                : m.pct_satisfaccion >= 50
+                  ? 'orange'
+                  : 'red'"
+            ></app-info-box-factor>
+          </div>
+        </div>
+
+        <mat-divider class="mb-3"></mat-divider>
+      </div>
+
     </div>
-  </div>
-    </div>
+
+
+
     
 
     <div class="row">
@@ -305,64 +356,149 @@
       </div>
     </div>
 
+    <div class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12" *ngFor="let m of commentsDataNorm">
+      <mat-card>
+
+        <mat-card-header class="qa-header">
+           <mat-icon mat-card-avatar class="avatar-icon" aria-label="Feedback">comment</mat-icon>
+
+          <div style="margin-left: 5px;" class="w-100">
+            <!-- Fila 1: Pregunta + Resultado mayoritario -->
+            <div class="title-row">
+              <mat-card-title class="qa-title">{{ m.Pregunta }}</mat-card-title>
+
+             
+            </div>
+          </div>
+
+          
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="row">
+            <div class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
+                *ngFor="let c of m.ComentariosJSON">
+              <mat-card class="comment-card">
+              
+
+                <mat-card-content>
+                  {{ c.Comentario }}
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </mat-card-content>
+
+      </mat-card>
+    </div>
 
 
-     <div 
-        class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12"
-        *ngFor="let m of commentsData"
-      >
-       
-       <mat-card >
-          <mat-card-header>
-            <mat-card-title>Pregunta abierta</mat-card-title>
-            <img mat-card-avatar src='https://cdn-icons-png.flaticon.com/512/1380/1380338.png'>
-            <mat-card-title>{{m.Pregunta}}</mat-card-title>
-            
-          </mat-card-header>
-                    
-          <mat-card-content>
-            <div class="row">
-              <div
-                class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
-                *ngFor="let c of m.ComentariosJSON"
-              >
-                <mat-card>
-                  <mat-card-header>
-                    <!-- Icono según sentimiento -->
-                    <mat-icon
-                      class="sentiment-icon"
-                      [ngClass]="{
-                        'icon-positive': c.Sentiment === 'POSITIVE',
-                        'icon-negative': c.Sentiment === 'NEGATIVE',
-                        'icon-neutral':  c.Sentiment === 'NEUTRAL'
-                      }"
-                    >
-                      {{
-                        c.Sentiment === 'POSITIVE'
-                          ? 'sentiment_satisfied'
-                          : c.Sentiment === 'NEGATIVE'
-                            ? 'sentiment_very_dissatisfied'
-                            : 'sentiment_neutral'
-                      }}
-                    </mat-icon>
+    <div class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12" *ngFor="let m of commentsData">
+      <mat-card>
 
-                    <!-- (Opcional) título o etiqueta junto al icono -->
-                    <span>{{ c.Sentiment | titlecase }}</span>
-                  </mat-card-header>
+        <mat-card-header class="qa-header">
+           <mat-icon mat-card-avatar class="avatar-icon" aria-label="Feedback">insights</mat-icon>
 
-                  <mat-card-content>
-                    {{ c.Comentario }}
-                  </mat-card-content>
-                </mat-card>
+          <div style="margin-left: 5px;" class="w-100">
+            <!-- Fila 1: Pregunta + Resultado mayoritario -->
+            <div class="title-row">
+              <mat-card-title class="qa-title">{{ m.Pregunta }}</mat-card-title>
+
+              <div class="overall" [ngClass]="{
+                  'overall-positive': m._overall === 'POSITIVE',
+                  'overall-negative': m._overall === 'NEGATIVE',
+                  'overall-neutral' : m._overall === 'NEUTRAL',
+                  'overall-mixed'   : m._overall === 'MIXED'
+                }">
+                <mat-icon class="sentiment-icon">
+                  {{
+                    m._overall === 'POSITIVE' ? 'sentiment_satisfied' :
+                    m._overall === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
+                    'sentiment_neutral'
+                  }}
+                </mat-icon>
+                <span>{{ m._overall | titlecase }}</span>
               </div>
             </div>
-          </mat-card-content>                 
-        </mat-card>
 
+            <!-- Fila 2: Chips de factor y distribución -->
+            <div class="meta-row">
+              <mat-chip-set class="meta-row">
+                <mat-chip
+                  class="chip-factor"
+                  [style.--mdc-chip-elevated-container-color]="'#e3f2fd'"
+                  [style.--mdc-chip-label-text-color]="'#1976d2'">
+                  Factor: {{ m.Factor }}
+                </mat-chip>
 
+                <mat-chip
+                  class="chip-pos"
+                  [style.--mdc-chip-elevated-container-color]="'#e8f5e9'"
+                  [style.--mdc-chip-label-text-color]="'#2e7d32'">
+                  Positivas: {{ m._counts?.POSITIVE || 0 }}
+                </mat-chip>
 
-      
+                <mat-chip
+                  class="chip-neg"
+                  [style.--mdc-chip-elevated-container-color]="'#ffebee'"
+                  [style.--mdc-chip-label-text-color]="'#c62828'">
+                  Negativas: {{ m._counts?.NEGATIVE || 0 }}
+                </mat-chip>
+
+                <mat-chip
+                  class="chip-neu"
+                  [style.--mdc-chip-elevated-container-color]="'#eeeeee'"
+                  [style.--mdc-chip-label-text-color]="'#424242'">
+                  Neutrales: {{ m._counts?.NEUTRAL || 0 }}
+                </mat-chip>
+
+                <mat-chip
+                  class="chip-mix"
+                  [style.--mdc-chip-elevated-container-color]="'#f3e5f5'"
+                  [style.--mdc-chip-label-text-color]="'#6a1b9a'">
+                  Mixtas: {{ m._counts?.MIXED || 0 }}
+                </mat-chip>
+
+                <mat-chip> Total: {{ m._total || 0 }} </mat-chip>
+              </mat-chip-set>
+            </div>
+          </div>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="row">
+            <div class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
+                *ngFor="let c of m.ComentariosJSON">
+              <mat-card class="comment-card">
+                <mat-card-header>
+                  <!-- Icono por comentario, sin repetir texto grande -->
+                  <mat-icon class="sentiment-icon" [ngClass]="{
+                      'icon-positive': c.Sentiment === 'POSITIVE',
+                      'icon-negative': c.Sentiment === 'NEGATIVE', 
+                      'icon-neutral' : c.Sentiment === 'NEUTRAL',
+                      'icon-mixed'   : c.Sentiment === 'MIXED'
+                    }">
+                    {{
+                      c.Sentiment === 'POSITIVE' ? 'sentiment_satisfied' :
+                      c.Sentiment === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
+                      'sentiment_neutral'
+                    }}
+                  </mat-icon>
+                  <span class="comment-sent">{{ c.Sentiment | titlecase }}</span>
+                </mat-card-header>
+
+                <mat-card-content>
+                  {{ c.Comentario }}
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </mat-card-content>
+
+      </mat-card>
     </div>
+
+
 
 
   </div>

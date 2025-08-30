@@ -86,6 +86,7 @@ export class DialogformComponent implements OnInit {
 
     //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
+    console.log('lan en dialogform.component.ts:: ', this.langStoreValue);
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
 

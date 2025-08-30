@@ -27,6 +27,10 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '@core';
 
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
 @Component({
   selector: 'app-dialogform',
   standalone: true, 
@@ -34,7 +38,7 @@ import { AuthService } from '@core';
   styleUrls: ['./dialogform.component.scss'],
   imports: [
 
-    MatDialogModule,
+    MatDialogModule, TranslateModule,
     MatTableModule,
     MatIconModule,
     MatExpansionModule,
@@ -72,9 +76,10 @@ export class DialogformComponent implements OnInit {
   public addCusForm!: UntypedFormGroup;
   public addBankForm!: UntypedFormGroup;
   public selectedFieldType = '1'
+  langStoreValue?: string;
 
   constructor(
-    private fb: UntypedFormBuilder, 
+    private fb: UntypedFormBuilder, private languageService: LanguageService,private translate: TranslateService,
     public dialog: MatDialog,
     public dialogRef: MatDialogRef<DialogformComponent>, 
     private organizacionService: OrganizacionService, private authService: AuthService,
@@ -92,6 +97,15 @@ export class DialogformComponent implements OnInit {
 
   public ngOnInit(): void {
 
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
     
 
     this.addCusForm = this.fb.group({
@@ -259,6 +273,7 @@ export class DialogformComponent implements OnInit {
         startDate: '01/01/2025',
         endDate: '01/01/2025',
         estado:1,
+        granFactores: [],
         series: [],
         fields: [],
         estadoEnvio: '',
@@ -283,15 +298,15 @@ export class DialogformComponent implements OnInit {
 
         if(amber.data.message === 'Flujo creado exitosamente'){
           Swal.fire({
-            title: 'Realizado',
-            text: amber.data.message,
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED'),
             icon: 'success',
           });
           this.dialogRef.close(true);
         }else{
-          Swal.fire({
-            title: 'Algo anda mal',
-            text: 'Ha ocurrido un error al crear el nuevo Clima',
+          Swal.fire({         
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATEDERROR'),
             icon: 'error',
           });
         }
@@ -329,11 +344,12 @@ export class DialogformComponent implements OnInit {
         subtitle: '',
         imageSrc1: this.addBankForm.value.urlImg,
         content: this.addBankForm.value.quizDesc,
-        score : this.addBankForm.value.score,
-        completed : false,
+        score: this.addBankForm.value.score,
+        completed: false,
         startDate: this.addBankForm.value.startDatex,
         endDate: this.addBankForm.value.endDatex,
-        estado:1,
+        estado: 1,
+        granFactores: [],
         series: [],
         fields: [],
         estadoEnvio: '',
@@ -346,8 +362,10 @@ export class DialogformComponent implements OnInit {
           total_error: 0,
           total_empleados_activos: 0,
           porcentaje: 0
-        }
-      } 
+        },
+        
+      };
+
       const serie: Serie = {
         "Id":0,
         "id_flujo": 0,

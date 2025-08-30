@@ -59,6 +59,7 @@
     "ngx-echarts": "^19.0.0",
     "ngx-editor": "^18.0.0",
     "ngx-gauge": "^11.0.0",
+    "ngx-joyride": "^2.5.0",
     "ngx-mask": "^19.0.6",
     "ngx-scrollbar": "^18.0.0",
     "rxjs": "~7.8.1",

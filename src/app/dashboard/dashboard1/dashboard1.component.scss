@@ -35,3 +35,29 @@
   margin-right: 8px;
   font-size: 24px;
 }
+
+.qa-header .qa-title { font-weight: 600; line-height: 1.2; }
+.title-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.meta-row { margin-top:.25rem; }
+.sentiment-icon { margin-right:6px; }
+
+.overall { display:flex; align-items:center; gap:.25rem; padding:2px 8px; border-radius:12px; font-weight:600; }
+.overall-positive { background:#e8f5e9; color:#2e7d32; }
+.overall-negative { background:#ffebee; color:#c62828; }
+.overall-neutral  { background:#f5f5f5; color:#616161; }
+.overall-mixed    { background:#f3e5f5; color:#6a1b9a; }
+
+.chip-pos { background:#e8f5e9; color:#2e7d32; }
+.chip-neg { background:#ffebee; color:#c62828; }
+.chip-neu { background:#eeeeee; color:#424242; }
+.chip-mix { background:#f3e5f5; color:#6a1b9a; }
+
+.comment-card mat-card-header { align-items:center; }
+.comment-sent { opacity:.75; margin-left:4px; }
+
+.avatar-icon{
+  font-size: 30px;       /* tamaño del glifo */
+  line-height: 40px;     /* coincide con el alto del avatar */
+  text-align: center;
+  
+}

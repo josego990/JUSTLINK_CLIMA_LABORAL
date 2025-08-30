@@ -23,7 +23,7 @@ export class OrganizacionService {
 
   getOrganizationById(idOrganization: any) {
     return axios
-      .post('http://localhost:3030/get-organization-by-id',{idOrganization:idOrganization});
+      .post('https://api.catarsysdev.com/get-organization-by-id',{idOrganization:idOrganization});
   }
 
   deleteOrganization(idOrganization:number) {
@@ -44,12 +44,12 @@ export class OrganizacionService {
 
   saveNewEmployeesExcel(employees: any) {
     return axios
-      .post('http://localhost:3030/insert-employees-batch', employees);
+      .post('https://api.catarsysdev.com/insert-employees-batch', employees);
   }
 
   saveNewPreguntasExcel(preguntas: any) {
     return axios
-      .post('https://localhost:3030/insert-preguntas-excel', preguntas);
+      .post('https://api.catarsysdev.com/insert-preguntas-excel', preguntas);
   }
 
   getEmployees(idOrganization:number) {
@@ -118,12 +118,23 @@ export class OrganizacionService {
 
   getClimasById(idOrganization:number) {    
     return axios
-      .post('http://localhost:3030/get-flujos-clima-by-id-json', {idOrganizacion:idOrganization});
+      .post('https://api.catarsysdev.com/get-flujos-clima-by-id-json', {idOrganizacion:idOrganization});
   }
 
   getFactores(idOrganization:number) {    
     return axios
       .post('https://api.catarsysdev.com/get-factores-json', {idOrganizacion:idOrganization});
+  }
+
+  getGrandesFactores(idFlujo:number) {    
+    return axios
+      .post('https://api.catarsysdev.com/get-grandes-factores', {IdFlujo:idFlujo});
+  }
+
+   saveNewGFactor(data_gfactor: any) {    
+   console.log('DATA_GRAN_FACTOR_A_GUARDAR: ', data_gfactor);
+
+    return axios.post('https://api.catarsysdev.com/insert-gran-factor', data_gfactor);
   }
 
   saveNewFactor(data_factor: any) {    
@@ -220,13 +231,16 @@ export class OrganizacionService {
     return axios
       .post('https://api.catarsysdev.com/get-clima-json', {idFlujo:idFlujo});
   }
-  
- 
+
+  getPreguntasClimaGF(idFlujo:number,idEmpleado:number) {    
+    return axios
+      .post('http://localhost:3030/get-clima-json-gf', {idFlujo:idFlujo,idEmpleado:idEmpleado});
+  }
 
   savePreguntas(preguntas_data: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post('http://localhost:3030/insert-respuestas', preguntas_data);
+    return axios.post('https://api.catarsysdev.com/insert-respuestas', preguntas_data);
   }
 
   updateClimaEncuesta(clima_data:any) {    
@@ -263,10 +277,48 @@ export class OrganizacionService {
       .post('https://api.catarsysdev.com/get-metrica-factores-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
+  getMetricaFactoresFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string, tipoFiltro:string) {
+
+    return axios
+      .post('http://localhost:3030/get-metrica-factores-filtrado-gf',
+        {IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf,
+          TipoFiltro: tipoFiltro 
+        });
+  }
+
   getMetricaComments(idFlujo:number) {
 
     return axios
       .post('https://api.catarsysdev.com/get-metrica-comments', {IdFlujo:idFlujo});
+  }
+
+  getMetricaCommentsGF(idFlujo:number, filtrosGf:string) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-comments-gf', 
+        {
+          IdFlujo:idFlujo,
+          FiltrosGf: filtrosGf
+        });
+  }
+  
+
+  getMetricaCommentsia(idFlujo:number) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-comments-ia', {IdFlujo:idFlujo});
+  }
+
+  getMetricaCommentsIAGF(idFlujo:number, filtrosGf:string) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-comments-ia-gf', 
+        {
+          IdFlujo:idFlujo,
+          FiltrosGf: filtrosGf
+        });
   }
   
  getMetricaConteoPreguntasFactores(idFlujo:number) {
@@ -281,6 +333,16 @@ export class OrganizacionService {
       .post('https://api.catarsysdev.com/get-metrica-conteo-factores-FILTRADO', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
+  getMetricaConteoPreguntasFactoresFILTRADOGF(idFlujo:number, filtros:string, filtrosGf:string) {
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-conteo-factores-FILTRADO-gf',
+        {
+          IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf
+        });
+  }
+
   getMetricaSatisfaccionPreguntas(idFlujo:number) {
 
     return axios
@@ -290,7 +352,20 @@ export class OrganizacionService {
   getMetricaSatisfaccionPreguntasFILTRADO(idFlujo:number, filtros:string) {
 
     return axios
-      .post('https://api.catarsysdev.com/get-metrica-satisfaccion-preguntas-FILTRADO', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post('https://api.catarsysdev.com/get-metrica-satisfaccion-preguntas-FILTRADO', 
+        {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+  }
+
+  getMetricaSatisfaccionPreguntasFILTRADOGF(idFlujo:number, filtros:string, filtrosGf:string, tipoFiltro:string) {
+
+    return axios
+      .post('http://localhost:3030/get-metrica-satisfaccion-preguntas-filtrado-gf', 
+        {
+          IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf,
+          TipoFiltro: tipoFiltro        
+        });
   }
 
   getMetricaCalificacionGeneralClima(idFlujo:number) {
@@ -303,6 +378,18 @@ export class OrganizacionService {
 
     return axios
       .post('https://api.catarsysdev.com/get-metrica-calificacion-general-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+  }
+
+  getMetricaCalificacionGeneralClimaFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string, tipoFiltro:string) {
+
+    return axios
+      .post('http://localhost:3030/get-metrica-calificacion-general-filtrado-gf', 
+        {
+          IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf,
+          TipoFiltro: tipoFiltro         
+        });
   }
 
   getMetricaEstadoEnvioClima(idFlujo:number) {
@@ -320,7 +407,19 @@ export class OrganizacionService {
   getMetricaPorcentajeRespuestasFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post('https://api.catarsysdev.com/get-metrica-porcentaje-respuestas-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post('https://api.catarsysdev.com/get-metrica-porcentaje-respuestas-filtrado', 
+        {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+  }
+
+  getMetricaPorcentajeRespuestasFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-porcentaje-respuestas-filtrado-gf', 
+        {IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf
+        
+        });
   }
 
   getMetricaPorcentajeSatisfaccionFactor(idFlujo:number) {
@@ -332,15 +431,42 @@ export class OrganizacionService {
   getMetricaPorcentajeSatisfaccionFactorFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post('https://api.catarsysdev.com/get-metrica-porcentaje-satisfaccion-factor-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post('https://api.catarsysdev.com/get-metrica-porcentaje-satisfaccion-factor-filtrado', 
+        {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+  }
+
+  getMetricaPorcentajeSatisfaccionFactorFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-metrica-porcentaje-satisfaccion-factor-filtrado-gf', 
+        {
+          IdFlujo:idFlujo,
+          FiltrosDemograficos:filtros,
+          FiltrosGf: filtrosGf
+        
+        });
   }
 
   getMetricaDemograficos(idOrg:number) {
 
     return axios
-      .post('https://api.catarsysdev.com/get-metrica-demograficos', {IdOrg:idOrg});
+      .post('https://api.catarsysdev.com/get-metrica-demograficos', 
+        {
+          IdOrg:idOrg
+          
+        });
   }
 
+  getFiltrosDemograficosRestrictivo(idOrg:number, idFlujo:number, minRespuestas: number) {
+
+    return axios
+      .post('https://api.catarsysdev.com/get-factores-demograficos-restrictivo', 
+        {
+          IdOrg: idOrg,
+          IdFlujo: idFlujo,
+          MinRespuestas: minRespuestas        
+        });
+  }
 
   logni13(user:any) {
    //console.log('ENTRA EN LOGIN..');
@@ -368,7 +494,7 @@ export class OrganizacionService {
 
   getRolesByIdOrg(idOrganization:any) {
     return axios
-      .post('http://localhost:3030/get-roles-by-id-org-json',{idOrganization:idOrganization});
+      .post('https://api.catarsysdev.com/get-roles-by-id-org-json',{idOrganization:idOrganization});
   }
 
   saveUser(userData: any) {    
@@ -393,14 +519,14 @@ export class OrganizacionService {
   getRolesAccessByIdOrg(idOrganization:any) {
   
     return axios
-      .post('http://localhost:3030/get-roles-access-by-id-org-json', {idOrganization:idOrganization});
+      .post('https://api.catarsysdev.com/get-roles-access-by-id-org-json', {idOrganization:idOrganization});
 
   }
 
   saveRole(roleData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post('http://localhost:3030/insert-role', roleData);
+    return axios.post('https://api.catarsysdev.com/insert-role', roleData);
   }
 
    updateRoleAccess(updRoleData: any) {    
@@ -416,6 +542,19 @@ export class OrganizacionService {
 
   }
 
+   getGFactorsAccessByIdFlujo(idFlujo:any) {
+  
+    return axios
+      .post('http://localhost:3030/get-gfactors-access-by-id-flujo-json', {idFlujo:idFlujo});
+
+  }
+
+  updateGFactorsAccessByIdFlujo(data:any) {
+  
+    return axios
+      .post('http://localhost:3030/update-gf-access', data);
+
+  }
 
 
 

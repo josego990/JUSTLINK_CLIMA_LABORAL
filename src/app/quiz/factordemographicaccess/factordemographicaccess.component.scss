@@ -1,0 +1,101 @@
+/* 1) El contenedor de columnas */
+.card-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;                 /* hace que el mat-card llene la columna */
+  }
+  
+  /* 2) El mat-card */
+  .fixed-card {
+    flex: 1 1 auto;               /* todos crecen lo mismo en la fila flex */
+    height: 482px;            /* 👉 altura que desees compartir */
+    display: flex;
+    flex-direction: column;       /* para aislar el body del header/footer */
+  }
+  
+  /* 3) Zona que debe hacer scroll si se desborda */
+  .fixed-card .mat-card-content {
+    flex: 1 1 auto;               /* ocupa todo el espacio libre */
+    overflow-y: auto;             /* scroll vertical cuando sea necesario */
+  }
+
+  .icon-positive {
+  color: green;
+}
+.icon-negative {
+  color: red;
+}
+.icon-neutral {
+  color: gray;
+}
+
+/* opcional: un poco de espaciado */
+.sentiment-icon {
+  vertical-align: middle;
+  margin-right: 8px;
+  font-size: 24px;
+}
+
+.qa-header .qa-title { font-weight: 600; line-height: 1.2; }
+.title-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.meta-row { margin-top:.25rem; }
+.sentiment-icon { margin-right:6px; }
+
+.overall { display:flex; align-items:center; gap:.25rem; padding:2px 8px; border-radius:12px; font-weight:600; }
+.overall-positive { background:#e8f5e9; color:#2e7d32; }
+.overall-negative { background:#ffebee; color:#c62828; }
+.overall-neutral  { background:#f5f5f5; color:#616161; }
+.overall-mixed    { background:#f3e5f5; color:#6a1b9a; }
+
+.chip-pos { background:#e8f5e9; color:#2e7d32; }
+.chip-neg { background:#ffebee; color:#c62828; }
+.chip-neu { background:#eeeeee; color:#424242; }
+.chip-mix { background:#f3e5f5; color:#6a1b9a; }
+
+.comment-card mat-card-header { align-items:center; }
+.comment-sent { opacity:.75; margin-left:4px; }
+
+.avatar-icon{
+  font-size: 30px;       /* tamaño del glifo */
+  line-height: 40px;     /* coincide con el alto del avatar */
+  text-align: center;
+  
+}
+
+.restricciones-wrapper {
+  .center { display: flex; justify-content: center; padding: 16px; }
+  .error { color: #c62828; padding: 12px 0; }
+
+  .gf-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .muted { color: #6b7280; }       // slate-500-like
+  .small { font-size: 0.85rem; }
+  .dot { width: 4px; height: 4px; background: #cbd5e1; border-radius: 999px; display: inline-block; }
+
+  .cd-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    margin-top: 12px;
+  }
+  .cd-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+  }
+  .cd-header { margin-bottom: 8px; }
+  .cd-title { font-weight: 600; }
+  .table { width: 100%; }
+  .text-end { text-align: end; }
+}
+
+.cd-header {
+  display: flex;
+  flex-direction: column;  // 👈 apila los divs
+  align-items: flex-start; // 👈 alineados a la izquierda
+}

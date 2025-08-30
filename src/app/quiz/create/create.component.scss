@@ -1,9 +1,6 @@
 // nombre.component.scss
 
 // Estilo general para todos los controles
-div {
-  margin-left: 5px;
-}
 
 // Estilo específico para el tipo de archivo
 input[type="file"] {
@@ -29,3 +26,29 @@ input[type="range"], label {
   line-height: 1.3;
 }
 
+.block-header {
+  padding: 0.5rem 1rem;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.breadcrumb-container {
+  flex: 1;
+  min-width: 0; /* importante si hay contenido grande */
+}
+.headerx {
+  display: flex;
+  //align-items: center;
+  justify-content: space-between;
+
+  //padding: 8px 16px;
+}
+
+.help-button {
+  margin-left: auto;
+}

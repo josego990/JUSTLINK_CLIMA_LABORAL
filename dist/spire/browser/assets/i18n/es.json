@@ -61,56 +61,186 @@
      "TEXT": "EMPLEADOS",
       "NAME": "NOMBRE",
       "LNAME": "APELLIDOS",
-        "COUNTRY": "PAIS",
-        "PHONE": "TELEFONO",
-        "MAIL": "CORREO CONTACTO",
-        "DELETE": "ELIMINAR",
-        "CREATE": "Crear Empleado",
-        
-        "EXPAND": "Expandir - Contraer",
+      "COUNTRY": "PAIS",
+      "PHONE": "TELEFONO",
+      "MAIL": "CORREO CONTACTO",
+      "DELETE": "ELIMINAR",
+      "CREATE": "Crear Empleado",
+      
+      "EXPAND": "Expandir - Contraer",
 
-        "ADDRESS": "DIRECCION",
-        "POSITION": "CARGO",
-        "REGDATE": "FECHA REGISTRO",
-        "STATUS": "ESTADO",
-        "SENDTYPE": "TIPO ENVIO",
-        "ACTIONS": "ACCIONES",
+      "ADDRESS": "DIRECCION",
+      "POSITION": "CARGO",
+      "REGDATE": "FECHA REGISTRO",
+      "STATUS": "ESTADO",
+      "SENDTYPE": "TIPO ENVIO",
+      "ACTIONS": "ACCIONES",
 
-        "UPLOAD": "CARGAR ARCHIVO EXCEL",
-        "CREATENEW": "NUEVO EMPLEADO",
-        "SAVE": "GUARDAR",
-        "SUCCESS": "REALIZADO",
-        "ADDED": "Se agregó el empleado.",
+      "UPLOAD": "CARGAR ARCHIVO EXCEL",
+      "CREATENEW": "NUEVO EMPLEADO",
+      "SAVE": "GUARDAR",
+      "SUCCESS": "REALIZADO",
+      "ADDED": "Se agregó el empleado.",
 
-        "SOMEWRONG": "Algo salió mal",
-        "ERRMESSAGE": "Ha ocurrido un error inesperado.",
-        "VERIFY": "Verifique los datos",
-        "INVALIDFORM": "El formulario no es válido",
-        "EXCELERROR": "Se encontraron errores en el archivo Excel ",
-        "UPLOADMESSAGE": "Cargando archivo Excel Empleados...",
-        "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>",
-        "FINISHMSGH": "Finalizado!",
-        "FINISHMSGB": "Se ingresaron los registros con éxito.",
-        "ERRFOUNDINSERT": "Se encontraron errores al insertar:",
-        "EMPLOYEINSERTSUCCESS": "Empleados insertados correctamente.",
-        "ERRUPLOADDATA": "Ha ocurrido un error al cargar los datos.",
-        "INACTIVEEMPLOYEE": "Se desactivó el empleado.",
-        "ACTIVEEMPLOYEE": "Se activó el empleado.",
-        "ERRDELETEEMPLOYEE": "Error al eliminar empleado. ",
-        "ERRACTIVEEMPLOYEE": "Error al activar empleado. ",
-        "ERRCREATEEMPLOYEE": "Error al crear empleado. "
+      "SOMEWRONG": "Algo salió mal",
+      "ERRMESSAGE": "Ha ocurrido un error inesperado.",
+      "VERIFY": "Verifique los datos",
+      "INVALIDFORM": "El formulario no es válido",
+      "EXCELERROR": "Se encontraron errores en el archivo Excel ",
+      "UPLOADMESSAGE": "Cargando archivo Excel Empleados...",
+      "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>",
+      "FINISHMSGH": "Finalizado!",
+      "FINISHMSGB": "Se ingresaron los registros con éxito.",
+      "ERRFOUNDINSERT": "Se encontraron errores al insertar:",
+      "EMPLOYEINSERTSUCCESS": "Empleados insertados correctamente.",
+      "ERRUPLOADDATA": "Ha ocurrido un error al cargar los datos.",
+      "INACTIVEEMPLOYEE": "Se desactivó el empleado.",
+      "ACTIVEEMPLOYEE": "Se activó el empleado.",
+      "ERRDELETEEMPLOYEE": "Error al eliminar empleado. ",
+      "ERRACTIVEEMPLOYEE": "Error al activar empleado. ",
+      "ERRCREATEEMPLOYEE": "Error al crear empleado. ",
+      "SENDTYPENONE": "Ninguno"
+    },
 
-      },
+    "DEMOGRAPHICS":{
+      "TEXT": "DEMOGRAFICOS",
+      "FIELD": "Nombre Campo",
+      "DATATYPE": "Tipo Dato",
+      "DATECREATE": "Fecha Creado",
+      "STATE": "Estado",
+      "ACTIONS": "Acciones",
+      "CREATENEW": "Crear nuevo campo demográfico",
+      "EXPAND": "Expandir - Contraer",
+      "SAVE": "GUARDAR",
+      "MESSAGES": {
+        "FIELDDEACTIVATE": "Se desactivó el campo.",
+        "ERROR": "Algo anda mal",
+        "ERRORMESSAGE": "Ocurrió un error. ",
+        "FIELDACTIVATE": "Se activó el campo.",
+        "FIELDADDED": "Se activó el campo.",
+
+
+
+        "SUCCESS": "Realizado"
+
+
+
+
+
+      }
+
+
+
+
+
+
+    },
 
     "QUIZ": {
       "TEXT": "CLIMA LABORAL",
+      "CREATE": "Crear nuevo clima",
+       "EDIT": "EDITAR",
+      "SEND": "ENVIOS",
+      "FACTORS": "Factores",
+      "SELECTTYPE": "Seleccione el tipo de Evaluación",
+      "LIKERTSCALE": "Escala LIKERT",
+      "CLIMATENAME": "Nombre del Clima",
+      "PLEASEINSERTCLIMATE": "Por favor ingrese el nombre del clima!",
+      "DESCRIPTION": "Descripción",
+      "URLIMAGE": "URL Imágen",
+      "PLEASEINSERTDESC": "Por favor ingrese descripción del clima!",
+      "PLEASEINSERTIMAGE": "Por favor ingrese URL de imagen!",
+      "SAVE": "GUARDAR",
+      "CANCEL": "CANCELAR",
+      "ADMINCLIMA": "Gestionar Clima",
+      "ADDFACTOR": "Nuevo Factor",
+      "ADDGRANDFACTOR": "Nuevo Gran Factor",
+      "OPENQUESTION": "Pregunta Abierta",
+      "OPENQUESTIONIA": "Pregunta Abierta con análisis de IA",
+      "FIELDTEXT": "Texto del campo",
+      "PLEASEINSERTTEXT": "Por favor ingrese valor",
+      "SAVEQUESTION": "GUARDAR PREGUNTA",
+      "QUESTIONADDED": "Preguntas Agregadas:",
+      "ACTIVE": "Activo",
+      "DELETE": "Eliminar",
+      "DEACTIVATECLIMA": "Desactivar Clima",
+      "DELETECLIMA": "Eliminar Clima",
+      "UPLOADEXCELCLIMA": "Carga Excel",
+      "DOWNLOADEXCELCLIMA": "Obtener Plantilla",
+      "n": "Carga Excel",
+
+
+
+
+
+      "FIELDTYPE": "Tipo de Pregunta",
+      
+
+
+
+
+
+
+      "MESSAGES": {
+        "DELETEDFACTOR": "Se eliminó el factor",
+        "ERROR": "Algo anda mal",
+        "ERRORMESSAGE": "Ocurrió un error. ",
+        "FIELDACTIVATE": "Se activó el campo.",
+        "FIELDADDED": "Se activó el campo.",
+
+        "FACTORWARNING": "No fue posible eliminar el Factor",
+        "FACTORWARNINGMESSAGE": "Si el factor tiene preguntas asignadas, primero deberá eliminarlas para poder eliminar el factor.",
+        "CLIMATECREATED": "Clima creado exitosamente'",
+        "CLIMATECREATEDERROR": "Ha ocurrido un error al crear el nuevo Clima",
+        "INVALIDTYPE": "Tipo inválido",
+        "ONLYPERMMITED": "Sólo se permiten",
+        "FIELDISREQUIRED": "ETIQUETA es obligatoria.",
+        "ISSUESFIND": "Errores encontrados",
+        "ROW": "Fila",
+        "LOADINGFILESURVEY": "Cargando archivo Excel Encuesta..",
+        "PROCESSFILE": "Procesando datos, por favor espera",
+        "AMOMENT": "un momento..",
+        "SECCESSMESSAGE": "Se ingresaron los registros con éxito.",
+        "FINDERROR": "Se encontraron errores al insertar:",
+        "ERRORLOADDATA": "Ocurrió un error al cargar los datos. ",
+        "CLIMAUPDATED": "Estado del clima actualizado correctamente.",
+        "YOUSURE": "¿Estás seguro?",
+        "YOUSUREMESSAGE": "Esta acción eliminará permanentemente la pregunta incluso de la base de datos.",
+        "DELETECONFIRM": "Sí, Eliminar",
+        "DELETEDMESSAGE": "La pregunta se ha eliminado correctamente.",
+        "MUSTSELECTFACTOR": "Debe seleccionar un Factor para la pregunta",
+        "FIELDEXIST": "Ya existe un nombre de campo ",
+        "QUESTIONADDED": "Se agregó la pregnta con éxito",
+        "NOTPERMMITED": "No permitido"
+ 
+      },
+
+
+
+
+
       "LIST": {
         "CREAR": "Administrar",
         "LLENAR": "Contestar Encuesta",
         "LLENARCLIMA": "Previa Encuesta",
         "CONFIG": "Configuración",
         "EDITOR": "Plantillas Correos"
+      },
+      "ESTADOS": {
+        "CREADO": "Creado",
+        "ENVIADO": "Enviado",
+        "NO_PROCESADO": "No procesado",
+        "EMPLOYEES": "Empleados:",
+        "QUIZES": "Encuestas:",
+        "SENDS": "Enviadas:",
+        "INITILIZES": "Iniciadas:",
+        "COMPLETED": "Contestadas:",
+        "PENDING": "Pendientes:",
+        "COMPLETEDPERCENT": "Completado:"
+        
+
       }
+
     },
 
     "SECURE": {
@@ -118,7 +248,9 @@
       "ACCESS": "Accesos por Roles",
       "ROLE_NAME": "Nombre Rol",
       "ROLE_DESC": "Descripción Rol",
-      "USERS": "Usuarios"
+      "USERS": "Usuarios",
+      "LOGS": "LOGS",
+      "LOGS_MESSAGE1": "Se muestran los registros de las peticiones a integraciones de servicios terceros."
       
      
     },
@@ -127,6 +259,101 @@
       "ACCESS": "ACCESOS"
      
     },
+
+    "LOGIN": {
+      "WELCOME": "BIENVENIDO",
+      "ACCESS": "Ingresar",
+      "USERNAME": "Ususario",
+      "USERNAMEREQUIRED": "Ususario es requerido",
+      "PASSWORD": "Contraseña",
+      "PASSWORDREQUIRED": "Contraseña es requerido",
+      "INVALIDACCESS": "Usuario o contraseña inválido",
+      "INVALIDACCESSMSG": "No se ingresaron credenciales válidas",
+
+
+
+
+      "ALLRIGHTS": "Todos los derechos reservados."  
+      
+      
+
+
+    },
+
+  "ALONE": {
+      "HELLO": "Bienvenido(a)",
+      "REQUIRED": "Esta respuesta es requerida",
+      "NOTVALID": "La encuesta ya fue respondida.",
+      "GREETEENGS": "te agradece por ayudar a hacer un mejor entorno laboral. Antes de llenar la encuesta ten en cuenta lo siguiente:",
+      "TO": "a la encuesta",
+      "SURVEY": " ",
+      "CONDITION1": "*Esta encuesta solo se puede contestar una sóla vez. Completa todas las preguntas en una sola sesión.",
+      "CONDITION2": "*No cierres ni recargues la pestaña hasta finalizar, o podrías perder tus respuestas.",
+      "CONDITION3": "*Sé honesto y sincero en tus respuestas; tu opinión es totalmente confidencial y muy valiosa",
+      "CONDITION4": "*Si necesitas detenerte, asegúrate de responder todas las preguntas antes de cerrar.",
+      
+
+
+
+
+
+      "SEND": "ENVIAR ENCUESTA"
+        
+
+      
+    },
+
+     "DYNAMIC": {
+      "UPLOAD": "Enviando..",
+      "SAVING": "Se están guardando los datos, por favor espera..",
+      "SURVEYSUCCESS": "¡Encuesta enviada!",
+      "THANKS": "Gracias por completar la encuesta.",
+      "SURVEYERROR": "Ocurrió un error al guardar las respuestas",
+      "INVALIDFORM": "Formulario inválido",
+      "INVALIDFORMMESSAGE": "Esta encuesta ya fue respondida.",
+
+
+
+      "SEND": "ENVIAR ENCUESTA"
+        
+
+      
+    },
+
+    "TOUR": {
+      "BTNADDQUIZ": "Crea",
+      "BTNADDMSG": "Botón Agregar Nuevo Clima",
+      
+
+
+      "SEND": "ENVIAR ENCUESTA"
+        
+
+      
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     "APPS": {

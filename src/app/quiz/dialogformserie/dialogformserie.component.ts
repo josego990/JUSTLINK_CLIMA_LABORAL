@@ -3,13 +3,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { DatatableComponent, SortType } from '@swimlane/ngx-datatable';
-
 import {
   MatSnackBar,
   MatSnackBarHorizontalPosition,
   MatSnackBarVerticalPosition,
 } from '@angular/material/snack-bar';
-
 import { FormBuilder, FormGroup, Validators, FormsModule,
   ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,UntypedFormBuilder,
  } from '@angular/forms';
@@ -18,8 +16,7 @@ import { FormBuilder, FormGroup, Validators, FormsModule,
   MatOptionModule,
   MatRippleModule,
 } from '@angular/material/core';
- import { MatFormFieldModule } from '@angular/material/form-field';
-import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -64,19 +61,24 @@ export class DialogformSerieComponent implements OnInit {
   @ViewChild(DatatableComponent, { static: false }) tablex!: DatatableComponent;
 
   ELEMENT_DATA: Serie[] = [];
+  
   NUMBER_DATA  = 0;
   ID_FLUJO = 0;
+  ID_GFACTOR = 0;
 
   REQUEST_DATA: SeriesDataSend = {
     series: [...this.ELEMENT_DATA],
     ponderation_rest: this.NUMBER_DATA,
     ponderation_total: this.NUMBER_DATA,
-    idFlujo: this.ID_FLUJO
+    idFlujo: this.ID_FLUJO,
+    idGFactor: this.ID_GFACTOR,
+    gfactores: []
   };
 
 
 
   seriesData = this.ELEMENT_DATA;
+
   data_request = this.REQUEST_DATA;
   idFlujo = 0;
   dataSource = this.ELEMENT_DATA;
@@ -108,6 +110,7 @@ export class DialogformSerieComponent implements OnInit {
  
   public id_card = 0;
   public title_card = '';
+  public idGFactor = 0;
 
   public card = {
     "id": 0,
@@ -145,11 +148,17 @@ export class DialogformSerieComponent implements OnInit {
       this.options_context = [];
       this.idFlujo = data.idFlujo;
       this.data_request = data;
-      this.seriesData = data.series;
+      this.idGFactor = data.idGFactor;
+
+      //this.seriesData = data.series;
+
+      this.seriesData = (data.gfactores || [])
+        .flatMap((gf: any) => gf.series || []);
+
       this.ponderacion_rest = data.ponderation_rest;
       this.ponderacion = data.ponderation_total;
 
-     //console.log('this.data_request:', this.data_request);
+     console.log('this.data_request:', this.data_request);
 
   }
 
@@ -237,29 +246,40 @@ export class DialogformSerieComponent implements OnInit {
         'label': this.addSerieForm.controls['iname'].value, 
         'desc': this.addSerieForm.controls['idesc'].value,
         'fields': fields, 
-        'score': 0}
+        'score': 0
+      }
 
       const newFactor = {
         "IdFlujo": this.idFlujo, 
         "Clave"  : 'serie_' + this.seriesData.length, 
         "Etiqueta": this.addSerieForm.controls['iname'].value, 
         "Descripcion": this.addSerieForm.controls['idesc'].value, 
-        "Puntaje": 0
+        "Puntaje": 0,
+        "IdGFactor": this.idGFactor
       }
 
 
       this.organizacionService.saveNewFactor(newFactor).then((resulte: any) => {
        //console.log('RESULTADO DE GUARDADO DE FACTOR:: ', resulte);
 
-
-
         if(resulte.data.message === 'Factor insertado correctamente') {
           
           serie.Id = resulte.data.newId;
           
-          this.seriesData.push(serie);
+          //this.seriesData.push(serie);
           
-          this.seriesData = [...this.seriesData];
+          const targetGFactor = (this.data.gfactores || []).find((gf: any) => gf.Id === this.idGFactor);
+
+          if (targetGFactor) {
+            if (!Array.isArray(targetGFactor.series)) {
+              targetGFactor.series = [];
+            }
+            targetGFactor.series.push(serie);
+          }
+
+          this.data.gfactores = [...this.data.gfactores];
+          //this.seriesData = [...this.seriesData];
+
           this.loading = false;
           this.showNotification(
             'bg-green',
@@ -283,6 +303,7 @@ export class DialogformSerieComponent implements OnInit {
        
       }).catch((err)=> {
         this.loading = false;
+        console.error(err);
         this.showNotification(
           'bg-red',
           'Ocurrió un error al guardar el nuevo Factor. Error: ' + err,
@@ -291,15 +312,6 @@ export class DialogformSerieComponent implements OnInit {
         );
       
       });
-
-
-    
-      //this.ponderacion_rest = this.ponderacion_rest - this.addSerieForm.controls['iscore'].value;
-      //this.data_request.ponderation_rest = this.ponderacion_rest;
-      //this.data_request = {...this.data_request};
-
-
-      //console.log('this.ponderacion_rest:', this.ponderacion_rest);
 
     }
     else {

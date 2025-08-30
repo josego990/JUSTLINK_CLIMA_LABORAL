@@ -29,6 +29,8 @@ import { FormBuilder, FormGroup, Validators, FormsModule,
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { relativeTimeThreshold } from 'moment';
 
+
+
 function renderizarPlantilla(
   plantilla: string,
   datos: Record<string, any>
@@ -218,8 +220,8 @@ export class DialogformSendComponent implements OnInit {
               "correo_empleado": element.Email,
               "nombre_organizacion": this.dataRecibida.subtitle,
               "nombre_clima": this.dataRecibida.title,
-                             //https://d38he5chu19bcx.cloudfront.net
-              "url_encuesta": 'http://localhost:4200/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado
+                             //http://localhost:4200
+              "url_encuesta": 'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado
         
             };
 
@@ -482,8 +484,8 @@ export class DialogformSendComponent implements OnInit {
       "correo_empleado": item.Email,
       "nombre_organizacion": this.dataRecibida.subtitle,
       "nombre_clima": this.dataRecibida.title,
-                     //https://d38he5chu19bcx.cloudfront.net
-      "url_encuesta": 'http://localhost:4200/#/completeclima/completeclimaalone?key=' + item.CodigoEncuestaEmpleado
+                     //http://localhost:4200
+      "url_encuesta": 'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' + item.CodigoEncuestaEmpleado
 
     };
     
@@ -726,11 +728,12 @@ export class DialogformSendComponent implements OnInit {
   }
 
   obtenerEncuestasEmpleados(): void {
+    console.log('entra en obtener encuestas empleados:: ', this.dataRecibida.id);
     this.loading = true;
     this.dataRecibida.id;
 
     this.organizacionService.getEncuestasFlujo(this.dataRecibida.id).then((resultix)=>{
-     //console.log('resultix:: ', resultix);
+     console.log('resultix encuestas empleados:: ', resultix);
       if(resultix.data){
         this.tableDataSource = resultix.data;
         this.loading = false;
