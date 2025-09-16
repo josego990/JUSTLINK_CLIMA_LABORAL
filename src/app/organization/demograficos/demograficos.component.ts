@@ -29,7 +29,7 @@ import { AuthService } from '@core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
-
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-demograficos-organizacion',
@@ -37,7 +37,7 @@ import { TranslateModule } from '@ngx-translate/core';
   styleUrls: ['./demograficos.component.scss'],
 
   imports: [
-    BreadcrumbComponent,
+    BreadcrumbComponent,MatChipsModule,
     MatDialogModule,
     MatTableModule,
     MatIconModule,
@@ -185,6 +185,10 @@ export class CrearDemograficosComponent implements OnInit {
           console.error('Error al obtener organizaciones:', error);
         });
   }
+
+  isActive(v: any): boolean {
+  return v === true || v === 1 || v === '1' || v === 'true' || v === 'TRUE' || v === 'Activo' || v === 'ACTIVO';
+}
 
   getOrganizationById(idOrganization:any): void {
     this.organizacionService.getOrganizationById(idOrganization)

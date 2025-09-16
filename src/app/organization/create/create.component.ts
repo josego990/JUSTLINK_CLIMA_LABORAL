@@ -7,7 +7,11 @@ import { FormBuilder, FormGroup, Validators, FormsModule,
   MatOptionModule,
   MatRippleModule,
 } from '@angular/material/core';
-
+import {
+  MatDialog,
+  MatDialogConfig,
+  //MatDialogRef,
+} from "@angular/material/dialog";
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogRef } from '@angular/material/dialog';
 import { OrganizacionService } from '../services/organizacion.service';
@@ -27,7 +31,7 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
-
+import { DialogformEditOrganizationComponent } from '../dialogformeditorganization/dialogformeditorganization.component';
 @Component({
   selector: 'app-crear-organizacion',
   templateUrl: './create.component.html',
@@ -71,14 +75,16 @@ export class CrearOrganizacionComponent implements OnInit {
     'RepresentanteLegal',
     'SectorIndustria',
     'NumeroEmpleados',
-   
-    'Acciones'
+    'Editar',
+    'Borrar',
+
 
   ];
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
     private fb: FormBuilder, private router: Router,
     private organizacionService: OrganizacionService,
+    private dialogItemModel: MatDialog, 
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -226,6 +232,35 @@ export class CrearOrganizacionComponent implements OnInit {
    //console.log('DELETE ITEM:: ', item);
     this.deleteOrganization(item.Id);
   }
+
+   editItem(item:any){
+   //console.log('DELETE ITEM:: ', item);
+    //this.deleteOrganization(item.Id);
+
+    //open dialoghe
+    this.openDialogEditItems(item);
+
+
+  }
+
+  openDialogEditItems(item:any): void {
+      //this.id_quiz_context = this.cardsData.indexOf(card);
+    
+      const dialogRef = this.dialogItemModel.open(DialogformEditOrganizationComponent, {
+        width:  '95vw',
+        maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
+        height: 'auto',         // o '100vh' si quieres pantalla completa
+        disableClose: true,
+        data: item
+      });
+    
+      // ✅ Escuchar el cierre del diálogo
+      dialogRef.afterClosed().subscribe(result => {
+        if (result === true) {
+         this.getOrganizations();
+        }
+      });
+    }
 
   // Cerrar sin guardar
   onCancel(): void {

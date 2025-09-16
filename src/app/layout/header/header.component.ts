@@ -36,7 +36,6 @@ interface Notifications {
         MatMenuModule,
         RouterLink,
         NgClass,
-        NgScrollbar,
         MatIconModule,
     ],
     providers: [LanguageService]

@@ -1,0 +1,102 @@
+
+<h2 mat-dialog-title>{{ 'MENUITEMS.ORGANIZATION.EDITORGANIZATION' | translate }}</h2>
+
+<mat-dialog-content [formGroup]="orgFormX">
+  <div class="container-fluid">
+    <div class="row g-3">
+
+      <!-- Fila 1 -->
+      <div class="col-12 col-md-4">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.COUNTRY' | translate }}</mat-label>
+          <mat-select formControlName="IdPais" (selectionChange)="onCountryChange($event.value)">
+            <mat-option *ngFor="let country of dataSourceCountries" [value]="country.Id">
+              {{ country.Nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="col-12 col-md-8">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.NAME' | translate }}</mat-label>
+          <input matInput formControlName="Nombre" />
+        </mat-form-field>
+      </div>
+
+      <!-- Fila 2 -->
+      <div class="col-12 col-md-8">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.REASON' | translate }}</mat-label>
+          <input matInput formControlName="RazonSocial" />
+        </mat-form-field>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>NIT</mat-label>
+          <input matInput formControlName="NIT" />
+        </mat-form-field>
+      </div>
+
+      <!-- Fila 3 -->
+      <div class="col-12 col-md-9">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.ADDRESS' | translate }}</mat-label>
+          <input matInput formControlName="Direccion" />
+        </mat-form-field>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.PHONE' | translate }}</mat-label>
+          <input matInput formControlName="Telefono" />
+        </mat-form-field>
+      </div>
+
+      <!-- Fila 4 -->
+      <div class="col-12 col-md-6">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.MAIL' | translate }}</mat-label>
+          <input matInput type="email" formControlName="CorreoContacto" />
+        </mat-form-field>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.REPRESENT' | translate }}</mat-label>
+          <input matInput formControlName="RepresentanteLegal" />
+        </mat-form-field>
+      </div>
+
+      <!-- Fila 5 -->
+      <div class="col-12 col-md-6">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.SECTOR' | translate }}</mat-label>
+          <input matInput formControlName="SectorIndustria" />
+        </mat-form-field>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <mat-form-field appearance="fill" class="w-100">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.EMP_NUMBER' | translate }}</mat-label>
+          <input matInput type="number" formControlName="NumeroEmpleados" />
+        </mat-form-field>
+      </div>
+
+    </div>
+  </div>
+
+  <mat-progress-spinner
+    *ngIf="loading"
+    mode="indeterminate"
+    diameter="40"
+    color="primary"
+    style="margin: 12px auto; display: block;">
+  </mat-progress-spinner>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-raised-button color="primary" (click)="guardaOrganization()">{{ 'MENUITEMS.ORGANIZATION.SAVE' | translate }}</button>
+  <button mat-button (click)="closeDialog()" style="color:#91a1a4;">{{ 'MENUITEMS.ORGANIZATION.CLOSE' | translate }}</button>
+</mat-dialog-actions>

@@ -10,7 +10,7 @@
           <div class="header">
          
             <button style="margin-left: auto;" mat-raised-button color="primary" (click)="openDialogNewRol()">
-              <mat-icon>add</mat-icon> Crear Nuevo Rol
+              <mat-icon>add</mat-icon> {{ 'MENUITEMS.SECURE.CREATEROL' | translate }}
             </button>
             
           </div>
@@ -31,8 +31,8 @@
                       <tr *ngFor="let access of role.accesses">
                         <!-- Nombre y descripción -->
                         <td>
-                          <strong>{{ access.actionName }}</strong><br/>
-                          <small class="text-muted">{{ access.actionDescription }}</small>
+                          <strong>{{ access.actionName | translate}}</strong><br/>
+                          <small class="text-muted">{{ access.actionDescription | translate }}</small>
                         </td>
                         <!-- Toggle alineado a la derecha -->
                         <td class="text-end">

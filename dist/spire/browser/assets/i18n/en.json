@@ -88,6 +88,17 @@
       "ERRDELETEEMPLOYEE": "Error deleting employee.",
       "ERRACTIVEEMPLOYEE": "Error activating employee.",
       "ERRCREATEEMPLOYEE": "Error creating employee.",
+      "UPLOADEXCELEMPLOYEE": "Upload Excel",
+      "DOWNLOADEXCELEMPLOYEE": "Download Excel Template",
+
+
+
+
+
+
+
+
+
       "SENDTYPENONE": "None"
     },
     "DEMOGRAPHICS": {
@@ -127,7 +138,8 @@
       "CANCEL": "CANCEL",
       "ADMINCLIMA": "Manage Climate",
       "ADDFACTOR": "New Factor", 
-      "ADDGRANDFACTOR": "New Principal Factor",
+      "GRANFACTOR": "Main Factor",
+      "ADDGRANDFACTOR": "New Main Factor",
       "OPENQUESTION": "Open Question",
       "OPENQUESTIONIA": "Open Question with AI analysis",
       "FIELDTEXT": "Field Text",

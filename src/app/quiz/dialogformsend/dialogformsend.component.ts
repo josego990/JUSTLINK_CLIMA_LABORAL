@@ -186,7 +186,7 @@ export class DialogformSendComponent implements OnInit {
   }
 
   //enviar todas las encuestas..
-  async enviarTodas(): Promise<void> {
+  async enviarTodasOld(): Promise<void> {
     const confirmado = await Swal.fire({
       title: 'Enviar Encuestas',
       text: 'Esto enviará las encuestas pendientes de envío a todos los empleados activos. ¿Desea proceder?',
@@ -204,8 +204,6 @@ export class DialogformSendComponent implements OnInit {
   
     try {
 
-     //console.log(this.tableDataSource);
-
       for (const element of this.tableDataSource) {
 
         if(element.EstadoEncuesta === 'Creado'){
@@ -221,12 +219,11 @@ export class DialogformSendComponent implements OnInit {
               "nombre_organizacion": this.dataRecibida.subtitle,
               "nombre_clima": this.dataRecibida.title,
                              //http://localhost:4200
-              "url_encuesta": 'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado
+              "url_encuesta": 'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' 
+              + element.CodigoEncuestaEmpleado
         
             };
 
-           //console.log('ENTRA A ENVIAR CORREO.. element:', element);
-            
             //obtener plantilla..
             this.organizacionService.getFlujoPlantilla(this.dataRecibida.id).then((resilix) => {
             
@@ -243,7 +240,7 @@ export class DialogformSendComponent implements OnInit {
 
             }else{
              //console.log('creo que entó a undefined!'); //plantilla genérica
-              plantilla_con_variables = '<h5>👋 Hola <strong>{{DATOS["nombre_empleado"]}},</strong></h5><p></p><h6>Has sido invitado completar la encuesta del Clima Laboral <em><strong>“{{DATOS["nombre_clima"]}}”</strong></em></h6><p></p><h6>🕓 Agradecemos de antemano el tiempo que te tomes en llenarla.</h6><p></p><p>🚀 <a href="{{DATOS[&quot;url_encuesta&quot;]}}" title="{{DATOS[&quot;url_encuesta&quot;]}}" target="_blank">LINK DE LA ENCUESTA</a></p><p></p><p>Atentamente el equipo de Just-Link.</p><p></p><p></p>';
+              plantilla_con_variables = '<!doctype html> <html lang="es"> <head> <meta charset="utf-8"> <meta name="x-apple-disable-message-reformatting"> <meta name="viewport" content="width=device-width, initial-scale=1"> <meta name="color-scheme" content="light dark"> <meta name="supported-color-schemes" content="light dark"> <title>Invitación a encuesta</title>  <style> /* Solo clientes que respetan estilos embebidos */ @media (max-width: 600px) { .container { width: 100% !important; } .px { padding-left: 20px !important; padding-right: 20px !important; } .btn { width: 100% !important; } } /* Modo oscuro (clientes que lo soportan) */ @media (prefers-color-scheme: dark) { body, .wrapper { background: #0f1115 !important; } .card { background: #171a21 !important; } .text { color: #e8eaf0 !important; } .muted { color: #a7b0c0 !important; } .btn a { color: #0f1115 !important; } } </style> </head> <body style="margin:0;padding:0;background:#f4f6f8;">  <div style="display:none;max-height:0;overflow:hidden;opacity:0;"> Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante. </div> <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"> <tr> <td align="center" style="padding:24px;"> <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);" >  <tr> <td align="center" style="background:#0d6efd;padding:20px 24px;"> <img src="{{DATOS["logo_url"]||""}}" alt="Just-Link" width="140" style="display:block;height:auto;max-width:140px;"> </td> </tr>  <tr> <td class="px" style="padding:32px;" > <h1 class="text" style="margin:0 0 8px 0;font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;font-size:22px;line-height:1.3;color:#1f2937;"> Hola <strong>{{DATOS["nombre_empleado"]}}</strong> 👋 </h1> <p class="text" style="margin:0 0 16px 0;font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;font-size:16px;line-height:1.6;color:#374151;"> Has sido invitado(a) a participar en la encuesta de Clima Laboral: <br> <strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong> </p> <p class="text" style="margin:0 0 24px 0;font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;font-size:16px;line-height:1.6;color:#374151;"> Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo! </p>  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"> <tr> <td align="center" bgcolor="#0d6efd" style="border-radius:10px;">   <a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;"> Comenzar encuesta </a>  </td> </tr> </table>  <p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;"> Si el botón no funciona, copia y pega este enlace en tu navegador: <br> <a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;"> {{DATOS["url_encuesta"]}} </a> </p> <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"> <p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;"> Atentamente, <br><strong>Equipo de Just-Link</strong> </p> <p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;"> Por favor, no reenvíes este correo. El enlace es único para tu participación. </p> </td> </tr>  <tr> <td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"> <p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;"> © {{DATOS["anio_actual"]||"2025"}} Just-Link • <a href="{{DATOS["url_soporte"]||"#"}}" style="color:#98a2b3;text-decoration:underline;">Soporte</a> </p> </td> </tr> </table>  <div style="height:24px;line-height:24px;font-size:24px;">‌</div> </td> </tr> </table> </body> </html>';
               
               var p = plantilla_con_variables.replaceAll('&quot;','"');
              //console.log('p',p);
@@ -408,10 +405,191 @@ export class DialogformSendComponent implements OnInit {
       Swal.fire('Error', String(err), 'error');
     } finally {
       this.loading = false;
-     //console.log('obteniendo encuestas en finally..');
+      console.log('obteniendo encuestas en finally..');
       this.obtenerEncuestasEmpleados();
     }
   }
+
+  async enviarTodas(): Promise<void> {
+    const confirmado = await Swal.fire({
+      title: 'Enviar Encuestas',
+      text: 'Esto enviará las encuestas pendientes de envío a todos los empleados activos. ¿Desea proceder?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: 'green',
+      cancelButtonColor: 'gray',
+      confirmButtonText: 'Sí, enviar todo',
+      cancelButtonText: 'Cancelar'
+    }).then(r => r.isConfirmed);
+
+    if (!confirmado) return;
+
+    this.loading = true;
+
+    let okCount = 0;
+    let errCount = 0;
+    const logs: Array<{idEmpleado:number; canal:'email'|'whatsapp'; ok:boolean; msg:string}> = [];
+
+    try {
+      for (const element of this.tableDataSource) {
+        // Solo envía los que están creados/pedientes
+        if (element?.EstadoEncuesta !== 'Creado') continue;
+
+        let okItem = false;
+        let canal: 'email' | 'whatsapp' = 'email';
+        let msgFinal = '';
+
+        try {
+          if (element.TipoEnvioEncuesta == 1) {
+            canal = 'email';
+            const htmlFinal = await this.prepararHtmlCorreo(element);
+            const body = {
+              destinatario: element.Email,
+              asunto: 'Encuesta Clima Laboral',
+              mensajeHtml: htmlFinal,
+              IdFlujo: this.dataRecibida.id,
+              IdEmpleado: element.IdEmpleado
+            };
+
+            const res = await this.organizacionService.sendEmail(body);
+            const message = res?.data?.message ?? '';
+            okItem = this.esOk(message);   // 'Correo enviado correctamente', 'success', 'correcto', etc.
+            msgFinal = String(message || 'Sin mensaje');
+            await this.registrarEnvio(element, okItem ? 'Enviado' : 'No enviado', okItem ? 'Correcto' : 'Error');
+            element.RespuestaEnvio = okItem ? 'Correcto' : 'Error';
+          }
+          else if (element.TipoEnvioEncuesta == 2) { //WHATSAPP
+            canal = 'whatsapp';
+            const wBody = {
+              to: element.Celular,
+              employe_name: element.Empleado,
+              organization_name: this.dataRecibida.subtitle,
+              clima_code: element.CodigoEncuestaEmpleado,
+              clima_name: this.dataRecibida.title,
+              IdFlujo: this.dataRecibida.id,
+              IdEmpleado: element.IdEmpleado
+            };
+
+            const res = await this.organizacionService.sendWhatsappMessage(wBody);
+            const message = res?.data?.messages[0] ?? '';
+            console.log('CAPELLAN,, ',);
+            okItem = this.esOk(message.message_status);   // 'Mensaje enviado correctamente', etc.
+            msgFinal = String(message || 'Sin mensaje');
+            await this.registrarEnvio(element, okItem ? 'Enviado' : 'No enviado', okItem ? 'Correcto' : 'Error');
+            element.RespuestaEnvio = okItem ? 'Correcto' : 'Error';
+          }
+        } catch (err: any) {
+          okItem = false;
+          msgFinal = (err?.message || String(err) || 'Error desconocido');
+          await this.registrarEnvio(element, 'No enviado', 'Error');
+          element.RespuestaEnvio = 'Error';
+        }
+
+        logs.push({ idEmpleado: element.IdEmpleado, canal, ok: okItem, msg: msgFinal });
+        okItem ? okCount++ : errCount++;
+      }
+
+      // Actualiza encabezado general (si aplica)
+      try {
+        await this.organizacionService.updateEncuestaEncabezado({ IdFlujo: this.currentCard.id, Estado: 2 });
+        this.currentCard.estadoEnvio = 'Enviado';
+      } catch (_) { /* opcional: log */ }
+
+      // Resumen final
+      const total = okCount + errCount;
+      const title = errCount === 0 ? 'Proceso exitoso' :
+                    okCount === 0 ? 'Sin envíos exitosos' :
+                    'Proceso parcialmente exitoso';
+      const icon  = errCount === 0 ? 'success' :
+                    okCount === 0 ? 'error'   : 'warning';
+
+      await Swal.fire({
+        icon,
+        title,
+        html: `
+          <div style="text-align:left">
+            <div><strong>Total procesados:</strong> ${total}</div>
+            <div style="color:#16a34a"><strong>Correctos:</strong> ${okCount}</div>
+            <div style="color:#dc2626"><strong>Errores:</strong> ${errCount}</div>
+          </div>
+        `
+      });
+
+      // (Opcional) si quieres ver los mensajes individuales:
+      // console.table(logs);
+
+    } catch (err: any) {
+      console.error(err);
+      await Swal.fire('Error', String(err), 'error');
+    } finally {
+      this.loading = false;
+      this.obtenerEncuestasEmpleados();
+    }
+  }
+
+  /** Determina si el mensaje del backend indica éxito */
+private esOk(message: any): boolean {
+  const s = (message ?? '').toString().toLowerCase();
+  return s.includes('accepted') ||
+         s.includes('enviado correctamente') ||
+         s.includes('success') ||
+         s.includes('ok');
+}
+
+/** Arma el HTML del correo con plantilla (usa fallback si no hay) */
+private async prepararHtmlCorreo(element: any): Promise<string> {
+  // 1) Obtener plantilla desde BD
+  let plantilla = '';
+  try {
+    const r = await this.organizacionService.getFlujoPlantilla(this.dataRecibida.id);
+    plantilla = r?.data?.[0]?.CuerpoHtml || '';
+  } catch { /* sin template */ }
+
+  // 2) Fallback minimal si no hay plantilla
+  if (!plantilla) {
+    plantilla =
+      '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>Invitación a encuesta</title></head><body style="font-family:Arial,Helvetica,sans-serif">' +
+      '<h2>Hola {{DATOS["nombre_empleado"]}}</h2>' +
+      '<p>Has sido invitado(a) a la encuesta <strong>{{DATOS["nombre_clima"]}}</strong>.</p>' +
+      '<p><a href="{{DATOS["url_encuesta"]}}" target="_blank">Abrir encuesta</a></p>' +
+      '<p>Gracias, equipo Just-Link</p>' +
+      '</body></html>';
+  }
+
+  // 3) Reemplazos & render
+  const p = plantilla.replaceAll('&quot;', '"');
+  const DATOS: any = {
+    nombre_empleado: element.Empleado,
+    telefono_empleado: element.Celular,
+    correo_empleado: element.Email,
+    nombre_organizacion: this.dataRecibida.subtitle,
+    nombre_clima: this.dataRecibida.title,
+    url_encuesta:
+      'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' +
+      element.CodigoEncuestaEmpleado
+  };
+
+  return renderizarPlantilla(p, DATOS);
+}
+
+/** Registra el envío por empleado en tu backend */
+private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respuesta: 'Correcto'|'Error'): Promise<void> {
+  const updateData = {
+    Id: 0,
+    IdFlujo: this.dataRecibida.id,
+    IdEmpleado: element.IdEmpleado,
+    Estado: estado,
+    FechaEnvio: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    FechaInicio: null,
+    FechaFinalizacion: null,
+    Eliminada: 0,
+    RespuestaEnvio: respuesta
+  };
+  await this.organizacionService.updateEncuestaEmpleado(updateData);
+}
+
+
 
  
   async swalCrearEncuesta(item: any): Promise<void> {
@@ -523,7 +701,7 @@ export class DialogformSendComponent implements OnInit {
 
             }else{
              //console.log('creo que entó a undefined!'); //plantilla genérica
-              plantilla_con_variables = '<h5>👋 Hola <strong>{{DATOS["nombre_empleado"]}},</strong></h5><p></p><h6>Has sido invitado completar la encuesta del Clima Laboral <em><strong>“{{DATOS["nombre_clima"]}}”</strong></em></h6><p></p><h6>🕓 Agradecemos de antemano el tiempo que te tomes en llenarla.</h6><p></p><p>🚀 <a href="{{DATOS[&quot;url_encuesta&quot;]}}" title="{{DATOS[&quot;url_encuesta&quot;]}}" target="_blank">LINK DE LA ENCUESTA</a></p><p></p><p>Atentamente el equipo de Just-Link.</p><p></p><p></p>';
+              plantilla_con_variables = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Hola <strong>{{DATOS["nombre_empleado"]}}</strong> 👋</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado(a) a participar en la encuesta de Clima Laboral:<br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>Equipo de Just-Link</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
               
               var p = plantilla_con_variables.replaceAll('&quot;','"');
              //console.log('p',p);

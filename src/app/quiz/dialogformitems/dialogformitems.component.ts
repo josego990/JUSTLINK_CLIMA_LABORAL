@@ -42,7 +42,7 @@ import { AuthService } from '@core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
-import { GFactor } from '../models/quiz-models';
+import { GFactor } from '../models/quiz-models'; 
 
 @Component({
   selector: 'app-dialogitemform',
@@ -136,10 +136,12 @@ export class DialogformItemsComponent implements OnInit {
   };
 
   displayedColumns: string[] = [
-    'type',
-    'label',
+    
+    
     'gfactor',
     'serie',
+    'type',
+    'label',
     'activate',
     'actions',
   ];
@@ -294,6 +296,18 @@ export class DialogformItemsComponent implements OnInit {
     this.gfactors_data_send.gfactores = this.gfactorsx;
 
   }
+
+  getByLang(row: any, esKey: string, enKey: string): string {
+  const pickedKey = this.langStoreValue === 'en' ? enKey : esKey;
+
+  // valor elegido por idioma, con fallback a la otra clave si viene vacío/undefined
+  const val =
+    (row?.[pickedKey] ?? '') !== '' ? row?.[pickedKey] :
+    (row?.[esKey] ?? '') !== ''    ? row?.[esKey] :
+    (row?.[enKey] ?? '') !== ''    ? row?.[enKey] : '';
+
+  return String(val ?? '').trim();
+}
 
   public ngOnInit(): void {
 
@@ -644,30 +658,31 @@ export class DialogformItemsComponent implements OnInit {
 
       rawData.forEach((row: any, idx: number) => {
         const fila = idx + 2;
-        const tipo = String(row.TIPO || '').trim();
-        const etiqueta = String(row.ETIQUETA || '').trim();
-        const desc = String(row.DESCRIPCION || '').trim();
+
+        const tipo     = this.getByLang(row, 'TIPO',       'TYPE');
+        const etiqueta = this.getByLang(row, 'ETIQUETA',   'LABEL');
+        const desc     = this.getByLang(row, 'DESCRIPCION','DESCRIPTION');
 
         // Validación de tipos permitidos por idioma
         switch (localStorage.getItem('lang')) {
           case 'es':
-            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)) {
+            if (!['GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)) {
               errores.push(
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
                 ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`
+                ` 'GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`
               );
               return;
             }
             break;
           case 'en':
-            if (!['PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'].includes(tipo)) {
+            if (!['MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION'].includes(tipo)) {
               errores.push(
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
                 ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'PRINCIPAL FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'QUESTION IA'`
+                ` 'MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION'` + 'are admited.'
               );
               return;
             }
@@ -683,7 +698,7 @@ export class DialogformItemsComponent implements OnInit {
         }
 
         // ===== NUEVO: principal factor (gran factor) =====
-        if (tipo === 'PRINCIPAL FACTOR') {
+        if (tipo === 'GRAN FACTOR' || tipo === 'MAIN FACTOR') {
           const newGFactor = {
             idFlujo: this.idFlujo,
             Clave: `gfac_${currentGFactorKey}`,
@@ -741,7 +756,7 @@ export class DialogformItemsComponent implements OnInit {
         let tipoCampo = '';
         let tipoAbrev = '';
         let currentLang = localStorage.getItem('lang');
-        console.log('LOS DE INFORMATICA SOIS GENIALES:: ', currentLang);
+        console.log('LOS DE INFORMATICA SOIS GENIALES currentLang:: ', currentLang);
         switch (currentLang) {
           case 'es':
             switch (tipo) {
@@ -769,7 +784,7 @@ export class DialogformItemsComponent implements OnInit {
                 tipoCampo = 'text';
                 tipoAbrev = 'txt_';
                 break;
-              case 'QUESTION IA':
+              case 'IA QUESTION':
                 tipoCampo = 'iatext';
                 tipoAbrev = 'iatxt_';
                 break;
@@ -939,28 +954,31 @@ export class DialogformItemsComponent implements OnInit {
   }
 
   downloadExcelTemplate(): void {
+    const url = this.langStoreValue === 'en'
+      ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx'
+      : 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
 
-    let url = '';
+    const filename = this.langStoreValue === 'en'
+      ? 'SurveyTemplate_EN.xlsx'
+      : 'PlantillaEncuesta_ES.xlsx';
 
-    switch(this.langStoreValue){
-      case 'es':
-        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
-        break;
-      case 'en':
-        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx';
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+    if (isIOS || isSafari) {
+      // algunos Safari ignoran download: abre en pestaña nueva
+      window.open(url, '_blank', 'noopener');
+      return;
     }
 
-    //const url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
-    // Esto abrirá el archivo en una nueva pestaña o descargará el archivo, dependiendo del navegador
-    window.open(url, '_blank');
-
-    // Alternativamente, para forzar descarga (descargar en vez de abrir):
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'EmployeeTemplate.xlsx'; // nombre sugerido
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   onGranFactorChange(event: any): void {

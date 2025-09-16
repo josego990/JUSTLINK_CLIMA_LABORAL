@@ -1,0 +1,99 @@
+<h2 mat-dialog-title>{{ 'MENUITEMS.EMPLOYEE.EDITEMPLOYEE' | translate }}</h2>
+
+<mat-dialog-content class="dialog-content">
+  <form [formGroup]="employeeFormX" class="emp-form">
+    <div class="container-fluid p-0">
+      <div class="row g-3">
+
+        <!-- Fila 1 -->
+        <div class="col-12 col-md-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.IDEMPLOYEE' | translate }}</mat-label>
+            <input matInput formControlName="IdEmpleado" />
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-5">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.NAME' | translate }}</mat-label>
+            <input matInput formControlName="Nombres" required />
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-5">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.LNAME' | translate }}</mat-label>
+            <input matInput formControlName="Apellidos" required />
+          </mat-form-field>
+        </div>
+
+        <!-- Fila 2 -->
+        <div class="col-12 col-md-4">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.PHONE' | translate }}</mat-label>
+            <input matInput formControlName="Celular" />
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-5">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.MAIL' | translate }}</mat-label>
+            <input matInput type="email" formControlName="Email" />
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.SENDTYPE' | translate }}</mat-label>
+            <mat-select formControlName="TipoEnvioEncuesta">
+              <mat-option [value]="0">{{ 'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate }}</mat-option>
+              <mat-option [value]="1">Email</mat-option>
+              <mat-option [value]="2">WhatsApp</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Grupo: Datos demográficos -->
+        <div class="col-12">
+          <mat-card class="demo-group">
+            <mat-card-header>
+              <mat-card-title>{{ 'MENUITEMS.EMPLOYEE.DEMOGRAPHICDATA' | translate }}</mat-card-title>
+            </mat-card-header>
+
+            <mat-card-content>
+              <div class="row g-3">
+                <!-- Fila 3: dinámicos (2 por fila en md+) -->
+                <ng-container *ngFor="let field of data.camposDemograficos">
+                  <div class="col-12 col-md-6">
+                    <mat-form-field appearance="fill" class="w-100">
+                      <mat-label>{{ field.NombreCampo }}</mat-label>
+                      <input matInput [formControlName]="field.NombreCampo" />
+                    </mat-form-field>
+                  </div>
+                </ng-container>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+
+      </div>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+ 
+
+  <button mat-raised-button color="primary"
+          (click)="updateEmpleado()"
+          [disabled]="isSaving || employeeFormX.invalid">
+    <ng-container *ngIf="!isSaving; else savingTpl">
+      {{ 'MENUITEMS.EMPLOYEE.SAVE' | translate }}
+    </ng-container>
+    <ng-template #savingTpl>
+      <mat-progress-spinner mode="indeterminate" diameter="18" strokeWidth="3"></mat-progress-spinner>
+    </ng-template>
+  </button>
+   <button mat-button mat-dialog-close [disabled]="isSaving">{{ 'MENUITEMS.EMPLOYEE.CANCEL' | translate }}</button>
+</mat-dialog-actions>

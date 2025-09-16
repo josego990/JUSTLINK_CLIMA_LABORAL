@@ -26,12 +26,12 @@
     <ng-container [ngSwitch]="currentCard.estadoEnvio">
       <!-- No procesado o creado -->
       <ng-container *ngSwitchCase="'No procesado'">
-        <button mat-raised-button color="primary" (click)="crearEncuestas()">
+        <button mat-raised-button color="primary" (click)="crearEncuestas() " style="border-radius: 8px;">
           📤 Crear Encuestas
         </button>
       </ng-container>
       <ng-container *ngSwitchCase="'Creado'">
-        <button mat-raised-button color="primary" (click)="enviarTodas()">
+        <button mat-raised-button color="primary" (click)="enviarTodas()" style="border-radius: 8px;">
           📤 Enviar Pendientes
         </button>
       </ng-container>
@@ -138,9 +138,9 @@
       <ng-container matColumnDef="CodigoEncuestaEmpleado">
         <th mat-header-cell *matHeaderCellDef>CODIGO ENCUESTA</th>
         
-                  <!--https://d38he5chu19bcx.cloudfront.net-->
+                  <!--https://d38he5chu19bcx.cloudfront.net //////////ENVIAR A CONFIGURACION-->
         <td mat-cell *matCellDef="let element">
-          <a [href]="'http://localhost:4200/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado" target="_blank">
+          <a [href]="'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado" target="_blank">
             {{ element.CodigoEncuestaEmpleado }}
           </a>
         </td>

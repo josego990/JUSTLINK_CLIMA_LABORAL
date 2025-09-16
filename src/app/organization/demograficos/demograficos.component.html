@@ -64,8 +64,19 @@
                 
                   <!-- TipoIdentificacion -->
                   <ng-container matColumnDef="Estado">
-                    <th mat-header-cell *matHeaderCellDef>{{'MENUITEMS.DEMOGRAPHICS.STATE' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Estado }} </td>
+                    <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
+                    <td mat-cell *matCellDef="let element">
+                      <mat-chip-set>
+                        <mat-chip
+                            [ngStyle]="isActive(element.Estado)
+                              ? {'background-color':'#e6f4ea','color':'#1e4620','border':'1px solid #c6e3cc'}
+                              : {'background-color':'#feeceb','color':'#7a1a16','border':'1px solid #f5c6c3'}"
+                            selected
+                          >
+                            {{ ('MENUITEMS.DEMOGRAPHICS.' + (isActive(element.Estado) ? 'ACTIVE' : 'INACTIVE')) | translate }}
+                          </mat-chip>
+                      </mat-chip-set>
+                    </td>
                   </ng-container>
                 
                   <!-- Acciones -->

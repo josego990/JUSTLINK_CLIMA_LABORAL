@@ -16,7 +16,7 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { AuthService } from '@core';
-import { RouteInfo } from './sidebar.metadata';
+import { ConfigInfo, RouteInfo } from './sidebar.metadata';
 import { TranslateModule } from '@ngx-translate/core';
 import { FeatherModule } from 'angular-feather';
 import { NgScrollbar } from 'ngx-scrollbar';
@@ -106,6 +106,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
         sessionStorage.setItem('routes', JSON.stringify(routes));
         this.sidebarItems = routes.filter((sidebarItem) => sidebarItem);
       });
+
+      this.sidebarService.getConfigsInfo().subscribe((routes: ConfigInfo[]) => {
+       //console.log('routes en sidebar:: ', routes);
+        sessionStorage.setItem('configs', JSON.stringify(routes));
+      });
+
 
     }
 

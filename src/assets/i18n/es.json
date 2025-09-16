@@ -24,7 +24,10 @@
     },
 
     "ORGANIZATION": {
+
+      "EDITORGANIZATION": "Editar Organización", 
       "TEXT": "ORGANIZACION", 
+
       "LIST": {
         "CREAR": "Organizaciones",
         "EMPLEADOS": "Empleados",
@@ -39,6 +42,7 @@
         "SECTOR": "SECTOR INDUSTRIAL",
         "EMP_NUMBER": "EMPLEADOS",
         "DELETE": "ELIMINAR",
+        "EDIT": "EDITAR",
         "CREATEORG": "Crear Nueva Organización",
         
         "EXPAND": "Expandir - Contraer",
@@ -53,11 +57,14 @@
         "ERRDELETEORG": "Ha ocurrido un error al eliminar la organización ",
         "ORGADDSUCCESS": "Se agregó la nueva organización.",
         "ERRCREATEORG": "Ha ocurrido un error al crear la Organización.",
-        "SAVE": "GUARDAR"
+        "SAVE": "GUARDAR",
+        "CLOSE": "CERRAR"
 
         
       },
   "EMPLOYEE": {
+    "IDEMPLOYEE": "ID Empleado",
+    "EDITEMPLOYEE": "Editar Empleado",
      "TEXT": "EMPLEADOS",
       "NAME": "NOMBRE",
       "LNAME": "APELLIDOS",
@@ -65,6 +72,7 @@
       "PHONE": "TELEFONO",
       "MAIL": "CORREO CONTACTO",
       "DELETE": "ELIMINAR",
+      "EDIT": "EDITAR",
       "CREATE": "Crear Empleado",
       
       "EXPAND": "Expandir - Contraer",
@@ -79,6 +87,8 @@
       "UPLOAD": "CARGAR ARCHIVO EXCEL",
       "CREATENEW": "NUEVO EMPLEADO",
       "SAVE": "GUARDAR",
+      "CANCEL": "CANCELAR",
+      "DEMOGRAPHICDATA": "Datos Demográficos",
       "SUCCESS": "REALIZADO",
       "ADDED": "Se agregó el empleado.",
 
@@ -117,6 +127,8 @@
     },
 
     "DEMOGRAPHICS":{
+      "ACTIVE": "Activo",
+      "INACTIVE": "Inactivo",
       "TEXT": "DEMOGRAFICOS",
       "FIELD": "Nombre Campo",
       "DATATYPE": "Tipo Dato",
@@ -151,6 +163,19 @@
     },
 
     "QUIZ": {
+    "ADDGRANDFACTORTITLE": "Nuevo Gran Factor",
+    "GRANDFACTORNAME": "Nombre del Gran Factor",
+    "INSERTGRANDFACTORNAME": "Ingrese el nombre para el Gran Factor",
+        "GRANDFACTORDESC": "Descripción del Gran Factor",  
+    "INSERTGRANDFACTORDESC": "Ingrese descripción para el Gran Factor",  
+    "CLOSE": "CERRAR",  
+    "GFINSERTSUCCESS": "Gran Factor insertado correctamente",  
+    "GFINSERTERROR": "Ocurrió un error al guardar el nuevo Gran Factor", 
+
+
+
+
+    
       "TEXT": "CLIMA LABORAL",
       "CREATE": "Crear nuevo clima",
        "EDIT": "EDITAR",
@@ -265,7 +290,95 @@
       "ROLE_DESC": "Descripción Rol",
       "USERS": "Usuarios",
       "LOGS": "LOGS",
-      "LOGS_MESSAGE1": "Se muestran los registros de las peticiones a integraciones de servicios terceros."
+      "LOGS_MESSAGE1": "Se muestran los registros de las peticiones a integraciones de servicios terceros.",
+      "CONFIGS_TITTLE": "Variables Globales de Sistema",
+      "CONFIGS": "Variables Globales",
+      "CREATEROL": "Crear Nuevo Rol",
+      
+      "ACCESSDATA": {
+        "ACCESSDASHBOARD": "Visualizar el módulo Dashboard",
+        "ACCESSDASHBOARDDESC": "Permite la visualización del módulo.",
+
+        "EXPORTDASHBOARD": "Exportar datos del Dashboard",
+        "EXPORTDASHBOARDDESC": "Permite la exportación de cualquier reporte del dashboard",
+
+        "FILTERDASHBOARD": "Filtrar datos del Dashboard",
+        "FILTERDASHBOARDDESC": "Permite filtrar los datos del Dashboard",
+
+        "ACCESSORGANIZATION": "Visualizar el módulo Organización",
+        "ACCESSORGANIZATIONDESC": "Permite la visualización del módulo.",
+
+        "ACCESSEMPLOYEES": "Visualizar módulo Empleados",
+        "ACCESSEMPLOYEESDESC": "Permite la visualización del módulo de Empleados",
+
+        "EMPLOYEESUPLOAD": "Cargar excel empleados",
+        "EMPLOYEESUPLOADDESC": "Permite la carga de excel para creación de empleados",
+
+        "EMPLOYEESTEMPLATE": "Descargar plantilla excel empleados",
+        "EMPLOYEESTEMPLATEDESC": "Permite la descarga de plantilla excel para creación de empleados",
+
+        "ACCESSDEMOGRAPHICS": "Visualizar módulo Demográficos",
+        "ACCESSDEMOGRAPHICSDESC": "Permite la visualización del módulo Demográficos",
+
+        "ACCESSCLIMAS": "Visualizar módulo Climas",
+        "ACCESSCLIMASDESC": "Permite la visualización del módulo Climas",
+
+        "CREATECLIMAS": "Crear climas",
+        "CREATECLIMASDESC": "Permite la creación de nuevos climas",
+
+        "EDITCLIMAS": "Editar Climas",
+        "EDITCLIMASDESC": "Permite la edición de los climas",
+
+        "SENDCLIMAS": "Envio Climas",
+        "SENDCLIMASDESC": "Permite administrar los envios de los climas",
+
+        "CREATEFACTORS": "Crear factores",
+        "CREATEFACTORSDESC": "Permite agregar nuevos factores en la edición de los climas",
+
+        "CREATEQUESTIONS": "Crear preguntas",
+        "CREATEQUESTIONSDESC": "Permite agregar nuevas preguntas para las encuestas en la edición de los climas",
+
+        "TOGGLEQUESTIONS": "Activar o desactivar preguntas",
+        "TOGGLEQUESTIONSDESC": "Permite activar o desactivar preguntas en la edición de los climas",
+
+        "DELETEQUESTIONS": "Eliminar preguntas",
+        "DELETEQUESTIONSDESC": "Permite eliminar preguntas en la edición de los climas",
+
+        "TOGGLECLIMAS": "Activar o desactivar climas",
+        "TOGGLECLIMASDESC": "Permite activar o desactivar los climas en el menú de edición de climas",
+
+        "DELETECLIMAS": "Eliminar climas",
+        "DELETECLIMASDESC": "Permite eliminar los climas en el menú de edición de climas",
+
+        "UPLOADCLIMAS": "Cargar excel climas",
+        "UPLOADCLIMASDESC": "Permite la carga de excel para creación de climas",
+
+        "DELETEFACTORS": "Eliminar factores",
+        "DELETEFACTORSDESC": "Permite eliminar factores en los cards de factores",
+
+        "ACCESSEDITOR": "Visualizar módulo Editor",
+        "ACCESSEDITORDESC": "Permite la visualización del módulo Editor de Plantillas",
+
+        "SAVETEMPLATES": "Guardar plantillas correo",
+        "SAVETEMPLATESDESC": "Permite guardar nuevas o editar plantillas para envío de correos",
+
+        "ACCESSUSERS": "Visualizar módulo Usuarios",
+        "ACCESSUSERSDESC": "Permite la visualización del módulo de Usuarios",
+
+        "ACCESSROLES": "Visualizar módulo Accesos",
+        "ACCESSROLESDESC": "Permite la visualización del módulo de Accesos por Roles",
+
+        "ACCESSLOGS": "Visualizar módulo Logs",
+        "ACCESSLOGSDESC": "Permite la visualización del módulo de Logs de integraciones",
+
+        "ACCESSGFDEMOGRAPHIC": "Visualizar módulo de Accesos Grandes Factores por Demográfico",
+        "ACCESSGFDEMOGRAPHICDESC": "Permite la visualización del módulo de Accesos a Grandes Factores por Demográfico",
+
+        "ACCESSVARIABLES": "Visualizar módulo de Variables",
+        "ACCESSVARIABLESDESC": "Permite la visualización del módulo de Variables Globales en Configuración"
+      }
+    
+
       
      
     },
@@ -285,7 +398,7 @@
       "INVALIDACCESS": "Usuario o contraseña inválido",
       "INVALIDACCESSMSG": "No se ingresaron credenciales válidas",
 
-
+      
 
 
       "ALLRIGHTS": "Todos los derechos reservados."  
@@ -295,7 +408,7 @@
 
     },
 
-  "ALONE": {
+    "ALONE": {
       "HELLO": "Bienvenido(a)",
       "REQUIRED": "Esta respuesta es requerida",
       "NOTVALID": "La encuesta ya fue respondida.",
@@ -306,8 +419,8 @@
       "CONDITION2": "*No cierres ni recargues la pestaña hasta finalizar, o podrías perder tus respuestas.",
       "CONDITION3": "*Sé honesto y sincero en tus respuestas; tu opinión es totalmente confidencial y muy valiosa",
       "CONDITION4": "*Si necesitas detenerte, asegúrate de responder todas las preguntas antes de cerrar.",
+      "COMPLETED": "Completado",
       
-
 
 
 

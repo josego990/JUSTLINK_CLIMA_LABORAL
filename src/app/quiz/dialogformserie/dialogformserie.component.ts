@@ -33,12 +33,18 @@ import { Field, Serie, SeriesDataSend } from '../models/quiz-models';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { CommonModule, DatePipe } from '@angular/common'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
+
 @Component({
   selector: 'app-dialogitemform',
   templateUrl: './dialogformserie.component.html',
   imports: [
 
-    MatDialogModule,
+    MatDialogModule,TranslateModule,
     MatTableModule,
     MatIconModule,
     MatExpansionModule,
@@ -57,6 +63,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 ],
   
 })
+
 export class DialogformSerieComponent implements OnInit {
   @ViewChild(DatatableComponent, { static: false }) tablex!: DatatableComponent;
 
@@ -107,7 +114,7 @@ export class DialogformSerieComponent implements OnInit {
 
   public selectedFieldType = 'text';
   public addSerieForm!: UntypedFormGroup;
- 
+   langStoreValue?: string;
   public id_card = 0;
   public title_card = '';
   public idGFactor = 0;
@@ -139,7 +146,7 @@ export class DialogformSerieComponent implements OnInit {
     "serie": "0"
   };
 
-  constructor(private fb: UntypedFormBuilder,
+  constructor(private fb: UntypedFormBuilder,private languageService: LanguageService,private translate: TranslateService,
     private organizacionService: OrganizacionService,
     public dialogRef: MatDialogRef<DialogformSerieComponent>,
     public dialog: MatDialog, @Inject(MAT_DIALOG_DATA)
@@ -163,6 +170,19 @@ export class DialogformSerieComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+
+     //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+
+    console.log('this.langStoreValue dialogformitem:: ', this.langStoreValue);
+
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
 
     this.options_context = [];
 

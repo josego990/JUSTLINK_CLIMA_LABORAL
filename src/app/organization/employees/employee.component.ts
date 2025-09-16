@@ -30,6 +30,63 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
 import { MatMenuModule } from '@angular/material/menu';
+import { DialogformEditEmployeeComponent } from '../dialogformeditemployee/dialogformeditemployee.component';
+import {
+  MatDialog,
+  MatDialogConfig,
+  //MatDialogRef,
+} from "@angular/material/dialog";
+import { relativeTimeThreshold } from 'moment';
+
+export type CampoDemo = { NombreCampo: string; Valor: any }; 
+
+export function buildDemographicList(
+  data: Record<string, any>,
+  opts?: { fixedKeys?: string[]; tailN?: number }
+  ): CampoDemo[] {
+    const defaultFixed = [
+      'Id',
+      'IdOrganizacion',
+      'Nombres',
+      'Apellidos',
+      'Celular',
+      'Email',
+      'TipoEnvioEncuesta',
+      'FechaRegistro',
+      'estado'
+    ];
+
+    // Claves que NO deben considerarse jamás como demográficas
+    const reserved = new Set<string>([
+      ...(opts?.fixedKeys ?? defaultFixed),
+      'camposDemograficos',
+      'camposDemograficosOrganizacion'
+    ]);
+
+    const keys = Object.keys(data);
+
+    // 1) Candidatas = no fijas, no reservadas, y con valor primitivo
+    const demoKeys = keys.filter(k =>
+      !reserved.has(k) &&
+      (data[k] === null || typeof data[k] !== 'object') // evita arrays/objetos (como el mismo camposDemograficos)
+    );
+
+    // 2) Fallback opcional: últimos N si no detectó nada (ej: estructuras atípicas)
+    const pickedKeys =
+      demoKeys.length > 0 ? demoKeys : keys.slice(-(opts?.tailN ?? 4));
+
+    // 3) Mapea a lista
+    return pickedKeys.map(k => ({ NombreCampo: k, Valor: data[k] }));
+  }
+  const E164_DIGITS_ONLY = /^[1-9]\d{7,14}$/;
+
+function isValidPhoneE164(value: any): boolean {
+  const raw = String(value ?? '').trim();
+  // Quita todo menos dígitos y '+'
+  let cleaned = raw.replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+')) cleaned = cleaned.slice(1);
+  return E164_DIGITS_ONLY.test(cleaned);
+}
 
 @Component({
   selector: 'app-employee-organizacion',
@@ -57,6 +114,11 @@ import { MatMenuModule } from '@angular/material/menu';
 ],
   
 })
+
+
+
+
+
 export class CrearEmpleadosComponent implements OnInit {
   public employeeForm: UntypedFormGroup;
   public dialogRef?: MatDialogRef<CrearEmpleadosComponent> 
@@ -90,6 +152,8 @@ export class CrearEmpleadosComponent implements OnInit {
     ],
   };
 
+
+
   displayedColumns: string[] = [
     'Id',
     'IdOrganizacion',
@@ -104,7 +168,8 @@ export class CrearEmpleadosComponent implements OnInit {
     'estado',
     'TipoEnvioEncuesta',
     'FechaRegistro',
-    'Acciones'
+    'Borrar',
+    'Editar'
   ];
 
   //accesos
@@ -114,7 +179,7 @@ export class CrearEmpleadosComponent implements OnInit {
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
     private fb: FormBuilder, private router: Router, private authService: AuthService,
-    private organizacionService: OrganizacionService,
+    private organizacionService: OrganizacionService, private dialogItemModel: MatDialog, 
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -129,6 +194,8 @@ export class CrearEmpleadosComponent implements OnInit {
       TipoEnvioEncuesta: [0]
     });
   }
+
+  
 
   existsRoute(routes: RouteInfo[], target: string): boolean {
       return routes.some(route =>
@@ -249,47 +316,52 @@ export class CrearEmpleadosComponent implements OnInit {
         });
   }
 
+  baseColumns: string[] = [];
+
+
   getEmployeesByOrg(): void {
-    this.organizacionService.getEmployees(this.idOrganization)
-      .then((response: any) => {
-        this.dataSourceEmployees = response.data;
+  this.organizacionService.getEmployees(this.idOrganization)
+    .then((response: any) => {
+      this.dataSourceEmployees = response.data || [];
 
-       //console.log('EMPLOYEES BY ORG:: ', response.data);
-       //console.log('this.dataSourceEmployees:: ', this.dataSourceEmployees)
-        if (this.dataSourceEmployees.length > 0) {
-          const todasLasClaves = Object.keys(this.dataSourceEmployees[0]);
-          const columnasFijas = [
-            'Id', 
-            'IdOrganizacion', 
-            'Nombres', 
-            'Apellidos',
-            //'NumeroIdentificacion', 
-            //'TipoIdentificacion', 
-            'Celular', 
-            'Email',
-            //'Cargo', 
-            //'FechaIngreso', 
+      if (this.dataSourceEmployees.length > 0) {
+        const todasLasClaves = Object.keys(this.dataSourceEmployees[0]);
 
-            
-            'TipoEnvioEncuesta', 
-            'FechaRegistro', 
-            'estado',
-            'Acciones'
-          ];
-  
-          // Detectar las columnas demográficas
-          this.camposDinamicos = todasLasClaves.filter(col => !columnasFijas.includes(col));
-  
-          // Insertar las columnas demográficas justo antes de "Acciones"
-          this.displayedColumns = columnasFijas.filter(col => col !== 'Acciones')
-            .concat(this.camposDinamicos)
-            .concat('Acciones');
-        }
-      })
-      .catch((error: any) => {
-        console.error('Error al obtener empleados:', error);
-      });
-  }
+        // columnas base que quieres primero (sin acciones):
+        const baseCols = [
+          'Id',
+          'IdOrganizacion',
+          'Nombres',
+          'Apellidos',
+          'Celular',
+          'Email',
+          'TipoEnvioEncuesta',
+          'FechaRegistro',
+          'estado'
+        ];
+
+        // dinámicas = las que no estén en base:
+        this.camposDinamicos = todasLasClaves.filter(c => !baseCols.includes(c));
+
+        this.baseColumns = baseCols;
+
+        // Acciones al final
+        this.displayedColumns = [
+          ...this.baseColumns,
+          ...this.camposDinamicos,
+          'Editar',
+          'Borrar'
+        ];
+      } else {
+        this.baseColumns = [];
+        this.camposDinamicos = [];
+        this.displayedColumns = [];
+      }
+    })
+    .catch((error: any) => {
+      console.error('Error al obtener empleados:', error);
+    });
+}
 
   deleteEmployee(idEmployee:number): void {
     this.organizacionService.deleteEmployee(idEmployee)
@@ -390,6 +462,39 @@ export class CrearEmpleadosComponent implements OnInit {
 
   }
 
+  editItem(item:any){
+   console.log('ITEM:: ', item);
+    
+   this.openDialogEditItems(item);
+
+  }
+
+  
+  openDialogEditItems(item:any): void {
+    //this.id_quiz_context = this.cardsData.indexOf(card);
+  
+    this.camposDemograficosOrganizacion = buildDemographicList(item);
+    item.camposDemograficos = this.camposDemograficosOrganizacion;
+    item.IdOrganizacion = this.idOrganization;
+
+    const dialogRef = this.dialogItemModel.open(DialogformEditEmployeeComponent, {
+      width:  '95vw',
+      maxWidth: '95vw',    
+      height: 'auto',  
+      disableClose: true,
+      data: item
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+    
+        this.getEmployeesByOrg();
+     
+    });
+  }
+
+  //separar los demograficos
+
+
   parseFechaManual(fechaTexto: string): string | null {
     if (!fechaTexto || typeof fechaTexto !== 'string') {
       console.warn('Fecha vacía o no es string:', fechaTexto);
@@ -420,7 +525,8 @@ export class CrearEmpleadosComponent implements OnInit {
   }
   
   convertExcelToJSON() {
-   //console.log('this.workbook ', this.workbook);
+   
+   if(this.langStoreValue == 'es'){
     return new Promise((resolve, reject) => {
       if (!this.workbook) {
        //console.log('NO WORKBOOK?');
@@ -450,10 +556,6 @@ export class CrearEmpleadosComponent implements OnInit {
         'APELLIDOS', 
         'TELEFONO', 
         'EMAIL', 
-        //'IDENTIFICACION',
-        //'TIPO_IDENTIFICACION', 
-        //'CARGO', 
-        //'FECHA_INGRESO', 
         'TIPO_ENVIO_ENCUESTA'
       ];
   
@@ -487,20 +589,11 @@ export class CrearEmpleadosComponent implements OnInit {
         else if (!nameRegex.test(apellidos)) errores.push(`Fila ${filaExcel}: APELLIDOS contiene caracteres no permitidos.`);
   
         if (!telefono) errores.push(`Fila ${filaExcel}: El campo TELEFONO es obligatorio.`);
-        else if (!phoneRegex.test(telefono)) errores.push(`Fila ${filaExcel}: TELEFONO debe tener 8 dígitos numéricos.`);
-  
+        else if (!isValidPhoneE164(telefono)) errores.push(`Fila ${filaExcel}: TELEFONO debe tener 8 dígitos numéricos.`);
+
         if (!email) errores.push(`Fila ${filaExcel}: El campo EMAIL es obligatorio.`);
         else if (!emailRegex.test(email)) errores.push(`Fila ${filaExcel}: EMAIL tiene un formato inválido.`);
   
-        /*
-        if (!numIdentificacion) errores.push(`Fila ${filaExcel}: El campo NUMERO_IDENTIFICACION es obligatorio.`);
-        if (!tipoIdentificacion) errores.push(`Fila ${filaExcel}: El campo TIPO_IDENTIFICACION es obligatorio.`);
-        if (!cargo) errores.push(`Fila ${filaExcel}: El campo CARGO es obligatorio.`);
-  
-        if (!fechaIngreso) {
-          errores.push(`Fila ${filaExcel}: FECHA_INGRESO está vacía o tiene formato inválido (DD/MM/YYYY).`);
-        }
-  */
         if (!['CORREO', 'WHATSAPP', 'NINGUNO'].includes(tipoEnvioEncuesta)) {
           errores.push(`Fila ${filaExcel}: TIPO_ENVIO_ENCUESTA puede ser: 'CORREO', 'WHATSAPP', 'NINGUNO'.`);
         }
@@ -516,12 +609,8 @@ export class CrearEmpleadosComponent implements OnInit {
           excel_empleados.empleados.push({
             nombres,
             apellidos,
-            //numIdentificacion,
-            //tipoIdentificacion,
             celular: telefono,
             email,
-            //cargo,
-            //fechaIngreso,
             tipoEnvioEncuesta,
             demograficos: valoresDemograficos,
           });
@@ -546,6 +635,130 @@ export class CrearEmpleadosComponent implements OnInit {
       console.error(err);
       return Promise.reject(err);
     });
+   } 
+   else if(this.langStoreValue == 'en'){
+    console.log('ENTRA EN INGLES PACHECO..');
+    return new Promise((resolve, reject) => {
+      if (!this.workbook) {
+       //console.log('NO WORKBOOK?');
+        return reject('No se encontró workbook');
+      }
+  
+      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+  
+      const excel_empleados: any = {
+        idOrganizacion: this.idOrganization,
+        empleados: [],
+        camposDemograficos: [], // Aquí se guardan los campos detectados
+      };
+  
+      const errores: string[] = [];
+  
+      if (rawData.length === 0 || typeof rawData[0] !== 'object' || rawData[0] === null) {
+        return reject('El archivo Excel no contiene encabezados válidos.');
+      }
+      
+      const headers = Object.keys(rawData[0] as object); // <- Ya está garantizado como objeto aquí
+  
+      // Campos fijos que no son considerados demográficos
+      const camposFijos = [
+        'FIRST_NAME', 
+        'LAST_NAME', 
+        'CELL_PHONE', 
+        'EMAIL', 
+        'SEND_SURVEY_TYPE'
+      ];
+  
+      // Detectar los campos demográficos
+      const camposDemograficosDetectados = headers.filter(h => !camposFijos.includes(h.toUpperCase()));
+  
+     //console.log('camposDemograficosDetectados', camposDemograficosDetectados);
+
+      // Guardar los campos demográficos únicos en el JSON
+      excel_empleados.camposDemograficos = camposDemograficosDetectados;
+  
+      const nameRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñüÜ\s]+$/;
+
+      //const phoneRegex = /^[0-9]{14}$/;
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  
+      rawData.forEach((t: any, idx: number) => {
+        const filaExcel = idx + 2;
+  
+        const nombres = String(t.FIRST_NAME ?? '').trim();
+        const apellidos = String(t.LAST_NAME ?? '').trim();
+        const telefono = String(t.CELL_PHONE ?? '').trim();
+        const email = String(t.EMAIL ?? '').trim();
+        const tipoEnvioEncuesta = String(t.SEND_SURVEY_TYPE ?? 0);
+  
+        if (!nombres) errores.push(`Row ${filaExcel}: FIRST_NAME field is required.`);
+        else if (!nameRegex.test(nombres)) errores.push(`Fila ${filaExcel}: FIRST_NAME contains invalid characters.`);
+  
+        if (!apellidos) errores.push(`Row ${filaExcel}: LAST_NAME field is required.`);
+        else if (!nameRegex.test(apellidos)) errores.push(`Fila ${filaExcel}: LAST_NAME contains invalid characters.`);
+  
+        if (!telefono) {
+          errores.push(`Row ${filaExcel}: CELL_PHONE field is required.`);
+        } else if (!isValidPhoneE164(telefono)) {
+          errores.push(`Row ${filaExcel}: CELL_PHONE contains invalid characters.`);
+        }
+  
+        if (!email) errores.push(`Row ${filaExcel}: EMAIL field is required.`);
+        else if (!emailRegex.test(email)) errores.push(`Fila ${filaExcel}: EMAIL tiene un formato inválido.`);
+  
+        if (!['EMAIL', 'WHATSAPP', 'NOTHING'].includes(tipoEnvioEncuesta)) {
+          errores.push(`Row ${filaExcel}: SEND_SURVEY_TYPE can be: 'EMAIL', 'WHATSAPP', 'NOTHING'.`);
+        }
+  
+        const valoresDemograficos: any = {};
+  
+        camposDemograficosDetectados.forEach((campo) => {
+          const valor = t[campo] !== undefined && t[campo] !== null ? String(t[campo]).trim() : '';
+          valoresDemograficos[campo] = valor;
+        });
+  
+        if (errores.filter(e => e.includes(`Row ${filaExcel}`)).length === 0) {
+          excel_empleados.empleados.push({
+            nombres,
+            apellidos,
+            celular: telefono,
+            email,
+            tipoEnvioEncuesta,
+            demograficos: valoresDemograficos,
+          });
+        }
+      });
+  
+      if (errores.length > 0) {
+        errores.forEach((err) => console.error(err));
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+          html: this.translate.instant('MENUITEMS.EMPLOYEE.EXCELERROR') + '<br><pre style="text-align:left">' + errores.join('<br>') + '</pre>',
+          icon: 'error',
+          width: 600,
+        });
+        return reject('Errores de validación.');
+      }
+  
+      this.jsonData = excel_empleados;
+
+      resolve('success');
+    }).catch((err) => {
+      console.error(err);
+      return Promise.reject(err);
+    });
+   }
+   
+   else{
+    return new Promise((resolve, reject) => {
+      return reject('no language selected?');
+    })
+  }
+   
+   
+
+
   }
   
   onFileSelected(event: any): void {
@@ -686,28 +899,21 @@ export class CrearEmpleadosComponent implements OnInit {
   }
 
   downloadExcelEmployeeTemplate(): void {
+    const url = this.langStoreValue === 'en'
+      ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_EMPLOYEE_FORMAT_ENGLISH.xlsx'
+      : 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_EMPLEADO_FORMATO_ESPANOL.xlsx';
 
-    let url = '';
+    const filename = this.langStoreValue === 'en'
+      ? 'EmployeeTemplate_EN.xlsx'
+      : 'PlantillaEmpleado_ES.xlsx';
 
-    switch(this.langStoreValue){
-      case 'es':
-        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
-        break;
-      case 'en':
-        url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx';
-    }
-
-    //const url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
-    // Esto abrirá el archivo en una nueva pestaña o descargará el archivo, dependiendo del navegador
-    window.open(url, '_blank');
-
-    // Alternativamente, para forzar descarga (descargar en vez de abrir):
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'EmployeeTemplate.xlsx'; // nombre sugerido
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;          // sugiere nombre de archivo
+    a.rel = 'noopener';             // seguridad
+    document.body.appendChild(a);
+    a.click();
+    a.remove();                      // limpio
   }
   
  

@@ -89,7 +89,7 @@ import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '@core';
 import { relativeTimeThreshold } from 'moment';
 
-import { MatChipInputEvent, MatChipsModule } from '@angular/material/chips';
+import { MatChipsModule } from '@angular/material/chips';
 
 import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
 
@@ -630,7 +630,7 @@ export class Dashboard1Component implements OnInit {
 
   getDemograficosOrgRestrictivo():void {
 
-    this.organizacionService.getFiltrosDemograficosRestrictivo(this.idOrganization, this.idFlujo, 1 )
+    this.organizacionService.getFiltrosDemograficosRestrictivo(this.idOrganization, this.idFlujo, 5 ) //traer de config
      .then((resulte) => {
      console.log('DEMOGRAFICOS RESTRINGIDOS OBTENIDOS:: ', resulte.data.data[0]);
 

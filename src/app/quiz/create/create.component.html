@@ -189,12 +189,15 @@
                         {{'MENUITEMS.QUIZ.EDIT' | translate}}
                       </button>
                     
-                      <button joyrideStep="step3" title="Envía" 
-                        text="Con este botón podras administrar el envío de las encuestas."
-                        [disabled]="!accessToSend" style="margin-left: 20px; border-radius: 8px;" 
-                        mat-raised-button color="primary" (click)="adminEnvioQuizDialog(card)">
-                        {{'MENUITEMS.QUIZ.SEND' | translate}}
-                      </button>
+                      <button joyrideStep="step3" title="Envía"
+                            text="Con este botón podras administrar el envío de las encuestas."
+                            [disabled]="!accessToSend || !containQuestion(card)"
+                            style="margin-left: 20px; border-radius: 8px;"
+                            mat-raised-button color="primary"
+                            (click)="adminEnvioQuizDialog(card)">
+                      {{ 'MENUITEMS.QUIZ.SEND' | translate }}
+                    </button>
+
                       
                    
                   </mat-card-actions>

@@ -10,3 +10,11 @@ export interface RouteInfo {
   badgeClass: string;
   submenu: RouteInfo[];
 }
+
+export interface ConfigInfo {
+  idConfig: number;
+  Nombre: string;
+  Descripcion: string;
+  Estado: boolean;
+
+}

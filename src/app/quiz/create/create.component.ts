@@ -59,6 +59,10 @@ import { TranslateModule } from '@ngx-translate/core';
 import { JoyrideService } from 'ngx-joyride';
 import { JoyrideModule } from 'ngx-joyride';
 
+function toArray<T = any>(v: T | T[] | null | undefined): T[] {
+  return Array.isArray(v) ? v : (v != null ? [v] : []);
+}
+
 @Component({
   selector: "app-create",
   templateUrl: "./create.component.html",
@@ -570,7 +574,7 @@ export class CreateComponent implements OnInit {
           }
       }
     });
-  }
+  } 
   
 
   openDialogSerie(card: Quiz): void {
@@ -632,5 +636,29 @@ export class CreateComponent implements OnInit {
 
     return `${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`;
   }
+
+  containQuestion(card: any): boolean {
+    if (!card) return false;
+
+    // Soporta granFactores o GranFactores
+    const granFactores = toArray(card.granFactores ?? card.GranFactores);
+    if (granFactores.length === 0) return false;
+
+    // Debe existir al menos un GF con al menos una serie y al menos un field activo
+    for (const gf of granFactores) {
+      const series = toArray(gf?.series ?? gf?.Series);
+      if (series.length === 0) continue;
+
+      for (const serie of series) {
+        const fields = toArray(serie?.fields ?? serie?.Fields)
+          // cuenta solo preguntas "activas"
+          .filter(f => f && (f.is_active === 1 || f.is_active === true || f.is_active === undefined));
+        if (fields.length > 0) return true;
+      }
+    }
+    return false;
+  }
+
+  
 
 }

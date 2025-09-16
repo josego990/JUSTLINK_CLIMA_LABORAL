@@ -33,13 +33,18 @@ import { Field, Serie, SeriesDataSend, GFactor, GFactorsDataSend } from '../mode
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { CommonModule, DatePipe } from '@angular/common'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../core/service/language.service';
+import { TranslateModule } from '@ngx-translate/core'; 
+
+
 @Component({
   selector: 'app-dialoggfactorform',
   templateUrl: './dialogformgfactor.component.html',
   imports: [
 
     MatDialogModule,
-    MatTableModule,
+    MatTableModule,TranslateModule,
     MatIconModule,
     MatExpansionModule,
     FormsModule,
@@ -130,7 +135,10 @@ export class DialogformGFactorComponent implements OnInit {
     "serie": "0"
   };
 
+  langStoreValue?: string;
+
   constructor(private fb: UntypedFormBuilder,
+    private languageService: LanguageService,private translate: TranslateService,
     private organizacionService: OrganizacionService,
     public dialogRef: MatDialogRef<DialogformGFactorComponent>,
     public dialog: MatDialog, @Inject(MAT_DIALOG_DATA)
@@ -150,6 +158,19 @@ export class DialogformGFactorComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+
+    //jjg aquí se cambia el idioma al cargar
+    this.langStoreValue = localStorage.getItem('lang') as string;
+
+    console.log('this.langStoreValue dialogformitem:: ', this.langStoreValue);
+
+    this.languageService.setLanguage(this.langStoreValue);
+    this.translate.use(this.langStoreValue);
+
+    //jjg aquí se maneja el cambio desde el componente header
+    this.languageService.getLanguageChangeSubject().subscribe(lang => {
+      this.translate.use(lang);
+    });
 
     this.options_context = [];
 
@@ -238,7 +259,7 @@ export class DialogformGFactorComponent implements OnInit {
           this.loading = false;
           this.showNotification(
             'bg-green',
-            resulte.data.message + 'puto baboso..',
+            this.translate.instant('MENUITEMS.QUIZ.GFINSERTSUCCESS'),
             'bottom',
             'right'
           );
@@ -249,7 +270,7 @@ export class DialogformGFactorComponent implements OnInit {
           this.loading = false;
           this.showNotification(
             'bg-red',
-            'Ocurrió un error al guardar el nuevo Gran Factor',
+            this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR'),
             'bottom',
             'right'
           );
@@ -260,7 +281,7 @@ export class DialogformGFactorComponent implements OnInit {
         this.loading = false;
         this.showNotification(
           'bg-red',
-          'Ocurrió un error al guardar el nuevo Factor. Error: ' + err,
+          this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR') + err,
           'bottom',
           'right'
         );
