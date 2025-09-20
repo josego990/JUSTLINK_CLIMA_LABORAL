@@ -61,8 +61,8 @@ export class SigninComponent
     });
 
     this.authForm = this.formBuilder.group({
-      username: ['josego', Validators.required],//borrar en producción
-      password: ['30749', Validators.required], //borrar en producción
+      username: ['', Validators.required],//borrar en producción --josego
+      password: ['', Validators.required], //borrar en producción --30749
     });
   }
   get f() {

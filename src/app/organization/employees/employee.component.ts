@@ -136,6 +136,14 @@ export class CrearEmpleadosComponent implements OnInit {
   public workbook: any | null = null;
   public jsonDatax: any | null = null;
 
+  public s3objectsServer  = '';
+  public templateExcelFileNameSpanish = '';
+  public templateExcelFileNameEnglish = '';
+
+  
+  private configs:any = sessionStorage.getItem('configs');
+  private confslist:any = [];
+
   public jsonData: any = {
     organizacion: 'exmple',
     empleados: [
@@ -221,6 +229,18 @@ export class CrearEmpleadosComponent implements OnInit {
         this.router.navigate(['/authentication/page404']);
       }
 
+    }
+
+    try {
+      if(this.configs){
+        this.confslist = JSON.parse(this.configs);
+        const c = this.confslist.find((config:any) => config.Nombre === 'ASSETS_BASE_URL');
+        this.s3objectsServer = c.Valor; //+ '/';
+        console.log('baseURL:: ', this.s3objectsServer);
+      }
+    } 
+    catch(error){
+      console.error(error);
     }
 
     //jjg aquí se cambia el idioma al cargar
@@ -900,8 +920,8 @@ export class CrearEmpleadosComponent implements OnInit {
 
   downloadExcelEmployeeTemplate(): void {
     const url = this.langStoreValue === 'en'
-      ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_EMPLOYEE_FORMAT_ENGLISH.xlsx'
-      : 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_EMPLEADO_FORMATO_ESPANOL.xlsx';
+      ? this.s3objectsServer + 'Template_EMPLOYEE_FORMAT_ENGLISH.xlsx'
+      : this.s3objectsServer + 'Plantilla_EMPLEADO_FORMATO_ESPANOL.xlsx';
 
     const filename = this.langStoreValue === 'en'
       ? 'EmployeeTemplate_EN.xlsx'

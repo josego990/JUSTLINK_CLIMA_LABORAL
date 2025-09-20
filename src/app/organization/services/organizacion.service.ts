@@ -12,7 +12,7 @@ export class OrganizacionService {
   private configs:any = sessionStorage.getItem('configs');
   private confslist:any = [];
 
-  private baseURL = '';
+  private baseURL = 'https://api.justlink360.net/';
   private baseURLLocal = 'http://localhost:3030/';
 
   constructor(private http: HttpClient) {
@@ -588,7 +588,7 @@ export class OrganizacionService {
    getConfigs() {
   
     return axios
-      .get(this.baseURLLocal + 'get-conf-json');
+      .get(this.baseURL + 'get-conf-json');
 
   }
 

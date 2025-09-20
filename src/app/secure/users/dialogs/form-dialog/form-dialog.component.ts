@@ -338,13 +338,13 @@ export class FormDialogComponent implements OnInit{
 
          //console.log('response:: ', response);
           if(this.fileChange){
-            // Si necesitas token/bearer agrégalo en headers
+
             axios.post('https://api.catarsysdev.com/upload-file-v2', this.formFileData, {
               headers: { 'Content-Type': 'multipart/form-data' },
-              // Con esto obtienes progreso opcional
+
               onUploadProgress: (e) => {
                 const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-               //console.log(`Progreso: ${pct}%`);
+
               }
             })
             .then(() => console.log('Archivo subido'))
