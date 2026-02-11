@@ -16,6 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslateService } from '@ngx-translate/core';
 import { TranslateModule } from '@ngx-translate/core'; 
 
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 @Component({
   selector: 'app-completeclimaalone',
   templateUrl: './completeclimaalone.component.html',
@@ -23,7 +25,7 @@ import { TranslateModule } from '@ngx-translate/core';
   
     imports: [
       MatButtonModule,
-
+        MatProgressSpinnerModule,
         MatMenuModule,
         TranslateModule,
         MatIconModule,
@@ -46,6 +48,8 @@ export class CompleteclimaaloneComponent implements OnInit {
     public nombreEmpleado = ''
     public nombreClima = '';
     public nombreOrganizacion = '';
+
+    isLoadingForm = true;
 
     formConfig: Quiz = {
       id: 0,
@@ -169,6 +173,8 @@ export class CompleteclimaaloneComponent implements OnInit {
                       timer: 3000,
                       showConfirmButton: false
                     });
+                  
+                    this.isLoadingForm = false;
                 }
             }
 
@@ -188,46 +194,50 @@ export class CompleteclimaaloneComponent implements OnInit {
     }
 
     public getClima(): void {
-  this.organizacionService.getPreguntasClimaGF(this.idFlujo, this.idEmpleado).then((ris) => {
-    if (ris.data[0]) {
-      this.quiz = ris.data[0];
-      this.nombreClima = this.quiz.Nombre;
-      this.nombreOrganizacion = this.quiz.nombre_organizacion_oficial;
 
-      console.log('this.quiz::: ', this.quiz);
+      this.organizacionService.getPreguntasClimaGF(this.idFlujo, this.idEmpleado).then((ris) => {
+      
+        if (ris.data[0]) {
+          this.quiz = ris.data[0];
+          this.nombreClima = this.quiz.Nombre;
+          this.nombreOrganizacion = this.quiz.nombre_organizacion_oficial;
 
-      // 🔹 aplanamos todos los series de todos los GranFactores
-      const allSeries = this.quiz.GranFactores.reduce(
-        (acc: any[], gf: any) => acc.concat(gf.series || []),
-        []
-      );
+          console.log('this.quiz::: ', this.quiz);
 
-      // 🔹 aplanamos todos los fields de todos los series
-      const allFields = allSeries.reduce(
-        (acc: any[], serie: any) => acc.concat(serie.fields || []),
-        []
-      );
+          // 🔹 aplanamos todos los series de todos los GranFactores
+          const allSeries = this.quiz.GranFactores.reduce(
+            (acc: any[], gf: any) => acc.concat(gf.series || []),
+            []
+          );
 
-      this.formConfig = {
-        ...this.quiz,
-        GranFactores: this.quiz.GranFactores, // mantenemos la jerarquía para la vista
-        series: allSeries,                    // por compatibilidad si en algún lado sigues usando series planas
-        fields: allFields                     // flatten para que el FormBuilderService genere los controles
-      };
+          // 🔹 aplanamos todos los fields de todos los series
+          const allFields = allSeries.reduce(
+            (acc: any[], serie: any) => acc.concat(serie.fields || []),
+            []
+          );
 
-      // Actualizar estado de encuesta
-      const datasUpdate: any = {
-        "IdEncuestaEmpleado": this.idEncuestaEmpleado,
-        "Estado": 'Iniciada',
-        "FechaInicio": new Date(),
-        "FechaFinalizacion": null
-      };
-      this.updateClimaEncuesta(datasUpdate);
+          this.formConfig = {
+            ...this.quiz,
+            GranFactores: this.quiz.GranFactores, // mantenemos la jerarquía para la vista
+            series: allSeries,                    // por compatibilidad si en algún lado sigues usando series planas
+            fields: allFields                     // flatten para que el FormBuilderService genere los controles
+          };
+
+          this.isLoadingForm = false;
+
+          // Actualizar estado de encuesta
+          const datasUpdate: any = {
+            "IdEncuestaEmpleado": this.idEncuestaEmpleado,
+            "Estado": 'Iniciada',
+            "FechaInicio": new Date(),
+            "FechaFinalizacion": null
+          };
+          this.updateClimaEncuesta(datasUpdate);
+        }
+      }).catch((err) => {
+        console.error(err);
+      });
     }
-  }).catch((err) => {
-    console.error(err);
-  });
-}
 
 
     public updateClimaEncuesta(data:any): void {
@@ -236,7 +246,7 @@ export class CompleteclimaaloneComponent implements OnInit {
           this.organizacionService.updateClimaEncuesta(data);
     }
 
-     setLanguage(text: string, lang: string, flag: string) {
+    setLanguage(text: string, lang: string, flag: string) {
 
       console.log('text: ' + text + ' lang: ' + lang + ' flag: ' + flag);
       this.countryName = text;

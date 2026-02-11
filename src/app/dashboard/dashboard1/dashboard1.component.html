@@ -5,22 +5,31 @@
       <app-breadcrumb [title]="'MENUITEMS.DASHBOARD.LIST.DASHBOARD1' | translate" [items]="['Home']" [active_item]="'Dashboad Climas'"></app-breadcrumb>
     </div>
     <div class="row" style="margin-left: 4px;">
-      <div class="col-md-2 g-1">
+      
+      <div class="col-md-6 col-lg-4 col-sm-6 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Organización</mat-label>
-          <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
+          <mat-select [(ngModel)]="idOrganization" 
+            (selectionChange)="onOrganizationChange($event.value)">
             <mat-option
-              
               *ngFor="let organization of dataSourceOrganizations"
               [value]="organization.Id"
             >
               {{ organization.Nombre }}
             </mat-option>
           </mat-select>
-        </mat-form-field>
+          <mat-progress-spinner
+              *ngIf="loadingOrganizations"
+              matSuffix
+              diameter="18"
+              mode="indeterminate"
+            >
+          </mat-progress-spinner>
+      </mat-form-field>
 
       </div>
-      <div class="col-md-2 g-1">
+
+      <div class="col-md-6 col-lg-4 col-sm-6 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Climas {{nombreOrganizacion}}</mat-label>
           <mat-select (selectionChange)="onClimaChange($event.value)">
@@ -31,39 +40,20 @@
               {{ climas.Nombre }}
             </mat-option>
           </mat-select>
+
+          <mat-progress-spinner
+              *ngIf="loadingClimas"
+              matSuffix
+              diameter="18"
+              mode="indeterminate"
+            >
+          </mat-progress-spinner>
+
         </mat-form-field>
 
       </div>
 
-
-       <div class="col-md-3 g-1">
-        <mat-form-field appearance="fill" class="w-100">
-          <mat-label>Filtros demográficos</mat-label>
-
-          <mat-select
-            [disabled]="!accessToFilter"
-            multiple
-            (selectionChange)="onSelectionChange($event.value)">
-            
-            <mat-optgroup *ngFor="let campo of campos" [label]="campo.NombreCampo">
-              <mat-option
-                *ngFor="let v of (campo.Valores || [])"
-                [value]="campo.IdCampoDemografico + '|' + v.Valor"
-                [disabled]="+v.PermiteFiltro !== 1"
-                [matTooltip]="(+v.PermiteFiltro !== 1) ? 'Disponible cuando haya ≥ 6 respuestas' : ''"
-                matTooltipPosition="above"
-                [matTooltipDisabled]="+v.PermiteFiltro === 1">
-
-                {{ v.Valor }}
-                <span *ngIf="+v.PermiteFiltro !== 1" class="text-muted"> (no disponible)</span>
-              </mat-option>
-            </mat-optgroup>
-          </mat-select>
-        </mat-form-field>
-
-      </div>
-
-      <div class="col-md-3 g-1">
+      <div class="col-md-6 col-lg-4 col-sm-6 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Grandes Factores</mat-label>
           <mat-select [(ngModel)]="selectedGFactors"  multiple (selectionChange)="onGFactorChange($event.value)">
@@ -78,13 +68,35 @@
              
       </div>
 
-      <div class="col-md-2 g-1">
-         <button [disabled]="btnDisabled" type="button" class="btn btn-outline-success" 
-         (click)="onGenerateReportClick()">Reporte Excel</button>
-             
+       <div class="col-md-6 col-lg-4 col-sm-6 g-1">
+        <button style="border-radius: 8px; margin-top: 10px; margin-left: 10px ;" 
+        [disabled]="accessToFilter && btnDisabled" mat-stroked-button color="primary" (click)="openFilters()">
+          <mat-icon>filter_list</mat-icon>
+          Filtros demográficos
+        </button>
 
       </div>
+
+      <div class="col-md-2 g-1">
+         <button [disabled]="btnDisabled" type="button" style="border-radius: 8px; margin-top: 10px;"  class="btn btn-outline-success" 
+         (click)="onGenerateReportClick()">Reporte Excel</button>
+      </div>
      
+
+    </div>
+
+    <div class="row" style="margin-left: 4px;">
+      <div class="col-12">
+        <mat-chip-listbox *ngIf="filterChips.length" aria-label="Filtros aplicados" class="chips-wrap">
+          <mat-chip *ngFor="let chip of filterChips; trackBy: trackChip"
+                    >
+            {{ chip.nombreCampo }}: {{ chip.valor }}
+            
+          </mat-chip>
+        </mat-chip-listbox>
+
+        
+      </div>
 
     </div>
 
@@ -109,13 +121,17 @@
 
       <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
         <mat-card class="fixed-card">
+           <div class="card-loader" *ngIf="loadingGeneral">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <mat-card-header>
             <img mat-card-avatar src={{imgFlujo}}>
             <mat-card-title>{{nombreFlujo}}</mat-card-title>
             <mat-card-subtitle>{{nombreOrganizacion}}</mat-card-subtitle>
           </mat-card-header>
+
           <ngx-gauge  
-            [value]="metricasSatisfaccionGeneralData.pct_general"  
+            [value]="metricasSatisfaccionGeneralData.pct_top2"  
             [size]="200"  
             [type]="guageType1"  
             [thick]="15"  
@@ -126,14 +142,16 @@
               <span class="font-25">%</span>
             </ngx-gauge-append>
 
-            <ngx-gauge-label>
-              Calificación<br/>General
+            <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+              General
             </ngx-gauge-label>
 
             <ngx-gauge-value>
-              {{metricasSatisfaccionGeneralData.pct_general}}
+              {{metricasSatisfaccionGeneralData.pct_top2}}
             </ngx-gauge-value>
           </ngx-gauge>
+
+
           <mat-card-content>
             <p>{{objetivoFlujo}}</p>
           </mat-card-content>
@@ -144,6 +162,9 @@
 
       <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
         <mat-card class="fixed-card">
+          <div class="card-loader" *ngIf="loadingEnvios">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <mat-card-header>
             <mat-card-title>Estado</mat-card-title>
             <img mat-card-avatar src='https://w7.pngwing.com/pngs/10/412/png-transparent-computer-icons-send-miscellaneous-angle-rectangle-thumbnail.png'>
@@ -161,8 +182,8 @@
               <span class="font-25">%</span>
             </ngx-gauge-append>
 
-            <ngx-gauge-label>
-              Enviadas<br/>Contestadas
+            <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+              Completado
             </ngx-gauge-label>
 
             <ngx-gauge-value>
@@ -224,6 +245,9 @@
 
       <div class="col-lg-12 col-md-12 col-sm-12 col-xl-6">
         <div class="card">
+           <div class="card-loader" *ngIf="loadingPanorama">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <div class="header">
             <h2>PANORAMA GENERAL CLIMA</h2>
           </div>
@@ -244,18 +268,18 @@
     </div>
 
    
-
+ <!-- Indicador de % de Satisfacción ponderada del Gran Factor 
     <div class="col-12 col-md-12 col-sm-12 col-xs-12">
      
       <div *ngFor="let g of gMetricasData;" class="mb-3">
         <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
-  <span>{{ g.etiqueta }}</span>
+          <span>{{ g.etiqueta }}</span>
 
-  <!-- Indicador de % de Satisfacción ponderada del Gran Factor -->
-  <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
-    {{ getGFPct(g) | number:'1.0-2' }}%
-  </span>
-</h5>
+          
+          <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
+            {{ getGFPct(g) | number:'1.0-2' }}%
+          </span>
+        </h5>
 
         <div class="row">
           <div
@@ -266,28 +290,83 @@
               [title]="m.Factor"
               [value]="(m.total_respuestas || 0).toString()"
               [gaugeValue]="m.pct_satisfaccion"
-              [gaugeSize]="65"
+              [gaugeSize]="90"
               [gaugeType]="'full'"
-              [gaugeThick]="15"
-              [trendDirection]="m.pct_satisfaccion > 70 ? 'up' : 'down'"
-              [trendPercentage]="m.pct_satisfaccion + '%'"
+              [gaugeThick]="14"
+              [gaugeBg]="'#eef3f9'"
+
+              [trendDirection]="m.pct_satisfaccion >= 70 ? 'up' : 'down'"
+              [trendPercentage]="(m.pct_satisfaccion | number:'1.0-2') + '%'"
               [trendText]="'Satisfacción'"
-              [colorClass]="m.pct_satisfaccion > 70
-                ? 'green'
-                : m.pct_satisfaccion >= 50
-                  ? 'orange'
-                  : 'red'"
-              [gaugeColor]="m.pct_satisfaccion > 70
-                ? 'green'
-                : m.pct_satisfaccion >= 50
-                  ? 'orange'
-                  : 'red'"
-            ></app-info-box-factor>
+
+              [top2]="m.top2"
+              [desfav]="m.desfavorable"
+              [stdev]="m.stdev_score"
+
+              [colorClass]="m.pct_satisfaccion >= 70 ? 'green' : (m.pct_satisfaccion >= 50 ? 'orange' : 'red')"
+              [gaugeColor]="m.pct_satisfaccion >= 70 ? '#21a67a' : (m.pct_satisfaccion >= 50 ? '#ff9f1a' : '#e54b4b')"
+            >
+            </app-info-box-factor>
+
           </div>
         </div>
 
         <mat-divider class="mb-3"></mat-divider>
       </div>
+
+      </div>
+-->
+      <div class="col-12 col-md-12 col-sm-12 col-xs-12">
+
+         <div class="card-loader" *ngIf="loadingFactores">
+          <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+         </div>
+
+        <div *ngFor="let g of gMetricasData;" class="mb-3">
+          <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
+            <span>{{ g.etiqueta }}</span>
+          
+            <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
+              {{ getGFPct(g) | number:'1.0-2' }}%
+            </span>
+          </h5>
+
+        <div class="row">
+          <div class="col-12 col-md-6 mb-3" *ngFor="let m of g.factores">
+            
+
+              <app-info-box-factor
+                [title]="m.Factor"
+                [value]="(m.empleados_respondieron || 0).toString()"
+
+                [gaugeValue]="m.pct_satisfaccion_equal"
+                [gaugeSize]="96"
+                [gaugeType]="'full'"
+                [gaugeThick]="14"
+                [gaugeBg]="'#eef3f9'"
+
+                [trendDirection]="m.pct_satisfaccion_equal >= 70 ? 'up' : 'down'"
+                [trendText]="'Satisfacción'"
+
+                [pct_opt1]="m.pct_opt1"
+                [pct_opt2]="m.pct_opt2"
+                [pct_opt3]="m.pct_opt3"
+                [pct_opt4]="m.pct_opt4"
+                
+
+                [colorClass]="m.pct_satisfaccion_equal >= 70 ? 'green' : (m.pct_satisfaccion_equal >= 50 ? 'orange' : 'red')"
+                [gaugeColor]="m.pct_satisfaccion_equal >= 70 ? '#21a67a' : (m.pct_satisfaccion_equal >= 50 ? '#ff9f1a' : '#e54b4b')"
+              >
+              </app-info-box-factor>
+
+
+             
+          </div>
+        </div>
+
+        <mat-divider class="mb-3"></mat-divider>
+      </div>
+
 
     </div>
 
@@ -296,10 +375,13 @@
     
 
     <div class="row">
-      <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
         <div class="card">
+           <div class="card-loader" *ngIf="loadingConteos">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <div class="header">
-            <h2>Conteo Respuestas por Factor</h2>
+            <h2>Porcentaje Respuestas por Factor</h2>
           </div>
           <div class="body">
             <div style="text-align:center">
@@ -314,8 +396,11 @@
         </div>
       </div>
 
-      <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
         <div class="card">
+           <div class="card-loader" *ngIf="loadingPorcentajes">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <div class="header">
             <h2>Porcentajes Satisfacción Factor</h2>
           </div>
@@ -338,23 +423,68 @@
     </div>
    
 
-
+    <div class="row">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
+        <mat-card *ngIf="sliderRows.length > 0">
+          <div class="card-loader" *ngIf="loadingCalificacion">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
+   
+          <mat-card-content>
+            <ng-scrollbar >
+              <app-slider-table [rows]="sliderRows"></app-slider-table>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
 
 
     <div class="row">
       <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
         <mat-card>
+          <div class="card-loader" *ngIf="loadingCalificacion">
+              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+            </div>
           <mat-card-header>
             <mat-card-title>Calificación por Pregunta</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <ng-scrollbar style="height: 400px" visibility="hover">
+            <ng-scrollbar style="height: 600px" visibility="hover">
               <app-progress-table-factor [subjects]="subjects"></app-progress-table-factor>
             </ng-scrollbar>
           </mat-card-content>
         </mat-card>
       </div>
     </div>
+
+    <div class="row">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
+        <mat-card>
+
+        <mat-card-content>
+          <ng-scrollbar style="height: 1000px" visibility="hover">
+            <app-demographic-participation [rows]="participacionRows"></app-demographic-participation>
+          </ng-scrollbar>
+        </mat-card-content>
+      </mat-card>
+      </div>
+    </div>
+
+     <div class="row">
+      <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
+        <mat-card>
+         
+          <mat-card-content>
+            <ng-scrollbar style="height: 600px" visibility="hover">
+              <app-pending-by-demographic [rows]="rowsPendientes"></app-pending-by-demographic>
+            </ng-scrollbar>
+          </mat-card-content>
+        </mat-card>
+
+      </div>
+    </div>
+
 
     <div class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12" *ngFor="let m of commentsDataNorm">
       <mat-card>

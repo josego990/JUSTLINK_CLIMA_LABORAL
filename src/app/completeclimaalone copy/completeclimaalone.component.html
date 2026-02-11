@@ -1,0 +1,59 @@
+<div class="body">
+
+  <!-- Top bar fija -->
+  <div class="topbar" role="toolbar" style="position:sticky;top:0;z-index:1000;">
+    <div class="topbar__left">
+      <mat-icon aria-hidden="true">assignment</mat-icon>
+      <span class="topbar__title">{{ nombreClima }}</span>
+    </div>
+
+    <span class="spacer"></span>
+
+    <!-- Selector de idioma -->
+    <button mat-icon-button [matMenuTriggerFor]="languagemenu" aria-label="Cambiar idioma" class="lang-button">
+      <img [src]="flagvalue || defaultFlag" height="16" width="24" alt="Idioma actual" style="border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.08)">
+    </button>
+    <mat-menu #languagemenu="matMenu" class="lang-item-menu">
+      @for (item of listLang; track item) {
+        <button mat-menu-item (click)="setLanguage(item.text, item.lang, item.flag)"
+                [ngClass]="{'active': langStoreValue === item.lang}">
+          <img [src]="item.flag" height="12" width="28" class="flag-img" alt="{{item.text}}">
+          <span class="align-middle m-l-8">{{ item.text }}</span>
+        </button>
+      }
+    </mat-menu>
+  </div>
+
+  <!-- Encabezado de la encuesta -->
+  <section class="survey-header">
+    <div class="survey-header__badge">{{ 'MENUITEMS.ALONE.SURVEY' | translate }}</div>
+
+    <h1 class="survey-header__title">
+      {{ 'MENUITEMS.ALONE.HELLO' | translate }}, 
+      {{ 'MENUITEMS.ALONE.TO' | translate }} {{ nombreClima }}.
+    </h1>
+
+    <p class="survey-header__subtitle">
+      <mat-icon inline aria-hidden="true">domain</mat-icon>
+      <strong>{{ nombreOrganizacion }}</strong> {{ 'MENUITEMS.ALONE.GREETEENGS' | translate }}
+    </p>
+
+    <ul class="survey-header__list">
+      <li><mat-icon inline aria-hidden="true">check_circle</mat-icon>{{ 'MENUITEMS.ALONE.CONDITION1' | translate }}</li>
+      <li><mat-icon inline aria-hidden="true">check_circle</mat-icon>{{ 'MENUITEMS.ALONE.CONDITION2' | translate }}</li>
+      <li><mat-icon inline aria-hidden="true">check_circle</mat-icon>{{ 'MENUITEMS.ALONE.CONDITION3' | translate }}</li>
+      <li><mat-icon inline aria-hidden="true">check_circle</mat-icon>{{ 'MENUITEMS.ALONE.CONDITION4' | translate }}</li>
+    </ul>
+  </section>
+
+  <!-- Form dinámico -->
+  <div>
+    <app-dynamic-form *ngIf="formConfig.fields?.length"
+      [formConfig]="formConfig"
+      [idEmpleado]="idEmpleado"
+      [idEncuestaEmpleado]="idEncuestaEmpleado"
+      [lang]="langStoreValue">
+    </app-dynamic-form>
+  </div>
+
+</div>

@@ -37,3 +37,17 @@
 #tableFileInput {
   display: none;
 }
+
+form.form-field-full {
+  position: relative;          /* referencia para el absolute */
+}
+
+/* Overlay centrado */
+.card-loader {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+

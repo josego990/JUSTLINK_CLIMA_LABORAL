@@ -2,34 +2,31 @@ import { Serie } from './../models/quiz-models';
 import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
-import { FormBuilder, FormGroup, Validators, FormsModule,
-  ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,UntypedFormBuilder,
+import {Validators, FormsModule,
+  ReactiveFormsModule, UntypedFormGroup,UntypedFormBuilder,
  } from '@angular/forms';
 import { globalData } from '../global-data';
-import { Quiz, QuizBank, Field, EstadisticasEnvio } from '../models/quiz-models';
+import { Quiz, QuizBank, Field } from '../models/quiz-models';
 import { Inject } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { create } from 'd3';
-import { COMMA } from '@angular/cdk/keycodes';
-import { dy } from '@fullcalendar/core/internal-common';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '@core';
-
+import axios from 'axios';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
+
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-dialogform',
@@ -39,7 +36,7 @@ import { TranslateModule } from '@ngx-translate/core';
   imports: [
 
     MatDialogModule, TranslateModule,
-    MatTableModule,
+    MatTableModule, MatProgressSpinnerModule,
     MatIconModule,
     MatExpansionModule,
     MatFormFieldModule,
@@ -78,6 +75,16 @@ export class DialogformComponent implements OnInit {
   public selectedFieldType = '1'
   langStoreValue?: string;
 
+  loadingOrganizations = false;
+
+  url: string | null = null;
+    fileName = '';
+
+  fileChange = false;
+   formFileData = new FormData();
+
+  
+
   constructor(
     private fb: UntypedFormBuilder, private languageService: LanguageService,private translate: TranslateService,
     public dialog: MatDialog,
@@ -97,10 +104,14 @@ export class DialogformComponent implements OnInit {
 
   public ngOnInit(): void {
 
+    this.url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/';
+
     //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
+
+    
 
     //jjg aquí se maneja el cambio desde el componente header
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
@@ -113,7 +124,7 @@ export class DialogformComponent implements OnInit {
       IdProof: ["1", Validators.required],
       quizName: [this.qname, [Validators.required]],
       quizDesc: [this.qdesc, [Validators.required]],
-      urlImg: [null],
+      //urlImg: [null],
       //score: 100,
       //startDate: '',
       //endDate: '',
@@ -152,21 +163,57 @@ export class DialogformComponent implements OnInit {
     
   }
 
+  onSelectFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    if (!input.files?.length) { return; }
+
+    const file = input.files[0];
+
+    /* 1) Vista previa (lo que ya haces) */
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = () => {
+      this.url = reader.result as string;
+      //this.userForm.patchValue({ imagenUrl: this.url });
+    };
+
+    /* 2) Envío al backend */
+    const formData = new FormData();
+    // El nombre **file** debe coincidir con .array('file', 1) en tu ruta Express
+    formData.append('file', file, file.name);
+
+    this.fileName = file.name;
+
+    this.formFileData = formData;
+    
+    this.fileChange = true;
+
+  }
+
   getOrganizations(): void {
+
+    this.loadingOrganizations = true;
+
     this.organizacionService.getOrganizations()
         .then((response:any) => {
          //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
+          this.loadingOrganizations = false;
         })
         .catch((error:any) => {
           console.error('Error al obtener organizaciones:', error);
+          
         });
   }
 
   getOrganizationById(idOrganization:any): void {
 
     //console.log('idOrganization', idOrganization);
+
+    this.loadingOrganizations = true;
 
     this.organizacionService.getOrganizationById(idOrganization)
       .then((response:any) => {
@@ -180,6 +227,7 @@ export class DialogformComponent implements OnInit {
 
         this.addCusForm.patchValue({ IdOrganization: idOrganization });
         //this.addCusForm.patchValue({ IdProof: "1" });
+        this.loadingOrganizations = false;
         
 
       })
@@ -266,7 +314,7 @@ export class DialogformComponent implements OnInit {
         avatarSrc: this.addCusForm.value.urlImg,
         title: this.addCusForm.value.quizName,
         subtitle: this.organizationName,
-        imageSrc1: this.addCusForm.value.urlImg,
+        imageSrc1: this.fileName,
         content: this.addCusForm.value.quizDesc,
         score : this.addCusForm.value.score,
         completed : false,
@@ -297,6 +345,27 @@ export class DialogformComponent implements OnInit {
         // ✅ Cerramos el diálogo y devolvemos un valor de éxito
 
         if(amber.data.message === 'Flujo creado exitosamente'){
+
+          //GUARDAR IMAGEN
+           if(this.fileChange){
+
+            console.log('a guardar la imagen..');
+
+            axios.post('http://localhost:3030/upload-file-v2', this.formFileData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+
+              onUploadProgress: (e) => {
+                const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
+
+              }
+            })
+            .then(() => console.log('Archivo subido'))
+            .catch(err => {
+              console.error(err); 
+              //this.loading = false;  
+            } );
+          }
+
           Swal.fire({
             title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
             text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED'),

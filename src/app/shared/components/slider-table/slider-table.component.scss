@@ -1,0 +1,17 @@
+.table-wrap {
+  overflow: auto;
+  max-height: 600px;  // igual que tu tabla likert
+}
+
+.slider-table {
+  th, td { white-space: nowrap; vertical-align: top; }
+  .val-header { text-align: center; }
+  .val-cell {
+    min-width: 130px;
+    mat-progress-bar {
+      margin-top: 4px;
+      height: 8px;
+      border-radius: 6px;
+    }
+  }
+}

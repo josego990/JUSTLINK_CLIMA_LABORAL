@@ -86,9 +86,9 @@ export class SigninComponent
             this.loading = false;
             if (user.isValid) {
               // login exitoso: redirecciona
-             //console.log('user válido:: ', user);
+             console.log('user válido:: ', user);
               this.organizationService.getMenuAccess(user.roles[0].roleId).then((resultexx)=>{
-                //console.log('VAMOS A VOLAR LA LUNA:: ', resultexx.data)
+                console.log('VAMOS A VOLAR LA LUNA:: ', resultexx.data)
                 sessionStorage.setItem('routes', JSON.stringify(resultexx.data));
                 //sessionStorage.setItem('token',user.token);
                 this.router.navigate(['/dashboard/dashboard1']);

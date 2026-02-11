@@ -28,7 +28,7 @@
                       <mat-icon>filter_list</mat-icon>
                       <mat-select #select [(ngModel)]="filter.value" style="width: 200px; display: table;"
                         class="column-filter">
-                        <span class="table-column-label">Show/Hide Column</span>
+                        <span class="table-column-label">Mostrar/Oculatar</span>
                         @for (cd of columnDefinitions; track cd; let i = $index) {
                         <div>
                           <mat-option>
@@ -186,9 +186,10 @@
                         </mat-header-cell>
                         <mat-cell *matCellDef="let row">
                           <span class="mobile-label">{{ column.label }}:</span>
-                          <img [src]="'https://justlink-objects.s3.us-east-1.amazonaws.com/' + row.imagenUrl" class="table-img" alt="avatar"/>
+                          <img [src]="'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/' + row.imagenUrl" class="table-img" alt="avatar"/>
+                                       
                         </mat-cell>
-                      </ng-container>
+                      </ng-container> 
                     } 
                     <!-- CASE: Cargo, Organizacion, Ciudad (texto genérico) -->
                     @else if (

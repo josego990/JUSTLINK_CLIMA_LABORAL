@@ -60,13 +60,11 @@ import {
           Por favor ingrese el nombre del Item
         </mat-error>
       </mat-form-field>
-      <mat-checkbox class="example-margin" formControlName="is_correct">
-        ¿Es respuesta correcta?
-      </mat-checkbox>
+      
     </div>
     <div mat-dialog-actions>
-      <button class="btn-space" mat-raised-button color="primary" (click)="guardaItem()">Guardar</button>
-      <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">Cerrar</button>
+      <button class="btn-space" mat-raised-button color="primary" (click)="guardaItem()" style="border-radius: 5px;" >Guardar</button>
+      <button style="color:#91a1a4; border-radius: 5px;" type="button" mat-button (click)="closeDialog()">Cerrar</button>
     </div>
   </form>
 </div>
@@ -74,24 +72,29 @@ import {
   styleUrls: ['./dialogselectitems.component.scss'],
 })
 export class DialogSelectItemsComponent implements OnInit {
+
+  public addItemForm!: UntypedFormGroup;
+  public options: { label: string; value: string; name: string; is_correct: boolean }[] = [];
+
   constructor(private fb: UntypedFormBuilder,
     private _snackBar: MatSnackBar,
     public dialogRef: MatDialogRef<DialogSelectItemsComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,) {
 
-   //console.log(data);
+    
     this.options = data;
 
+    //console.log('data al abrir el dialoge: ', this.options);
+    
   }
-  public addItemForm!: UntypedFormGroup;
-  public options: { label: string; value: string; name: string; is_correct: boolean }[] = [];
+  
+ 
 
   ngOnInit(): void {
     this.addItemForm = this.fb.group({
       ilabel: ['',
-      [Validators.required]
-    ],
-    is_correct: false
+      [Validators.required]],
+      is_correct: false
     });
   }
 
@@ -102,12 +105,14 @@ export class DialogSelectItemsComponent implements OnInit {
 
   guardaItem() {
     if(this.addItemForm.valid) {
+
       this.options.push({
         value: 'opt_' + (this.options.length + 1).toString(),
         label: this.addItemForm.value.ilabel,
         name: 'opt_' + (this.options.length + 1).toString(),
         is_correct: this.addItemForm.value.is_correct
       });
+
       this.showNotification(
         'bg-red',
         'Se guardó el valor',

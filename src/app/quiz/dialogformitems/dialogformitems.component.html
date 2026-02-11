@@ -47,43 +47,63 @@
   <div  mat-dialog-content>
 
     <div class="text-inside">
- <!--      -->    
-         
-       <div class="row">
-        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
-          <mat-form-field class="example-full-width" appearance="fill">
-            <mat-label>{{'MENUITEMS.QUIZ.GRANFACTOR' | translate}}</mat-label>
-            <mat-select [(ngModel)]="selectedGFactor" (selectionChange)="onGranFactorChange($event)">
-              <mat-option *ngFor="let gfactor of gfactorsx" [value]="gfactor.Id" >
-                {{ gfactor.label  }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+      <!--      -->    
+              
+      <div class="gf-row" >
+        <!-- Gran Factor -->
+        <div class="gf-col">
+          <div class="gf-group">
+            <mat-form-field appearance="fill" subscriptSizing="dynamic"  class="gf-field">
+              <mat-label>{{ 'MENUITEMS.QUIZ.GRANFACTOR' | translate }}</mat-label>
+              <mat-select [(ngModel)]="selectedGFactor" (selectionChange)="onGranFactorChange($event)">
+                <mat-option *ngFor="let gfactor of gfactorsx" [value]="gfactor.Id">
+                  {{ gfactor.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              type="button"
+              mat-stroked-button
+              color="primary"
+              class="gf-add-btn"
+              [disabled]="!accessToCreateFactor"
+              (click)="openDialogGFactor(gfactors_data_send)">
+              <mat-icon>add</mat-icon>
+              <span class="btn-text">{{ 'MENUITEMS.QUIZ.ADDGRANDFACTOR' | translate }}</span>
+            </button>
+          </div>
         </div>
-        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
-          <button [disabled]="!accessToCreateFactor"  mat-raised-button color="primary"  style="border-radius: 5px; ;" 
-            (click)="openDialogGFactor(gfactors_data_send)">{{'MENUITEMS.QUIZ.ADDGRANDFACTOR' | translate}}</button>
-        </div>
-      </div>
- 
-      <div class="row">
-        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
-          <mat-form-field class="example-full-width" appearance="fill">
-            <mat-label>Factor</mat-label>
-            <mat-select [(ngModel)]="selectedSerie" (selectionChange)="onFactorChange($event)">
-              <mat-option *ngFor="let serie of seriesx" [value]="serie.Id" >
-                {{ serie.label  }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-        <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
-          <button [disabled]="!accessToCreateFactor || idGFactor === 0"  mat-raised-button color="primary" style="border-radius: 5px;"
-            (click)="openDialogSerie(series_data_send)">{{'MENUITEMS.QUIZ.ADDFACTOR' | translate}}</button>
+
+        <!-- Factor -->
+        <div class="gf-col">
+          <div class="gf-group">
+            <mat-form-field appearance="fill" class="gf-field" subscriptSizing="dynamic" >
+              <mat-label>Factor</mat-label>
+              <mat-select [(ngModel)]="selectedSerie" (selectionChange)="onFactorChange($event)">
+                <mat-option *ngFor="let serie of seriesx" [value]="serie.Id">
+                  {{ serie.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              type="button"
+              mat-stroked-button
+              color="primary"
+              class="gf-add-btn"
+              [disabled]="!accessToCreateFactor || idGFactor === 0"
+              (click)="openDialogSerie(series_data_send)">
+              <mat-icon>add</mat-icon>
+              <span class="btn-text">{{ 'MENUITEMS.QUIZ.ADDFACTOR' | translate }}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div *ngIf="loading" class="loading-overlay">
+
+
+      <div *ngIf="loading" class="loading-overlay" >
         <mat-progress-spinner
           mode="indeterminate"
           diameter="60"
@@ -91,35 +111,107 @@
         </mat-progress-spinner>
       </div>
 
-      <mat-form-field class="example-full-width" appearance="fill">
-        <mat-label>{{'MENUITEMS.QUIZ.FIELDTYPE' | translate}}</mat-label>
-        <mat-select [(ngModel)]="selectedFieldType">
-          <!--          
-          <mat-option value="text">Texto corto</mat-option>
-          -->
-          
-           <!--          
-          <mat-option value="select">Selección de lista</mat-option>
-          
-          -->
-          <mat-option value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
-          <mat-option value="text">{{'MENUITEMS.QUIZ.OPENQUESTION' | translate}}</mat-option>
 
-          <mat-option value="text_ia">{{'MENUITEMS.QUIZ.OPENQUESTIONIA' | translate}}</mat-option>
-          
-          <!--  
-          <mat-option value="slider">Selección de rango</mat-option>
+      <div class="row">
+        <div class="col-12 col-md-4 mt-3">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{'MENUITEMS.QUIZ.FIELDTYPE' | translate}}</mat-label>
+            <mat-select [(ngModel)]="selectedFieldType">
+              <mat-option value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+              <mat-option value="slider">{{'MENUITEMS.QUIZ.RANGEQUESTION' | translate}}</mat-option>
+              <mat-option value="text">{{'MENUITEMS.QUIZ.OPENQUESTION' | translate}}</mat-option>
+              <mat-option value="iatext">{{'MENUITEMS.QUIZ.OPENQUESTIONIA' | translate}}</mat-option>
+              <mat-option value="select">{{'MENUITEMS.QUIZ.LISTSELECTION' | translate}}</mat-option>
+              <mat-option value="selectdem">{{'MENUITEMS.QUIZ.LISTDEMSELECTION' | translate}}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
 
-                            
-          <mat-option value="checkboxes">Selección Múltiple</mat-option>
-          <mat-option value="date">Fecha</mat-option>
-          <mat-option value="file">Carga de archivo</mat-option>
-          -->
-        
-        </mat-select>
-      </mat-form-field>
+        <div class="col-12 col-md-8 mt-3">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>{{'MENUITEMS.QUIZ.FIELDTEXT' | translate}}</mat-label>
+            <textarea
+              matInput
+              [(ngModel)]="general_label"
+              required
+              rows="1"
+            ></textarea>
+          </mat-form-field>
+        </div>
+      </div>
+
+      
+
     </div>
 
+
+    <form *ngIf="selectedFieldType === 'select'"  id="form_select" [formGroup]="addSelectForm!" 
+        (ngSubmit)="onFormSelectSubmitClick()">
+      <div class="text-inside">
+        
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <button type="button" mat-raised-button (click)="openDialog()"color="primary" style="border-radius: 5px;" >
+              Agregar valores a la lista
+            </button>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="fill">
+              <mat-label>Vista previa</mat-label>
+              <mat-select [value]="selectedFieldType">
+                <mat-option *ngFor="let tipoDeCampo of options_context" [value]="tipoDeCampo.value">
+                  {{ tipoDeCampo.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button class="btn-space" mat-raised-button color="primary" style="border-radius: 5px;">Guardar</button>
+          <button style="color:#91a1a4; border-radius: 5px;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
+
+    <form *ngIf="selectedFieldType === 'selectdem'" id="form_selectdem" [formGroup]="addSelectDemForm!" 
+        (ngSubmit)="onFormSelectDemSubmitClick()">
+      <div class="text-inside">
+       
+
+        <mat-form-field class="example-full-width" appearance="outline">
+          <mat-label>Nombre del campo demográfico</mat-label>
+          <input matInput value={{field.label}} formControlName="iname" required>
+          <mat-error *ngIf="addSelectForm.controls?.['iname']?.hasError('required')">
+            Por favor ingrese el nombre del campo demográfico
+          </mat-error>
+        </mat-form-field>
+
+        <div class="row">
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <button type="button" mat-raised-button (click)="openDialog()"color="primary" style="border-radius: 5px;" >
+              Agregar valores a la lista
+            </button>
+          </div>
+          <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+            <mat-form-field class="example-full-width" appearance="fill">
+              <mat-label>Vista previa</mat-label>
+              <mat-select [value]="selectedFieldType">
+                <mat-option *ngFor="let tipoDeCampo of options_context" [value]="tipoDeCampo.value">
+                  {{ tipoDeCampo.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="btn-sec">
+          <button style="border-radius: 5px;" class="btn-space" mat-raised-button color="primary">Guardar</button>
+          <button style="color:#91a1a4; border-radius: 5px;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
+        </div>
+      </div>
+    </form>
 
     <!-- 
     <form *ngIf="selectedFieldType === 'date'"  id="form_text" [formGroup]="addDateForm!" (ngSubmit)="onFormDateSubmitClick()">
@@ -311,20 +403,15 @@
     
 -->
 
-    <form *ngIf="selectedFieldType === 'slider'"  id="form_slider" [formGroup]="addSliderForm!" (ngSubmit)="onFormSliderSubmitClick()">
+    <form *ngIf="selectedFieldType === 'slider'"  id="form_slider" [formGroup]="addSliderForm!" 
+    (ngSubmit)="onFormSliderSubmitClick()">
       <div class="text-inside">
-        <mat-form-field class="example-full-width" appearance="outline">
-          <mat-label>{{'MENUITEMS.QUIZ.FIELDTEXT' | translate}}</mat-label>
-          <input matInput value={{field.label}} formControlName="ilabel" required>
-          <mat-error *ngIf="addSliderForm.controls?.['ilabel']?.hasError('required')">
-            {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
-          </mat-error>
-        </mat-form-field>
+       
 
         <div class="row">
           <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
             <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Valor mínimo</mat-label>
+              <mat-label>{{'MENUITEMS.QUIZ.MINVALUE' | translate}}</mat-label>
               <input matInput value={{field.label}} formControlName="ifirstvalue" required>
               <mat-error *ngIf="addSliderForm.controls?.['ifirstvalue']?.hasError('required')">
                 {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
@@ -333,7 +420,7 @@
           </div>
           <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
             <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Valor máximo</mat-label>
+              <mat-label>{{'MENUITEMS.QUIZ.MAXVALUE' | translate}}</mat-label>
               <input matInput value={{field.label}} formControlName="ilastvalue" required>
               <mat-error *ngIf="addSliderForm.controls?.['ilastvalue']?.hasError('required')">
                 {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
@@ -345,7 +432,8 @@
   
 
         <div class="btn-sec">
-          <button [disabled]="!accessToCreateQuestion" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
+          <button [disabled]="!accessToCreateQuestion" class="btn-space" style="border-radius: 5px;" 
+            mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
           
         </div>
       </div>
@@ -354,36 +442,26 @@
     <form *ngIf="selectedFieldType === 'text'"  id="form_text" [formGroup]="addTextForm!" (ngSubmit)="onFormTextSubmitClick()">
       <div class="text-inside">
 
-        <mat-form-field class="example-full-width" appearance="outline">
-          <mat-label>{{'MENUITEMS.QUIZ.FIELDTEXT' | translate}}</mat-label>
-          <input matInput value={{field.label}} formControlName="ilabel" required>
-          <mat-error *ngIf="addTextForm.controls?.['ilabel']?.hasError('required')">
-            {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
-          </mat-error>
-        </mat-form-field>
+       
 
     
         <div class="btn-sec">
-          <button [disabled]="!accessToCreateQuestion" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
+          <button [disabled]="!accessToCreateQuestion" class="btn-space" style="border-radius: 5px;"
+          mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
           
         </div>
       </div>
     </form>
 
-    <form *ngIf="selectedFieldType === 'text_ia'"  id="form_text_ia" [formGroup]="addTextFormIA!" (ngSubmit)="onFormTextIASubmitClick()">
+    <form *ngIf="selectedFieldType === 'iatext'"  id="form_text_ia" [formGroup]="addTextFormIA!" (ngSubmit)="onFormTextIASubmitClick()">
       <div class="text-inside">
 
-        <mat-form-field class="example-full-width" appearance="outline">
-          <mat-label>{{'MENUITEMS.QUIZ.FIELDTEXT' | translate}}</mat-label>
-          <input matInput value={{field.label}} formControlName="ilabel" required>
-          <mat-error *ngIf="addTextForm.controls?.['ilabel']?.hasError('required')">
-            {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
-          </mat-error>
-        </mat-form-field>
+     
 
     
         <div class="btn-sec">
-          <button [disabled]="!accessToCreateQuestion" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
+          <button [disabled]="!accessToCreateQuestion" class="btn-space" style="border-radius: 5px;" 
+          mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVEQUESTION' | translate}}</button>
           
         </div>
       </div>
@@ -392,13 +470,7 @@
     <form *ngIf="selectedFieldType === 'radio'"  id="form_textarea" [formGroup]="addRadioForm!" 
       (ngSubmit)="onFormRadioSubmitClick()">
       <div class="text-inside">
-        <mat-form-field class="example-full-width" appearance="outline">
-          <mat-label>{{'MENUITEMS.QUIZ.FIELDTEXT' | translate}}</mat-label>
-          <input matInput value={{field.label}} formControlName="ilabel" required>
-          <mat-error *ngIf="addRadioForm.controls?.['ilabel']?.hasError('required')">
-            {{'MENUITEMS.QUIZ.PLEASEINSERTTEXT' | translate}}
-          </mat-error>
-        </mat-form-field>
+      
 
 
         <!-- 
@@ -451,20 +523,30 @@
 
   
     <h2 style="margin-left:1px" mat-dialog-title>{{'MENUITEMS.QUIZ.QUESTIONADDED' | translate}}</h2>
-    <table  mat-table [dataSource]="dataSource" class="w-100">
-      <!--  -->
+    
+    <!-- 
+    <table mat-table [dataSource]="dataSource" class="w-100">
+
+    
+
+
       <ng-container matColumnDef="id">
         <th mat-header-cell *matHeaderCellDef> ID </th>
         <td mat-cell *matCellDef="let element"> {{element.id}} </td>
       </ng-container>
 
-
       <ng-container matColumnDef="type">
-        <th mat-header-cell *matHeaderCellDef>{{'MENUITEMS.QUIZ.FIELDTYPE' | translate}}</th>
+        <th mat-header-cell *matHeaderCellDef>
+          {{ 'MENUITEMS.QUIZ.FIELDTYPE' | translate }}
+        </th>
         <td mat-cell *matCellDef="let element">
-          {{ element.type === 'radio' ? 'Likert' : element.type === 'text' ? 'Text' : element.type }}
+          <ng-container [ngSwitch]="element.type">
+            <span *ngSwitchCase="'radio'">Likert</span>
+            <span *ngSwitchCase="'text'">Text</span>
+            <span *ngSwitchCase="'slider'">Rango ({{element.min}} - {{element.max}})</span>
+            <span *ngSwitchDefault>{{ element.type }}</span>
+          </ng-container>
         </td>
-        
       </ng-container>
 
       <ng-container matColumnDef="label">
@@ -482,7 +564,6 @@
         <td mat-cell *matCellDef="let element"> {{element.serie}} </td>
       </ng-container>
 
-      
       <ng-container matColumnDef="activate">
         <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.QUIZ.ACTIVE' | translate}} </th>
         <td mat-cell *matCellDef="let element">
@@ -492,29 +573,369 @@
             [color]="element.is_active === 1 ? 'primary' : 'warn'"
             (click)="toggleEstado(element)"
           >
-            <mat-icon
-              [ngStyle]="{ color: element.is_active === 1 ? 'green' : 'red' }">
+            <mat-icon [ngStyle]="{ color: element.is_active === 1 ? 'green' : 'red' }">
               {{ element.is_active === 1 ? 'toggle_on' : 'toggle_off' }}
             </mat-icon>
           </button>
         </td>
       </ng-container>
-      
-      
+
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.QUIZ.DELETE' | translate}}  </th>
+        <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.QUIZ.DELETE' | translate}} </th>
         <td mat-cell *matCellDef="let element">
           <button [disabled]="!accessToDeleteQuestion" mat-icon-button color="warn" (click)="swalConfirma(element)">
             <mat-icon [ngStyle]="{ color:'red' }">delete</mat-icon>
           </button>
         </td>
       </ng-container>
+
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+  
+      <tr
+        mat-row
+        *matRowDef="let row; columns: displayedColumns;"
+        cdkDrag
+        [cdkDragData]="row"
+      ></tr>
+
     </table>
+ -->
+    
+    <mat-accordion multi class="w-100" cdkDropListGroup>
+
+      <!-- DRAG GRANDES FACTORES  -->
+      <div
+        cdkDropList
+        [cdkDropListData]="granFactores"
+        (cdkDropListDropped)="dropGranFactor($event)"
+        class="gf-dropzone"
+      >
+        <mat-expansion-panel
+          *ngFor="let gf of granFactores; trackBy: trackById"
+          cdkDrag
+          [cdkDragData]="gf"
+          class="mb-2"
+        >
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              {{ gf.label || '-' }}
+            </mat-panel-title>
+
+            <mat-panel-description>
+              
+              • {{ gf.series?.length || 0 }} factores
+              • {{ countQuestions(gf) }} preguntas
+            </mat-panel-description>
+
+            <!-- Handle de drag (en header) -->
+            <button
+              mat-icon-button
+              cdkDragHandle
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+              aria-label="Reordenar gran factor"
+            >
+              <mat-icon>drag_indicator</mat-icon>
+            </button>
+          </mat-expansion-panel-header>
+
+          <!-- FACTORES DENTRO DEL GRAN FACTOR -->
+          <div
+            class="factor-dropzone"
+            cdkDropList
+            [cdkDropListData]="gf.series"
+            (cdkDropListDropped)="dropFactor($event, gf)"
+          >
+            <mat-card
+              *ngFor="let f of gf.series; trackBy: trackById"
+              cdkDrag
+              [cdkDragData]="f"
+              class="mb-2"
+            >
+              <mat-card-title class="factor-title">
+                <div class="factor-title-text">
+                  <div class="factor-name">{{ f.label }}</div>
+                  <div class="factor-desc">{{ f.desc }}</div>
+                </div>
+
+                <button mat-icon-button cdkDragHandle aria-label="Reordenar factor">
+                  <mat-icon>drag_indicator</mat-icon>
+                </button>
+              </mat-card-title>
+
+              <mat-card-content>
+
+                <!-- PREGUNTAS DEL FACTOR (drag & drop SOLO dentro del factor) -->
+                <div
+                  cdkDropList
+                  [cdkDropListData]="f.fields"
+                  (cdkDropListDropped)="dropQuestion($event, gf, f)"
+                  class="question-dropzone"
+                >
+
+                  <form [formGroup]="formByFactor[f.Id]">
+
+                    <div formArrayName="rows">
+                      <table mat-table [dataSource]="f.fields" class="w-100" >
+
+                        <!-- drag -->
+                        <ng-container matColumnDef="drag">
+                          <th mat-header-cell *matHeaderCellDef style="width:40px;"></th>
+                          <td mat-cell *matCellDef="let row; let i = index" style="width:40px;">
+                            <button mat-icon-button cdkDragHandle aria-label="Reordenar pregunta">
+                              <mat-icon>drag_indicator</mat-icon>
+                            </button>
+                          </td>
+                        </ng-container>
+
+                        <!-- id -->
+                        <ng-container matColumnDef="id">
+                          <th mat-header-cell *matHeaderCellDef> ID </th>
+                          <td mat-cell *matCellDef="let row"> {{ row.Id }} </td>
+                        </ng-container>
+
+                        <!-- type (editable) -->
+                        <ng-container matColumnDef="type">
+                          <th mat-header-cell *matHeaderCellDef>
+                            {{ 'MENUITEMS.QUIZ.FIELDTYPE' | translate }}
+                          </th>
+
+                          <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i" >
+                            <mat-form-field appearance="fill" class="w-100" style="margin-top: 16px;">
+                              <mat-select
+                                
+                                formControlName="type"
+                                (selectionChange)="onCellChange(row.Id, 'type', $event.value, f.Id)"
+                              >
+                                <mat-option [disabled]="true" value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="slider">{{'MENUITEMS.QUIZ.RANGEQUESTION' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="text">{{'MENUITEMS.QUIZ.OPENQUESTION' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="iatext">{{'MENUITEMS.QUIZ.OPENQUESTIONIA' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="select">{{'MENUITEMS.QUIZ.LISTSELECTION' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="selectdem">{{'MENUITEMS.QUIZ.LISTDEMSELECTION' | translate}}</mat-option>
+                              </mat-select>
+                            </mat-form-field>
+                          </td>
+                        </ng-container>
+
+                        <!-- label (editable) -->
+                        <ng-container matColumnDef="label">
+                          <th mat-header-cell *matHeaderCellDef>
+                            {{ 'MENUITEMS.QUIZ.DESCRIPTION' | translate }}
+                          </th>
+
+                          <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i">
+                            <mat-form-field appearance="fill" class="w-100" style="margin-top: 16px;">
+                              <input
+                                matInput
+                                formControlName="label"
+                                (blur)="onCellChange(row.Id, 'label', getRowControlValue(f.Id, i, 'label'), f.Id)"
+                              />
+                            </mat-form-field>
+
+                          </td>
+                        </ng-container>
+
+                        <!-- values (dropdown solo lectura) -->
+                        <ng-container matColumnDef="values">
+                          <th mat-header-cell *matHeaderCellDef> Valores </th>
+
+                          <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i">
+
+                            <ng-container *ngIf="getRowControlValue(f.Id, i, 'type') as t">
+                              <mat-form-field appearance="fill" class="w-100" style="margin-top: 16px;">
+
+                                <mat-select
+                                  [placeholder]="'Valores'"
+                                  [value]="null"
+                                  disableOptionCentering
+                                  panelClass="values-panel"
+                                >
+                                  <!-- Slider: mostrar min/max -->
+                                  <ng-container *ngIf="t === 'slider'; else listOptions">
+                                    <mat-option [disabled]="true">Mín: {{ row.min }}</mat-option>
+                                    <mat-option [disabled]="true">Máx: {{ row.max }}</mat-option>
+                                  </ng-container>
+
+                                  <!-- Radio/Select/SelectDem: listar options -->
+                                  <ng-template #listOptions>
+                                    <ng-container *ngIf="t === 'radio' || t === 'select' || t === 'selectdem'; else noValues">
+                                      <mat-option *ngFor="let opt of (row.options || [])" [disabled]="true">
+                                        {{ getOptionLabel(opt) }}
+                                      </mat-option>
+
+                                      <mat-option *ngIf="!(row.options?.length)" [disabled]="true">Sin valores</mat-option>
+                                    </ng-container>
+
+                                    <ng-template #noValues>
+                                      <mat-option [disabled]="true">—</mat-option>
+                                    </ng-template>
+                                  </ng-template>
+                                </mat-select>
+
+                                <!-- Botón para agregar/editar valores -->
+                                <button
+                                  mat-icon-button
+                                  matSuffix
+                                  [disabled]="!(t === 'select' || t === 'selectdem' || t === 'slider')"
+                                  (click)="$event.stopPropagation(); openValuesEditor(row, t, f.Id, i)"
+                                  matTooltip="Agregar/editar valores"
+                                >
+                                  <mat-icon>add</mat-icon>
+                                </button>
+
+                              </mat-form-field>
+                            </ng-container>
+
+                          </td>
+                        </ng-container>
+
+
+                        
+
+                        <!-- activate (igual que ya tienes) -->
+                        <ng-container matColumnDef="activate">
+                          <th mat-header-cell *matHeaderCellDef>
+                            {{ 'MENUITEMS.QUIZ.ACTIVE' | translate }}
+                          </th>
+                          <td mat-cell *matCellDef="let row">
+                            <button
+                              [disabled]="!accessToActiveQuestion"
+                              mat-icon-button
+                              [color]="row.is_active === 1 ? 'primary' : 'warn'"
+                              (click)="toggleEstado(row,gf.Id,f.Id)"
+                            >
+                              <mat-icon [ngStyle]="{ color: row.is_active === 1 ? 'green' : 'red' }">
+                                {{ row.is_active === 1 ? 'toggle_on' : 'toggle_off' }}
+                              </mat-icon>
+                            </button>
+                          </td>
+                        </ng-container>
+
+                        <!-- actions -->
+                        <ng-container matColumnDef="actions">
+                          <th mat-header-cell *matHeaderCellDef>
+                            {{ 'MENUITEMS.QUIZ.DELETE' | translate }}
+                          </th>
+                          <td mat-cell *matCellDef="let row">
+                            <button
+                              [disabled]="!accessToDeleteQuestion"
+                              mat-icon-button
+                              color="warn"
+                              (click)="swalConfirma(row)"
+                            >
+                              <mat-icon [ngStyle]="{ color:'red' }">delete</mat-icon>
+                            </button>
+                          </td>
+                        </ng-container>
+
+                        <tr mat-header-row *matHeaderRowDef="questionColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: questionColumns;" cdkDrag [cdkDragData]="row"></tr>
+
+                      </table>
+                    </div>
+                  </form>
+
+                  <!--  
+                  <table mat-table [dataSource]="f.fields" class="w-100">
+
+                   
+                    <ng-container matColumnDef="drag">
+                      <th mat-header-cell *matHeaderCellDef style="width:40px;"></th>
+                      <td mat-cell *matCellDef="let row" style="width:40px;">
+                        <button mat-icon-button cdkDragHandle aria-label="Reordenar pregunta">
+                          <mat-icon>drag_indicator</mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="id">
+                      <th mat-header-cell *matHeaderCellDef> ID </th>
+                      <td mat-cell *matCellDef="let row"> {{ row.Id }} </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'MENUITEMS.QUIZ.FIELDTYPE' | translate }}
+                      </th>
+                      <td mat-cell *matCellDef="let row">
+                        <ng-container [ngSwitch]="row.type">
+                          <span *ngSwitchCase="'radio'">Likert</span>
+                          <span *ngSwitchCase="'text'">Text</span>
+                          <span *ngSwitchCase="'slider'">Rango ({{row.min}} - {{row.max}})</span>
+                          <span *ngSwitchDefault>{{ row.type }}</span>
+                        </ng-container>
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="label">
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'MENUITEMS.QUIZ.DESCRIPTION' | translate }}
+                      </th>
+                      <td mat-cell *matCellDef="let row"> {{ row.label }} </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="activate">
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'MENUITEMS.QUIZ.ACTIVE' | translate }}
+                      </th>
+                      <td mat-cell *matCellDef="let row">
+                        <button
+                          [disabled]="!accessToActiveQuestion"
+                          mat-icon-button
+                          [color]="row.is_active === 1 ? 'primary' : 'warn'"
+                          (click)="toggleEstado(row)"
+                        >
+                          <mat-icon [ngStyle]="{ color: row.is_active === 1 ? 'green' : 'red' }">
+                            {{ row.is_active === 1 ? 'toggle_on' : 'toggle_off' }}
+                          </mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="actions">
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'MENUITEMS.QUIZ.DELETE' | translate }}
+                      </th>
+                      <td mat-cell *matCellDef="let row">
+                        <button
+                          [disabled]="!accessToDeleteQuestion"
+                          mat-icon-button
+                          color="warn"
+                          (click)="swalConfirma(row)"
+                        >
+                          <mat-icon [ngStyle]="{ color:'red' }">delete</mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="questionColumns"></tr>
+
+              
+                    <tr
+                      mat-row
+                      *matRowDef="let row; columns: questionColumns;"
+                      cdkDrag
+                      [cdkDragData]="row"
+                    ></tr>
+
+                  </table>
+-->
+                
+                  </div>
+
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-expansion-panel>
+      </div>
+
+    </mat-accordion>
+
 
   </div>
   <div mat-dialog-actions>
-    <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CANCEL' | translate}} </button>
+    <button style="color:#91a1a4; border-radius: 5px;" type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CLOSE' | translate}} </button>
   </div>
 </div>

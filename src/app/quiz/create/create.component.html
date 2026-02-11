@@ -24,7 +24,7 @@
           joyrideStep="step1"
           [title]= "'MENUITEMS.TOUR.BTNADDQUIZ' | translate"
           text="Agrega un nuevo clima para luego agregar preguntas a la encuesta."
-          [disabled]="!accessToCreate"
+          [disabled]="!accessToCreate  || loading"
           mat-raised-button
           color="primary"
           (click)="openDialog()"
@@ -62,7 +62,7 @@
                   text="Aquí verás la información del clima">
                   
                   <mat-card-header >
-                    <img mat-card-avatar [src]="card.avatarSrc" />
+                    <img mat-card-avatar [src]="'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/' +  card.avatarSrc" />
                     <mat-card-title>{{ card.title }}</mat-card-title>
                     <mat-card-subtitle style="color: #91a1a4">
                       {{ card.subtitle }}
@@ -145,37 +145,30 @@
 
                    <!-- Chips de factores (series) -->
                   <mat-card-content >
-                   
-                
-                     
                       <div *ngFor="let cardx of card.granFactores" 
-                          style=" border-radius:5px; margin-bottom:5px; box-shadow:0 1px 4px #0001; border-style: double; padding:18px 24px;">
+                          style=" border-radius:5px; margin-bottom:5px; box-shadow:0 1px 4px
+                           rgba(105, 96, 96, 0.067); border-style:groove ; padding:18px 24px;">
                         <div style="font-weight:600; font-size:1.1em; margin-bottom:4px;">
                           {{ cardx.label }}
                         </div>
                         <div style="color:#778; font-size:0.96em; margin-bottom:8px;">
                           {{ cardx.desc }}
                         </div>
-                        
                             <mat-chip *ngFor="let factor of cardx.series"
-                                      style="margin-top: 5px; margin-right: 5px;"
-                                      color="primary"
-                                      selected
-                                      [matTooltip]="getTooltipText(factor)"
-                                      matTooltipClass="tooltip-html"
-                                      matTooltipPosition="above"
-                                      removable="true"
-                                      (removed)="deleteFactor(factor)">
-                              {{ factor.label }} ({{factor.fields.length}})
-                              <button [disabled]="!accessToDeleteFactor" matChipRemove>
-                                <mat-icon>cancel</mat-icon>
-                              </button>
+                                style="margin-top: 5px; margin-right: 5px;"
+                                color="primary"
+                                selected
+                                [matTooltip]="getTooltipText(factor)"
+                                [matTooltipClass]="'tooltip-html'"
+                                matTooltipPosition="above"
+                                removable="true"
+                                (removed)="deleteFactor(factor)">
+                                {{ factor.label }} ({{factor.fields.length}})
+                                <button [disabled]="!accessToDeleteFactor" matChipRemove>
+                                  <mat-icon>cancel</mat-icon>
+                                </button>
                             </mat-chip>
-
-                   
                       </div>
-                 
-                   
                   </mat-card-content>
                                   
                   <mat-divider style="margin-top: 5px;"></mat-divider>
@@ -183,16 +176,16 @@
                   <mat-card-actions>
 
                       <button joyrideStep="step2" title="Edita" 
-                       text="Aquí podrás editar la encuesta del clima como agregar factores y preguntas."  
-                       [disabled]="!accessToEdit" style="margin-left: auto; border-radius: 8px;" 
+                        text="Aquí podrás editar la encuesta del clima como agregar factores y preguntas."  
+                        [disabled]="!accessToEdit || loading" style="margin-left: auto; border-radius: 5px;" 
                         mat-raised-button color="primary" (click)="editarQuiz(card)">
                         {{'MENUITEMS.QUIZ.EDIT' | translate}}
                       </button>
                     
                       <button joyrideStep="step3" title="Envía"
                             text="Con este botón podras administrar el envío de las encuestas."
-                            [disabled]="!accessToSend || !containQuestion(card)"
-                            style="margin-left: 20px; border-radius: 8px;"
+                            [disabled]="!accessToSend || loading"
+                            style="margin-left: 20px; border-radius: 5px;"
                             mat-raised-button color="primary"
                             (click)="adminEnvioQuizDialog(card)">
                       {{ 'MENUITEMS.QUIZ.SEND' | translate }}

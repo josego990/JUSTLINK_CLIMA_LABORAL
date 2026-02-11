@@ -1,0 +1,32 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>% de pendientes por valor demográfico</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="row">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Campo demográfico</mat-label>
+        <mat-select [value]="selectedCampo()" (selectionChange)="selectedCampo.set($event.value)">
+          <mat-option *ngFor="let c of campos()" [value]="c">{{ c }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="chart-wrap" *ngIf="stackedOptions().series?.length">
+      <apx-chart
+        [series]="stackedOptions().series!"
+        [chart]="stackedOptions().chart!"
+        [xaxis]="stackedOptions().xaxis!"
+        [yaxis]="stackedOptions().yaxis!"
+        [plotOptions]="stackedOptions().plotOptions!"
+        [legend]="stackedOptions().legend!"
+        [stroke]="stackedOptions().stroke!"
+        [dataLabels]="stackedOptions().dataLabels!"
+        [grid]="stackedOptions().grid!"
+        [title]="stackedOptions().title!"
+        [tooltip]="stackedOptions().tooltip!"
+      ></apx-chart>
+    </div>
+  </mat-card-content>
+</mat-card>

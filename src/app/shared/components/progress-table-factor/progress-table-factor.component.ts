@@ -6,29 +6,21 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { CommonModule } from '@angular/common';
 
 export interface SubjectProgress {
-  // Identificación
   subject: string;   // Pregunta
   factor: string;    // Factor
+  EtiquetaGranFactor: string; // NUEVO: Gran factor
 
-  // Conteos por opción
-  totacuerdo: number;     // opt_1 (Muy de acuerdo)
-  acuerdo: number;        // opt_2 (De acuerdo)
-  desacuerdo: number;     // opt_3 (En desacuerdo)
-  totdesacuerdo: number;  // opt_4 (Muy en desacuerdo)
-
-  // Total respuestas
+  totacuerdo: number;
+  acuerdo: number;
+  desacuerdo: number;
+  totdesacuerdo: number;
   duration: number;
 
-  // Nuevas métricas
-  pctFav: number;   // % Favorable (Top-2)
-  pctDesf: number;  // % Desfavorable
-  nsat: number;     // NSAT = %Fav - %Desf
-  mean: number;     // Índice 0–100 (normalizado)
-
-  // Opcional
-  mean14?: number;  // Promedio 1–4 si lo usas
-
-  // Compatibilidad (si tu API aún manda 'progress')
+  pctFav: number;
+  pctDesf: number;
+  nsat: number;
+  mean: number;
+  mean14?: number;
   progress?: number;
 }
 
@@ -41,7 +33,6 @@ export interface SubjectProgress {
 })
 export class ProgressTableFactorComponent {
 
-  // Columnas para el <tr mat-header-row> y <tr mat-row>
   displayedColumns: string[] = [
     'subject', 'factor',
     'totacuerdo', 'acuerdo', 'desacuerdo', 'totdesacuerdo',
@@ -51,11 +42,15 @@ export class ProgressTableFactorComponent {
 
   private _subjects: SubjectProgress[] = [];
 
+  // Estructura agrupada para el template
+  groupedSubjects: { granFactor: string; items: SubjectProgress[] }[] = [];
+
   @Input() set subjects(value: SubjectProgress[]) {
-    // Normalización ligera y compatibilidad con 'progress'
-    this._subjects = (value ?? []).map((v: any) => ({
+    const normalized: SubjectProgress[] = (value ?? []).map((v: any) => ({
       subject: v.subject,
       factor: v.factor,
+      EtiquetaGranFactor: v.EtiquetaGranFactor ?? 'SIN AGRUPAR',
+
       totacuerdo: Number(v.totacuerdo ?? 0),
       acuerdo: Number(v.acuerdo ?? 0),
       desacuerdo: Number(v.desacuerdo ?? 0),
@@ -66,34 +61,48 @@ export class ProgressTableFactorComponent {
       pctDesf: Number(v.pctDesf ?? 0),
       nsat: Number(v.nsat ?? 0),
 
-      // Si todavía te llega 'progress', lo usamos como 'mean'
       mean: Number(v.mean ?? v.progress ?? 0),
-
       mean14: v.mean14 != null ? Number(v.mean14) : undefined
     }));
+
+    this._subjects = normalized;
+
+    // Agrupar por EtiquetaGranFactor
+    const map = new Map<string, SubjectProgress[]>();
+
+    for (const s of this._subjects) {
+      const key = s.EtiquetaGranFactor || 'SIN AGRUPAR';
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(s);
+    }
+
+    this.groupedSubjects = Array.from(map.entries()).map(([granFactor, items]) => ({
+      granFactor,
+      items
+    }));
   }
+
   get subjects(): SubjectProgress[] {
     return this._subjects;
   }
 
   getColor(p: number): string {
-    return p < 50 ? '#e74c3c'       // rojo
-         : p < 70 ? '#f39c12'       // naranja
-                   : '#2ecc71';     // verde
+    return p < 50 ? '#e74c3c'
+         : p < 70 ? '#f39c12'
+                  : '#2ecc71';
   }
 
-  // % seguro (0..100) a partir de conteos
-getPct(count: number, total: number): number {
-  if (!total || total <= 0) return 0;
-  const pct = (count / total) * 100;
-  return Math.round((pct + Number.EPSILON) * 100) / 100;
+  getPct(count: number, total: number): number {
+    if (!total || total <= 0) return 0;
+    const pct = (count / total) * 100;
+    return Math.round((pct + Number.EPSILON) * 100) / 100;
+  }
+
+  getNsatBar(nsat: number): number {
+    const v = (nsat + 100) / 2;
+    return Math.max(0, Math.min(100, v));
+  }
 }
 
-// NSAT (-100..+100) → barra 0..100
-getNsatBar(nsat: number): number {
-  // -100 -> 0,   0 -> 50,   +100 -> 100
-  const v = (nsat + 100) / 2;
-  // clamp
-  return Math.max(0, Math.min(100, v));
-}
-}

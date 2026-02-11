@@ -27,7 +27,7 @@
 
       "EDITORGANIZATION": "Editar Organización", 
       "TEXT": "ORGANIZACION", 
-
+      "ROLE": "ROL DE USUARIO",
       "LIST": {
         "CREAR": "Organizaciones",
         "EMPLEADOS": "Empleados",
@@ -98,7 +98,7 @@
       "INVALIDFORM": "El formulario no es válido",
       "EXCELERROR": "Se encontraron errores en el archivo Excel ",
       "UPLOADMESSAGE": "Cargando archivo Excel Empleados...",
-      "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>",
+      "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>", 
       "FINISHMSGH": "Finalizado!",
       "FINISHMSGB": "Se ingresaron los registros con éxito.",
       "ERRFOUNDINSERT": "Se encontraron errores al insertar:",
@@ -113,12 +113,12 @@
       "UPLOADEXCELEMPLOYEE": "Carga Excel",
       "DOWNLOADEXCELEMPLOYEE": "Descarga Plantilla Excel",
       
-      
+      "SENDINGBATCHES": "Cargando empleados Batch..",
       
       
       "SENDTYPENONE": "Ninguno"
 
-
+    
 
 
 
@@ -176,7 +176,7 @@
 
 
     
-      "TEXT": "CLIMA LABORAL",
+      "TEXT": "CLIMA",
       "CREATE": "Crear nuevo clima",
        "EDIT": "EDITAR",
       "SEND": "ENVIOS",
@@ -189,13 +189,19 @@
       "URLIMAGE": "URL Imágen",
       "PLEASEINSERTDESC": "Por favor ingrese descripción del clima!",
       "PLEASEINSERTIMAGE": "Por favor ingrese URL de imagen!",
+
+      "MINVALUE": "Valor mínimo",
+      "MAXVALUE": "Valor máximo",
+
+
       "SAVE": "GUARDAR",
       "CANCEL": "CANCELAR",
-      "ADMINCLIMA": "Gestionar Clima",
+      "ADMINCLIMA": "Gestionar Encuesta",
       "ADDFACTOR": "Nuevo Factor",
       "ADDGRANDFACTOR": "Nuevo Gran Factor",
       "OPENQUESTION": "Pregunta Abierta",
       "OPENQUESTIONIA": "Pregunta Abierta con análisis de IA",
+      "RANGEQUESTION": "Selección de Rango",
       "FIELDTEXT": "Texto del campo",
       "PLEASEINSERTTEXT": "Por favor ingrese valor",
       "SAVEQUESTION": "GUARDAR PREGUNTA",
@@ -215,6 +221,9 @@
       "FIELDTYPE": "Tipo de Pregunta",
       
 
+      "LISTSELECTION": "Selección de Lista",
+
+      "LISTDEMSELECTION": "Selección de Lista Demográfico",
 
 
 
@@ -409,21 +418,28 @@
     },
 
     "ALONE": {
-      "HELLO": "Bienvenido(a)",
+      "HELLO": "Bienvenido/a estimado/a colaborador/ra",
       "REQUIRED": "Esta respuesta es requerida",
       "NOTVALID": "La encuesta ya fue respondida.",
       "GREETEENGS": "te agradece por ayudar a hacer un mejor entorno laboral. Antes de llenar la encuesta ten en cuenta lo siguiente:",
       "TO": "a la encuesta",
       "SURVEY": " ",
-      "CONDITION1": "*Esta encuesta solo se puede contestar una sóla vez. Completa todas las preguntas en una sola sesión.",
+      "CONDITION1": "*Esta encuesta solo se puede contestar una sola vez. Completa todas las preguntas en una sola sesión.",
       "CONDITION2": "*No cierres ni recargues la pestaña hasta finalizar, o podrías perder tus respuestas.",
       "CONDITION3": "*Sé honesto y sincero en tus respuestas; tu opinión es totalmente confidencial y muy valiosa",
       "CONDITION4": "*Si necesitas detenerte, asegúrate de responder todas las preguntas antes de cerrar.",
       "COMPLETED": "Completado",
       
-
-
-
+      "GREETEENGS_APDE": "Estimado Colaborador",
+      "CONDITION1_APDE": "Nos interesa conocer tu opinión acerca del funcionamiento de Colegios APDE, cómo podemos mejorar el trabajo que hacemos y la forma en la que lo estamos realizando.",
+      "CONDITION2_APDE": "Desde ya agradecemos tu tiempo y valoramos tu opinión acerca de los aspecos presentados a continuación.",
+      
+      
+      "CONDITION3_APDE_1": "Te pedimos que respondas honestamente, toda la información que brindes la recibiremos de manera ",
+      "CONDITION3_APDE_2": "anónima,",
+      "CONDITION3_APDE_3": " por lo tanto ",
+      "CONDITION3_APDE_4": "es confidencial",
+      "CONDITION3_APDE_5": " para que utilices este instrumento de forma constructiva y así ayudar a fortalecer nuestro ambiente laboral.",
 
       "SEND": "ENVIAR ENCUESTA"
         

@@ -61,3 +61,180 @@
   text-align: center;
   
 }
+
+
+.factor-card{
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+}
+.factor-card.green{ border-left: 4px solid #21a67a; }
+.factor-card.orange{ border-left: 4px solid #ff9f1a; }
+.factor-card.red{ border-left: 4px solid #e54b4b; }
+
+.fc-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 6px;
+}
+.fc-title{
+  font-weight: 600; font-size: .98rem; line-height: 1.2;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 70%;
+}
+.fc-n{
+  font-size: .85rem; opacity:.7;
+}
+.fc-badges{
+  display:flex; gap:8px; flex-wrap:wrap; margin-top: 6px;
+}
+.badge{
+  display:inline-flex; align-items:center; gap:6px;
+  border-radius: 10px; padding: 4px 8px; font-size:.8rem; font-weight:500;
+}
+.badge-soft{ background: #f4f5f7; color:#27313f; }
+.badge-soft.danger{ background:#fdecec; color:#b42828; }
+.badge-soft.muted{ background:#f6f8fb; color:#6b7785; }
+
+/* Dark mode (si usas clase .dark en body) */
+:root.dark .factor-card{ background:#12161d; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+:root.dark .badge-soft{ background:#1b222b; color:#dce3ee; }
+:root.dark .badge-soft.danger{ background:#2a1d1d; color:#f2b2b2; }
+:root.dark .badge-soft.muted{ background:#1b222b; color:#9aa4b2; }
+
+.factor-card {
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+  border-left: 4px solid transparent;
+
+  &.green  { border-left-color: #21a67a; }
+  &.orange { border-left-color: #ff9f1a; }
+  &.red    { border-left-color: #e54b4b; }
+}
+
+.fc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.fc-title {
+  font-weight: 600;
+  font-size: .98rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+
+.fc-n {
+  font-size: .85rem;
+  opacity: .7;
+}
+
+.fc-body {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.gauge-chart-factor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-number {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-top: 2px;
+}
+
+.gauge-unit {
+  font-weight: 600;
+  font-size: .85rem;
+  margin-left: 2px;
+  opacity: .8;
+}
+
+.fc-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trend-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .9rem;
+
+  .trend-text { font-weight: 600; }
+  .trend-label { opacity: .8; }
+}
+
+.fc-badges {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: .78rem;
+  font-weight: 500;
+}
+
+.chip-soft { background: #f4f5f7; color: #27313f; }
+.chip-soft.danger { background: #fdecec; color: #b42828; }
+.chip-soft.muted  { background: #f6f8fb; color: #6b7785; }
+
+/* Dark mode opcional (si usas clase .dark en raíz) */
+:root.dark .factor-card { background:#12161d; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+:root.dark .chip-soft { background:#1b222b; color:#dce3ee; }
+:root.dark .chip-soft.danger { background:#2a1d1d; color:#f2b2b2; }
+:root.dark .chip-soft.muted { background:#1b222b; color:#9aa4b2; }
+
+.fixed-card.has-loader { position: relative; overflow: hidden; }
+
+.card-loader {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+/* Modo oscuro opcional si usas clase .dark en html/body */
+:root.dark .card-loader {
+  background: rgba(18, 22, 29, 0.45);
+}
+
+.gauge-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.gauge-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;  // centra verticalmente
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Empuja el bloque hacia arriba (ajusta a gusto) */
+.gauge-text { padding-bottom: 30px; }
+
+.t1 { font-size: 18px; font-weight: 600; opacity: .7; }
+.t2 { font-size: 44px; font-weight: 800; line-height: 1; }
+.t2 span { font-size: 18px; font-weight: 700; margin-left: 4px; }
+.t3 { margin-top: 6px; font-size: 16px; font-weight: 600; }

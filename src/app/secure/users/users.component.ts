@@ -197,7 +197,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       }
       */
 
-      console.log('this.authService.currentUserValue?.idOrganization: ', this.authService.currentUserValue?.idOrganization);
+      console.log('this.authService.currentUserValue?.idOrganization: ', 
+        this.authService.currentUserValue?.idOrganization);
 
       this.loadDataById(this.authService.currentUserValue?.idOrganization);
 

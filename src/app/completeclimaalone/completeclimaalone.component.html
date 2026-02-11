@@ -25,11 +25,11 @@
   </div>
 
   <!-- Encabezado de la encuesta -->
-  <section class="survey-header">
+  <section *ngIf="quiz.IdOrganizacion != 25 && quiz.IdOrganizacion != undefined" class="survey-header">
     <div class="survey-header__badge">{{ 'MENUITEMS.ALONE.SURVEY' | translate }}</div>
 
     <h1 class="survey-header__title">
-      {{ 'MENUITEMS.ALONE.HELLO' | translate }} {{ nombreEmpleado }},
+      {{ 'MENUITEMS.ALONE.HELLO' | translate }}, 
       {{ 'MENUITEMS.ALONE.TO' | translate }} {{ nombreClima }}.
     </h1>
 
@@ -46,14 +46,63 @@
     </ul>
   </section>
 
+  <section *ngIf="quiz.IdOrganizacion == 25" class="survey-header">
+    <div class="survey-header__badge">
+      {{ 'MENUITEMS.ALONE.GREETEENGS_APDE' | translate }}
+    </div>
+
+    <ul class="survey-header__list">
+      <li>
+        <mat-icon inline aria-hidden="true">check_circle</mat-icon>
+        <span>
+          {{ 'MENUITEMS.ALONE.CONDITION1_APDE' | translate }}
+        </span>
+      </li>
+
+      <li>
+        <mat-icon inline aria-hidden="true">check_circle</mat-icon>
+        <span>
+          {{ 'MENUITEMS.ALONE.CONDITION2_APDE' | translate }}
+        </span>
+      </li>
+
+      <li>
+        <mat-icon inline aria-hidden="true">check_circle</mat-icon>
+        <span>
+          {{ 'MENUITEMS.ALONE.CONDITION3_APDE_1' | translate }}
+          <strong style="text-decoration: underline;">
+            {{ 'MENUITEMS.ALONE.CONDITION3_APDE_2' | translate }}
+          </strong>
+          {{ 'MENUITEMS.ALONE.CONDITION3_APDE_3' | translate }}
+          <strong style="text-decoration: underline;">
+            {{ 'MENUITEMS.ALONE.CONDITION3_APDE_4' | translate }}
+          </strong>
+          {{ 'MENUITEMS.ALONE.CONDITION3_APDE_5' | translate }}
+        </span>
+      </li>
+    </ul>
+  </section>
+
+
   <!-- Form dinámico -->
-  <div>
-    <app-dynamic-form *ngIf="formConfig.fields?.length"
-      [formConfig]="formConfig"
-      [idEmpleado]="idEmpleado"
-      [idEncuestaEmpleado]="idEncuestaEmpleado"
-      [lang]="langStoreValue">
-    </app-dynamic-form>
-  </div>
+  <ng-container *ngIf="!isLoadingForm; else loadingFormTpl">
+    <div>
+      <app-dynamic-form *ngIf="formConfig?.fields?.length"
+        [formConfig]="formConfig"
+        [idEmpleado]="idEmpleado"
+        [idEncuestaEmpleado]="idEncuestaEmpleado"
+        [lang]="langStoreValue">
+      </app-dynamic-form>
+    </div>
+  </ng-container>
+
+  <ng-template #loadingFormTpl>
+    <div class="form-loader">
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="60">
+      </mat-progress-spinner>
+    </div>
+  </ng-template>
 
 </div>

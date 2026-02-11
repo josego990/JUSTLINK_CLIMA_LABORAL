@@ -13,6 +13,7 @@ import {
 import { CommonModule } from '@angular/common'; 
 import { Validators, FormsModule,
   ReactiveFormsModule, UntypedFormGroup, UntypedFormBuilder, 
+  FormBuilder, FormGroup, FormArray
  } from '@angular/forms';
  import {
   MatOptionModule,
@@ -29,6 +30,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { globalDataItems } from '../global-data-items';
 import { DialogSelectItemsComponent } from '../dialogselectitems/dialogselectitems.component';
+import { DialogAddListItemsComponent } from '../dialogaddlistvalues/dialogaddlistitems.component';
+import { DialogChangeRangeComponent } from '../dialogchangerange/dialogchangerange.component';
 import { Field, Serie, SeriesDataSend, QuizBank, GFactorsDataSend } from '../models/quiz-models';
 import { DialogformSerieComponent } from '../dialogformserie/dialogformserie.component';
 import { DialogformGFactorComponent } from '../dialogformgfactor/dialogformgfactor.component';
@@ -44,13 +47,57 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { GFactor } from '../models/quiz-models'; 
 
+import { DragDropModule } from '@angular/cdk/drag-drop';
+
+
+import { MatCardModule } from '@angular/material/card';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+export interface PreguntaField {
+  Id: number;
+  type: string;
+  name: string;
+  label: string;
+  required: boolean;
+  score: number;
+  min: number;
+  max: number;
+  value_correct: string;
+  is_random: boolean;
+  options: any[];
+  is_active: number;
+}
+
+export interface FactorSerie {
+  Id: number;
+  value: string;
+  label: string;
+  desc: string;
+  score: number;
+  FechaCreacion: string;
+  fields: PreguntaField[];
+}
+
+export interface GranFactor {
+  Id: number;
+  value: string;
+  label: string;
+  desc: string;
+  FechaCreacion: string;
+  series: FactorSerie[];
+}
+
 @Component({
   selector: 'app-dialogitemform',
   templateUrl: './dialogformitems.component.html',
   styleUrls: ['./dialogformitems.component.scss'],
   imports: [
-    MatDialogModule,
-    MatTableModule,
+    MatDialogModule,DragDropModule,
+    MatTableModule,MatCardModule,MatTooltipModule,
     MatIconModule,
     MatExpansionModule, 
     FormsModule,
@@ -68,6 +115,7 @@ import { GFactor } from '../models/quiz-models';
 ],
 
 })
+
 export class DialogformItemsComponent implements OnInit {
   @ViewChild(DatatableComponent, { static: false }) tablex!: DatatableComponent;
 
@@ -85,11 +133,12 @@ export class DialogformItemsComponent implements OnInit {
   public factorName = '';
   public gfactorName = '';
   public selectedFile = {};
-
+  public general_label = '';
   public ponderacion_rest = 0;
   public seriesx: Serie[] = [];
   public gfactorsx: GFactor[] = [];
 
+  formByFactor: Record<number, FormGroup> = {}; 
 
   public gfactors_data_send: GFactorsDataSend = {
     gfactores: this.gfactorsx,
@@ -136,8 +185,7 @@ export class DialogformItemsComponent implements OnInit {
   };
 
   displayedColumns: string[] = [
-    
-    
+
     'gfactor',
     'serie',
     'type',
@@ -163,6 +211,7 @@ export class DialogformItemsComponent implements OnInit {
   public addFileForm!: UntypedFormGroup;
   public addTextareaForm!: UntypedFormGroup;
   public addSelectForm!: UntypedFormGroup;
+  public addSelectDemForm!: UntypedFormGroup;
   public addRadioForm!: UntypedFormGroup;
   public addCheckboxesForm!: UntypedFormGroup;
   public addDateForm!: UntypedFormGroup;
@@ -227,10 +276,16 @@ export class DialogformItemsComponent implements OnInit {
 
   langStoreValue?: string;
 
+  granFactores: any[] = []; 
+  questionColumns = ['drag', 'id', 'type', 'label', 'values', 'activate', 'actions'];
+
+  trackById = (_: number, item: any) => item?.Id;
+
   constructor(
     private organizacionService: OrganizacionService, private authService: AuthService,
     public dialogRef: MatDialogRef<DialogformItemsComponent>,
     private fb: UntypedFormBuilder,private languageService: LanguageService,private translate: TranslateService,
+    private fbx: FormBuilder,
     public dialog: MatDialog,
     public gfactordialog: MatDialog,
     public seriedialog: MatDialog,
@@ -240,9 +295,14 @@ export class DialogformItemsComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: any,
     private _snackBar: MatSnackBar
   ) {
+
+    
+
     this.options_context = [];
     this.card = data[0];
     this.bankData = data[1];
+
+    //console.log('this.card en dialogformitems: ', this.card);
 
     //magia negra ;)
     this.dataSource = this.card.granFactores
@@ -251,32 +311,41 @@ export class DialogformItemsComponent implements OnInit {
         (serie.fields || []).map((field: any) => ({
           ...field,
           serie: serie.label,         // Nombre del factor hijo
-          granFactor: granFactor.label // También puedes agregar el nombre del gran factor si lo quieres
+          granFactor: granFactor.label // También se puede agregar el nombre del gran factor
         }))
       )
     );
 
-  this.series_data_send.gfactores = this.card.granFactores;
+    this.granFactores = this.card.granFactores;
+
+    console.log('this.granFactores en dialogformitems: ', this.granFactores);
+
+    this.formByFactor = {};
+    this.initForms(this.granFactores);
+
+    //console.log('Form keys:', Object.keys(this.formByFactor));
+
+    this.series_data_send.gfactores = this.card.granFactores;
+      
+    this.idFlujo = this.card.id;
+
+    const allSeries = this.card.granFactores
+
+    .map((gf:any) => gf.series)
+    .reduce((acc:any, curr:any) => acc.concat(curr), []);
+
+    //this.seriesx = allSeries;
     
-  this.idFlujo = this.card.id;
+    this.gfactorsx = this.card.granFactores?.map((gf: any) => ({
+      Id: gf.Id,
+      label: gf.label,
+      desc: gf.desc,
+      ...gf
+    })) || [];
 
-  const allSeries = this.card.granFactores
-
-  .map((gf:any) => gf.series)
-  .reduce((acc:any, curr:any) => acc.concat(curr), []);
-
-  //this.seriesx = allSeries;
-  
-  this.gfactorsx = this.card.granFactores?.map((gf: any) => ({
-    Id: gf.Id,
-    label: gf.label,
-    desc: gf.desc,
-    ...gf
-  })) || [];
-
-  this.dataSourceSerie = allSeries;
-  //this.seriesx = allSeries;
-  this.series = allSeries;
+    this.dataSourceSerie = allSeries;
+    //this.seriesx = allSeries;
+    this.series = allSeries;
 
     let pon = 0;
     this.dataSourceSerie.forEach((serie) => {
@@ -297,24 +366,184 @@ export class DialogformItemsComponent implements OnInit {
 
   }
 
-  getByLang(row: any, esKey: string, enKey: string): string {
-  const pickedKey = this.langStoreValue === 'en' ? enKey : esKey;
+  getRowsArray(idFactor: number): FormArray {
+    return this.formByFactor[idFactor].get('rows') as FormArray;
+  }
 
-  // valor elegido por idioma, con fallback a la otra clave si viene vacío/undefined
-  const val =
-    (row?.[pickedKey] ?? '') !== '' ? row?.[pickedKey] :
-    (row?.[esKey] ?? '') !== ''    ? row?.[esKey] :
-    (row?.[enKey] ?? '') !== ''    ? row?.[enKey] : '';
+  getRowControlValue(idFactor: number, index: number, control: string) {
+    return this.getRowsArray(idFactor).at(index).get(control)?.value;
+  }
 
-  return String(val ?? '').trim();
+  onCellChange(idPregunta: number, campo: string, valor: any, idFactor: number) {
+    //console.log('CAMBIO PREGUNA?', { idPregunta, campo, valor, idFactor });
+    this.loading = true;
+    this.organizacionService.updatePreguntaLabel({IdPregunta:idPregunta,Etiqueta:valor}).then((respunsi:any)=>{
+
+      if(respunsi && respunsi.data.message == 'success'){
+        this.loading = false;
+        this.showNotification(
+            'bg-red',
+            'Guardado',
+              
+            'bottom',
+            'right'
+          );
+      }
+
+    }).catch((err)=>{
+      console.error(err);
+      this.loading = false;
+
+      Swal.fire({
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+        text: err,
+        icon: 'error'
+      });
+
+    });
+
+    // aquí llamas tu endpoint “patch pregunta”
+    // this.quizService.updatePreguntaField({ Id: idPregunta, Campo: campo, Valor: valor }).subscribe(...)
+  }
+
+  getOptionLabel(opt: any): string {
+  // Ajusta estos campos según tu estructura real de options
+  return (
+    opt?.label ??
+    opt?.Etiqueta ??
+    opt?.text ??
+    opt?.Nombre ??
+    opt?.value ??
+    opt?.Valor ??
+    ''
+  ).toString();
 }
+
+
+  getByLang(row: any, esKey: string, enKey: string): string {
+    const pickedKey = this.langStoreValue === 'en' ? enKey : esKey;
+
+    // valor elegido por idioma, con fallback a la otra clave si viene vacío/undefined
+    const val =
+      (row?.[pickedKey] ?? '') !== '' ? row?.[pickedKey] :
+      (row?.[esKey] ?? '') !== ''    ? row?.[esKey] :
+      (row?.[enKey] ?? '') !== ''    ? row?.[enKey] : '';
+
+    return String(val ?? '').trim();
+  }
+
+  initForms(granFactores: any[]) {
+    for (const gf of (granFactores || [])) {
+      console.log('GF', gf?.Id, 'series:', gf?.series?.length);
+
+      for (const f of (gf.series || [])) {
+        console.log('  Factor', f?.Id, 'fields:', f?.fields?.length);
+
+        this.formByFactor[f.Id] = this.fbx.group({
+          rows: this.fbx.array((f.fields || []).map((q: any) =>
+            this.fbx.group({ Id:[q.Id], type:[q.type], label:[q.label] })
+          ))
+        });
+      }
+    }
+  }
+
+
+  watchFactorChanges(idFactor: number) {    
+    const rows = this.getRowsArray(idFactor);
+
+    rows.controls.forEach((ctrl, index) => {
+      ctrl.valueChanges
+        .pipe(debounceTime(400))
+        .subscribe(v => {
+          const idPregunta = v.Id;  // viene del form
+          // compara con el modelo original si quieres o envía patch directo:
+          console.log('AUTO PATCH', { idFactor, idPregunta, cambios: v });
+        });
+    });
+  }
+
+  countQuestions(gf: any): number {
+    return (gf?.series || []).reduce((acc: number, s: any) => acc + (s?.fields?.length || 0), 0);
+  }
+
+  dropGranFactor(event: CdkDragDrop<any[]>) {
+    if (!event?.container?.data) return;
+
+    moveItemInArray(this.card.granFactores, event.previousIndex, event.currentIndex);
+    this.card.granFactores = [...this.card.granFactores];
+
+    // Persistir: Orden = index+1 para cada gf.Id
+    const items = this.card.granFactores.map((x:any, i:any) => ({ id: x.Id, orden: i + 1 }));
+    this.updateOrdenGranFactores(items);
+  }
+
+  dropFactor(event: CdkDragDrop<any[]>, gf: any) {
+    if (!gf?.series) return;
+
+    moveItemInArray(gf.series, event.previousIndex, event.currentIndex);
+    gf.series = [...gf.series];
+
+    const items = gf.series.map((x: any, i: number) => ({ id: x.Id, orden: i + 1 }));
+    this.updateOrdenFactores(gf.Id, items); // gf.Id = IdGranFactor (según tu modelo)
+  }
+
+  dropQuestion(event: CdkDragDrop<any[]>, gf: any, factor: any) {
+    if (!factor?.fields) return;
+
+    moveItemInArray(factor.fields, event.previousIndex, event.currentIndex);
+    factor.fields = [...factor.fields];
+
+    const items = factor.fields.map((x: any, i: number) => ({ id: x.Id, orden: i + 1 }));
+    this.updateOrdenPreguntas(factor.Id, items); // factor.Id = IdFactor
+  }
+
+  /** Estos métodos llaman tu API */
+  updateOrdenGranFactores(items: {id:number, orden:number}[]) {
+    // this.service.updateOrdenGranFactores({ items }).subscribe(...)
+    console.log('SE DETECTO DRAG DE GRAN FACTOR');
+    //console.log('idGranFactor: ', id);
+    console.log('items: ', items);
+    console.log()
+
+    this.organizacionService.updateGFactorsOrder({IdFlujo: this.idFlujo, items: items}).then((resp:any)=>{
+      console.log('resp:: ', resp);
+    });
+
+  }
+
+  updateOrdenFactores(idGranFactor: number, items: {id:number, orden:number}[]) {
+    // this.service.updateOrdenFactores({ idGranFactor, items }).subscribe(...)
+     console.log('SE DETECTO DRAG DE FACTOR');
+    console.log('idGranFactor: ', idGranFactor);
+    console.log('items: ', items);
+
+    this.organizacionService.updateFactorsOrder({IdGranFactor: idGranFactor, items}).then((resp:any)=>{
+      console.log('resp:: ', resp);
+    });
+
+
+
+  }
+
+  updateOrdenPreguntas(idFactor: number, items: {id:number, orden:number}[]) {
+    // this.service.updateOrdenPreguntas({ idFactor, items }).subscribe(...)
+    console.log('SE DETECTO DRAG DE PREGUNTA');
+    console.log('idFactor: ', idFactor);
+    console.log('items: ', items);
+    
+    this.organizacionService.updatePreguntasOrder({IdFactor: idFactor, items}).then((resp:any)=>{
+      console.log('resp:: ', resp);
+    });
+
+  }
 
   public ngOnInit(): void {
 
     //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
 
-    console.log('this.langStoreValue dialogformitem:: ', this.langStoreValue);
+    //console.log('this.langStoreValue dialogformitem:: ', this.langStoreValue);
 
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
@@ -327,55 +556,62 @@ export class DialogformItemsComponent implements OnInit {
     this.options_context = [];
 
     this.addTextForm = this.fb.group({
-      ilabel: '',
+     
       irequired: false,
       israndom: false,
     });
 
     this.addTextFormIA = this.fb.group({
-      ilabel: '',
+     
       irequired: false,
       israndom: false,
     });
 
     this.addFileForm = this.fb.group({
-      ilabel: '',
+     
       irequired: false,
       israndom: false,
     });
 
     this.addDateForm = this.fb.group({
-      ilabel: '',
+     
       irequired: false,
       israndom: false,
     });
 
     this.addTextareaForm = this.fb.group({
-      ilabel: '',
+     
       irequired: false,
       israndom: false,
     });
 
     this.addSelectForm = this.fb.group({
-      ilabel: '',
+     
+      irequired: false,
+      israndom: false,
+    });
+
+    this.addSelectDemForm = this.fb.group({
+     
+      iname: '',
       irequired: false,
       israndom: false,
     });
 
     this.addRadioForm = this.fb.group({
-      ilabel: '',
+      
       //irequired: false,
       //israndom: false,
     });
 
     this.addCheckboxesForm = this.fb.group({
-      ilabel: '',
+      
       irequired: false,
       israndom: false,
     });
 
     this.addSliderForm = this.fb.group({
-      ilabel: '',
+      
       ifirstvalue: [0, [Validators.required]],
       ilastvalue: [0, [Validators.required]],
       irequired: false,
@@ -661,28 +897,30 @@ export class DialogformItemsComponent implements OnInit {
 
         const tipo     = this.getByLang(row, 'TIPO',       'TYPE');
         const etiqueta = this.getByLang(row, 'ETIQUETA',   'LABEL');
-        const desc     = this.getByLang(row, 'DESCRIPCION','DESCRIPTION');
+        const desc     = this.getByLang(row, 'DESCRIPCION', 'DESCRIPTION');
+        const list     = this.getByLang(row, 'OPCIONES LISTA', 'OPTIONS LIST');
+        //satán!
 
         // Validación de tipos permitidos por idioma
         switch (localStorage.getItem('lang')) {
           case 'es':
-            if (!['GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'].includes(tipo)) {
+            if (!['GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA', 'RANGO', 'LISTA', 'LISTA DEMOGRAFICO'].includes(tipo)) {
               errores.push(
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
                 ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA'`
+                ` 'GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA', 'RANGO', 'LISTA', 'LISTA DEMOGRAFICO'`
               );
               return;
             }
             break;
           case 'en':
-            if (!['MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION'].includes(tipo)) {
+            if (!['MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION', 'RANGE', 'LIST', 'DEMOGRAPHIC LIST'].includes(tipo)) {
               errores.push(
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
                 this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
                 ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION'` + 'are admited.'
+                ` 'MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION', 'RANGE', 'LIST', 'DEMOGRAPHIC LIST'` + 'are admited.'
               );
               return;
             }
@@ -772,6 +1010,21 @@ export class DialogformItemsComponent implements OnInit {
                 tipoCampo = 'iatext';
                 tipoAbrev = 'iatxt_';
                 break;
+              case 'RANGO':
+                tipoCampo = 'slider';
+                tipoAbrev = 'sld_';
+                break;              
+              case 'LISTA':
+                tipoCampo = 'select';
+                tipoAbrev = 'sel_';
+                break;
+              case 'LISTA DEMOGRAFICO':
+                tipoCampo = 'selectdem';
+                tipoAbrev = 'seldem_';
+                break;
+
+
+            
             }
             break;
           case 'en':
@@ -788,12 +1041,25 @@ export class DialogformItemsComponent implements OnInit {
                 tipoCampo = 'iatext';
                 tipoAbrev = 'iatxt_';
                 break;
+
+               case 'RANGE':
+                tipoCampo = 'slider';
+                tipoAbrev = 'sld_';
+                break;              
+              case 'LIST':
+                tipoCampo = 'select';
+                tipoAbrev = 'sel_';
+                break;
+              case 'DEMOGRAPHIC LIST':
+                tipoCampo = 'selectdem';
+                tipoAbrev = 'seldem_';
+                break;
             }
             break;
         }
 
         const pregunta = {
-          IdFactor: 0, // el backend lo asignará al último 'factor' insertado
+          IdFactor: 0,
           Tipo: tipoCampo,
           NombreCampo: tipoAbrev + index,
           Etiqueta: etiqueta,
@@ -802,8 +1068,10 @@ export class DialogformItemsComponent implements OnInit {
           ValorCorrecto: '',
           Aleatorio: false,
           Estado: 1,
-          RangoMin: 0,
-          RangoMax: 0
+          RangoMin: 1,
+          RangoMax: 10,
+          Lista: list,
+          Desc: desc
         };
 
         preguntasJSON.preguntas.push({ tipo: 'pregunta', data: pregunta });
@@ -834,7 +1102,7 @@ export class DialogformItemsComponent implements OnInit {
 
     Swal.fire({
       title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.LOADINGFILESURVEY'),
-      html:  + ' <b></b>',
+      html:   ' <b></b>',
       timerProgressBar: true,
       allowOutsideClick: false,
       allowEscapeKey: false,
@@ -878,7 +1146,7 @@ export class DialogformItemsComponent implements OnInit {
              //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
              console.log('jsonReturned:: ', jsonReturned);
            
-/* */
+              /* */
               this.organizacionService.saveNewPreguntasExcel(jsonReturned).then((result:any) => {
                //console.log('RESULTADO DEL ENVIO BATCH: ', result);
 
@@ -956,7 +1224,7 @@ export class DialogformItemsComponent implements OnInit {
   downloadExcelTemplate(): void {
     const url = this.langStoreValue === 'en'
       ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx'
-      : 'https://justlink-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+      : 'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
 
     const filename = this.langStoreValue === 'en'
       ? 'SurveyTemplate_EN.xlsx'
@@ -1063,12 +1331,7 @@ export class DialogformItemsComponent implements OnInit {
     }
   }
 
-  closeDialog(): void {
-    this.options_context = [];
-    //this.dialog.closeAll();
-    this.dialogRef.close(true);
-  }
-
+  
 
   swalConfirma(item: any): void {
     
@@ -1135,10 +1398,28 @@ export class DialogformItemsComponent implements OnInit {
 
   }
 
-  toggleEstado(element: any): void {
+  toggleEstado(element: any, gfId: number, fId: number): void {
     this.loading = true;
-    const index = this.dataSource.indexOf(element);
-   //console.log('Toggle estado de:', element.is_active);
+
+    //const index = this.dataSource.indexOf(element);
+
+    //console.log('all stars: ', {element,gfId,fId});
+    
+    const gf = this.granFactores.find(g => g.Id === gfId);
+    if (!gf) return;
+
+    const factor = (gf.series || []).find((s:any) => s.Id === fId);
+    if (!factor) return;
+
+    const pregunta = (factor.fields || []).find((q:any) => q.Id === element.Id);
+    if (!pregunta) return;
+
+    const index = this.dataSource.findIndex((x:any) => x.Id === element.Id);
+    
+
+    
+    //console.log('Toggle estado de:', element);
+    //console.log('this.granFactores: ', this.granFactores);
     
     var nuevoEstado = false;
     var nuevoEstadoInt = 0;
@@ -1155,22 +1436,31 @@ export class DialogformItemsComponent implements OnInit {
 
     const pregunta_updata_datra = { 
       "idPregunta": element.Id, 
-      "nuevoEstado": nuevoEstadoInt};
+      "nuevoEstado": nuevoEstadoInt
+    };
 
 
     this.organizacionService.updatePregunta(pregunta_updata_datra).then((resultix)=>{
 
-      if(resultix.data.message === 'Estado de la pregunta actualizado correctamente'){
+      //console.log('resultix: ', resultix);
 
-        if (index !== -1) {
-         //console.log('s index:: ', index);
+      if(resultix.data.message === 'Estado de la pregunta actualizado correctamente'){
+        //console.log('index:: ', index);
+
+        //if (index !== -1) {
+          //console.log('s index:: ', index);
           this.dataSource[index].is_active = nuevoEstadoInt;
-        
+          
+          pregunta.is_active = nuevoEstadoInt;
+
           // Forzar actualización del dataSource
           this.dataSource = [...this.dataSource];
 
-          this.loading = false;
-        }
+          //console.log('dataSource después del cambio:: ', this.dataSource);
+          
+        //}
+
+        this.loading = false;
 
       };
     }).catch((err)=>{
@@ -1343,19 +1633,20 @@ export class DialogformItemsComponent implements OnInit {
         //validar si existe nombre del campo
         if (
           this.dataSource.some(
-            (item) => item.name === this.addTextForm.value.iname
+            (item) => item.name === this.general_label
           )
         ) {
           this.showNotification(
             'bg-red',
             this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
-              this.addTextForm.value.iname,
+              this.general_label,
               
             'bottom',
             'right'
           );
         } else {
           // this.dataSourceSerie[0].fields.push();
+          this.loading = true;
 
           const itemlength = this.dataSource.length + 1;
           const isrequired = this.addTextForm.value.irequired;
@@ -1366,19 +1657,22 @@ export class DialogformItemsComponent implements OnInit {
             "IdFactor": this.idFactor,
             "Tipo": 'text',
             "NombreCampo": 'txt_' + itemlength.toString(),
-            "Etiqueta": this.addTextForm.value.ilabel,
+            "Etiqueta": this.general_label,
             "Obligatoria": true,
             "Puntaje": 0,
             "ValorCorrecto": false,            
             "Aleatorio": false,
             "RangoMin": 0,
             "RangoMax": 0,
+            "Lista": "",
+            "Desc": ""
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
            //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
       
             if(responsy.data.message === 'Pregunta insertada correctamente'){
+              
               this.loading = false;
               Swal.fire({
                 title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
@@ -1386,49 +1680,42 @@ export class DialogformItemsComponent implements OnInit {
                 icon: 'success',
               });
 
-              const v_p = {
-                id: itemlength,
+              var newIdInserted = responsy.data.newId;
+              const newField = {
+                Id: newIdInserted,
                 type: 'text',
                 name: 'txt_' + itemlength.toString(),
-                label: this.addTextForm.value.ilabel,
+                label: this.general_label,
                 required: isrequired,
                 score: 0,
-                options: this.options_context,
                 min: 0,
                 max: 0,
                 value_correct: '1',
-                file_type: '',
                 is_random: isrand,
+                file_type: '',
                 serie: this.factorName,
+                options: this.options_context ?? [],
                 is_active: 1
               };
-    
-              this.dataSource.push(v_p);
-    
-              const serieEncontrada = this.dataSourceSerie.find(
-                (serie) => serie.label  === this.selectedSerie
-              );
-              serieEncontrada?.fields.push({
-                id: itemlength,
-                type: 'text',
-                name: 'txt_' + itemlength.toString(),
-                label: this.addTextForm.value.ilabel,
-                required: isrequired,
-                score: 0,
-                options: this.options_context,
-                min: 0,
-                max: 0,
-                value_correct: '1',
-                file_type: '',
-                is_random: isrand,
-                serie: this.factorName,
-                is_active: 1
-              });
-    
-              this.dataSource = [...this.dataSource];
-              const clabel = this.addTextForm.get('ilabel');  
-              clabel?.setValue('');  
-              globalDataItems.next(this.dataSource);  
+
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+
+              rows.push(this.fb.group({
+                Id:    [newField.Id],
+                type:  [newField.type],
+                label: [newField.label],
+                  is_active: 1
+                // agrega también todos los controles que tu fila use en el template:
+                // required: [nf.required],
+                // min: [nf.min],
+                // max: [nf.max],
+                // is_active: [nf.is_active],
+                // options: [nf.options],
+              }));              
+
+               
               this.options_context = [];
             }
           }).catch((err)=>{
@@ -1449,6 +1736,38 @@ export class DialogformItemsComponent implements OnInit {
     //this.closeDialog();
   }
 
+  addPreguntaToFactor(newField: any) {
+    const gfId = this.idGFactor;
+    const fId  = this.idFactor;
+
+    // Validación rápida
+    const gfExists = this.granFactores?.some(g => g.Id === gfId);
+    if (!gfExists) {
+      console.warn('No existe GranFactor con Id:', gfId);
+      return;
+    }
+
+    this.granFactores = this.granFactores.map(gf => {
+      if (gf.Id !== gfId) return gf;
+
+      return {
+        ...gf,
+        series: (gf.series || []).map((f:any) => {
+          if (f.Id !== fId) return f;
+
+          const fields = Array.isArray(f.fields) ? f.fields : [];
+
+          // Inserta al final (o donde quieras)
+          return {
+            ...f,
+            fields: [...fields, newField]
+          };
+        })
+      };
+    });
+  }
+
+
   onFormTextIASubmitClick() {
    //console.log('Form Values', this.addTextFormIA.value);
 
@@ -1461,20 +1780,20 @@ export class DialogformItemsComponent implements OnInit {
         //validar si existe nombre del campo
         if (
           this.dataSource.some(
-            (item) => item.name === this.addTextFormIA.value.iname
+            (item) => item.name === this.general_label
           )
         ) {
           this.showNotification(
             'bg-red',
             this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST')  +
-              this.addTextFormIA.value.iname +
+              this.general_label +
               '"',
             'bottom',
             'right'
           );
         } else {
           // this.dataSourceSerie[0].fields.push();
-
+          this.loading = true;
           const itemlength = this.dataSource.length + 1;
           const isrequired = this.addTextFormIA.value.irequired;
           const isrand = this.addTextFormIA.value.israndom;
@@ -1484,13 +1803,15 @@ export class DialogformItemsComponent implements OnInit {
             "IdFactor": this.idFactor,
             "Tipo": 'iatext',
             "NombreCampo": 'iatxt_' + itemlength.toString(),
-            "Etiqueta": this.addTextFormIA.value.ilabel,
+            "Etiqueta": this.general_label,
             "Obligatoria": true,
             "Puntaje": 0,
             "ValorCorrecto": false,            
             "Aleatorio": false,
             "RangoMin": 0,
             "RangoMax": 0,
+            "Lista": "",
+            "Desc": ""
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
@@ -1503,51 +1824,45 @@ export class DialogformItemsComponent implements OnInit {
                 text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
+    
+              var newIdInserted = responsy.data.newId;
 
-              const v_p = {
-                id: itemlength,
+              const newField = {
+                Id: newIdInserted,
                 type: 'iatext',
                 name: 'iatxt_' + itemlength.toString(),
-                label: this.addTextFormIA.value.ilabel,
+                label: this.general_label,
                 required: isrequired,
                 score: 0,
-                options: this.options_context,
                 min: 0,
                 max: 0,
                 value_correct: '1',
-                file_type: '',
                 is_random: isrand,
+                file_type: '',
                 serie: this.factorName,
+                options: this.options_context ?? [],
                 is_active: 1
               };
-    
-              this.dataSource.push(v_p);
-    
-              const serieEncontrada = this.dataSourceSerie.find(
-                (serie) => serie.label  === this.selectedSerie
-              );
-              serieEncontrada?.fields.push({
-                id: itemlength,
-                type: 'iatext',
-                name: 'iatxt_' + itemlength.toString(),
-                label: this.addTextFormIA.value.ilabel,
-                required: isrequired,
-                score: 0,
-                options: this.options_context,
-                min: 0,
-                max: 0,
-                value_correct: '1',
-                file_type: '',
-                is_random: isrand,
-                serie: this.factorName,
-                is_active: 1
-              });
-    
-              this.dataSource = [...this.dataSource];
-              const clabel = this.addTextFormIA.get('ilabel');  
-              clabel?.setValue('');  
-              globalDataItems.next(this.dataSource);  
+
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+                rows.push(this.fb.group({
+                  Id:    [newField.Id],
+                  type:  [newField.type],
+                  label: [newField.label],
+                  is_active: 1
+                  // agrega también todos los controles que tu fila use en el template:
+                  // required: [nf.required],
+                  // min: [nf.min],
+                  // max: [nf.max],
+                  // is_active: [nf.is_active],
+                  // options: [nf.options],
+                }));
+              
+              
               this.options_context = [];
+              this.loading = false;
             }
           }).catch((err)=>{
             this.loading = false;
@@ -1830,99 +2145,10 @@ export class DialogformItemsComponent implements OnInit {
     //this.closeDialog();
   }
 
-  onFormSelectSubmitClick() {
-    //console.log('Form Values', this.addTextForm.value);
-
-    if (this.selectedSerie === 'none') {
-      alert('Debe seleccionar un Factor para la pregunta');
-    } else {
-      if (this.addSelectForm.valid) {
-        //console.log('valid');
-        //validar si existe nombre del campo
-        if (
-          this.dataSource.some(
-            (item) => item.name === this.addSelectForm.value.iname
-          )
-        ) {
-          this.showNotification(
-            'bg-red',
-            'Ya existe un nombre de campo "' +
-              this.addSelectForm.value.iname +
-              '"',
-            'bottom',
-            'right'
-          );
-        } else {
-          //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
-          const isrequired = this.addSelectForm.value.irequired;
-          const isrand = this.addSelectForm.value.israndom;
-
-          const v_p = {
-            id: itemlength,
-            type: 'select',
-            name: 'sel_' + itemlength.toString(),
-            label: this.addSelectForm.value.ilabel,
-            required: isrequired,
-            score: 0,
-            options: this.options_context,
-            min: 0,
-            max: 0,
-            value_correct: '1',
-            file_type: '',
-            is_random: isrand,
-            serie: this.selectedSerie,
-          };
-
-          this.dataSource.push(v_p);
-
-          const serieEncontrada = this.dataSourceSerie.find(
-            (serie) => serie.label  === this.selectedSerie
-          );
-          serieEncontrada?.fields.push({
-            id: itemlength,
-            type: 'select',
-            name: 'sel_' + itemlength.toString(),
-            label: this.addSelectForm.value.ilabel,
-            required: isrequired,
-            score: 0,
-            options: this.options_context,
-            min: 0,
-            max: 0,
-            value_correct: '1',
-            file_type: '',
-            is_random: isrand,
-            serie: this.selectedSerie,
-          });
-
-          this.dataSource = [...this.dataSource];
-
-         //console.log(this.dataSource);
-
-          const clabel = this.addSelectForm.get('ilabel');
-
-          clabel?.setValue('');
-
-          globalDataItems.next(this.dataSource);
-
-          this.options_context = [];
-
-          this.showNotification(
-            'bg-red',
-            'Se agregó un nuevo ítem',
-            'bottom',
-            'right'
-          );
-        }
-      } else {
-        //console.log('form is not valid');
-      }
-    }
-
-    //this.closeDialog();
-  }
+  
 */
   
+  //likert
   onFormRadioSubmitClick() {
    //console.log('onFormRadioSubmitClick', this.addTextForm.value);
    //console.log('SERIE SELECCIONADA:', this.selectedSerie);
@@ -1958,13 +2184,15 @@ export class DialogformItemsComponent implements OnInit {
             "IdFactor": this.idFactor,
             "Tipo": 'radio',
             "NombreCampo": 'rad_' + itemlength.toString(),
-            "Etiqueta": this.addRadioForm.value.ilabel,
+            "Etiqueta": this.general_label,
             "Obligatoria": true,
             "Puntaje": 0,
             "ValorCorrecto": false,            
             "Aleatorio": false,
             "RangoMin": 0,
             "RangoMax": 0,
+            "Lista": "",
+            "Desc": ""
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
@@ -1977,54 +2205,72 @@ export class DialogformItemsComponent implements OnInit {
                 text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
                 icon: 'success',
               });
+    
+               var newIdInserted = responsy.data.newId;
 
-              const v_p = {
-                id: itemlength,
-                granFactor: this.gfactorName,
+              const newField = {
+                Id: newIdInserted,
                 type: 'radio',
                 name: 'rad_' + itemlength.toString(),
-                label: this.addRadioForm.value.ilabel,
+                label: this.general_label,
                 required: isrequired,
                 score: 0,
-                options: this.options_context,
                 min: 0,
                 max: 0,
                 value_correct: '1',
-                file_type: '',
                 is_random: isrand,
+                file_type: '',
                 serie: this.factorName,
+                options: [
+                  {
+                    "value": "opt_1",
+                    "label": "TOTALMENTE DE ACUERDO",
+                    "name": "opt_1",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_2",
+                    "label": "DE ACUERDO",
+                    "name": "opt_2",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_3",
+                    "label": "EN DESACUERDO",
+                    "name": "opt_3",
+                    "is_correct": false
+                  },
+                  {
+                    "value": "opt_4",
+                    "label": "TOTALMENTE EN DESACUERDO",
+                    "name": "opt_4",
+                    "is_correct": false
+                  }
+                ],
                 is_active: 1
               };
-    
-              this.dataSource.push(v_p);
-    
-              const serieEncontrada = this.dataSourceSerie.find(
-                (serie) => serie.label  === this.selectedSerie
-              );
 
-              serieEncontrada?.fields.push({
-                id: itemlength,
-                type: 'radio',
-                name: 'rad_' + itemlength.toString(),
-                label: this.addRadioForm.value.ilabel,
-                required: isrequired,
-                
-                score: 0,
-                options: this.options_context,
-                min: 0,
-                max: 0,
-                value_correct: '1',
-                file_type: '',
-                is_random: isrand,
-                serie: this.factorName,
-                is_active: 1
-              });
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+                rows.push(this.fb.group({
+                  Id:    [newField.Id],
+                  type:  [newField.type],
+                  label: [newField.label],
+                  options: [newField.options],
+                  is_active: 1
+                  // agrega también todos los controles que tu fila use en el template:
+                  // required: [nf.required],
+                  // min: [nf.min],
+                  // max: [nf.max],
+                  // is_active: [nf.is_active],
+                  // options: [nf.options],
+                }));
     
-              this.dataSource = [...this.dataSource];
-              console.log('this.dataSource, se supone?.. ', this.dataSource);
-              const clabel = this.addRadioForm.get('ilabel');  
-              clabel?.setValue('');  
-              globalDataItems.next(this.dataSource);  
+           
+              //const clabel = this.addRadioForm.get('ilabel');  
+              //clabel?.setValue('');  
+              //globalDataItems.next(this.dataSource);  
               this.options_context = [];
             }
           }).catch((err)=>{
@@ -2037,6 +2283,7 @@ export class DialogformItemsComponent implements OnInit {
           });
 
           
+
         }
       } else {
 
@@ -2152,11 +2399,13 @@ export class DialogformItemsComponent implements OnInit {
 */
 
   onFormSliderSubmitClick() {
-    //console.log('Form Values', this.addTextForm.value);
+
     if (this.selectedSerie === 'none') {
       alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
-    } else {
+    } 
+    else {
       if (this.addSliderForm.valid) {
+        this.loading = true;
         //console.log('valid');
         //validar si existe nombre del campo
         if (
@@ -2164,32 +2413,277 @@ export class DialogformItemsComponent implements OnInit {
             (item) => item.name === this.addSliderForm.value.iname
           )
         ) {
-          this.showNotification(
-            'bg-red',
-            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
+          this.loading = false;
+          Swal.fire({
+            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NOTPERMMITED'),
+            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FIELDEXIST') +
               this.addSliderForm.value.iname +
               '"',
-            'bottom',
-            'right'
-          );
-        } else {
+            icon: 'warning',
+          });
 
+        } else {
+          //if(this.ponderacion_rest)
           const itemlength = this.dataSource.length + 1;
           const isrequired = this.addSliderForm.value.irequired;
-          const isrand = this.addSliderForm.value.israndom; 
+          const isrand = this.addSliderForm.value.israndom;
 
-           //INSERTAR NUEVO
+          //INSERTAR NUEVO
           const preguntame_cao = {
             "IdFactor": this.idFactor,
             "Tipo": 'slider',
             "NombreCampo": 'sld_' + itemlength.toString(),
-            "Etiqueta": this.addSliderForm.value.ilabel,
+            "Etiqueta": this.general_label,
             "Obligatoria": true,
             "Puntaje": 0,
             "ValorCorrecto": false,            
             "Aleatorio": false,
             "RangoMin": this.addSliderForm.value.ifirstvalue,
-            "RangoMax": this.addSliderForm.value.ilastvalue
+            "RangoMax": this.addSliderForm.value.ilastvalue,
+            "Lista": "",
+            "Desc": ""
+          }
+
+          this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+      
+            if(responsy.data.message === 'Pregunta insertada correctamente'){
+              this.loading = false;
+              Swal.fire({
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
+                icon: 'success',
+              });
+
+             
+    
+              var newIdInserted = responsy.data.newId;
+
+              const newField = {
+                Id: newIdInserted,
+                type: 'slider',
+                name: 'sld_' + itemlength.toString(),
+                label: this.general_label,
+                required: isrequired,
+                score: 0,
+                min: this.addSliderForm.value.ifirstvalue,
+                max: this.addSliderForm.value.ilastvalue,
+                value_correct: '1',
+                is_random: isrand,
+                file_type: '',
+                serie: this.factorName,
+                options: [],
+                is_active: 1
+              };
+
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+                rows.push(this.fb.group({
+                  Id:    [newField.Id],
+                  type:  [newField.type],
+                  label: [newField.label],
+                  options: [newField.options],
+                  // agrega también todos los controles que tu fila use en el template:
+                  // required: [nf.required],
+                   min: [newField.min],
+                   max: [newField.max],
+                  is_active: 1
+                  // options: [nf.options],
+                }));
+
+
+         
+              this.options_context = [];
+            }
+          }).catch((err)=>{
+            this.loading = false;
+            Swal.fire({
+              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+              text: err,
+              icon: 'error',
+            });
+          });
+
+          
+        }
+      } else {
+
+      }
+    }
+
+  }
+
+  onFormSelectSubmitClick() {
+    //console.log('Form Values', this.addTextForm.value);
+
+    if (this.selectedSerie === 'none') {
+      alert('Debe seleccionar un Factor para la pregunta');
+    } else {
+      if (this.addSelectForm.valid) {
+        //console.log('valid');
+        //validar si existe nombre del campo
+        if (
+          this.dataSource.some(
+            (item) => item.name === this.general_label
+          )
+        ) {
+          this.showNotification(
+            'bg-red',
+            'Ya existe un nombre de campo "' +
+              this.general_label +
+              '"',
+            'bottom',
+            'right'
+          );
+        } else {
+          //if(this.ponderacion_rest)
+          this.loading = true;
+          const itemlength = this.dataSource.length + 1;
+          const isrequired = this.addSelectForm.value.irequired;
+          const isrand = this.addSelectForm.value.israndom;
+
+          var lista_pipe = "";
+
+          this.options_context.forEach((option) => {
+            lista_pipe += "|" + option.label; 
+          });
+
+          //INSERTAR NUEVO
+          const preguntame_cao = {
+            "IdFactor": this.idFactor,
+            "Tipo": 'select',
+            "NombreCampo": 'sel_' + itemlength.toString(),
+            "Etiqueta": this.general_label,
+            "Obligatoria": true,
+            "Puntaje": 0,
+            "ValorCorrecto": false,            
+            "Aleatorio": false,
+            "RangoMin": 0,
+            "RangoMax": 0,
+            "Lista": lista_pipe,
+            "Desc": ""
+          }
+
+          this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
+           //console.log('RESPUESTA A GUARDADO DE PREGUNTA:: ', responsy);
+      
+            if(responsy.data.message === 'Pregunta insertada correctamente'){
+              this.loading = false;
+              Swal.fire({
+                title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+                text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTIONADDED'),
+                icon: 'success',
+              });
+
+        
+
+                 var newIdInserted = responsy.data.newId;
+
+              const newField = {
+                Id: newIdInserted,
+                type: 'select',
+                name: 'sel_' + itemlength.toString(),
+                label: this.general_label,
+                required: isrequired,
+                score: 0,
+                min: 0,
+                max: 0,
+                value_correct: '1',
+                is_random: isrand,
+                file_type: '',
+                serie: this.factorName,
+                options: this.options_context,
+                is_active: 1
+              };
+
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+                rows.push(this.fb.group({
+                  Id:    [newField.Id],
+                  type:  [newField.type],
+                  label: [newField.label],
+                  options: [newField.options],
+                  // agrega también todos los controles que tu fila use en el template:
+                  // required: [nf.required],
+                   min: [newField.min],
+                   max: [newField.max],
+                  is_active: 1
+                  // options: [nf.options],
+                }));
+
+              
+              this.options_context = [];
+
+              this.showNotification(
+                'bg-red',
+                'Se agregó un nuevo ítem',
+                'bottom',
+                'right'
+              );
+
+            }
+          });
+
+          
+        }
+      } else {
+        //console.log('form is not valid');
+      }
+    }
+
+    //this.closeDialog();
+  }
+
+  onFormSelectDemSubmitClick() {
+    //console.log('Form Values', this.addTextForm.value);
+
+    if (this.selectedSerie === 'none') {
+      alert('Debe seleccionar un Factor para la pregunta');
+    } else {
+      if (this.addSelectDemForm.valid) {
+        //console.log('valid');
+        //validar si existe nombre del campo
+        if (
+          this.dataSource.some(
+            (item) => item.name === this.general_label
+          )
+        ) {
+          this.showNotification(
+            'bg-red',
+            'Ya existe un nombre de campo "' +
+              this.general_label +
+              '"',
+            'bottom',
+            'right'
+          );
+        } else {
+          //if(this.ponderacion_rest)
+          const itemlength = this.dataSource.length + 1;
+          const isrequired = this.addSelectDemForm.value.irequired;
+          const isrand = this.addSelectDemForm.value.israndom;
+
+          var lista_pipe = "";
+
+          this.options_context.forEach((option) => {
+            lista_pipe += "|" + option.label; 
+          });
+
+          //INSERTAR NUEVO
+          const preguntame_cao = {
+            "IdFactor": this.idFactor,
+            "Tipo": 'selectdem',
+            "NombreCampo": 'seldem_' + itemlength.toString(),
+            "Etiqueta": this.general_label,
+            "Obligatoria": true,
+            "Puntaje": 0,
+            "ValorCorrecto": false,            
+            "Aleatorio": false,
+            "RangoMin": 0,
+            "RangoMax": 0,
+            "Lista": lista_pipe,
+            "Desc": this.general_label,
           }
 
           this.organizacionService.saveNewPregunta(preguntame_cao).then((responsy:any)=>{
@@ -2205,65 +2699,73 @@ export class DialogformItemsComponent implements OnInit {
 
               const v_p = {
                 id: itemlength,
-                type: 'slider',
-                name: 'sld_' + itemlength.toString(),
-                label: this.addSliderForm.value.ilabel,
+                granFactor: this.gfactorName,
+                type: 'select',
+                name: 'sel_' + itemlength.toString(),
+                label: this.general_label,
                 required: isrequired,
                 score: 0,
                 options: this.options_context,
-                min: this.addSliderForm.value.ifirstvalue,
-                max: this.addSliderForm.value.ilastvalue,
+                min: 0,
+                max: 0,
                 value_correct: '1',
                 file_type: '',
                 is_random: isrand,
-                serie: this.selectedSerie,
+                serie: this.factorName,
                 is_active: 1
               };
 
-              this.dataSource.push(v_p);
-
-              const serieEncontrada = this.dataSourceSerie.find((serie) => serie.label  === this.selectedSerie);
               
-              serieEncontrada?.fields.push({
-                id: itemlength,
-                type: 'slider',
-                name: 'sld_' + itemlength.toString(),
-                label: this.addSliderForm.value.ilabel,
+                 var newIdInserted = responsy.data.newId;
+
+              const newField = {
+                Id: newIdInserted,
+                type: 'select',
+                name: 'sel_' + itemlength.toString(),
+                label: this.general_label,
                 required: isrequired,
                 score: 0,
-                options: this.options_context,
-                min: this.addSliderForm.value.ifirstvalue,
-                max: this.addSliderForm.value.ilastvalue,
+                min: 0,
+                max: 0,
                 value_correct: '1',
-                file_type: '',
                 is_random: isrand,
-                serie: this.selectedSerie,
+                file_type: '',
+                serie: this.factorName,
+                options: this.options_context,
                 is_active: 1
-              });
+              };
 
-              this.dataSource = [...this.dataSource];
-             //console.log(this.dataSource);
-              const clabel = this.addSliderForm.get('ilabel');
-              clabel?.setValue('');
-              globalDataItems.next(this.dataSource);
+              this.addPreguntaToFactor(newField);
+
+              const rows = this.getRowsArray(this.idFactor);
+                rows.push(this.fb.group({
+                  Id:    [newField.Id],
+                  type:  [newField.type],
+                  label: [newField.label],
+                  options: [newField.options],
+                  // agrega también todos los controles que tu fila use en el template:
+                  // required: [nf.required],
+                   min: [newField.min],
+                   max: [newField.max],
+                  is_active: 1
+                  // options: [nf.options],
+                }));
+
+             
+
               this.options_context = [];
+
               this.showNotification(
                 'bg-red',
                 'Se agregó un nuevo ítem',
                 'bottom',
                 'right'
               );
-          }
 
-          }).catch((err)=>{
-            this.loading = false;
-            Swal.fire({
-              title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
-              text: err,
-              icon: 'warning',
-            });
+            }
           });
 
+          
         }
       } else {
         //console.log('form is not valid');
@@ -2273,12 +2775,80 @@ export class DialogformItemsComponent implements OnInit {
     //this.closeDialog();
   }
   
+  openValuesEditor(row: any, type: string, factorId: number, index: number) {
+    // row.Id = IdPregunta
+    // type = 'select' | 'selectdem' | 'slider'
+
+    if (type === 'slider') {
+      // abrir modal para editar min/max
+      // this.openSliderDialog(row);
+      console.log('Editar rango', { idPregunta: row.Id, min: row.min, max: row.max });
+
+      this.openEditRangeValuesDialog(row);
+
+      return;
+    }
+
+    if (type === 'select' || type === 'selectdem') {
+      // abrir modal para agregar/quitar opciones
+      // this.openOptionsDialog(row);
+      console.log('Editar opciones', { idPregunta: row.Id, options: row.options });
+
+      this.openAddListValuesDialog(row);
+
+      return;
+    }
+  }
+  //abrir dialogo agregar valores lista
   openDialog(): void {
+    console.log('se ha abierto el dialog y el valor de options_context es: ', this.options_context);
+
     this.dialog.open(DialogSelectItemsComponent, {
       width: '500px',
       data: this.options_context,
     });
+
   }
+
+  openAddListValuesDialog(data:any): void {
+    console.log('se ha abierto el dialog y el valor de data es: ', data);
+
+    var options_context_data: {
+      label: string;
+      value: string;
+      name: string;
+      is_correct: boolean;
+    }[] = data.options;
+
+    this.dialog.open(DialogAddListItemsComponent, {
+      width: '500px',
+      data: {options:options_context_data,idPregunta:data.Id },
+    });
+
+  }
+
+  openEditRangeValuesDialog(data:any): void {
+    //console.log('se ha abierto el dialog y el valor de data es: ', data);
+
+   
+
+    this.dialog.open(DialogChangeRangeComponent, {
+      width: '500px',
+      data: data,
+    });
+
+  }
+
+
+  
+
+  closeDialog(): void {
+    console.log('se ha cerrado el dialog y el valor de options_context es: ', this.options_context);
+    this.options_context = [];
+    //this.dialog.closeAll();
+    this.dialogRef.close(true);
+  }
+
 
   //DIALOGO AGREGARE FACTORES / SERIES
   openDialogSerie(data_sent: SeriesDataSend): void {
@@ -2314,6 +2884,7 @@ export class DialogformItemsComponent implements OnInit {
       }
     });
   }
+  
   
 
 

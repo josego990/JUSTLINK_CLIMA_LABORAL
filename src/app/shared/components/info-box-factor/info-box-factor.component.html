@@ -1,40 +1,65 @@
-<div class="card info-card">
-    <div class="info-box8">
-      <!-- Gauge en lugar del icono -->
-      <div class="card gauge-chart-factor">
-        <ngx-gauge
-            [value]="gaugeValue"
-            [size]="gaugeSize"
-            [type]="gaugeType"
-            [thick]="gaugeThick"
-            [foregroundColor]="gaugeColor"
-        >
-                       
-            <ngx-gauge-value style="margin-top: 25px;">
-            {{ gaugeValue }}
-            </ngx-gauge-value>
-        </ngx-gauge>
+<div class="card info-card factor-card" [ngClass]="colorClass">
+  <div class="fc-header">
+    <h6 class="fc-title" [title]="title">{{ title }}</h6>
+    <span class="fc-n">Empleados Respondieron {{ value }}</span>
+  </div>
+
+  <div class="fc-grid">
+    <!-- Gauge -->
+    <div class="gauge-wrap">
+      <ngx-gauge
+        [value]="gaugeValue"
+        [size]="gaugeSize"
+        [type]="gaugeType"
+        [thick]="gaugeThick"
+        [min]="0" [max]="100"
+        [cap]="'round'"
+        [foregroundColor]="gaugeColor"
+        [backgroundColor]="gaugeBg || '#eef3f9'"
+        [animate]="true"
+
+      >
+        <ngx-gauge-value class="gauge-number">
+          {{ gaugeValue | number:'1.0-0' }}
+        </ngx-gauge-value>
+        <ngx-gauge-append class="gauge-unit">%</ngx-gauge-append>
+      </ngx-gauge>
     </div>
-      <h6 [ngClass]="'col-' + colorClass + ' font-b-500'">{{ title }}</h6>
-      <h5>Respuestas {{ value }}</h5>
-      <div>
-        <i
-          class="material-icons float-start me-1 ms-1"
-          [ngClass]="{
-            'col-red': trendDirection === 'down',
-            'col-green': trendDirection === 'up'
-          }"
-        >
+
+    <!-- Métricas a la derecha -->
+    <div class="fc-right">
+      <div class="trend-line">
+        <i class="material-icons"
+           [ngClass]="{ 'col-red': trendDirection === 'down', 'col-green': trendDirection === 'up' }">
           trending_{{ trendDirection }}
         </i>
-        <p class="float-start m-0">
-          <span
-            [ngClass]="trendDirection === 'down' ? 'col-orange' : 'col-green'"
-            >{{ trendPercentage }}</span
-          >
-          {{ trendText }}
-        </p>
+        <span class="trend-text"
+              [ngClass]="trendDirection === 'down' ? 'col-orange' : 'col-green'">
+          {{ (trendPercentage || (gaugeValue | number:'1.0-2') + '%') }}
+        </span>
+        <span class="trend-label">{{ trendText || 'Satisfacción' }}</span>
+      </div>
+
+      <div class="fc-badges">
+        <span class="chip chip-soft" *ngIf="pct_opt1 != null">
+          Totalmente de acuerdo: {{ pct_opt1 | number:'1.0-2' }}%
+        </span>
+
+         <span class="chip chip-soft" *ngIf="pct_opt2 != null">
+          De Acuerdo: {{ pct_opt2 | number:'1.0-2' }}%
+        </span>
+
+         <span class="chip chip-soft" *ngIf="pct_opt3 != null">
+          En Desacuerdo: {{ pct_opt3 | number:'1.0-2' }}%
+        </span>
+
+         <span class="chip chip-soft" *ngIf="pct_opt4 != null">
+          Totalmente en Desacuerdo: {{ pct_opt4 | number:'1.0-2' }}%
+        </span>
+        
+       
       </div>
     </div>
   </div>
-  
+</div>
+

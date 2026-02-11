@@ -67,7 +67,7 @@
                 <!-- IdOrganizacion -->
                 <ng-container matColumnDef="IdOrganizacion">
                   <th mat-header-cell *matHeaderCellDef> Id Org. </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
+                  <td mat-cell *matCellDef="let element"> {{ idOrganization }} </td>
                 </ng-container>
               
                 <!-- Nombres -->
@@ -99,11 +99,9 @@
                 <!-- TipoEnvioEncuesta -->
                 <ng-container matColumnDef="TipoEnvioEncuesta">
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.TipoEnvioEncuesta === 1
-                                                                                            ? 'Correo'
-                                                                                            : element.TipoEnvioEncuesta === 2
-                                                                                              ? 'Whatsapp'
-                                                                                              : 'Otro' }} </td>
+                  <td mat-cell *matCellDef="let element"> 
+                    {{ element.TipoEnvioEncuesta === 1 ? 'Mail' : element.TipoEnvioEncuesta === 2 ? 'Whatsapp' : element.TipoEnvioEncuesta === 3 ? 'Mail & Whatsapp' :  'Otro' }} 
+                  </td>
                 </ng-container>
               
                 <!-- FechaRegistro -->
@@ -231,6 +229,7 @@
                             <mat-option [value]="0">{{'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate}}</mat-option>
                             <mat-option [value]="1">Email</mat-option>
                             <mat-option [value]="2">WhatsApp</mat-option>
+                            <mat-option [value]="3">Email y WhatsApp</mat-option>
                           </mat-select>
                         </mat-form-field>
                       </div>

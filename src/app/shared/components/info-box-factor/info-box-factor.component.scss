@@ -1,0 +1,52 @@
+.factor-card {
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+  border-left: 4px solid transparent;
+  background: #fff;
+
+  &.green  { border-left-color: #21a67a; }
+  &.orange { border-left-color: #ff9f1a; }
+  &.red    { border-left-color: #e54b4b; }
+}
+
+.fc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.fc-title { font-weight: 600; font-size: .98rem; line-height: 1.2; }
+.fc-n     { font-size: .85rem; opacity: .7; }
+
+.fc-grid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.gauge-wrap { display:flex; align-items:center; justify-content:center; }
+.gauge-number { font-weight: 700; font-size: 1.05rem; }
+.gauge-unit   { font-weight: 600; font-size: .85rem; margin-left: 2px; opacity: .85; }
+
+.fc-right { display:flex; flex-direction: column; gap: 10px; }
+
+.trend-line {
+  display:flex; align-items:center; gap:6px; font-size:.92rem;
+  .trend-text { font-weight: 600; }
+  .trend-label { opacity: .8; }
+}
+
+.fc-badges { display:flex; gap:8px; flex-wrap:wrap; }
+.chip {
+  display:inline-flex; align-items:center; border-radius: 10px;
+  padding: 4px 8px; font-size: .78rem; font-weight: 500;
+}
+.chip-soft { background:#f4f5f7; color:#27313f; }
+.chip-soft.danger { background:#fdecec; color:#b42828; }
+.chip-soft.muted  { background:#f6f8fb; color:#6b7785; }
+
+/* Dark opcional si usas clase .dark */
+:root.dark .factor-card { background:#12161d; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+:root.dark .chip-soft { background:#1b222b; color:#dce3ee; }
+:root.dark .chip-soft.danger { background:#2a1d1d; color:#f2b2b2; }
+:root.dark .chip-soft.muted { background:#1b222b; color:#9aa4b2; }

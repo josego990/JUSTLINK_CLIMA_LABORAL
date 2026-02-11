@@ -12,15 +12,27 @@ import { NgxGaugeModule } from 'ngx-gauge';
 export class InfoBoxFactorComponent {
   @Input() title: string = '';
   @Input() value: string = '';
+
   @Input() trendDirection: 'up' | 'down' = 'up';
   @Input() trendPercentage: string = '';
   @Input() trendText: string = '';
-  @Input() colorClass: string = '';
-  @Input() gaugeColor: string= ''
-  // Nuevos inputs para el gauge
+
+  @Input() colorClass: string = '';   // 'green' | 'orange' | 'red'
+  @Input() gaugeColor: string = '';
+  @Input() gaugeBg?: string;          // NUEVO: color de pista del gauge
+
   @Input() gaugeValue: number = 0;
   @Input() gaugeSize: number = 120;
   @Input() gaugeType: 'full' | 'semi' = 'semi';
   @Input() gaugeThick: number = 10;
-}
 
+  // NUEVOS: métricas compactas
+  @Input() pct_opt1: number | null = null;
+  @Input() pct_opt2: number | null = null;
+  @Input() pct_opt3: number | null = null;
+  @Input() pct_opt4: number | null = null;
+
+
+
+
+}

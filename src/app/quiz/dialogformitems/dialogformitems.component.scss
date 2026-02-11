@@ -12,3 +12,78 @@
     z-index: 9999; /* asegúrate que esté por encima del contenido */
   }
   
+  .gf-dropzone { display: block; }
+.factor-dropzone { padding: 8px 0; }
+
+.factor-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:8px;
+}
+
+.factor-title-text .factor-name{ font-weight:600; margin-left: 10px;}
+.factor-title-text .factor-desc{ opacity:0.75; font-size:14px; margin-left: 15px;}
+
+.question-dropzone { overflow-x: auto; }
+
+/* Opcional: mejora visual del drag */
+.cdk-drag-preview { box-shadow: 0 8px 24px rgba(0,0,0,.15); border-radius: 8px; }
+.cdk-drag-placeholder { opacity: .2; }
+
+.values-cell {
+  display: inline-block;
+  max-width: 420px;    // ajusta según tu layout
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.gf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.gf-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;   /* <- clave */
+}
+
+.gf-field {
+  width: 100%;
+}
+
+/* Botón alineado al mat-form-field (fill ≈ 56px) */
+.gf-add-btn {
+  height: 56px;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Evita que el ícono “empuje” el alto */
+.gf-add-btn mat-icon {
+  margin: 0;
+}
+
+/* En pantallas angostas: 1 columna */
+@media (max-width: 768px) {
+  .gf-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Opcional: oculta texto si se queda sin espacio */
+@media (max-width: 1100px) {
+  .btn-text {
+    display: none;
+  }
+}
+

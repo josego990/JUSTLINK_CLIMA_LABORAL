@@ -166,6 +166,8 @@ export class CreateComponent implements OnInit {
     console.log('step1 en DOM:', !!step1);
   }
 
+
+
   ngOnInit() {
 
     //jjg aquí se cambia el idioma al cargar
@@ -237,6 +239,8 @@ export class CreateComponent implements OnInit {
     }
     else {
 
+      console.log('PERMISOS:: ',  this.authService.currentUserValue?.permissions);
+
       //validar permisos de acciones
       const permisioncreate = this.authService.currentUserValue?.permissions.
         find((p: { ActionCode: string; }) => p.ActionCode === 'createclima');
@@ -264,6 +268,7 @@ export class CreateComponent implements OnInit {
       }
 
       if(permisionsend){
+        console.log('sí hay permisos de envío, el botón debería mostrarse---...');
         this.accessToSend = true;
       }else{
         this.accessToSend = false;
@@ -286,13 +291,13 @@ export class CreateComponent implements OnInit {
 
   }
 
-  public getTooltipText(factor: any): string {
-    if (!factor.fields || factor.fields.length === 0) {
-      return 'Sin preguntas';
-    }
-  
-    return factor.fields.map((f: any) => `• ${f.label}`).join(`\n`);
-  }
+  getTooltipText(factor: any): string {
+  const preguntas = (factor.fields || [])
+    .map((q: any, i: number) => `${i + 1}. ${q.label}`)
+    .join('\n');
+
+  return preguntas || 'Sin preguntas';
+}
   
   public getClimasLista():void {
     this.loading = true;
@@ -455,7 +460,7 @@ export class CreateComponent implements OnInit {
       if(resutadi.data.message === 'Factor eliminado correctamente'){          
         Swal.fire({
           title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
-          text: this.translate.instant('MENUITEMS.QUIZ.DELETEDFACTOR'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDFACTOR'),
           icon: 'success',
         }); 
 
@@ -474,6 +479,7 @@ export class CreateComponent implements OnInit {
     })
     return true;
   }
+  
 
   existsRoute(routes: RouteInfo[], target: string): boolean {
       return routes.some(route =>

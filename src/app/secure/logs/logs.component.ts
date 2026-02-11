@@ -71,7 +71,7 @@ export class LogsComponent implements OnInit {
   fetch(cb: (i: NgxDatableLogs[]) => void) {
 
     const req = new XMLHttpRequest();
-    req.open('POST', 'https://api.catarsysdev.com/get-logs');
+    req.open('POST', 'https://api.justlink360.net/get-logs');
     req.onload = () => {
       const data = JSON.parse(req.response);
      //console.log('LOGS:: ', data);

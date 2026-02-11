@@ -43,6 +43,8 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { AuthService } from '@core';
 
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 export interface DialogData {
   id: number;
   action: string;
@@ -61,7 +63,7 @@ export interface DialogData {
         FormsModule,MatSlideToggleModule,
         ReactiveFormsModule,
         MatFormFieldModule,NgxMaskDirective,
-        MatInputModule,
+        MatInputModule, MatProgressSpinnerModule,
         MatRadioModule,
         MatDatepickerModule,
         MatSelectModule,
@@ -89,6 +91,8 @@ export class FormDialogComponent implements OnInit{
   fileName = '';
 
   fileChange = false;
+
+  loading = false;
 
   constructor(
     private languageService: LanguageService,private translate: TranslateService,
@@ -317,11 +321,14 @@ export class FormDialogComponent implements OnInit{
   }
 
   submit() {
+    this.loading = true;
+
     if (this.userForm.invalid) {
       // chequea el error de mismatch
       if (this.userForm.hasError('passwordMismatch')) {
         // muestra un mensaje global o marca el campo confirm
       }
+      this.loading = false;
       return;
     }
 
@@ -339,7 +346,7 @@ export class FormDialogComponent implements OnInit{
          //console.log('response:: ', response);
           if(this.fileChange){
 
-            axios.post('https://api.catarsysdev.com/upload-file-v2', this.formFileData, {
+            axios.post('https://api.justlink360.net/upload-file-v2', this.formFileData, {
               headers: { 'Content-Type': 'multipart/form-data' },
 
               onUploadProgress: (e) => {
@@ -348,13 +355,14 @@ export class FormDialogComponent implements OnInit{
               }
             })
             .then(() => console.log('Archivo subido'))
-            .catch(err => console.error(err));
+            .catch(err => {console.error(err); this.loading = false;  } );
           }
           
           
           this.dialogRef.close(response)
         },
         error: (err) => console.error('Update Error:', err)
+        
       });
 
     } else {
@@ -363,7 +371,8 @@ export class FormDialogComponent implements OnInit{
         next: (response) => {
          //console.log('response gfuardado:: ', response);
           // Si necesitas token/bearer agrégalo en headers
-          axios.post('https://api.catarsysdev.com/upload-file-v2', this.formFileData, {
+                    //http://98.88.117.108:3030
+          axios.post('https://api.justlink360.net/upload-file-v2', this.formFileData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (e) => {
               const pct = Math.round((e.loaded * 100) / (e.total ?? 1));

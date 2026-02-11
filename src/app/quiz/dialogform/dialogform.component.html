@@ -13,18 +13,32 @@
           <div  class="row">
           
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
-                <mat-form-field appearance="fill" class="w-100">
-                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
-                  <mat-select formControlName="IdOrganization" (selectionChange)="onOrganizationChange($event)">
-                    <mat-option
-                      *ngFor="let organization of dataSourceOrganizations" 
-                      [value]="organization.Id"
-                    >
-                      {{ organization.Nombre }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>                
+              <mat-form-field appearance="fill" class="w-100">
+                <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
+
+                <mat-select
+                  formControlName="IdOrganization"
+                  (selectionChange)="onOrganizationChange($event)"
+                  [disabled]="loadingOrganizations"
+                  >
+                  <mat-option
+                    *ngFor="let organization of dataSourceOrganizations"
+                    [value]="organization.Id"
+                  >
+                    {{ organization.Nombre }}
+                  </mat-option>
+                </mat-select>
+
+                <!-- Spinner a la derecha (suffix) -->
+                <mat-progress-spinner
+                  *ngIf="loadingOrganizations"
+                  matSuffix
+                  diameter="18"
+                  mode="indeterminate"
+                ></mat-progress-spinner>
+              </mat-form-field>
             </div>
+
 
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
               <div class="text-inside">
@@ -69,6 +83,22 @@
             </div>
 
             <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
+              <!-- Imagen URL -->
+              <div class="col-sm-6">
+                <label>{{'MENUITEMS.QUIZ.URLIMAGE' | translate}} </label>
+                <input style="margin-left: 10px" type="file" (change)="onSelectFile($event)"  />
+
+              </div>
+
+              <div class="col-sm-6">
+                <img *ngIf="url" [src]="url" class=" mt-2" />
+              </div>
+
+
+            </div>
+
+            <!--
+            <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="outline">
                   <mat-label>{{'MENUITEMS.QUIZ.URLIMAGE' | translate}}</mat-label>
@@ -80,6 +110,7 @@
               </div>
             </div>
 
+            -->
 
             <!-- 
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
@@ -103,8 +134,7 @@
               </div>
             </div>
             -->
-
-           
+    
             <!--
             <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
               <div class="text-inside">
@@ -118,13 +148,14 @@
               </div>
             </div>
             -->
-            
+
           </div>
     
           
+          
           <div class="btn-sec">
-            <button type="submit" style="border-radius: 8px;" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVE' | translate}}</button>
-            <button style="color:#91a1a4;" type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CANCEL' | translate}}</button>
+            <button type="submit" style="border-radius: 5px;" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVE' | translate}}</button>
+            <button style="color:#91a1a4;" style="border-radius: 5px;"  type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CANCEL' | translate}}</button>
           </div>
         </form>
 

@@ -18,7 +18,7 @@ export class AuthService {
 
   public get currentUserValue(): User | null {
     return this.currentUserSubject.value;
-  }
+  } 
 
   /**
    * Llama al endpoint de login y actualiza el estado interno.
@@ -28,7 +28,9 @@ export class AuthService {
     //console.log('user enviado:: ', { user, pass });
     return this.http
       .post<{ message: string; data: User }>(
-        'https://api.catarsysdev.com/logni13', // URL de tu API
+        //'https://api.justlink360.net/logni13',
+        //'http://98.88.117.108:3030/logni13',
+        'http://localhost:3030/logni13',
         { user, pass }
       )
       .pipe(

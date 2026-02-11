@@ -44,6 +44,9 @@ export function buildDemographicList(
   data: Record<string, any>,
   opts?: { fixedKeys?: string[]; tailN?: number }
   ): CampoDemo[] {
+
+    console.log('data en buildDemographicList: ',data);
+
     const defaultFixed = [
       'Id',
       'IdOrganizacion',
@@ -254,7 +257,7 @@ export class CrearEmpleadosComponent implements OnInit {
 
     //validar primero si es admin
     if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      console.log('ES ADMIN EL WEY!');
+      console.log('ES ADMIN!');
       this.getOrganizations();
     }
     else {
@@ -363,6 +366,9 @@ export class CrearEmpleadosComponent implements OnInit {
         // dinámicas = las que no estén en base:
         this.camposDinamicos = todasLasClaves.filter(c => !baseCols.includes(c));
 
+        console.log('todasLasClaves:: ', todasLasClaves);
+        console.log('CAMPOS DINAMICOS ENCONTRADOS:: ', this.camposDinamicos);
+
         this.baseColumns = baseCols;
 
         // Acciones al final
@@ -441,6 +447,7 @@ export class CrearEmpleadosComponent implements OnInit {
       this.organizacionService.saveNewEmployee(reordered)
         .then((response:any) => {
          //console.log('Empleado creada?:', response.data);
+          this.employeeForm.reset(); //funciona?
           this.getEmployeesByOrg();
           Swal.fire({
                       title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
@@ -483,19 +490,19 @@ export class CrearEmpleadosComponent implements OnInit {
   }
 
   editItem(item:any){
-   console.log('ITEM:: ', item);
+   console.log('ITEM en editItem:: ', item);
     
-   this.openDialogEditItems(item);
-
-  }
-
-  
-  openDialogEditItems(item:any): void {
-    //this.id_quiz_context = this.cardsData.indexOf(card);
-  
+   if(this.camposDinamicos.length > 0){
     this.camposDemograficosOrganizacion = buildDemographicList(item);
+   }
+   else{
+    this.camposDemograficosOrganizacion = [];
+   }
+   
     item.camposDemograficos = this.camposDemograficosOrganizacion;
     item.IdOrganizacion = this.idOrganization;
+
+    console.log('this.camposDemograficosOrganizacion:: ', this.camposDemograficosOrganizacion);
 
     const dialogRef = this.dialogItemModel.open(DialogformEditEmployeeComponent, {
       width:  '95vw',
@@ -510,7 +517,11 @@ export class CrearEmpleadosComponent implements OnInit {
         this.getEmployeesByOrg();
      
     });
+
   }
+
+  
+
 
   //separar los demograficos
 
@@ -605,9 +616,11 @@ export class CrearEmpleadosComponent implements OnInit {
         if (!nombres) errores.push(`Fila ${filaExcel}: El campo NOMBRES es obligatorio.`);
         else if (!nameRegex.test(nombres)) errores.push(`Fila ${filaExcel}: NOMBRES contiene caracteres no permitidos.`);
   
+        /*
         if (!apellidos) errores.push(`Fila ${filaExcel}: El campo APELLIDOS es obligatorio.`);
         else if (!nameRegex.test(apellidos)) errores.push(`Fila ${filaExcel}: APELLIDOS contiene caracteres no permitidos.`);
-  
+        */
+       
         if (!telefono) errores.push(`Fila ${filaExcel}: El campo TELEFONO es obligatorio.`);
         else if (!isValidPhoneE164(telefono)) errores.push(`Fila ${filaExcel}: TELEFONO debe tener 8 dígitos numéricos.`);
 
@@ -645,7 +658,7 @@ export class CrearEmpleadosComponent implements OnInit {
           icon: 'error',
           width: 600,
         });
-        return reject('Errores de validación.');
+        return reject(errores);
       }
   
       this.jsonData = excel_empleados;
@@ -780,6 +793,113 @@ export class CrearEmpleadosComponent implements OnInit {
 
 
   }
+
+  chunkArray<T>(arr: T[], size: number): T[][];
+  chunkArray<T>(arr: T[], size: number) {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  private async uploadEmployeesInBatches(originalData: any, batchSize = 50) {
+    console.log('entra en upload..');
+
+    const empleados: any[] = originalData?.empleados ?? [];
+    const total = empleados.length;
+    console.log('total empleados:', total, 'batchSize:', batchSize);
+
+    if (!total) {
+      await Swal.fire(
+        this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+        this.translate.instant('MENUITEMS.EMPLOYEE.NOEMPLOYEESTOUPLOAD') || 'No hay empleados para subir.',
+        'info'
+      );
+      return;
+    }
+
+    const chunks = this.chunkArray(empleados, batchSize);
+    console.log('chunks:', chunks.length, 'items por chunk (1ro):', chunks[0]?.length);
+
+    const erroresGlobales: string[] = [];
+    let subidosOk = 0;
+
+    // IMPORTANTE: NO usar await aquí
+    Swal.fire({
+      title: this.translate.instant('MENUITEMS.EMPLOYEE.UPLOADMESSAGE'),
+      html: `${this.translate.instant('MENUITEMS.EMPLOYEE.PROCESSMESSAGE')} 0 / ${chunks.length}`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        console.log('entra en for.. i=', i);
+        const payload = {
+          idOrganizacion: originalData.idOrganizacion,
+          camposDemograficos: originalData.camposDemograficos,
+          empleados: chunks[i]
+        };
+
+        console.log('payload (size): ', payload.empleados.length);
+
+        try {
+          const result: any = await this.organizacionService.saveNewEmployeesExcel(payload);
+          const ok = result?.data?.message === 'Proceso finalizado';
+
+          if (ok) {
+            subidosOk += chunks[i].length;
+          } else {
+            const errs: string[] = result?.data?.errores ?? [];
+            if (errs.length) {
+              erroresGlobales.push(
+                `Lote ${i + 1}/${chunks.length} (${chunks[i].length} empleados):`,
+                ...errs
+              );
+            } else {
+              erroresGlobales.push(
+                `Lote ${i + 1}/${chunks.length} (${chunks[i].length} empleados): respuesta inesperada del servidor.`
+              );
+            }
+          }
+        } catch (e: any) {
+          erroresGlobales.push(
+            `Lote ${i + 1}/${chunks.length} (${chunks[i].length} empleados): ${e?.message ?? e}`
+          );
+        }
+
+        // Actualizar progreso
+        Swal.update({
+          html: `${this.translate.instant('MENUITEMS.EMPLOYEE.SENDINGBATCHES')} ${i + 1} / ${chunks.length}`
+        });
+      }
+
+      // Resultado final
+      if (erroresGlobales.length) {
+        await Swal.fire({
+          title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+          html:
+            `${this.translate.instant('MENUITEMS.EMPLOYEE.ERRFOUNDINSERT')}<br>` +
+            `<pre style="text-align:left;white-space:pre-wrap;max-height:50vh;overflow:auto">` +
+            erroresGlobales.join('\n') +
+            `</pre>`,
+          icon: 'error',
+          width: 700
+        });
+      } else {
+        await Swal.fire(
+          this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
+          this.translate.instant('MENUITEMS.EMPLOYEE.EMPLOYEINSERTSUCCESS'),
+          'success'
+        );
+      }
+    } finally {
+      // Asegura cerrar el modal de carga incluso si hubo errores
+      Swal.close();
+      // Refrescar lista
+      this.getEmployeesByOrg();
+    }
+  }
+
   
   onFileSelected(event: any): void {
     let timerInterval: any;
@@ -829,44 +949,26 @@ export class CrearEmpleadosComponent implements OnInit {
            //console.log('Resultado de XLSX.read =>', wb);
             this.workbook = wb;
 
-            this.convertExcelToJSON().then(() => {
-             //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
-              this.organizacionService.saveNewEmployeesExcel(this.jsonData).then((result:any) => {
-               //console.log('RESULTADO DEL ENVIO BATCH: ', result);
+            this.convertExcelToJSON()
+              .then(async () => {
+                console.log('this.jsonData: ', this.jsonData);
+                // Envía en lotes de 50 (puedes ajustar a 100, etc.)
+                await this.uploadEmployeesInBatches(this.jsonData, 50);
 
-                if(result.data.message === 'Empleados insertados exitosamente'){
-                  //Swal.close();
-                  
-                  Swal.fire({
-                    title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
-                    text: this.translate.instant('MENUITEMS.EMPLOYEE.FINISHMSGB'),
-                    icon: 'success',
-                  });
-                } else {
-                  if (result.data.errores && result.data.errores.length > 0) {
-                    Swal.fire({
-                      title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
-                      html: this.translate.instant('MENUITEMS.EMPLOYEE.ERRFOUNDINSERT')+'<br><pre style="text-align:left">' + result.data.errores.join('<br>') + '</pre>',
-                      icon: 'error',
-                      width: 600,
-                    });
-                  } else {
-                    Swal.fire(this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'), 
-                      this.translate.instant('MENUITEMS.EMPLOYEE.EMPLOYEINSERTSUCCESS'), 
-                      'success');
-                  }
-                }
-                this.getEmployeesByOrg();
-              }).catch((error)=> {
+              })
+              .catch((error) => {
+                console.error('Error al convertir excel a json!', error);
                 Swal.fire({
                   title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
-                  text: this.translate.instant('MENUITEMS.EMPLOYEE.ERRUPLOADDATA') + error,
+                  html:
+                    this.translate.instant('MENUITEMS.EMPLOYEE.ERRFOUNDINSERT') +
+                    '<br><pre style="text-align:left">' +
+                    (error?.toString?.() ?? error) +
+                    '</pre>',
                   icon: 'error',
+                  width: 600
                 });
-              }) 
-            }).catch((error) => {
-              console.error('Error al convertir excel a json!');
-            } );
+              });
           } catch (err) {
             console.error('Error leyendo el excel:', err);
           }

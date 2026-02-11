@@ -26,11 +26,11 @@ import { TranslateModule } from '@ngx-translate/core';
 @Component({
   selector: 'app-dynamic-form',
   imports: [
-    MatDialogModule, MatTableModule, MatIconModule, MatExpansionModule, TranslateModule,
-    FormsModule, ReactiveFormsModule, MatDividerModule, MatFormFieldModule, MatCardModule,
+    MatDialogModule, MatTableModule, MatIconModule, MatExpansionModule,
+    FormsModule, ReactiveFormsModule, MatDividerModule, MatFormFieldModule,
     MatTooltipModule, MatChipsModule, MatOptionModule, MatRippleModule,
     MatProgressSpinnerModule, MatRadioModule, MatInputModule, MatSelectModule,
-    CommonModule, MatButtonModule
+    CommonModule, MatButtonModule, MatCardModule, TranslateModule
   ],
   template: `
   <div class="df-body">
@@ -38,6 +38,51 @@ import { TranslateModule } from '@ngx-translate/core';
     <!-- Contenedor principal -->
     <div class="df-container">
       <form [formGroup]="form" novalidate>
+
+        <!-- ===================== -->
+        <!-- SECCIÓN: SELECTDEM    -->
+        <!-- ===================== -->
+        <section class="gf-card" *ngIf="selectDemFields.length > 0" >
+          <div class="gf-card__header" role="group" aria-label="Datos demográficos">
+            <div class="gf-card__accent"></div>
+            <div class="gf-card__titles">
+              <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+              <h2 class="gf-card__title">Datos demográficos</h2>
+              <div class="gf-card__meta">
+                <!-- puedes poner un subtítulo si quieres -->
+              </div>
+            </div>
+          </div>
+
+          <mat-card class="serie-card" *ngFor="let field of selectDemFields; trackBy: trackByIdx">
+            <mat-card-content class="serie-card__content">
+
+              <div class="q-block">
+                <div class="q-title">
+                  <span class="q-index">{{ field.qIndex }}.</span>
+                  <span>{{ field.label }}</span>
+                </div>
+
+                <mat-radio-group
+                  [formControlName]="field.name"
+                  class="q-radio-group">
+                  <mat-radio-button
+                    *ngFor="let option of field.options; trackBy: trackByIdx"
+                    [value]="option.value"
+                    class="q-radio">
+                    {{ option.label }}
+                  </mat-radio-button>
+                </mat-radio-group>
+
+                <div class="q-error" *ngIf="form.get(field.name)?.invalid">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
+                </div>
+              </div>
+
+            </mat-card-content>
+          </mat-card>
+        </section>
 
         <!-- Gran Factores -->
        <section class="gf-card" *ngFor="let gf of formConfig!.GranFactores; trackBy: trackByIdx">
@@ -69,11 +114,21 @@ import { TranslateModule } from '@ngx-translate/core';
                   <!-- TEXT -->
                   <ng-container *ngIf="field.type === 'text'">
                     <div class="q-block">
-                      <label class="q-title">{{ field.label }}</label>
+                      <div class="q-title">
+                        <span class="q-index">{{ field.qIndex }}.</span>
+                        <span>{{ field.label }}</span>
+                      </div>
+
                       <mat-form-field appearance="outline" class="w-100">
-                        <input matInput [formControlName]="field.name" [attr.aria-label]="field.label"
-                               [maxlength]="field.maxLength || 500">
-                        <mat-hint align="end">{{ (form.get(field.name)?.value?.length || 0) }}/{{ field.maxLength || 500 }}</mat-hint>
+                        <input
+                          matInput
+                          [formControlName]="field.name"
+                          [attr.aria-label]="field.label"
+                          [maxlength]="field.maxLength || 500"
+                        />
+                        <mat-hint align="end">
+                          {{ (form.get(field.name)?.value?.length || 0) }}/{{ field.maxLength || 500 }}
+                        </mat-hint>
                         <mat-error *ngIf="form.get(field.name)?.invalid">
                           {{ field.label }} {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
                         </mat-error>
@@ -81,25 +136,37 @@ import { TranslateModule } from '@ngx-translate/core';
                     </div>
                   </ng-container>
 
-                  <!-- IATEXT (igual que text; lo separamos por si luego analizas con IA) -->
+                  <!-- IATEXT -->
                   <ng-container *ngIf="field.type === 'iatext'">
                     <div class="q-block">
-                      <label class="q-title">{{ field.label }}</label>
+                      <div class="q-title">
+                        <span class="q-index">{{ field.qIndex }}.</span>
+                        <span>{{ field.label }}</span>
+                      </div>
+
                       <mat-form-field appearance="outline" class="w-100">
-                        <textarea matInput rows="3" [formControlName]="field.name" [maxlength]="field.maxLength || 800"></textarea>
-                        <mat-hint align="end">{{ (form.get(field.name)?.value?.length || 0) }}/{{ field.maxLength || 800 }}</mat-hint>
+                        <textarea
+                          matInput
+                          rows="3"
+                          [formControlName]="field.name"
+                          [maxlength]="field.maxLength || 800"
+                        ></textarea>
+                        <mat-hint align="end">
+                          {{ (form.get(field.name)?.value?.length || 0) }}/{{ field.maxLength || 800 }}
+                        </mat-hint>
                         <mat-error *ngIf="form.get(field.name)?.invalid">
                           {{ field.label }} {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
                         </mat-error>
                       </mat-form-field>
                     </div>
                   </ng-container>
+
 
                   <!-- RADIO -->
                   <ng-container *ngIf="field.type === 'radio'">
                     <div class="q-block">
                       <div class="q-title">
-                        <span class="q-index">{{ i + 1 }}.</span>
+                        <span class="q-index">{{ field.qIndex }}.</span>
                         <span>{{ field.label }}</span>
                       </div>
                       <mat-radio-group [formControlName]="field.name" class="q-radio-group">
@@ -115,19 +182,62 @@ import { TranslateModule } from '@ngx-translate/core';
                     </div>
                   </ng-container>
 
-                  <!-- SLIDER (input range nativo con estilos) -->
+                  <!-- SLIDER -->
                   <ng-container *ngIf="field.type === 'slider'">
-                    <div class="q-block">
-                      <div class="q-title">{{ field.label }}</div>
-                      <input class="q-range" type="range"
-                             [formControlName]="field.name"
-                             [min]="field.min" [max]="field.max" [step]="field.step || 1" />
-                      <div class="q-range-value">{{ form.get(field.name)?.value }}</div>
+                    <div class="q-block slider-block">
+                      <div class="q-title">
+                        <span class="q-index">{{ field.qIndex }}.</span>
+                        <span>{{ field.label }}</span>
+                      </div>
+
+                      <input class="q-range"
+                            type="range"
+                            [formControlName]="field.name"
+                            [attr.min]="(field.min ?? 0)"
+                            [attr.max]="(field.max ?? 100)"
+                            [attr.step]="(field.step ?? 1)"
+                            (input)="onSliderInput(field.name, $event)"
+                            [style.background]="getRangeBackground(field.name, field.min ?? 0, field.max ?? 100)" />
+
+                      <!-- Regla / ticks -->
+                      <div class="q-ticks" [style.gridTemplateColumns]="'repeat(' + getTickCount(field) + ', 1fr)'">
+                        <span *ngFor="let t of getTicks(field); let i = index"
+                              class="q-tick">
+                          <i class="q-tick-mark"></i>
+                          <em class="q-tick-label">{{ t }}</em>
+                        </span>
+                      </div>
+
+                      <div class="q-range-value" style="font-size: 20px">
+                        Selección: {{ form.get(field.name)?.value ?? (field.min ?? 0) }}
+                      </div>
+
                       <div class="q-error" *ngIf="form.get(field.name)?.invalid">
                         {{ field.label }} {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
                       </div>
                     </div>
                   </ng-container>
+
+                  <!-- SELECT (lista) -->
+                  <ng-container *ngIf="field.type === 'select'">
+                    <div class="q-block">
+                      <div class="q-title">
+                        <span class="q-index">{{ field.qIndex }}.</span>
+                        <span>{{ field.label }}</span>
+                      </div>
+                      <mat-radio-group [formControlName]="field.name" class="q-radio-group">
+                        <mat-radio-button *ngFor="let option of field.options; trackBy: trackByIdx"
+                                          [value]="option.value" class="q-radio">
+                          {{ option.label }}
+                        </mat-radio-button>
+                      </mat-radio-group>
+                      <div class="q-error" *ngIf="form.get(field.name)?.invalid">
+                        <mat-icon aria-hidden="true">error</mat-icon>
+                        {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
+                      </div>
+                    </div>
+                  </ng-container>
+
 
                   <mat-divider class="q-divider"></mat-divider>
                 </ng-container>
@@ -159,6 +269,55 @@ import { TranslateModule } from '@ngx-translate/core';
   </div>
   `,
   styles: [`
+
+
+.q-range {
+  width: 100%;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb; /* será sobrescrito por [style.background] */
+  outline: none;
+}
+
+/* Thumb */
+.q-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #0d6efd;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(13,110,253,.2);
+}
+.q-range::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #0d6efd; border: none;
+}
+
+/* Regla / ticks */
+.q-ticks {
+  margin-top: 8px;
+  display: grid;
+  align-items: start;
+}
+.q-tick {
+  position: relative;
+  text-align: center;
+}
+.q-tick-mark {
+  display: block;
+  height: 8px;
+  width: 1px;
+  background: #9ca3af;
+  margin: 0 auto 2px auto;
+}
+.q-tick-label {
+  font-style: normal;
+  font-size: 12px;
+  color: #475569;
+}
+
     .df-body { padding: 8px 12px 80px; background:#f7f8fa; }
     .df-container { max-width: 980px; margin: 0 auto; }
     .w-100 { width: 100%; }
@@ -187,10 +346,12 @@ import { TranslateModule } from '@ngx-translate/core';
     .q-divider { margin:12px 0; }
 
     /* Range estilizado */
+
     .q-range { width:100%; appearance:none; height:4px; border-radius:4px; background:#e5e7eb; outline:none; }
     .q-range::-webkit-slider-thumb { appearance:none; width:18px; height:18px; border-radius:50%; background:#0d6efd; cursor:pointer; box-shadow:0 0 0 2px #fff, 0 0 0 4px rgba(13,110,253,.2); }
     .q-range::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#0d6efd; border:none; }
     .q-range-value { margin-top:6px; font-weight:600; color:#334155; }
+    .q-range { pointer-events: auto; z-index: 1; }
 
     /* Barra fija inferior */
     .submit-bar { position:fixed; left:0; right:0; bottom:0; z-index:999; display:flex; gap:16px; align-items:center; justify-content:center;
@@ -230,6 +391,8 @@ export class DynamicFormComponent implements OnInit {
   langStoreValue?: any;
   btnIsDisabled = false;
 
+  selectDemFields: any[] = [];
+
   constructor(
     private formBuilderService: FormBuilderService,
     public languageService: LanguageService,
@@ -243,8 +406,17 @@ export class DynamicFormComponent implements OnInit {
     this.languageService.getLanguageChangeSubject().subscribe(l => this.translate.use(l));
     this.langStoreValue = this.lang;
 
+    console.log('this.formconfig:: ', this.formConfig);
+
     this.form = this.formBuilderService.buildForm(this.formConfig!);
     this.idFlujo = this.formConfig!.Id;
+
+    this.asignarIndicesGlobales();
+    
+    // 👇 AQUÍ extraemos los selectdem
+    this.selectDemFields = this.extractSelectDemFields(this.formConfig!);
+    console.log('selectDemFields => ', this.selectDemFields);
+
   }
 
   /** Progreso visual */
@@ -257,6 +429,49 @@ export class DynamicFormComponent implements OnInit {
     if (!this.totalFields) return 0;
     return Math.max(0, Math.min(100, Math.round((this.answeredCount / this.totalFields) * 100)));
   }
+
+  private extractSelectDemFields(config: any): any[] {
+  if (!config) return [];
+
+  const result: any[] = [];
+
+  // 1) Caso ideal: usar la lista plana de fields del flujo
+  if (Array.isArray(config.fields) && config.fields.length) {
+    return config.fields
+      .filter((f: any) => f.type === 'selectdem' && f.is_active !== 0)
+      .sort((a: any, b: any) => (a.qIndex ?? 0) - (b.qIndex ?? 0));
+  }
+
+  // 2) Fallback: recorrer GranFactores → series → fields
+  if (Array.isArray(config.GranFactores)) {
+    for (const gf of config.GranFactores) {
+      if (!gf?.series) continue;
+
+      for (const serie of gf.series) {
+        if (!serie?.fields) continue;
+
+        for (const f of serie.fields) {
+          if (f?.type === 'selectdem' && f.is_active !== 0) {
+            result.push(f);
+          }
+        }
+      }
+    }
+  }
+
+  // 3) Quitar duplicados por id (por si aparecen en varios arrays)
+  const uniqueById = new Map<number, any>();
+  for (const f of result) {
+    const key = f.id ?? f.name;
+    if (!uniqueById.has(key)) {
+      uniqueById.set(key, f);
+    }
+  }
+
+  return Array.from(uniqueById.values())
+    .sort((a: any, b: any) => (a.qIndex ?? 0) - (b.qIndex ?? 0));
+}
+
 
   trackByIdx = (_: number, __: any) => _;
 
@@ -275,12 +490,31 @@ export class DynamicFormComponent implements OnInit {
 
     const respuestas = this.form.value;
     const entries: [string, any][] = Object.entries(respuestas);
-    const g_d: any = { res: [], head: [{ IdEmpleado: this.idEmpleado }, { IdFlujo: this.idFlujo }] };
+    const g_d: any = 
+      { 
+        res: [], 
+        head: [{ IdEmpleado: this.idEmpleado }, { IdFlujo: this.idFlujo }],
+        IdEncuestaEmpleado: this.idEncuestaEmpleado,
+        Estado: 'Contestada',
+        FechaInicio: null,
+        FechaFinalizacion: new Date
+      };
 
     entries.forEach(([name, valor]) => {
-      const newid = this.getFieldIdByName(name);
-      const tipo = name.substring(0, 3);
-      g_d.res.push({ idPregunta: (newid ?? '').toString(), valor, tipo });
+      console.log('name,valor: ', name + ', ' + valor);
+
+      if(name.substring(0,6) == 'seldem'){
+        const newid = this.getFieldIdByName(name);
+        const tipo = name.substring(0, 6);
+        g_d.res.push({ idPregunta: (newid ?? '').toString(), valor, tipo });
+      }
+      else{
+        const newid = this.getFieldIdByName(name);
+        const tipo = name.substring(0, 3);
+        g_d.res.push({ idPregunta: (newid ?? '').toString(), valor, tipo });
+      }
+
+      
     });
 
     Swal.fire({
@@ -292,17 +526,19 @@ export class DynamicFormComponent implements OnInit {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('LO QUE SE VA ENVIAR....', );
-
-    this.organizacionService.savePreguntas(g_d).then((resilxis) => {
-      if (resilxis.data.message === 'Respuestas guardadas correctamente') {
-        const datasUpdate: any = {
+    //console.log('LO QUE SE VA ENVIAR....', );
+/*
+    const datasUpdate: any = {
           IdEncuestaEmpleado: this.idEncuestaEmpleado,
           Estado: 'Contestada',
           FechaInicio: null,
           FechaFinalizacion: new Date
         };
-        this.updateClimaEncuesta(datasUpdate);
+    this.updateClimaEncuesta(datasUpdate);
+*/
+    this.organizacionService.savePreguntas(g_d).then((resilxis) => {
+      if (resilxis.data.message === 'Respuestas guardadas y encuesta actualizada correctamente') {
+        
         Swal.fire({
           icon: 'success',
           title: this.translate.instant('MENUITEMS.DYNAMIC.SURVEYSUCCESS'),
@@ -325,6 +561,34 @@ export class DynamicFormComponent implements OnInit {
     });
   }
 
+
+  getRangeBackground(ctrlName: string, min: number, max: number): string {
+  const val = Number(this.form.get(ctrlName)?.value ?? min);
+  const pct = ((val - min) * 100) / Math.max(1, (max - min));
+  // color activo y color base
+  const active = '#0d6efd';
+  const base = '#e5e7eb';
+  return `linear-gradient(to right, ${active} 0%, ${active} ${pct}%, ${base} ${pct}%, ${base} 100%)`;
+}
+
+// cuántas marcas mostrar (una por paso, acotando para no saturar)
+getTickCount(field: any): number {
+  const min = Number(field.min ?? 0);
+  const max = Number(field.max ?? 10);
+  const step = Math.max(1, Number(field.step ?? 1));
+  // máximo 20 marcas para no romper layout
+  return Math.min(20, Math.floor((max - min) / step) + 1);
+}
+
+getTicks(field: any): number[] {
+  const min = Number(field.min ?? 0);
+  const max = Number(field.max ?? 10);
+  const step = Math.max(1, Number(field.step ?? 1));
+  const ticks: number[] = [];
+  for (let v = min; v <= max && ticks.length < 20; v += step) ticks.push(v);
+  return ticks;
+}
+
   private scrollToFirstInvalid(): void {
     // intenta enfocar el primer control inválido
     const el = document.querySelector('.ng-invalid[formcontrolname]') as HTMLElement | null;
@@ -333,6 +597,12 @@ export class DynamicFormComponent implements OnInit {
       el.focus?.();
     }
   }
+
+  onSliderInput(ctrlName: string, ev: Event) {
+  const v = Number((ev.target as HTMLInputElement).value);
+  this.form.get(ctrlName)?.setValue(v, { emitEvent: true });
+}
+
 
   getFieldIdByName(targetName: any): number | undefined {
     for (const serie of this.formConfig!.series) {
@@ -346,7 +616,23 @@ export class DynamicFormComponent implements OnInit {
     this.organizacionService.updateClimaEncuesta(data);
   }
 
-  
+  private asignarIndicesGlobales(): void {
+    if (!this.formConfig?.GranFactores) return;
+
+    let counter = 0;
+
+    for (const gf of this.formConfig.GranFactores) {
+      for (const serie of gf.series ?? []) {
+        for (const field of serie.fields ?? []) {
+          // Numerar solo preguntas que llevan índice visual
+          if (['radio', 'text', 'iatext', 'slider', 'select'].includes(field.type)) {
+              counter += 1;
+              field.qIndex = counter;
+            }
+        }
+      }
+    }
+  }
 
   translateRadioOptionLabels(config: any, lang: string): void {
     this.lang = lang;

@@ -22,3 +22,13 @@ input[type="range"], label {
   vertical-align: middle;
 }
 
+
+.table-loader {
+  position: absolute;
+  inset: 0;                 // top:0 right:0 bottom:0 left:0
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(36, 33, 33, 0.7);
+  z-index: 10;
+}

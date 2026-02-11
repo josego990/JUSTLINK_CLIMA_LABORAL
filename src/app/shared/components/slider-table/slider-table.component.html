@@ -1,0 +1,55 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Resultados de Rangos</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="table-wrap">
+      <table mat-table [dataSource]="rows" class="mat-elevation-z8 slider-table">
+
+        <!-- Pregunta -->
+        <ng-container matColumnDef="pregunta">
+          <th mat-header-cell *matHeaderCellDef>Pregunta</th>
+          <td mat-cell *matCellDef="let row">{{ row.pregunta }}</td>
+        </ng-container>
+
+        <!-- Factor -->
+        <ng-container matColumnDef="factor">
+          <th mat-header-cell *matHeaderCellDef>Factor</th>
+          <td mat-cell *matCellDef="let row">{{ row.factor }}</td>
+        </ng-container>
+
+        <!-- Columnas dinámicas por valor del rango -->
+        <ng-container *ngFor="let v of valueColumns" [matColumnDef]="'v_' + v">
+          <th mat-header-cell *matHeaderCellDef class="val-header">{{ v }}</th>
+          <td mat-cell *matCellDef="let row" class="val-cell">
+            <ng-container *ngIf="cell(row, v) as d">
+              {{ d.Conteo }}
+              ({{ pct(d.Porcentaje) | number:'1.0-2' }}%)
+              <mat-progress-bar
+                mode="determinate"
+                [value]="d.Porcentaje"
+                [style.--mdc-linear-progress-active-indicator-color]="getColor(d.Porcentaje)">
+              </mat-progress-bar>
+            </ng-container>
+          </td>
+        </ng-container>
+
+        <!-- Promedio -->
+        <ng-container matColumnDef="promedio">
+          <th mat-header-cell *matHeaderCellDef>Promedio</th>
+          <td mat-cell *matCellDef="let row">{{ row.promedio | number:'1.2-2' }}</td>
+        </ng-container>
+
+        <!-- Total respuestas -->
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef>Respuestas</th>
+          <td mat-cell *matCellDef="let row">{{ row.total_respuestas }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+  </mat-card-content>
+</mat-card>

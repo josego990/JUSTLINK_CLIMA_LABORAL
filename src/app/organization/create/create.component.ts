@@ -32,13 +32,16 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { DialogformEditOrganizationComponent } from '../dialogformeditorganization/dialogformeditorganization.component';
+
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 @Component({
   selector: 'app-crear-organizacion',
   templateUrl: './create.component.html',
   styleUrls: ['./create.component.scss'],
   providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
   imports: [
-    BreadcrumbComponent,TranslateModule,
+    BreadcrumbComponent,TranslateModule,MatProgressSpinnerModule,
     MatDialogModule,
     MatTableModule,
     MatIconModule,
@@ -63,6 +66,7 @@ export class CrearOrganizacionComponent implements OnInit {
 
   public dataSourceOrganizations:any = [];
   public dataSourceCountries:any = [];
+  isLoading = false;
   langStoreValue?: string;
   displayedColumns: string[] = [
     'Id',
@@ -140,14 +144,17 @@ export class CrearOrganizacionComponent implements OnInit {
   }
 
   getOrganizations(): void {
+    this.isLoading = true;
     this.organizacionService.getOrganizations()
         .then((response:any) => {
          //console.log('Organizaciones:', JSON.stringify(response.data));
           
           this.dataSourceOrganizations = response.data;
+          this.isLoading = false;
         })
         .catch((error:any) => {
           console.error('Error al obtener organizaciones:', error);
+          this.isLoading = false;
         });
   }
 

@@ -25,7 +25,7 @@
 
     <ng-container [ngSwitch]="currentCard.estadoEnvio">
       <!-- No procesado o creado -->
-      <ng-container *ngSwitchCase="'No procesado'">
+      <ng-container >
         <button mat-raised-button color="primary" (click)="crearEncuestas() " style="border-radius: 8px;">
           📤 Crear Encuestas
         </button>
@@ -139,8 +139,10 @@
         <th mat-header-cell *matHeaderCellDef>CODIGO ENCUESTA</th>
         
                   <!--https://d38he5chu19bcx.cloudfront.net //////////ENVIAR A CONFIGURACION-->
+                  <!--https://justlink360.net/-->
+                  <!--http://localhost:4200/-->
         <td mat-cell *matCellDef="let element">
-          <a [href]="'https://d38he5chu19bcx.cloudfront.net/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado" target="_blank">
+          <a [href]="'https://justlink360.net/#/completeclima/completeclimaalone?key=' + element.CodigoEncuestaEmpleado" target="_blank">
             {{ element.CodigoEncuestaEmpleado }}
           </a>
         </td>

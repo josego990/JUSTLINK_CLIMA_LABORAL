@@ -170,6 +170,7 @@ export class DialogformEditEmployeeComponent implements OnInit {
 
 
      this.employeeFormX = this.fb.group({
+      
         IdEmpleado: [{ value: this.data.Id, disabled: true }],
         Nombres: [this.data.Nombres, Validators.required],
         Apellidos: [this.data.Apellidos, Validators.required],

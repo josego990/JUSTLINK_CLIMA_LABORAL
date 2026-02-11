@@ -91,6 +91,7 @@
       "UPLOADEXCELEMPLOYEE": "Upload Excel",
       "DOWNLOADEXCELEMPLOYEE": "Download Excel Template",
 
+      "SENDINGBATCHES": "Sending employees Batches..",
 
 
 
@@ -153,6 +154,10 @@
       "UPLOADEXCELCLIMA": "Upload Excel",
       "DOWNLOADEXCELCLIMA": "Get Excel Template",
       "FIELDTYPE": "Question Type",
+
+      "LISTSELECTION": "List Selection",
+      "LISTDEMSELECTION": "Demographic List Options",
+
       "MESSAGES": {
         "DELETEDFACTOR": "Factor deleted",
         "ERROR": "Something went wrong",
@@ -241,7 +246,7 @@
      
     },
      "ALONE": {
-      "HELLO": "Welcome",
+      "HELLO": "Welcome dear collaborator",
       "REQUIRED": "This answer is required",
       "NOTVALID": "The survey has already been answered!",
       "GREETEENGS": "thanks you for helping to create a better work environment. Before completing the survey, please keep the following in mind:",
@@ -252,6 +257,19 @@
       "CONDITION3": "*Be honest and sincere in your answers; your opinion is completely confidential and highly valuable.",
       "CONDITION4": "*If you need to stop, make sure to answer all questions before closing.",
       
+
+      "GREETEENGS_APDE": "Dear collaborator,",
+      "CONDITION1_APDE": "We are interested in hearing your opinion about how Colegios APDE is operating, how we can improve the work we do, and the way we are currently doing it.",
+      "CONDITION2_APDE": "We thank you in advance for your time and value your opinion regarding the aspects presented below.",
+
+      "CONDITION3_APDE_1": "We ask you to answer honestly; all the information you provide will be received in an ",
+      "CONDITION3_APDE_2": "anonymous manner,",
+      "CONDITION3_APDE_3": " therefore ",
+      "CONDITION3_APDE_4": "it is confidential",
+      "CONDITION3_APDE_5": " so that you can use this tool in a constructive way and thus help strengthen our work environment.",
+
+
+
       
       "SEND": "SEND SURVEY"
 
@@ -296,6 +314,9 @@
 
 
 
+  "EMAILCOMPOSE":{
+      "NEW_MESSAGE": "Enviar Nuevo Correo"
+    },
 
 
 

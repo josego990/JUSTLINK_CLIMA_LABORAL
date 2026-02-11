@@ -41,13 +41,21 @@ export interface DemograficoSeleccionado {
   valoresSeleccionados: string[];
 }
 
+export interface GranFactorGroup {
+  resumen: ResumenFactor;
+  factores: Record<string, FactorGroup>;
+}
+
 export interface ClimaExportData {
-  [factor: string]: FactorGroup | any; // `any` para header y camposDemograficos
+  [factor: string]: FactorGroup | any;
   header?: {
     nombre_clima: string;
     nombre_organizacion: string;
   };
   camposDemograficos?: DemograficoSeleccionado[];
+
+  // NUEVO
+  granFactores?: Record<string, GranFactorGroup>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,6 +64,140 @@ export class ExcelXlsxService {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Tu App';
     workbook.created = new Date();
+
+     const colorPorPct = (pct: number): { argb: string } => {
+      if (pct >= 91) return { argb: 'FF92D050' }; // Verde
+      if (pct >= 80) return { argb: 'FFFFFF00' }; // Amarillo
+      if (pct >= 60) return { argb: 'FFFFC000' }; // Naranja
+      return { argb: 'FFFF0000' };                // Rojo
+    };
+
+    // ───────────────────────────────────────────────────────────────────────────
+// 0) HOJA 0: “Calificación General”  (antes de todas las demás)
+// ───────────────────────────────────────────────────────────────────────────
+{
+  const cg = (climaData as any)?.calificacionGeneral;
+  if (cg) {
+    const sheet0 = workbook.addWorksheet('Calificación General', {
+      views: [{ showGridLines: true }]
+    });
+
+    // ancho de columnas
+    sheet0.getColumn(1).width = 30;  // títulos
+    sheet0.getColumn(2).width = 20;  // valores
+    sheet0.getColumn(3).width = 20;
+    sheet0.getColumn(4).width = 20;
+
+    const numDemo0 = Array.isArray(climaData.camposDemograficos)
+      ? climaData.camposDemograficos.length
+      : 0;
+    sheet0.views = [
+      { state: 'frozen', xSplit: 0, ySplit: 4 + numDemo0, topLeftCell: 'A1', activeCell: 'A1' }
+    ];
+
+    let r0 = 1;
+
+    // Encabezado
+    if (climaData.header) {
+      const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
+
+      const t = sheet0.getRow(r0);
+      t.getCell(1).value = `Calificación General • ${h.nombre_clima}`;
+      sheet0.mergeCells(r0, 1, r0, 4);
+      t.getCell(1).font = { name: 'Calibri', size: 16, bold: true };
+      t.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r0++;
+
+      const o = sheet0.getRow(r0);
+      o.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
+      sheet0.mergeCells(r0, 1, r0, 4);
+      o.getCell(1).font = { name: 'Calibri', size: 12, italic: true, color: { argb: 'FF333333' } };
+      o.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r0 += 2; // separación
+    }
+
+    // Chips demográficos seleccionados (si existen)
+    if (Array.isArray(climaData.camposDemograficos) && climaData.camposDemograficos.length > 0) {
+      climaData.camposDemograficos.forEach((cd: any) => {
+        const row = sheet0.getRow(r0++);
+        row.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
+        sheet0.mergeCells(r0 - 1, 1, r0 - 1, 4);
+        row.getCell(1).font = { name: 'Calibri', size: 11 };
+        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+      });
+      r0++; // separación
+    }
+
+    // Tarjeta grande con la calificación (Top-2)
+    sheet0.mergeCells(r0, 1, r0 + 2, 4);
+    const big = sheet0.getCell(r0, 1);
+    big.value = Number(cg.pct_top2) / 100; // mostrar como %
+    big.numFmt = '0.0%';
+    big.font = { name: 'Calibri', size: 28, bold: true, color: { argb: 'FF000000' } };
+    big.alignment = { horizontal: 'center', vertical: 'middle' };
+    big.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(Number(cg.pct_top2)) as any };
+    big.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+    const lbl = sheet0.getRow(r0 + 3);
+    sheet0.mergeCells(r0 + 3, 1, r0 + 3, 4);
+    lbl.getCell(1).value = 'Satisfacción (Top-2)';
+    lbl.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
+    lbl.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    r0 += 5;
+
+    // Tabla de métricas rápidas
+    const metricsHeader = sheet0.getRow(r0);
+    metricsHeader.getCell(1).value = 'Métrica';
+    metricsHeader.getCell(2).value = 'Valor';
+    for (let c = 1; c <= 2; c++) {
+      const cell = metricsHeader.getCell(c);
+      cell.font = { name: 'Calibri', size: 11, bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95B3D7' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+    }
+    r0++;
+
+    type M = [string, any, 'pct' | 'int' | 'num'];
+    const metrics: M[] = [
+      ['% Favorable (Top-2)', cg.pct_top2, 'pct'],
+      ['% Desfavorable (Bottom-2)', cg.pct_desfavorable, 'pct'],
+      ['NSAT', cg.nsat, 'num'],
+      ['% General', cg.pct_general, 'pct'],
+      ['Total respuestas', cg.total_respuestas, 'int'],
+      ['Media (1–4)', cg.mean_1_4, 'num']
+    ];
+
+    metrics.forEach((m, i) => {
+      const row = sheet0.getRow(r0 + i);
+      row.getCell(1).value = m[0];
+      row.getCell(1).font = { name: 'Calibri', size: 10 };
+      row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+      row.getCell(1).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+      const valCell = row.getCell(2);
+      if (m[2] === 'pct') {
+        valCell.value = Number(m[1]) / 100;
+        valCell.numFmt = '0.0%';
+      } else if (m[2] === 'int') {
+        valCell.value = Number(m[1]);
+        valCell.numFmt = '0';
+      } else {
+        valCell.value = Number(m[1]);
+        valCell.numFmt = '0.00';
+      }
+      valCell.font = { name: 'Calibri', size: 10 };
+      valCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      valCell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      if (m[0].startsWith('% Favorable')) {
+        valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(Number(cg.pct_top2)) as any };
+      }
+    });
+
+    sheet0.eachRow({ includeEmpty: false }, (row: any) => row.commit());
+  }
+}
+
 
     // ───────────────────────────────────────────────────────────────────────────
     // 1) HOJA 1: “Clima Laboral”
@@ -85,26 +227,21 @@ export class ExcelXlsxService {
 
     // Encabezados de columnas (mantengo textos; mapeo interno cambia)
     const encabezados = [
-      'Total Desacuerdo',
-      'Desacuerdo',
+      'Totalmente Desacuerdo',
+      'En Desacuerdo',
       'De Acuerdo',
-      'Total Acuerdo',
+      'Totalmente de Acuerdo',
       'Insatisfacción',  // ← ahora mapea a pctDesf
       'Satisfacción'     // ← ahora mapea a pctFav
     ];
 
-    const colorPorPct = (pct: number): { argb: string } => {
-      if (pct >= 91) return { argb: 'FF92D050' }; // Verde
-      if (pct >= 80) return { argb: 'FFFFFF00' }; // Amarillo
-      if (pct >= 60) return { argb: 'FFFFC000' }; // Naranja
-      return { argb: 'FFFF0000' };                // Rojo
-    };
+   
 
     const colorEncabezadoPorTexto: Record<string, string> = {
-      'Total Desacuerdo': 'FFFFC0CB',
-      'Desacuerdo':       'FFFFC0CB',
+      'Totalmente Desacuerdo': 'FFFFC0CB',
+      'En Desacuerdo':       'FFFFC0CB',
       'De Acuerdo':       'FFC6EFCE',
-      'Total Acuerdo':    'FFC6EFCE',
+      'Totalmente de Acuerdo':    'FFC6EFCE',
       'Insatisfacción':   'FFD9D9D9',
       'Satisfacción':     'FFD9D9D9'
     };
@@ -122,10 +259,10 @@ export class ExcelXlsxService {
       row1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
       const leyendaDatos = [
-        ['Fortaleza',  'Total acuerdo',     '91-100'],
+        ['Fortaleza',  'Totalmente de Acuerdo',     '91-100'],
         ['Adecuado',   'De acuerdo',        '80-90'],
-        ['Cautela',    'Desacuerdo',        '79-60'],
-        ['Oportunidad','Total desacuerdo',  '59']
+        ['Cautela',    'En Desacuerdo',        '79-60'],
+        ['Oportunidad','Totalmente en desacuerdo',  '59']
       ];
       const leyendaColores = ['FF92D050', 'FFFFFF00', 'FFFFC000', 'FFFF0000'];
       leyendaDatos.forEach((filaValor, idx) => {
@@ -166,149 +303,391 @@ export class ExcelXlsxService {
       currentRow++; // separación
     }
 
-    // --- Recorrer Factores (Hoja 1) ---
-    for (const key of Object.keys(climaData)) {
-      if (key === 'header' || key === 'camposDemograficos') continue;
-      const group = climaData[key] as FactorGroup;
-      if (!group || !group.resumen || !Array.isArray(group.preguntas)) continue;
+    // Lista ordenada de factores con su Gran Factor
+    type FactorEntry = {
+      granFactor?: string;
+      factorKey: string;
+      group: FactorGroup;
+    };
 
-      // Título del factor
-      const rowTitle = sheet1.getRow(currentRow);
-      rowTitle.getCell(1).value = key;
-      sheet1.mergeCells(currentRow, 1, currentRow, 7);
-      rowTitle.height = 20;
-      rowTitle.getCell(1).font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
-      rowTitle.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-      rowTitle.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-      currentRow++;
+    const factorEntries: FactorEntry[] = [];
 
-      // Encabezados
-      const rowHeader = sheet1.getRow(currentRow);
-      rowHeader.getCell(1).value = '';
-      encabezados.forEach((headerText, idx) => {
-        const cell = rowHeader.getCell(idx + 2); // B→G
-        cell.value = headerText;
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorEncabezadoPorTexto[headerText] || 'FFFFFFFF' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-      });
-      currentRow++;
+    const granFactores = climaData.granFactores as Record<string, GranFactorGroup> | undefined;
 
-      // Resultado General (usa pctDesf / pctFav)
-      const r = group.resumen;
-      const rowGeneral = sheet1.getRow(currentRow);
-      rowGeneral.getCell(1).value = 'Resultado General';
-      rowGeneral.getCell(1).font = { name: 'Calibri', size: 11, bold: true };
-      rowGeneral.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-
-      const valoresResumen = [
-        r.pct_opt4,
-        r.pct_opt3,
-        r.pct_opt2,
-        r.pct_opt1,
-        r.pctDesf, // Insatisfacción = %Desfavorable
-        r.pctFav   // Satisfacción  = %Favorable
-      ];
-      valoresResumen.forEach((val, idx) => {
-        const cell = rowGeneral.getCell(idx + 2); // B→G
-        cell.value = val;
-        cell.font = { name: 'Calibri', size: 11 };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (idx === 5) { // columna "Satisfacción" (pctFav) con color
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
+    if (granFactores && Object.keys(granFactores).length) {
+      // Recorremos primero la estructura de Gran Factores
+      for (const gfKey of Object.keys(granFactores)) {
+        const gf = granFactores[gfKey];
+        for (const factorKey of Object.keys(gf.factores)) {
+          const group = gf.factores[factorKey];
+          if (!group || !group.resumen || !Array.isArray(group.preguntas)) continue;
+          factorEntries.push({ granFactor: gfKey, factorKey, group });
         }
-      });
-      currentRow++;
-
-      // Filas por pregunta (usa pctDesf / pctFav)
-      group.preguntas.forEach((q: ItemTransformado) => {
-        const rowPreg = sheet1.getRow(currentRow);
-        rowPreg.getCell(1).value = q.Pregunta;
-        rowPreg.getCell(1).font = { name: 'Calibri', size: 10 };
-        rowPreg.getCell(1).alignment = { wrapText: true, vertical: 'top' };
-
-        const valoresPregunta = [
-          q.pct_opt4,
-          q.pct_opt3,
-          q.pct_opt2,
-          q.pct_opt1,
-          q.pctDesf, // Insatisfacción
-          q.pctFav   // Satisfacción
-        ];
-        valoresPregunta.forEach((val, idx) => {
-          const cell = rowPreg.getCell(idx + 2);
-          cell.value = val;
-          cell.font = { name: 'Calibri', size: 10 };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          if (idx === 5) {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
-          }
-        });
-        currentRow++;
-      });
-
-      currentRow++; // separación factor
+      }
+    } else {
+      // Compatibilidad: sin granFactores, se recorre como antes
+      for (const key of Object.keys(climaData)) {
+        if (['header', 'camposDemograficos', 'granFactores'].includes(key)) continue;
+        const group = climaData[key] as FactorGroup;
+        if (!group || !group.resumen || !Array.isArray(group.preguntas)) continue;
+        factorEntries.push({ granFactor: undefined, factorKey: key, group });
+      }
     }
 
-    // Resumen por Factor (Hoja 1)
-    const rowResumenTitle = sheet1.getRow(currentRow);
-    rowResumenTitle.getCell(1).value = 'Resumen por Factor';
-    sheet1.mergeCells(currentRow, 1, currentRow, 7);
-    rowResumenTitle.height = 20;
-    rowResumenTitle.getCell(1).font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
-    rowResumenTitle.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-    rowResumenTitle.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    currentRow++;
+    // --- Recorrer Factores (Hoja 1) ---
+   
+    // --- Recorrer Factores (Hoja 1) AGRUPADOS por Gran Factor ---
+let currentGranFactor: string | undefined;
 
-    const rowResumenHeader = sheet1.getRow(currentRow);
-    rowResumenHeader.getCell(1).value = 'Factor';
-    rowResumenHeader.getCell(1).font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
-    rowResumenHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF95B3D7' } };
-    rowResumenHeader.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    encabezados.forEach((headerText, idx) => {
-      const cell = rowResumenHeader.getCell(idx + 2);
-      cell.value = headerText;
-      cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorEncabezadoPorTexto[headerText] || 'FFFFFFFF' } };
+for (const entry of factorEntries) {
+  const { granFactor, factorKey, group } = entry;
+
+  // Si cambia el Gran Factor, insertamos una fila de título de Gran Factor
+  if (granFactor && granFactor !== currentGranFactor) {
+    const rowGF = sheet1.getRow(currentRow);
+    rowGF.getCell(1).value = granFactor;
+    sheet1.mergeCells(currentRow, 1, currentRow, 7);
+    rowGF.height = 22;
+    rowGF.getCell(1).font = {
+      name: 'Calibri',
+      size: 14,
+      bold: true,
+      color: { argb: 'FF000000' }
+    };
+    rowGF.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2EFDA' } // verde muy clarito, cámbialo si quieres
+    };
+    rowGF.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    currentRow++;
+    currentGranFactor = granFactor;
+  }
+
+  // Título del factor (igual que antes)
+  const rowTitle = sheet1.getRow(currentRow);
+  rowTitle.getCell(1).value = factorKey;
+  sheet1.mergeCells(currentRow, 1, currentRow, 7);
+  rowTitle.height = 20;
+  rowTitle.getCell(1).font = {
+    name: 'Calibri',
+    size: 13,
+    bold: true,
+    color: { argb: 'FFFFFFFF' }
+  };
+  rowTitle.getCell(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' }
+  };
+  rowTitle.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+  currentRow++;
+
+  // Encabezados (B→G)
+  const rowHeader = sheet1.getRow(currentRow);
+  rowHeader.getCell(1).value = '';
+  encabezados.forEach((headerText, idx) => {
+    const cell = rowHeader.getCell(idx + 2);
+    cell.value = headerText;
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colorEncabezadoPorTexto[headerText] || 'FFFFFFFF' }
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  });
+  currentRow++;
+
+  // Resultado General del factor
+  const r = group.resumen;
+  const rowGeneral = sheet1.getRow(currentRow);
+  rowGeneral.getCell(1).value = 'Resultado General';
+  rowGeneral.getCell(1).font = { name: 'Calibri', size: 11, bold: true };
+  rowGeneral.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  const valoresResumen = [
+    r.pct_opt4,
+    r.pct_opt3,
+    r.pct_opt2,
+    r.pct_opt1,
+    r.pctDesf, // Insatisfacción
+    r.pctFav   // Satisfacción
+  ];
+  valoresResumen.forEach((val, idx) => {
+    const cell = rowGeneral.getCell(idx + 2);
+    cell.value = val;
+    cell.font = { name: 'Calibri', size: 11 };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    if (idx === 5) {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: colorPorPct(val)
+      };
+    }
+  });
+  currentRow++;
+
+  // Filas por Pregunta
+  group.preguntas.forEach((q: ItemTransformado) => {
+    const rowPreg = sheet1.getRow(currentRow);
+    rowPreg.getCell(1).value = q.Pregunta;
+    rowPreg.getCell(1).font = { name: 'Calibri', size: 10 };
+    rowPreg.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+
+    const valoresPregunta = [
+      q.pct_opt4,
+      q.pct_opt3,
+      q.pct_opt2,
+      q.pct_opt1,
+      q.pctDesf, // Insatisfacción
+      q.pctFav   // Satisfacción
+    ];
+    valoresPregunta.forEach((val, idx) => {
+      const cell = rowPreg.getCell(idx + 2);
+      cell.value = val;
+      cell.font = { name: 'Calibri', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      if (idx === 5) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: colorPorPct(val)
+        };
+      }
     });
     currentRow++;
+  });
 
-    for (const key of Object.keys(climaData)) {
-      if (key === 'header' || key === 'camposDemograficos') continue;
-      const group = climaData[key] as FactorGroup;
-      if (!group || !group.resumen) continue;
-      const r = group.resumen;
+  currentRow++; // separación entre factores
+}
 
-      const rowFactRes = sheet1.getRow(currentRow);
-      rowFactRes.getCell(1).value = key;
-      rowFactRes.getCell(1).font = { name: 'Calibri', size: 10 };
-      rowFactRes.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+   // Resumen por Factor (Hoja 1)
+const rowResumenTitle = sheet1.getRow(currentRow);
+rowResumenTitle.getCell(1).value = 'Resumen por Factor';
+sheet1.mergeCells(currentRow, 1, currentRow, 7);
+rowResumenTitle.height = 20;
+rowResumenTitle.getCell(1).font = {
+  name: 'Calibri',
+  size: 13,
+  bold: true,
+  color: { argb: 'FFFFFFFF' }
+};
+rowResumenTitle.getCell(1).fill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FF4472C4' }
+};
+rowResumenTitle.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+currentRow++;
 
-      const valoresFactRes = [
-        r.pct_opt4,
-        r.pct_opt3,
-        r.pct_opt2,
-        r.pct_opt1,
-        r.pctDesf, // Insatisfacción
-        r.pctFav   // Satisfacción
-      ];
-      valoresFactRes.forEach((val, idx) => {
-        const cell = rowFactRes.getCell(idx + 2);
-        cell.value = val;
-        cell.font = { name: 'Calibri', size: 10 };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        if (idx === 5) {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
-        }
-      });
-      currentRow++;
+const rowResumenHeader = sheet1.getRow(currentRow);
+rowResumenHeader.getCell(1).value = 'Factor';
+rowResumenHeader.getCell(1).font = {
+  name: 'Calibri',
+  size: 11,
+  bold: true,
+  color: { argb: 'FFFFFFFF' }
+};
+rowResumenHeader.getCell(1).fill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FF95B3D7' }
+};
+rowResumenHeader.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+encabezados.forEach((headerText, idx) => {
+  const cell = rowResumenHeader.getCell(idx + 2);
+  cell.value = headerText;
+  cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: colorEncabezadoPorTexto[headerText] || 'FFFFFFFF' }
+  };
+  cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  cell.border = {
+    top: { style: 'thin' },
+    left: { style: 'thin' },
+    bottom: { style: 'thin' },
+    right: { style: 'thin' }
+  };
+});
+currentRow++;
+
+// Recorrer factorEntries agrupando por Gran Factor
+currentGranFactor = undefined;
+
+for (const entry of factorEntries) {
+  const { granFactor, factorKey, group } = entry;
+  const r = group.resumen;
+
+  // Fila separadora por Gran Factor
+  if (granFactor && granFactor !== currentGranFactor) {
+    const gfRow = sheet1.getRow(currentRow);
+    gfRow.getCell(1).value = granFactor;
+    sheet1.mergeCells(currentRow, 1, currentRow, 7);
+    gfRow.height = 18;
+    gfRow.getCell(1).font = {
+      name: 'Calibri',
+      size: 11,
+      bold: true,
+      color: { argb: 'FF000000' }
+    };
+    gfRow.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2EFDA' }
+    };
+    gfRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    currentRow++;
+    currentGranFactor = granFactor;
+  }
+
+  const rowFactRes = sheet1.getRow(currentRow);
+  rowFactRes.getCell(1).value = factorKey;
+  rowFactRes.getCell(1).font = { name: 'Calibri', size: 10 };
+  rowFactRes.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+
+  const valoresFactRes = [
+    r.pct_opt4,
+    r.pct_opt3,
+    r.pct_opt2,
+    r.pct_opt1,
+    r.pctDesf,
+    r.pctFav
+  ];
+  valoresFactRes.forEach((val, idx) => {
+    const cell = rowFactRes.getCell(idx + 2);
+    cell.value = val;
+    cell.font = { name: 'Calibri', size: 10 };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    if (idx === 5) {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: colorPorPct(val)
+      };
     }
+  });
+  currentRow++;
+}
 
     sheet1.eachRow({ includeEmpty: false }, (row: any) => row.commit());
+
+    // ───────────────────────────────────────────────
+// Resumen por Gran Factor (Hoja 1)
+// ───────────────────────────────────────────────
+if (climaData.granFactores) {
+  currentRow++; // separación
+
+  const rowGFTitle = sheet1.getRow(currentRow);
+  rowGFTitle.getCell(1).value = 'Resumen por Gran Factor';
+  sheet1.mergeCells(currentRow, 1, currentRow, 7);
+  rowGFTitle.height = 20;
+  rowGFTitle.getCell(1).font = {
+    name: 'Calibri',
+    size: 13,
+    bold: true,
+    color: { argb: 'FFFFFFFF' }
+  };
+  rowGFTitle.getCell(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' }
+  };
+  rowGFTitle.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  currentRow++;
+
+  const rowGFHeader = sheet1.getRow(currentRow);
+  rowGFHeader.getCell(1).value = 'Gran Factor';
+  rowGFHeader.getCell(1).font = {
+    name: 'Calibri',
+    size: 11,
+    bold: true,
+    color: { argb: 'FFFFFFFF' }
+  };
+  rowGFHeader.getCell(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF95B3D7' }
+  };
+  rowGFHeader.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // mismas columnas B→G con tus encabezados
+  encabezados.forEach((headerText, idx) => {
+    const cell = rowGFHeader.getCell(idx + 2);
+    cell.value = headerText;
+    cell.font = {
+      name: 'Calibri',
+      size: 11,
+      bold: true,
+      color: { argb: 'FF000000' }
+    };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: colorEncabezadoPorTexto[headerText] || 'FFFFFFFF' }
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  });
+  currentRow++;
+
+  for (const gfKey of Object.keys(climaData.granFactores)) {
+    const gf = climaData.granFactores[gfKey];
+    const rGF = gf.resumen;
+
+    const rowGF = sheet1.getRow(currentRow);
+    rowGF.getCell(1).value = gfKey;
+    rowGF.getCell(1).font = { name: 'Calibri', size: 10 };
+    rowGF.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+
+    const valoresGF = [
+      rGF.pct_opt4,
+      rGF.pct_opt3,
+      rGF.pct_opt2,
+      rGF.pct_opt1,
+      rGF.pctDesf, // Insatisfacción
+      rGF.pctFav   // Satisfacción
+    ];
+
+    valoresGF.forEach((val, idx) => {
+      const cell = rowGF.getCell(idx + 2);
+      cell.value = val;
+      cell.font = { name: 'Calibri', size: 10 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      if (idx === 5) {
+        // mismo helper que ya usas arriba
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: colorPorPct(val)
+        };
+      }
+    });
+
+    currentRow++;
+  }
+}
 
 
     // ───────────────────────────────────────────────────────────────────────────
