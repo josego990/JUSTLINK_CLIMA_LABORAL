@@ -8,6 +8,7 @@ export interface ItemTransformado {
   Pregunta: string;
   pct_opt1: number;
   pct_opt2: number;
+  pct_opt0?: number;
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
@@ -21,6 +22,7 @@ export interface ItemTransformado {
 export interface ResumenFactor {
   pct_opt1: number;
   pct_opt2: number;
+  pct_opt0?: number;
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
@@ -46,6 +48,20 @@ export interface GranFactorGroup {
   factores: Record<string, FactorGroup>;
 }
 
+export interface PreguntaAbiertaComentario {
+  IdRespuesta?: number;
+  Comentario?: string;
+  FechaRespuesta?: string;
+}
+
+export interface PreguntaAbiertaExport {
+  IdFactor?: number;
+  Factor?: string;
+  IdPregunta?: number;
+  Pregunta?: string;
+  ComentariosJSON?: string | PreguntaAbiertaComentario[];
+}
+
 export interface ClimaExportData {
   [factor: string]: FactorGroup | any;
   header?: {
@@ -56,6 +72,7 @@ export interface ClimaExportData {
 
   // NUEVO
   granFactores?: Record<string, GranFactorGroup>;
+  preguntasAbiertas?: PreguntaAbiertaExport[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -70,6 +87,61 @@ export class ExcelXlsxService {
       if (pct >= 80) return { argb: 'FFFFFF00' }; // Amarillo
       if (pct >= 60) return { argb: 'FFFFC000' }; // Naranja
       return { argb: 'FFFF0000' };                // Rojo
+    };
+
+    const hasNeutralLikert = (() => {
+      const cg = (climaData as any)?.calificacionGeneral;
+      if (cg && (cg.total_opt0 !== undefined || cg.pct_opt0 !== undefined)) {
+        return true;
+      }
+
+      const tieneNeutroEnGrupo = (group: FactorGroup | undefined): boolean => {
+        if (!group) return false;
+        if (group.resumen && group.resumen.pct_opt0 !== undefined) return true;
+        return Array.isArray(group.preguntas) && group.preguntas.some((q: ItemTransformado) => q.pct_opt0 !== undefined);
+      };
+
+      if (climaData.granFactores) {
+        for (const gfKey of Object.keys(climaData.granFactores)) {
+          const gf = climaData.granFactores[gfKey];
+          if (gf?.resumen?.pct_opt0 !== undefined) return true;
+          for (const factorKey of Object.keys(gf?.factores ?? {})) {
+            if (tieneNeutroEnGrupo(gf.factores[factorKey])) return true;
+          }
+        }
+      }
+
+      for (const key of Object.keys(climaData)) {
+        if (['header', 'camposDemograficos', 'granFactores', 'preguntasAbiertas', 'calificacionGeneral'].includes(key)) continue;
+        const group = climaData[key] as FactorGroup;
+        if (tieneNeutroEnGrupo(group)) return true;
+      }
+
+      return false;
+    })();
+
+    const likertHeaders = hasNeutralLikert
+      ? ['Totalmente Desacuerdo', 'En Desacuerdo', 'Neutro', 'De Acuerdo', 'Totalmente de Acuerdo']
+      : ['Totalmente Desacuerdo', 'En Desacuerdo', 'De Acuerdo', 'Totalmente de Acuerdo'];
+
+    const getLikertValues = (item: {
+      pct_opt4: number;
+      pct_opt3: number;
+      pct_opt2: number;
+      pct_opt1: number;
+      pct_opt0?: number;
+    }): number[] => {
+      if (hasNeutralLikert) {
+        return [item.pct_opt4, item.pct_opt3, item.pct_opt0 ?? 0, item.pct_opt2, item.pct_opt1];
+      }
+      return [item.pct_opt4, item.pct_opt3, item.pct_opt2, item.pct_opt1];
+    };
+
+    const colorHeaderLikert = (headerText: string): string => {
+      if (headerText === 'Neutro') return 'FFD9D9D9';
+      if (headerText === 'Totalmente Desacuerdo' || headerText === 'En Desacuerdo') return 'FFFFC0CB';
+      if (headerText === 'Insatisfacción' || headerText === 'Satisfacción') return 'FFD9D9D9';
+      return 'FFC6EFCE';
     };
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -87,13 +159,6 @@ export class ExcelXlsxService {
     sheet0.getColumn(2).width = 20;  // valores
     sheet0.getColumn(3).width = 20;
     sheet0.getColumn(4).width = 20;
-
-    const numDemo0 = Array.isArray(climaData.camposDemograficos)
-      ? climaData.camposDemograficos.length
-      : 0;
-    sheet0.views = [
-      { state: 'frozen', xSplit: 0, ySplit: 4 + numDemo0, topLeftCell: 'A1', activeCell: 'A1' }
-    ];
 
     let r0 = 1;
 
@@ -206,45 +271,24 @@ export class ExcelXlsxService {
       views: [{ showGridLines: true }]
     });
 
-    const numDemo = Array.isArray(climaData.camposDemograficos)
-      ? climaData.camposDemograficos.length
-      : 0;
-    sheet1.views = [
-      { state: 'frozen', xSplit: 0, ySplit: 4 + numDemo, topLeftCell: 'A1', activeCell: 'A1' }
-    ];
+    const sheet1MainEndCol = hasNeutralLikert ? 8 : 7;
+    const sheet1LegendStartCol = sheet1MainEndCol + 1;
+    const encabezados = [...likertHeaders, 'Insatisfacción', 'Satisfacción'];
 
-    // A→J
     sheet1.getColumn(1).width = 40;  // A: Factor/Pregunta/etc.
-    sheet1.getColumn(2).width = 14;  // B: Total Desacuerdo / pct_opt4
-    sheet1.getColumn(3).width = 14;  // C: Desacuerdo / pct_opt3
-    sheet1.getColumn(4).width = 14;  // D: De Acuerdo / pct_opt2
-    sheet1.getColumn(5).width = 14;  // E: Total Acuerdo / pct_opt1
-    sheet1.getColumn(6).width = 17;  // F: % Desfavorable (Bottom-2) ← antes Insatisfacción
-    sheet1.getColumn(7).width = 17;  // G: % Favorable (Top-2)      ← antes Satisfacción
-    sheet1.getColumn(8).width = 12;  // H: leyenda 1
-    sheet1.getColumn(9).width = 16;  // I: leyenda 2
-    sheet1.getColumn(10).width = 10; // J: leyenda 3
+    likertHeaders.forEach((_, idx) => {
+      sheet1.getColumn(2 + idx).width = 14; // opciones Likert
+    });
+    sheet1.getColumn(2 + likertHeaders.length).width = 17; // Insatisfacción
+    sheet1.getColumn(3 + likertHeaders.length).width = 17; // Satisfacción
+    sheet1.getColumn(sheet1LegendStartCol).width = 12;     // leyenda 1
+    sheet1.getColumn(sheet1LegendStartCol + 1).width = 16; // leyenda 2
+    sheet1.getColumn(sheet1LegendStartCol + 2).width = 10; // leyenda 3
 
-    // Encabezados de columnas (mantengo textos; mapeo interno cambia)
-    const encabezados = [
-      'Totalmente Desacuerdo',
-      'En Desacuerdo',
-      'De Acuerdo',
-      'Totalmente de Acuerdo',
-      'Insatisfacción',  // ← ahora mapea a pctDesf
-      'Satisfacción'     // ← ahora mapea a pctFav
-    ];
-
-   
-
-    const colorEncabezadoPorTexto: Record<string, string> = {
-      'Totalmente Desacuerdo': 'FFFFC0CB',
-      'En Desacuerdo':       'FFFFC0CB',
-      'De Acuerdo':       'FFC6EFCE',
-      'Totalmente de Acuerdo':    'FFC6EFCE',
-      'Insatisfacción':   'FFD9D9D9',
-      'Satisfacción':     'FFD9D9D9'
-    };
+    const colorEncabezadoPorTexto: Record<string, string> = {};
+    encabezados.forEach((headerText) => {
+      colorEncabezadoPorTexto[headerText] = colorHeaderLikert(headerText);
+    });
 
     let currentRow = 1;
 
@@ -254,7 +298,7 @@ export class ExcelXlsxService {
 
       const row1 = sheet1.getRow(currentRow);
       row1.getCell(1).value = `Resultados Generales Clima ${h.nombre_clima}`;
-      sheet1.mergeCells(currentRow, 1, currentRow, 7);
+      sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
       row1.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF000000' } };
       row1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -268,7 +312,7 @@ export class ExcelXlsxService {
       leyendaDatos.forEach((filaValor, idx) => {
         const rowLeyenda = sheet1.getRow(1 + idx);
         filaValor.forEach((textoCelda, colIdx) => {
-          const col = 8 + colIdx; // H,I,J
+          const col = sheet1LegendStartCol + colIdx;
           const cell = rowLeyenda.getCell(col);
           cell.value = textoCelda;
           cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF000000' } };
@@ -282,7 +326,7 @@ export class ExcelXlsxService {
 
       const row2 = sheet1.getRow(currentRow);
       row2.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
-      sheet1.mergeCells(currentRow, 1, currentRow, 7);
+      sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
       row2.getCell(1).font = { name: 'Calibri', size: 12, italic: true, color: { argb: 'FF333333' } };
       row2.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       currentRow++;
@@ -295,7 +339,7 @@ export class ExcelXlsxService {
       climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
         const rowDemo = sheet1.getRow(currentRow);
         rowDemo.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
-        sheet1.mergeCells(currentRow, 1, currentRow, 7);
+        sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
         rowDemo.getCell(1).font = { name: 'Calibri', size: 11, color: { argb: 'FF000000' } };
         rowDemo.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
         currentRow++;
@@ -346,7 +390,7 @@ for (const entry of factorEntries) {
   if (granFactor && granFactor !== currentGranFactor) {
     const rowGF = sheet1.getRow(currentRow);
     rowGF.getCell(1).value = granFactor;
-    sheet1.mergeCells(currentRow, 1, currentRow, 7);
+    sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
     rowGF.height = 22;
     rowGF.getCell(1).font = {
       name: 'Calibri',
@@ -367,7 +411,7 @@ for (const entry of factorEntries) {
   // Título del factor (igual que antes)
   const rowTitle = sheet1.getRow(currentRow);
   rowTitle.getCell(1).value = factorKey;
-  sheet1.mergeCells(currentRow, 1, currentRow, 7);
+  sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
   rowTitle.height = 20;
   rowTitle.getCell(1).font = {
     name: 'Calibri',
@@ -412,14 +456,7 @@ for (const entry of factorEntries) {
   rowGeneral.getCell(1).font = { name: 'Calibri', size: 11, bold: true };
   rowGeneral.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
 
-  const valoresResumen = [
-    r.pct_opt4,
-    r.pct_opt3,
-    r.pct_opt2,
-    r.pct_opt1,
-    r.pctDesf, // Insatisfacción
-    r.pctFav   // Satisfacción
-  ];
+  const valoresResumen = [...getLikertValues(r), r.pctDesf, r.pctFav];
   valoresResumen.forEach((val, idx) => {
     const cell = rowGeneral.getCell(idx + 2);
     cell.value = val;
@@ -431,7 +468,7 @@ for (const entry of factorEntries) {
       bottom: { style: 'thin' },
       right: { style: 'thin' }
     };
-    if (idx === 5) {
+    if (idx === valoresResumen.length - 1) {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -448,20 +485,13 @@ for (const entry of factorEntries) {
     rowPreg.getCell(1).font = { name: 'Calibri', size: 10 };
     rowPreg.getCell(1).alignment = { wrapText: true, vertical: 'top' };
 
-    const valoresPregunta = [
-      q.pct_opt4,
-      q.pct_opt3,
-      q.pct_opt2,
-      q.pct_opt1,
-      q.pctDesf, // Insatisfacción
-      q.pctFav   // Satisfacción
-    ];
+    const valoresPregunta = [...getLikertValues(q), q.pctDesf, q.pctFav];
     valoresPregunta.forEach((val, idx) => {
       const cell = rowPreg.getCell(idx + 2);
       cell.value = val;
       cell.font = { name: 'Calibri', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      if (idx === 5) {
+      if (idx === valoresPregunta.length - 1) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -478,7 +508,7 @@ for (const entry of factorEntries) {
    // Resumen por Factor (Hoja 1)
 const rowResumenTitle = sheet1.getRow(currentRow);
 rowResumenTitle.getCell(1).value = 'Resumen por Factor';
-sheet1.mergeCells(currentRow, 1, currentRow, 7);
+sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
 rowResumenTitle.height = 20;
 rowResumenTitle.getCell(1).font = {
   name: 'Calibri',
@@ -539,7 +569,7 @@ for (const entry of factorEntries) {
   if (granFactor && granFactor !== currentGranFactor) {
     const gfRow = sheet1.getRow(currentRow);
     gfRow.getCell(1).value = granFactor;
-    sheet1.mergeCells(currentRow, 1, currentRow, 7);
+    sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
     gfRow.height = 18;
     gfRow.getCell(1).font = {
       name: 'Calibri',
@@ -562,20 +592,13 @@ for (const entry of factorEntries) {
   rowFactRes.getCell(1).font = { name: 'Calibri', size: 10 };
   rowFactRes.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
-  const valoresFactRes = [
-    r.pct_opt4,
-    r.pct_opt3,
-    r.pct_opt2,
-    r.pct_opt1,
-    r.pctDesf,
-    r.pctFav
-  ];
+  const valoresFactRes = [...getLikertValues(r), r.pctDesf, r.pctFav];
   valoresFactRes.forEach((val, idx) => {
     const cell = rowFactRes.getCell(idx + 2);
     cell.value = val;
     cell.font = { name: 'Calibri', size: 10 };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    if (idx === 5) {
+    if (idx === valoresFactRes.length - 1) {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -596,7 +619,7 @@ if (climaData.granFactores) {
 
   const rowGFTitle = sheet1.getRow(currentRow);
   rowGFTitle.getCell(1).value = 'Resumen por Gran Factor';
-  sheet1.mergeCells(currentRow, 1, currentRow, 7);
+  sheet1.mergeCells(currentRow, 1, currentRow, sheet1MainEndCol);
   rowGFTitle.height = 20;
   rowGFTitle.getCell(1).font = {
     name: 'Calibri',
@@ -661,21 +684,14 @@ if (climaData.granFactores) {
     rowGF.getCell(1).font = { name: 'Calibri', size: 10 };
     rowGF.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
 
-    const valoresGF = [
-      rGF.pct_opt4,
-      rGF.pct_opt3,
-      rGF.pct_opt2,
-      rGF.pct_opt1,
-      rGF.pctDesf, // Insatisfacción
-      rGF.pctFav   // Satisfacción
-    ];
+    const valoresGF = [...getLikertValues(rGF), rGF.pctDesf, rGF.pctFav];
 
     valoresGF.forEach((val, idx) => {
       const cell = rowGF.getCell(idx + 2);
       cell.value = val;
       cell.font = { name: 'Calibri', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      if (idx === 5) {
+      if (idx === valoresGF.length - 1) {
         // mismo helper que ya usas arriba
         cell.fill = {
           type: 'pattern',
@@ -696,21 +712,25 @@ if (climaData.granFactores) {
     const sheet2 = workbook.addWorksheet('Ranking Preguntas', {
       views: [{ showGridLines: true }]
     });
-    sheet2.views = [{ state: 'frozen', xSplit: 0, ySplit: 4 + numDemo, topLeftCell: 'A1', activeCell: 'A1' }];
 
-    // A→L
+    const sheet2LikertStartCol = 3;
+    const sheet2InsatCol = sheet2LikertStartCol + likertHeaders.length;
+    const sheet2SatCol = sheet2InsatCol + 1;
+    const sheet2FactorCol = sheet2SatCol + 1;
+    const sheet2MainEndCol = sheet2FactorCol;
+    const sheet2LegendStartCol = sheet2MainEndCol + 1;
+
     sheet2.getColumn(1).width = 6;   // Nº
     sheet2.getColumn(2).width = 40;  // Pregunta
-    sheet2.getColumn(3).width = 14;  // Total Desacuerdo
-    sheet2.getColumn(4).width = 14;  // Desacuerdo
-    sheet2.getColumn(5).width = 14;  // De Acuerdo
-    sheet2.getColumn(6).width = 14;  // Total Acuerdo
-    sheet2.getColumn(7).width = 17;  // Insatisfacción (→ pctDesf)
-    sheet2.getColumn(8).width = 17;  // Satisfacción  (→ pctFav)
-    sheet2.getColumn(9).width = 20;  // FACTOR
-    sheet2.getColumn(10).width = 12; // leyenda 1
-    sheet2.getColumn(11).width = 16; // leyenda 2
-    sheet2.getColumn(12).width = 10; // leyenda 3
+    likertHeaders.forEach((_, idx) => {
+      sheet2.getColumn(sheet2LikertStartCol + idx).width = 14; // opciones Likert
+    });
+    sheet2.getColumn(sheet2InsatCol).width = 17;           // Insatisfacción
+    sheet2.getColumn(sheet2SatCol).width = 17;             // Satisfacción
+    sheet2.getColumn(sheet2FactorCol).width = 20;          // Factor
+    sheet2.getColumn(sheet2LegendStartCol).width = 12;     // leyenda 1
+    sheet2.getColumn(sheet2LegendStartCol + 1).width = 16; // leyenda 2
+    sheet2.getColumn(sheet2LegendStartCol + 2).width = 10; // leyenda 3
 
     let row2Index = 1;
 
@@ -718,7 +738,7 @@ if (climaData.granFactores) {
       const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
       const r1 = sheet2.getRow(row2Index);
       r1.getCell(1).value = `Ranking Preguntas ${h.nombre_clima}`;
-      sheet2.mergeCells(row2Index, 1, row2Index, 8);
+      sheet2.mergeCells(row2Index, 1, row2Index, sheet2MainEndCol);
       r1.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF000000' } };
       r1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -732,7 +752,7 @@ if (climaData.granFactores) {
       leyendaDatos2.forEach((filaValor, idx) => {
         const rowLeyenda = sheet2.getRow(1 + idx);
         filaValor.forEach((textoCelda, colIdx) => {
-          const col = 10 + colIdx; // J,K,L
+          const col = sheet2LegendStartCol + colIdx;
           const cell = rowLeyenda.getCell(col);
           cell.value = textoCelda;
           cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF000000' } };
@@ -745,7 +765,7 @@ if (climaData.granFactores) {
       row2Index++;
       const r2 = sheet2.getRow(row2Index);
       r2.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
-      sheet2.mergeCells(row2Index, 1, row2Index, 8);
+      sheet2.mergeCells(row2Index, 1, row2Index, sheet2MainEndCol);
       r2.getCell(1).font = { name: 'Calibri', size: 12, italic: true, color: { argb: 'FF333333' } };
       r2.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       row2Index++;
@@ -756,7 +776,7 @@ if (climaData.granFactores) {
       climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
         const rowDemo2 = sheet2.getRow(row2Index);
         rowDemo2.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
-        sheet2.mergeCells(row2Index, 1, row2Index, 8);
+        sheet2.mergeCells(row2Index, 1, row2Index, sheet2MainEndCol);
         rowDemo2.getCell(1).font = { name: 'Calibri', size: 11, color: { argb: 'FF000000' } };
         rowDemo2.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
         row2Index++;
@@ -768,6 +788,7 @@ if (climaData.granFactores) {
       Pregunta: string;
       pct_opt4: number;
       pct_opt3: number;
+      pct_opt0?: number;
       pct_opt2: number;
       pct_opt1: number;
       pctDesf: number; // ← nuevo
@@ -784,6 +805,7 @@ if (climaData.granFactores) {
           Pregunta: q.Pregunta,
           pct_opt4: q.pct_opt4,
           pct_opt3: q.pct_opt3,
+          pct_opt0: q.pct_opt0,
           pct_opt2: q.pct_opt2,
           pct_opt1: q.pct_opt1,
           pctDesf: q.pctDesf,
@@ -800,21 +822,24 @@ if (climaData.granFactores) {
     const headerRow = sheet2.getRow(headerRowIndex);
     headerRow.getCell(1).value = 'Nº';
     headerRow.getCell(2).value = 'Pregunta';
-    headerRow.getCell(3).value = 'Total Desacuerdo';
-    headerRow.getCell(4).value = 'Desacuerdo';
-    headerRow.getCell(5).value = 'De Acuerdo';
-    headerRow.getCell(6).value = 'Total Acuerdo';
-    headerRow.getCell(7).value = 'Insatisfacción';
-    headerRow.getCell(8).value = 'Satisfacción';
-    headerRow.getCell(9).value = 'FACTOR';
-    for (let col = 1; col <= 9; col++) {
+    likertHeaders.forEach((headerText, idx) => {
+      headerRow.getCell(sheet2LikertStartCol + idx).value = headerText;
+    });
+    headerRow.getCell(sheet2InsatCol).value = 'Insatisfacción';
+    headerRow.getCell(sheet2SatCol).value = 'Satisfacción';
+    headerRow.getCell(sheet2FactorCol).value = 'FACTOR';
+    for (let col = 1; col <= sheet2FactorCol; col++) {
       const cab = headerRow.getCell(col);
       let bgColor = 'FFFFFFFF';
-      if (col === 3 || col === 4) bgColor = 'FFFFC0CB';
-      else if (col === 5 || col === 6) bgColor = 'FFC6EFCE';
-      else if (col === 7 || col === 8) bgColor = 'FFD9D9D9';
-      else if (col === 9)           bgColor = 'FFB0A78B';
-      else                          bgColor = 'FFCCCCCC';
+      if (col >= sheet2LikertStartCol && col < sheet2InsatCol) {
+        bgColor = colorHeaderLikert(String(headerRow.getCell(col).value ?? ''));
+      } else if (col === sheet2InsatCol || col === sheet2SatCol) {
+        bgColor = 'FFD9D9D9';
+      } else if (col === sheet2FactorCol) {
+        bgColor = 'FFB0A78B';
+      } else {
+        bgColor = 'FFCCCCCC';
+      }
       cab.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
       cab.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
       cab.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -827,18 +852,18 @@ if (climaData.granFactores) {
       const rowCur = sheet2.getRow(row2Index + idx);
       rowCur.getCell(1).value = idx + 1;
       rowCur.getCell(2).value = q.Pregunta;
-      const valoresQ = [ q.pct_opt4, q.pct_opt3, q.pct_opt2, q.pct_opt1, q.pctDesf, q.pctFav ];
+      const valoresQ = [...getLikertValues(q), q.pctDesf, q.pctFav];
       valoresQ.forEach((val, colIdx) => {
-        const cell = rowCur.getCell(colIdx + 3); // C→H
+        const cell = rowCur.getCell(sheet2LikertStartCol + colIdx);
         cell.value = val;
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colIdx === 5) { // Satisfacción (pctFav) con color
+        if (colIdx === valoresQ.length - 1) { // Satisfacción (pctFav) con color
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
         }
       });
-      const fCell = rowCur.getCell(9);
+      const fCell = rowCur.getCell(sheet2FactorCol);
       fCell.value = q.factor;
       fCell.font = { name: 'Calibri', size: 10 };
       fCell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
@@ -852,15 +877,18 @@ if (climaData.granFactores) {
     // 3) HOJA 3: “Resumen Factores”
     // ───────────────────────────────────────────────────────────────────────────
     const sheet3 = workbook.addWorksheet('Resumen Factores', { views: [{ showGridLines: true }] });
-    sheet3.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 + numDemo, topLeftCell: 'A1', activeCell: 'A1' }];
+
+    const sheet3LikertStartCol = 2;
+    const sheet3InsatCol = sheet3LikertStartCol + likertHeaders.length;
+    const sheet3SatCol = sheet3InsatCol + 1;
+    const sheet3MainEndCol = sheet3SatCol;
 
     sheet3.getColumn(1).width = 30;  // Factor
-    sheet3.getColumn(2).width = 14;  // Total Desacuerdo
-    sheet3.getColumn(3).width = 14;  // Desacuerdo
-    sheet3.getColumn(4).width = 14;  // De Acuerdo
-    sheet3.getColumn(5).width = 14;  // Total Acuerdo
-    sheet3.getColumn(6).width = 17;  // Insatisfacción (pctDesf)
-    sheet3.getColumn(7).width = 17;  // Satisfacción  (pctFav)
+    likertHeaders.forEach((_, idx) => {
+      sheet3.getColumn(sheet3LikertStartCol + idx).width = 14;
+    });
+    sheet3.getColumn(sheet3InsatCol).width = 17; // Insatisfacción
+    sheet3.getColumn(sheet3SatCol).width = 17;   // Satisfacción
 
     let row3 = 1;
 
@@ -868,14 +896,14 @@ if (climaData.granFactores) {
       const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
       const titleRow = sheet3.getRow(row3);
       titleRow.getCell(1).value = `Resumen de Factores ${h.nombre_clima}`;
-      sheet3.mergeCells(row3, 1, row3, 7);
+      sheet3.mergeCells(row3, 1, row3, sheet3MainEndCol);
       titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true };
       titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       row3++;
 
       const orgRow = sheet3.getRow(row3);
       orgRow.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
-      sheet3.mergeCells(row3, 1, row3, 7);
+      sheet3.mergeCells(row3, 1, row3, sheet3MainEndCol);
       orgRow.getCell(1).font = { name: 'Calibri', size: 12, italic: true };
       orgRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       row3++;
@@ -886,7 +914,7 @@ if (climaData.granFactores) {
       climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
         const rowDemo = sheet3.getRow(row3);
         rowDemo.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
-        sheet3.mergeCells(row3, 1, row3, 7);
+        sheet3.mergeCells(row3, 1, row3, sheet3MainEndCol);
         rowDemo.getCell(1).font = { name: 'Calibri', size: 11 };
         rowDemo.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
         row3++;
@@ -896,18 +924,23 @@ if (climaData.granFactores) {
 
     const header3 = sheet3.getRow(row3);
     header3.getCell(1).value = 'Factor';
-    header3.getCell(2).value = 'Total Desacuerdo';
-    header3.getCell(3).value = 'Desacuerdo';
-    header3.getCell(4).value = 'De Acuerdo';
-    header3.getCell(5).value = 'Total Acuerdo';
-    header3.getCell(6).value = 'Insatisfacción';
-    header3.getCell(7).value = 'Satisfacción';
-    for (let col = 1; col <= 7; col++) {
+    likertHeaders.forEach((headerText, idx) => {
+      header3.getCell(sheet3LikertStartCol + idx).value = headerText;
+    });
+    header3.getCell(sheet3InsatCol).value = 'Insatisfacción';
+    header3.getCell(sheet3SatCol).value = 'Satisfacción';
+    for (let col = 1; col <= sheet3MainEndCol; col++) {
       const cell = header3.getCell(col);
       let bgColor = 'FF95B3D7';
       if (col === 1) {
         bgColor = 'FF4472C4';
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      } else if (col >= sheet3LikertStartCol && col < sheet3InsatCol) {
+        bgColor = colorHeaderLikert(String(header3.getCell(col).value ?? ''));
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
+      } else if (col === sheet3InsatCol || col === sheet3SatCol) {
+        bgColor = 'FFD9D9D9';
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
       } else {
         cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
       }
@@ -921,6 +954,7 @@ if (climaData.granFactores) {
       factor: string;
       pct_opt4: number;
       pct_opt3: number;
+      pct_opt0?: number;
       pct_opt2: number;
       pct_opt1: number;
       pctDesf: number;
@@ -936,6 +970,7 @@ if (climaData.granFactores) {
         factor: key,
         pct_opt4: r.pct_opt4,
         pct_opt3: r.pct_opt3,
+        pct_opt0: r.pct_opt0,
         pct_opt2: r.pct_opt2,
         pct_opt1: r.pct_opt1,
         pctDesf: r.pctDesf,
@@ -952,14 +987,14 @@ if (climaData.granFactores) {
       rowF.getCell(1).alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
       rowF.getCell(1).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
 
-      const valoresFac = [ f.pct_opt4, f.pct_opt3, f.pct_opt2, f.pct_opt1, f.pctDesf, f.pctFav ];
+      const valoresFac = [...getLikertValues(f), f.pctDesf, f.pctFav];
       valoresFac.forEach((val, cIdx) => {
-        const cell = rowF.getCell(cIdx + 2); // B→G
+        const cell = rowF.getCell(sheet3LikertStartCol + cIdx);
         cell.value = val;
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (cIdx === 5) {
+        if (cIdx === valoresFac.length - 1) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
         }
       });
@@ -972,18 +1007,21 @@ if (climaData.granFactores) {
     // 4) HOJA 4: “TopBottom 5”
     // ───────────────────────────────────────────────────────────────────────────
     const sheet4 = workbook.addWorksheet('TopBottom 5', { views: [{ showGridLines: true }] });
-    sheet4.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 + numDemo, topLeftCell: 'A1', activeCell: 'A1' }];
+
+    const sheet4LikertStartCol = 5;
+    const sheet4InsatCol = sheet4LikertStartCol + likertHeaders.length;
+    const sheet4SatCol = sheet4InsatCol + 1;
+    const sheet4MainEndCol = sheet4SatCol;
 
     sheet4.getColumn(1).width = 6;   // Ranking
     sheet4.getColumn(2).width = 8;   // Tipo
     sheet4.getColumn(3).width = 40;  // Pregunta
     sheet4.getColumn(4).width = 20;  // Factor
-    sheet4.getColumn(5).width = 14;  // Tot Desacuerdo
-    sheet4.getColumn(6).width = 14;  // Desacuerdo
-    sheet4.getColumn(7).width = 14;  // De Acuerdo
-    sheet4.getColumn(8).width = 14;  // Tot Acuerdo
-    sheet4.getColumn(9).width = 17;  // Insatisfacción (pctDesf)
-    sheet4.getColumn(10).width = 17; // Satisfacción  (pctFav)
+    likertHeaders.forEach((_, idx) => {
+      sheet4.getColumn(sheet4LikertStartCol + idx).width = 14;
+    });
+    sheet4.getColumn(sheet4InsatCol).width = 17; // Insatisfacción
+    sheet4.getColumn(sheet4SatCol).width = 17;   // Satisfacción
 
     let row4 = 1;
 
@@ -991,14 +1029,14 @@ if (climaData.granFactores) {
       const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
       const titleRow4 = sheet4.getRow(row4);
       titleRow4.getCell(1).value = `Top/Bottom 5 Preguntas ${h.nombre_clima}`;
-      sheet4.mergeCells(row4, 1, row4, 10);
+      sheet4.mergeCells(row4, 1, row4, sheet4MainEndCol);
       titleRow4.getCell(1).font = { name: 'Calibri', size: 14, bold: true };
       titleRow4.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       row4++;
 
       const orgRow4 = sheet4.getRow(row4);
       orgRow4.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
-      sheet4.mergeCells(row4, 1, row4, 10);
+      sheet4.mergeCells(row4, 1, row4, sheet4MainEndCol);
       orgRow4.getCell(1).font = { name: 'Calibri', size: 12, italic: true };
       orgRow4.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       row4++;
@@ -1009,7 +1047,7 @@ if (climaData.granFactores) {
       climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
         const rowDemo4 = sheet4.getRow(row4);
         rowDemo4.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
-        sheet4.mergeCells(row4, 1, row4, 10);
+        sheet4.mergeCells(row4, 1, row4, sheet4MainEndCol);
         rowDemo4.getCell(1).font = { name: 'Calibri', size: 11 };
         rowDemo4.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
         row4++;
@@ -1020,7 +1058,7 @@ if (climaData.granFactores) {
     // Título “Peor 5”
     const peorTitleRow = sheet4.getRow(row4);
     peorTitleRow.getCell(1).value = 'Peor 5 Preguntas';
-    sheet4.mergeCells(row4, 1, row4, 10);
+    sheet4.mergeCells(row4, 1, row4, sheet4MainEndCol);
     peorTitleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
     peorTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
     row4++;
@@ -1031,19 +1069,17 @@ if (climaData.granFactores) {
     header4.getCell(2).value = 'Tipo';
     header4.getCell(3).value = 'Pregunta';
     header4.getCell(4).value = 'Factor';
-    header4.getCell(5).value = 'Tot Desacuerdo';
-    header4.getCell(6).value = 'Desacuerdo';
-    header4.getCell(7).value = 'De Acuerdo';
-    header4.getCell(8).value = 'Tot Acuerdo';
-    header4.getCell(9).value = 'Insatisfacción';
-    header4.getCell(10).value = 'Satisfacción';
-    for (let col = 1; col <= 10; col++) {
+    likertHeaders.forEach((headerText, idx) => {
+      header4.getCell(sheet4LikertStartCol + idx).value = headerText;
+    });
+    header4.getCell(sheet4InsatCol).value = 'Insatisfacción';
+    header4.getCell(sheet4SatCol).value = 'Satisfacción';
+    for (let col = 1; col <= sheet4MainEndCol; col++) {
       const cell = header4.getCell(col);
       let bgColor = 'FF95B3D7';
       if (col === 2) bgColor = 'FFD9D9D9';
-      else if (col === 5 || col === 6) bgColor = 'FFFFC0CB';
-      else if (col === 7 || col === 8) bgColor = 'FFC6EFCE';
-      else if (col === 9 || col === 10) bgColor = 'FFD9D9D9';
+      else if (col >= sheet4LikertStartCol && col < sheet4InsatCol) bgColor = colorHeaderLikert(String(header4.getCell(col).value ?? ''));
+      else if (col === sheet4InsatCol || col === sheet4SatCol) bgColor = 'FFD9D9D9';
       cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -1057,6 +1093,7 @@ if (climaData.granFactores) {
       factor: string;
       pct_opt4: number;
       pct_opt3: number;
+      pct_opt0?: number;
       pct_opt2: number;
       pct_opt1: number;
       pctDesf: number;
@@ -1072,6 +1109,7 @@ if (climaData.granFactores) {
           factor: key,
           pct_opt4: q.pct_opt4,
           pct_opt3: q.pct_opt3,
+          pct_opt0: q.pct_opt0,
           pct_opt2: q.pct_opt2,
           pct_opt1: q.pct_opt1,
           pctDesf: q.pctDesf,
@@ -1089,18 +1127,16 @@ if (climaData.granFactores) {
       rowPB.getCell(2).value = 'Peor';
       rowPB.getCell(3).value = q.Pregunta;
       rowPB.getCell(4).value = q.factor;
-      rowPB.getCell(5).value = q.pct_opt4;
-      rowPB.getCell(6).value = q.pct_opt3;
-      rowPB.getCell(7).value = q.pct_opt2;
-      rowPB.getCell(8).value = q.pct_opt1;
-      rowPB.getCell(9).value = q.pctDesf;
-      rowPB.getCell(10).value = q.pctFav;
+      const valoresBottom = [...getLikertValues(q), q.pctDesf, q.pctFav];
+      valoresBottom.forEach((val, idxVal) => {
+        rowPB.getCell(sheet4LikertStartCol + idxVal).value = val;
+      });
 
       rowPB.eachCell({ includeEmpty: true }, (cell:any, colNumber:any) => {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colNumber === 10) {
+        if (colNumber === sheet4SatCol) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(q.pctFav) };
         }
       });
@@ -1110,7 +1146,7 @@ if (climaData.granFactores) {
     // Título “Mejor 5”
     const mejorTitleRow = sheet4.getRow(row4 - 1);
     mejorTitleRow.getCell(1).value = 'Mejor 5 Preguntas';
-    sheet4.mergeCells(row4 - 1, 1, row4 - 1, 10);
+    sheet4.mergeCells(row4 - 1, 1, row4 - 1, sheet4MainEndCol);
     mejorTitleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
     mejorTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
 
@@ -1120,19 +1156,17 @@ if (climaData.granFactores) {
     header4b.getCell(2).value = 'Tipo';
     header4b.getCell(3).value = 'Pregunta';
     header4b.getCell(4).value = 'Factor';
-    header4b.getCell(5).value = 'Tot Desacuerdo';
-    header4b.getCell(6).value = 'Desacuerdo';
-    header4b.getCell(7).value = 'De Acuerdo';
-    header4b.getCell(8).value = 'Tot Acuerdo';
-    header4b.getCell(9).value = 'Insatisfacción';
-    header4b.getCell(10).value = 'Satisfacción';
-    for (let col = 1; col <= 10; col++) {
+    likertHeaders.forEach((headerText, idx) => {
+      header4b.getCell(sheet4LikertStartCol + idx).value = headerText;
+    });
+    header4b.getCell(sheet4InsatCol).value = 'Insatisfacción';
+    header4b.getCell(sheet4SatCol).value = 'Satisfacción';
+    for (let col = 1; col <= sheet4MainEndCol; col++) {
       const cell = header4b.getCell(col);
       let bgColor = 'FF95B3D7';
       if (col === 2) bgColor = 'FFD9D9D9';
-      else if (col === 5 || col === 6) bgColor = 'FFFFC0CB';
-      else if (col === 7 || col === 8) bgColor = 'FFC6EFCE';
-      else if (col === 9 || col === 10) bgColor = 'FFD9D9D9';
+      else if (col >= sheet4LikertStartCol && col < sheet4InsatCol) bgColor = colorHeaderLikert(String(header4b.getCell(col).value ?? ''));
+      else if (col === sheet4InsatCol || col === sheet4SatCol) bgColor = 'FFD9D9D9';
       cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -1148,18 +1182,16 @@ if (climaData.granFactores) {
       rowPM.getCell(2).value = 'Mejor';
       rowPM.getCell(3).value = q.Pregunta;
       rowPM.getCell(4).value = q.factor;
-      rowPM.getCell(5).value = q.pct_opt4;
-      rowPM.getCell(6).value = q.pct_opt3;
-      rowPM.getCell(7).value = q.pct_opt2;
-      rowPM.getCell(8).value = q.pct_opt1;
-      rowPM.getCell(9).value = q.pctDesf;
-      rowPM.getCell(10).value = q.pctFav;
+      const valoresTop = [...getLikertValues(q), q.pctDesf, q.pctFav];
+      valoresTop.forEach((val, idxVal) => {
+        rowPM.getCell(sheet4LikertStartCol + idxVal).value = val;
+      });
 
       rowPM.eachCell({ includeEmpty: true }, (cell:any, colNumber:any) => {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colNumber === 10) {
+        if (colNumber === sheet4SatCol) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(q.pctFav) };
         }
       });
@@ -1172,7 +1204,6 @@ if (climaData.granFactores) {
     // 5) HOJA 5: “Brecha Factores” (Satisfacción − Insatisfacción)
     // ───────────────────────────────────────────────────────────────────────────
     const sheet5 = workbook.addWorksheet('Brecha Factores', { views: [{ showGridLines: true }] });
-    sheet5.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 + numDemo, topLeftCell: 'A1', activeCell: 'A1' }];
 
     sheet5.getColumn(1).width = 30; // Factor
     sheet5.getColumn(2).width = 17; // Satisfacción (pctFav)
@@ -1280,7 +1311,162 @@ if (climaData.granFactores) {
 
 
     // ───────────────────────────────────────────────────────────────────────────
-    // 6) Generar y descargar
+    // 6) HOJA 6: “Preguntas Abiertas” (agrupadas por Factor)
+    // ───────────────────────────────────────────────────────────────────────────
+    const preguntasAbiertasRaw = Array.isArray(climaData.preguntasAbiertas)
+      ? climaData.preguntasAbiertas
+      : [];
+
+    if (preguntasAbiertasRaw.length > 0) {
+      const sheet6 = workbook.addWorksheet('Preguntas Abiertas', {
+        views: [{ showGridLines: true }]
+      });
+
+      sheet6.getColumn(1).width = 12; // IdPregunta
+      sheet6.getColumn(2).width = 55; // Pregunta
+      sheet6.getColumn(3).width = 12; // IdRespuesta
+      sheet6.getColumn(4).width = 85; // Comentario
+      sheet6.getColumn(5).width = 22; // FechaRespuesta
+
+      let row6 = 1;
+
+      if (climaData.header) {
+        const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
+        const titleRow = sheet6.getRow(row6);
+        titleRow.getCell(1).value = `Preguntas Abiertas • ${h.nombre_clima}`;
+        sheet6.mergeCells(row6, 1, row6, 5);
+        titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true };
+        titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        row6++;
+
+        const orgRow = sheet6.getRow(row6);
+        orgRow.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
+        sheet6.mergeCells(row6, 1, row6, 5);
+        orgRow.getCell(1).font = { name: 'Calibri', size: 12, italic: true };
+        orgRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        row6++;
+        row6++;
+      }
+
+      if (Array.isArray(climaData.camposDemograficos) && climaData.camposDemograficos.length > 0) {
+        climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
+          const rowDemo = sheet6.getRow(row6);
+          rowDemo.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
+          sheet6.mergeCells(row6, 1, row6, 5);
+          rowDemo.getCell(1).font = { name: 'Calibri', size: 11 };
+          rowDemo.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+          row6++;
+        });
+        row6++;
+      }
+
+      const parseComentarios = (raw: any): PreguntaAbiertaComentario[] => {
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string' && raw.trim() !== '') {
+          try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      };
+
+      const formatFecha = (value: any): string => {
+        if (!value) return '';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+
+      const abiertasNormalizadas = preguntasAbiertasRaw
+        .map((item: PreguntaAbiertaExport) => ({
+          Factor: String(item?.Factor ?? 'Sin factor').trim() || 'Sin factor',
+          IdPregunta: Number(item?.IdPregunta ?? 0),
+          Pregunta: String(item?.Pregunta ?? '').trim(),
+          Comentarios: parseComentarios(item?.ComentariosJSON),
+        }))
+        .sort((a, b) => {
+          const byFactor = a.Factor.localeCompare(b.Factor, 'es', { sensitivity: 'base' });
+          if (byFactor !== 0) return byFactor;
+          return (a.IdPregunta || 0) - (b.IdPregunta || 0);
+        });
+
+      const porFactor = new Map<string, Array<{
+        Factor: string;
+        IdPregunta: number;
+        Pregunta: string;
+        Comentarios: PreguntaAbiertaComentario[];
+      }>>();
+
+      abiertasNormalizadas.forEach((item) => {
+        if (!porFactor.has(item.Factor)) {
+          porFactor.set(item.Factor, []);
+        }
+        porFactor.get(item.Factor)!.push(item);
+      });
+
+      for (const [factor, preguntas] of porFactor.entries()) {
+        const factorRow = sheet6.getRow(row6);
+        factorRow.getCell(1).value = factor;
+        sheet6.mergeCells(row6, 1, row6, 5);
+        factorRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+        factorRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        factorRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        row6++;
+
+        const head = sheet6.getRow(row6);
+        head.getCell(1).value = 'IdPregunta';
+        head.getCell(2).value = 'Pregunta';
+        head.getCell(3).value = 'IdRespuesta';
+        head.getCell(4).value = 'Comentario';
+        head.getCell(5).value = 'FechaRespuesta';
+        for (let c = 1; c <= 5; c++) {
+          const cell = head.getCell(c);
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+        }
+        row6++;
+
+        preguntas.forEach((pregunta) => {
+          const comentarios = pregunta.Comentarios.length > 0
+            ? pregunta.Comentarios
+            : [{ IdRespuesta: undefined, Comentario: '', FechaRespuesta: '' }];
+
+          comentarios.forEach((cmt) => {
+            const row = sheet6.getRow(row6);
+            row.getCell(1).value = pregunta.IdPregunta || '';
+            row.getCell(2).value = pregunta.Pregunta || '';
+            row.getCell(3).value = cmt?.IdRespuesta ?? '';
+            row.getCell(4).value = cmt?.Comentario ?? '';
+            row.getCell(5).value = formatFecha(cmt?.FechaRespuesta);
+
+            for (let col = 1; col <= 5; col++) {
+              const cell = row.getCell(col);
+              cell.font = { name: 'Calibri', size: 10 };
+              cell.alignment = {
+                horizontal: col === 2 || col === 4 ? 'left' : 'center',
+                vertical: 'top',
+                wrapText: col === 2 || col === 4
+              };
+              cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+            }
+            row6++;
+          });
+        });
+
+        row6++;
+      }
+
+      sheet6.eachRow({ includeEmpty: false }, (row: any) => row.commit());
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // 7) Generar y descargar
     // ───────────────────────────────────────────────────────────────────────────
     workbook.xlsx
       .writeBuffer()

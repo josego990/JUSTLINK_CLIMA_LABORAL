@@ -1,1 +1,98 @@
 
+:host {
+  .header-right-collapse {
+    margin-right: 50px;
+  }
+
+  .user_profile {
+    max-width: 100%;
+
+    > button[mat-button] {
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .chip {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      max-width: 340px;
+      min-width: 0;
+      vertical-align: middle;
+    }
+
+    .user-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      max-width: 290px;
+      line-height: 1.1;
+    }
+
+    .user-text .user-username,
+    .user-text .user-fullname {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-text .user-username {
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .user-text .user-fullname {
+      font-weight: 400;
+      font-size: 11px;
+      opacity: 0.95;
+    }
+
+    .chip .user_img {
+      flex: 0 0 auto;
+      margin: 0;
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  :host {
+    .header-right-collapse {
+      margin-right: 0;
+    }
+
+    .navbar .nav > li.user_profile {
+      display: inline-flex !important;
+      max-width: 58vw;
+      min-width: 0;
+    }
+
+    .user_profile .chip {
+      max-width: 58vw;
+    }
+
+    .user_profile .user-text {
+      max-width: calc(58vw - 34px);
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  :host {
+    .navbar .nav > li.user_profile {
+      max-width: 50vw;
+    }
+
+    .user_profile .chip {
+      max-width: 50vw;
+    }
+
+    .user_profile .user-text {
+      max-width: calc(50vw - 34px);
+    }
+  }
+}

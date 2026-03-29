@@ -49,13 +49,28 @@
     <div class="text-inside">
       <!--      -->    
               
+      <div class="row" style="margin-bottom: 8px;">
+        <div class="col-12">
+          <mat-slide-toggle
+            [(ngModel)]="noUsarGranFactor"
+            [disabled]="bloquearSwitchNoUsarGranFactor"
+          >
+            No usar gran factor
+          </mat-slide-toggle>
+        </div>
+      </div>
+
       <div class="gf-row" >
-        <!-- Gran Factor -->
+        <!-- Gran Factor --> 
         <div class="gf-col">
           <div class="gf-group">
             <mat-form-field appearance="fill" subscriptSizing="dynamic"  class="gf-field">
               <mat-label>{{ 'MENUITEMS.QUIZ.GRANFACTOR' | translate }}</mat-label>
-              <mat-select [(ngModel)]="selectedGFactor" (selectionChange)="onGranFactorChange($event)">
+              <mat-select
+                [(ngModel)]="selectedGFactor"
+                (selectionChange)="onGranFactorChange($event)"
+                [disabled]="noUsarGranFactor"
+              >
                 <mat-option *ngFor="let gfactor of gfactorsx" [value]="gfactor.Id">
                   {{ gfactor.label }}
                 </mat-option>
@@ -67,7 +82,7 @@
               mat-stroked-button
               color="primary"
               class="gf-add-btn"
-              [disabled]="!accessToCreateFactor"
+              [disabled]="!accessToCreateFactor || noUsarGranFactor"
               (click)="openDialogGFactor(gfactors_data_send)">
               <mat-icon>add</mat-icon>
               <span class="btn-text">{{ 'MENUITEMS.QUIZ.ADDGRANDFACTOR' | translate }}</span>
@@ -92,7 +107,7 @@
               mat-stroked-button
               color="primary"
               class="gf-add-btn"
-              [disabled]="!accessToCreateFactor || idGFactor === 0"
+              [disabled]="!accessToCreateFactor || (!noUsarGranFactor && idGFactor === 0)"
               (click)="openDialogSerie(series_data_send)">
               <mat-icon>add</mat-icon>
               <span class="btn-text">{{ 'MENUITEMS.QUIZ.ADDFACTOR' | translate }}</span>
@@ -117,14 +132,14 @@
           <mat-form-field appearance="fill" class="w-100">
             <mat-label>{{'MENUITEMS.QUIZ.FIELDTYPE' | translate}}</mat-label>
             <mat-select [(ngModel)]="selectedFieldType">
-              <mat-option value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+              <mat-option value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALESIMPLE' | translate}} ({{numeroLikert}})</mat-option>
               <mat-option value="slider">{{'MENUITEMS.QUIZ.RANGEQUESTION' | translate}}</mat-option>
               <mat-option value="text">{{'MENUITEMS.QUIZ.OPENQUESTION' | translate}}</mat-option>
               <mat-option value="iatext">{{'MENUITEMS.QUIZ.OPENQUESTIONIA' | translate}}</mat-option>
               <mat-option value="select">{{'MENUITEMS.QUIZ.LISTSELECTION' | translate}}</mat-option>
               <mat-option value="selectdem">{{'MENUITEMS.QUIZ.LISTDEMSELECTION' | translate}}</mat-option>
             </mat-select>
-          </mat-form-field>
+          </mat-form-field> 
         </div>
 
         <div class="col-12 col-md-8 mt-3">
@@ -708,7 +723,7 @@
                                 formControlName="type"
                                 (selectionChange)="onCellChange(row.Id, 'type', $event.value, f.Id)"
                               >
-                                <mat-option [disabled]="true" value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+                                <mat-option [disabled]="true" value="radio">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}} ({{numeroLikert}})</mat-option>
                                 <mat-option [disabled]="true" value="slider">{{'MENUITEMS.QUIZ.RANGEQUESTION' | translate}}</mat-option>
                                 <mat-option [disabled]="true" value="text">{{'MENUITEMS.QUIZ.OPENQUESTION' | translate}}</mat-option>
                                 <mat-option [disabled]="true" value="iatext">{{'MENUITEMS.QUIZ.OPENQUESTIONIA' | translate}}</mat-option>
@@ -778,11 +793,11 @@
                                 <button
                                   mat-icon-button
                                   matSuffix
-                                  [disabled]="!(t === 'select' || t === 'selectdem' || t === 'slider')"
+                                  [disabled]="!(t === 'radio' || t === 'select' || t === 'selectdem' || t === 'slider')"
                                   (click)="$event.stopPropagation(); openValuesEditor(row, t, f.Id, i)"
-                                  matTooltip="Agregar/editar valores"
+                                  [matTooltip]="t === 'radio' ? 'Editar escala Likert' : 'Agregar/editar valores'"
                                 >
-                                  <mat-icon>add</mat-icon>
+                                  <mat-icon>{{ t === 'radio' ? 'edit' : 'add' }}</mat-icon>
                                 </button>
 
                               </mat-form-field>

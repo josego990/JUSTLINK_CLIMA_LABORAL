@@ -21,7 +21,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '@core';
-import axios from 'axios';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
@@ -67,6 +66,7 @@ export class DialogformComponent implements OnInit {
   bankData: QuizBank[] = [];
   unitList: string[] = [];
   totalQuestionsSelected = 0;
+  public metodoAplicacion = 0;
 
   public qname = '';
   public qdesc = '';
@@ -121,18 +121,18 @@ export class DialogformComponent implements OnInit {
 
     this.addCusForm = this.fb.group({
       IdOrganization: [this.idOrganization, Validators.required],
-      IdProof: ["1", Validators.required],
+      IdProof: [1, Validators.required],
       quizName: [this.qname, [Validators.required]],
       quizDesc: [this.qdesc, [Validators.required]],
       //urlImg: [null],
       //score: 100,
       //startDate: '',
       //endDate: '',
-      MetodoAplicacion: ['1', Validators.required],
+      MetodoAplicacion: [1, Validators.required],
       //Frecuencia: ['', Validators.required],
       //EstimadoMinutos: [null, [Validators.required, Validators.min(1)]],
       //Anonimato: [false]
-    });
+    }); 
 
     this.addBankForm = this.fb.group({
       IdProof: null,
@@ -298,11 +298,19 @@ export class DialogformComponent implements OnInit {
    //console.log('Preguntas:',this.totalQuestionsSelected);
   }
 
+  onTypeChange(selected: number){
+    const selectedType = Number(selected);
+    console.log('selected:: ', selectedType);
+    this.metodoAplicacion = selectedType;
+    console.log(this.metodoAplicacion);
+  }
+
   //nuevo quiz / encuesta
   onSubmitClick() {
 
     if(this.addCusForm.valid){
-     //console.log('Form Values', this.addCusForm.value);
+     console.log('Form Values', this.addCusForm.value);
+      const tipoEvaluacion = Number(this.addCusForm.get('IdProof')?.value ?? 1);
       
       const quiz: Quiz = {
         id: 0,
@@ -320,10 +328,11 @@ export class DialogformComponent implements OnInit {
         completed : false,
         startDate: '01/01/2025',
         endDate: '01/01/2025',
-        estado:1,
+        estado: 1,
         granFactores: [],
         series: [],
         fields: [],
+        tipoEvaluacion: this.metodoAplicacion.toString(),
         estadoEnvio: '',
         estadisticasEnvio: {
           total: 0,
@@ -336,13 +345,10 @@ export class DialogformComponent implements OnInit {
           porcentaje: 0
         }
       }
-     //console.log('nuevo quiz armado::', quiz);
-      /** */
+     console.log('nuevo quiz armado::', quiz);
+      /**   */
 
       this.organizacionService.saveNewClima(quiz).then((amber:any) => {
-       //console.log('RESULTADO saveNewClima:: ', amber);
-        //OBTENER DE NUEVO EL LISTADO DE CLIMAS
-        // ✅ Cerramos el diálogo y devolvemos un valor de éxito
 
         if(amber.data.message === 'Flujo creado exitosamente'){
 
@@ -351,19 +357,15 @@ export class DialogformComponent implements OnInit {
 
             console.log('a guardar la imagen..');
 
-            axios.post('http://localhost:3030/upload-file-v2', this.formFileData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-
-              onUploadProgress: (e) => {
-                const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-
-              }
+            this.organizacionService.uploadFileV2(this.formFileData, (pct) => {
+              void pct;
+              // console.log('Subiendo archivo:', pct + '%');
             })
             .then(() => console.log('Archivo subido'))
             .catch(err => {
               console.error(err); 
               //this.loading = false;  
-            } );
+            });
           }
 
           Swal.fire({
@@ -383,7 +385,7 @@ export class DialogformComponent implements OnInit {
       }).catch((err) => {
         console.error('ERROR AL GUARDAR NUEVO CLIMA!:: ', err);
       });
-      
+    
       //this.cardsData.push(quiz);
 
       //globalData.next(this.cardsData);
@@ -422,6 +424,7 @@ export class DialogformComponent implements OnInit {
         series: [],
         fields: [],
         estadoEnvio: '',
+        tipoEvaluacion: '0',
         estadisticasEnvio: {
           total: 0,
           total_creadas: 0,

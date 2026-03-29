@@ -42,19 +42,23 @@
 
       <div class="fc-badges">
         <span class="chip chip-soft" *ngIf="pct_opt1 != null">
-          Totalmente de acuerdo: {{ pct_opt1 | number:'1.0-2' }}%
+          Muy favorable: {{ pct_opt1 | number:'1.0-2' }}%
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt2 != null">
-          De Acuerdo: {{ pct_opt2 | number:'1.0-2' }}%
+          Favorable: {{ pct_opt2 | number:'1.0-2' }}%
+        </span>
+
+        <span class="chip chip-soft" *ngIf="showNeutral && pct_opt0 != null">
+          Neutro: {{ pct_opt0 | number:'1.0-2' }}%
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt3 != null">
-          En Desacuerdo: {{ pct_opt3 | number:'1.0-2' }}%
+          Desfavorable: {{ pct_opt3 | number:'1.0-2' }}%
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt4 != null">
-          Totalmente en Desacuerdo: {{ pct_opt4 | number:'1.0-2' }}%
+          Muy desfavorable: {{ pct_opt4 | number:'1.0-2' }}%
         </span>
         
        

@@ -5,6 +5,7 @@
       <app-breadcrumb [title]="'Compose'" [items]="['Home','Email']" [active_item]="'Compose'"></app-breadcrumb>
     </div>
     <div class="row">
+      <!-- menu de email 
       <div class="col-xs-12 col-sm-12 col-md-3 col-lg-2">
         <div class="card">
           <div class="body">
@@ -23,7 +24,7 @@
                 <li>
                   <a href="javascript:;" title="Sent">Enviados</a>
                 </li>
-                    <!-- More items list
+                   
                 <li>
                   <a href="javascript:;" title="Draft">Draft</a>
                 </li>
@@ -36,7 +37,7 @@
                 <li>
                   <a href="javascript:;" title="Starred">Starred</a>
                 </li>
- -->
+
               </ul>
               <h6 class="b-b p-10 text-strong">Labels</h6>
               <ul class="" id="mail-labels">
@@ -90,7 +91,8 @@
           </div>
         </div>
       </div>
-      <div class="col-xs-12 col-sm-12 col-md-9 col-lg-10">
+-->
+      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
         <div class="card">
           <div class="boxs mail_listing">
             <div class="inbox-center table-responsive">
@@ -109,47 +111,90 @@
             <div  class="row" >
               <div class="col-lg-12">
                 <form  class="composeForm">
-                  <div class="form-line">
+                
 
-                    <!-- TO: multiselect -->
+                    <div class="row">
+                      <div class="col-lg-6 col-md-6 col-sm-12">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>Organización</mat-label>
+                          <mat-select
+                            [formControl]="organizationCtrl"
+                            (selectionChange)="onOrganizationChange($event.value)"
+                            [disabled]="loadingOrganizations"
+                          >
+                            <mat-option
+                              *ngFor="let organization of dataSourceOrganizations"
+                              [value]="organization"
+                            >
+                              {{ organization.Nombre }}
+                            </mat-option>
+                          </mat-select>
+
+                          <mat-progress-spinner
+                            *ngIf="loadingOrganizations"
+                            matSuffix
+                            diameter="18"
+                            mode="indeterminate"
+                          ></mat-progress-spinner>
+                        </mat-form-field>
+                      </div>
+
+                      <div class="col-lg-6 col-md-6 col-sm-12">
+                        <mat-form-field appearance="fill" class="w-100">
+                          <mat-label>Climas {{nombreOrganizacion}}</mat-label>
+                          <mat-select (selectionChange)="onClimaChange($event.value)">
+                            <mat-option
+                              *ngFor="let climas of dataSourceClimas"
+                              [value]="climas.Id"
+                            >
+                              {{ climas.Nombre }}
+                            </mat-option>
+                          </mat-select>
+
+                          <mat-progress-spinner
+                              *ngIf="loadingClimas"
+                              matSuffix
+                              diameter="18"
+                              mode="indeterminate"
+                            >
+                          </mat-progress-spinner>
+
+                        </mat-form-field>
+                      </div>
+                    </div>
+
+
                     <mat-form-field class="example-full-width" appearance="outline">
                       <mat-label>Destinatarios</mat-label>
 
-                      <mat-select [formControl]="toTargetsCtrl" multiple>
-                        <mat-option *ngFor="let opt of toOptions" [value]="opt.value">
+                      <mat-select [formControl]="toTargetsCtrl" >
+                        <mat-option
+                          *ngFor="let opt of toOptions"
+                          [value]="opt.value"
+                          [disabled]="isToTargetDisabled(opt.value)"
+                        >
                           {{ opt.label }}
                         </mat-option>
                       </mat-select>
                     </mat-form-field>
 
-                    <!-- Chips seleccionados -->
-                    <div *ngIf="toTargetsCtrl.value?.length">
-                      <mat-chip-listbox aria-label="Destinatarios seleccionados">
-                        <mat-chip-option
-                          *ngFor="let val of toTargetsCtrl.value"
-                          [selectable]="false"
-                          [removable]="true"
-                          (removed)="removeToTarget(val)"
-                        >
-                          {{ getToLabel(val) }}
-                          <button matChipRemove aria-label="Quitar">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        </mat-chip-option>
-                      </mat-chip-listbox>
-                    </div>
+                    
+                   
 
                     <!-- Email manual solo si está seleccionado "Correo" -->
                     <div style="margin-top: 10px;" *ngIf="isCorreoSelected()">
                       <mat-form-field class="example-full-width" appearance="outline">
-                        <mat-label>Correo</mat-label>
-                        <input matInput [formControl]="emailManualCtrl" placeholder="ej: usuario@dominio.com">
+                        <mat-label>Correo/s</mat-label>
+                        <input matInput [formControl]="emailManualCtrl" placeholder="ej: usuario@dominio.com, otro@dominio.com">
                         <mat-error *ngIf="emailManualCtrl.hasError('required')">Ingrese el correo</mat-error>
-                        <mat-error *ngIf="emailManualCtrl.hasError('email')">Correo inválido</mat-error>
+                        <mat-error *ngIf="emailManualCtrl.hasError('emailList')">Ingrese correos válidos separados por coma</mat-error>
                       </mat-form-field>
                     </div>
 
-                  </div>
+                    
+                    
+
+                  
 
                   <div class="form-line">
                     <mat-form-field class="example-full-width" appearance="outline">
@@ -187,7 +232,7 @@
               <div class="col-lg-12">
                 <div class="m-l-25 m-b-20">
                   <button style="border-radius: 5px;" mat-flat-button (click)="sendMail()" color="primary" >Enviar</button>
-                  <button style="border-radius: 5px; margin-left: 10px;"  mat-flat-button color="primary" (click)="saveTemplate()">Guardar Plantilla</button>
+                  <button style="border-radius: 5px; margin-left: 10px;"  mat-flat-button color="primary" (click)="saveTemplate()" [disabled]="!canSaveTemplate()">Guardar Plantilla</button>
                   <button style="border-radius: 5px; margin-left: 10px;"  mat-raised-button color="warn">Discard</button>
                 </div>
               </div>

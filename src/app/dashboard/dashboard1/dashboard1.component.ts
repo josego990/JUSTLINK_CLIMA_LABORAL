@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -31,7 +31,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe, DOCUMENT } from '@angular/common';
 import { NgxGaugeType } from 'ngx-gauge/gauge/gauge';
 import { ProgressTableFactorComponent, SubjectProgress } from '@shared/components/progress-table-factor/progress-table-factor.component';
 import { SliderTableComponent } from '@shared/components/slider-table/slider-table.component';
@@ -42,7 +42,7 @@ import { PendingByDemographicComponent } from '@shared/components/pending-by-dem
 
 import { MatDividerModule } from '@angular/material/divider';
 import { NgxGaugeModule } from 'ngx-gauge';
-import { Color, ScaleType, BarChartModule, LineChartModule, AreaChartModule, PieChartModule } from '@swimlane/ngx-charts';
+import { Color, ScaleType, BarChartModule, LineChartModule, AreaChartModule } from '@swimlane/ngx-charts';
 import { LegendPosition } from '@swimlane/ngx-charts';
 import { ChartData, ChartType } from 'chart.js';
 import { FormsModule } from '@angular/forms';
@@ -62,9 +62,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { MatDialog } from '@angular/material/dialog';
 import { DemographicFiltersDialogComponent } from './dialogs/demographic-filters-dialog.component'
+import Swal from 'sweetalert2';
 
 
 type Sent = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' | 'MIXED';
@@ -136,6 +138,15 @@ interface ComentarioPregunta {
   _counts?: Record<Sent, number>;
 }
 
+interface SliderPiePoint {
+  name: string;
+  value: number;
+}
+
+type SliderRowView = SliderQuestionRow & {
+  pieSeries: SliderPiePoint[];
+};
+
 interface Todo {
   title: string;
   done: boolean;
@@ -150,6 +161,7 @@ interface ItemOriginal {
   total_respuestas: number;
   total_opt1: number; // Muy de acuerdo
   total_opt2: number; // De acuerdo
+  total_opt0?: number; // Neutro (Likert-5)
   total_opt3: number; // En desacuerdo
   total_opt4: number; // Muy en desacuerdo
   // (opcionales si vinieran del SP)
@@ -164,6 +176,7 @@ export interface ItemTransformado {
   Pregunta: string;
   pct_opt1: number;
   pct_opt2: number;
+  pct_opt0?: number;
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
@@ -176,6 +189,7 @@ export interface ItemTransformado {
 export interface ResumenFactor {
   pct_opt1: number;
   pct_opt2: number;
+  pct_opt0?: number;
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
@@ -286,10 +300,10 @@ export function transformData(data: ItemOriginal[]): Resultado {
   const out: Resultado = {} as Resultado;
 
   // acumuladores internos por factor (no se devuelven)
-  const acc: Record<string, { t: number; o1: number; o2: number; o3: number; o4: number }> = {};
+  const acc: Record<string, { t: number; o1: number; o2: number; o0: number; o3: number; o4: number; hasOpt0: boolean }> = {};
 
   // NUEVO: acumuladores por Gran Factor (EtiquetaGranFactor)
-  const accGran: Record<string, { t: number; o1: number; o2: number; o3: number; o4: number }> = {};
+  const accGran: Record<string, { t: number; o1: number; o2: number; o0: number; o3: number; o4: number; hasOpt0: boolean }> = {};
 
   // NUEVO: relación Factor -> Gran Factor
   const factorToGran: Record<string, string> = {};
@@ -297,8 +311,20 @@ export function transformData(data: ItemOriginal[]): Resultado {
   // helpers
   const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
   const safePct = (num: number, den: number) => (den > 0 ? round2((num / den) * 100) : 0);
-  const mean0to100 = (o1: number, o2: number, o3: number, o4: number, t: number) => {
+  const mean0to100 = (
+    o1: number,
+    o2: number,
+    o0: number,
+    o3: number,
+    o4: number,
+    t: number,
+    hasOpt0: boolean
+  ) => {
     if (t <= 0) return 0;
+    if (hasOpt0) {
+      const sum04 = (4 * o1) + (3 * o2) + (2 * o0) + (1 * o3) + (0 * o4);
+      return round2((sum04 / (4 * t)) * 100);
+    }
     const sum03 = (3 * o1) + (2 * o2) + (1 * o3) + (0 * o4);
     return round2((sum03 / (3 * t)) * 100);
   };
@@ -314,6 +340,8 @@ export function transformData(data: ItemOriginal[]): Resultado {
     } = item;
 
     const granFactor = EtiquetaGranFactor ?? 'SIN_ETIQUETA';
+    const hasOpt0 = item.total_opt0 != null;
+    const total_opt0 = Number(item.total_opt0 ?? 0);
 
     // Guardamos la relación Factor -> Gran Factor
     factorToGran[Factor] = granFactor;
@@ -321,6 +349,7 @@ export function transformData(data: ItemOriginal[]): Resultado {
     // % por opción
     const pct_opt1 = safePct(total_opt1, total);
     const pct_opt2 = safePct(total_opt2, total);
+    const pct_opt0 = hasOpt0 ? safePct(total_opt0, total) : undefined;
     const pct_opt3 = safePct(total_opt3, total);
     const pct_opt4 = safePct(total_opt4, total);
 
@@ -330,11 +359,11 @@ export function transformData(data: ItemOriginal[]): Resultado {
 
     const nsat = item.nsat != null ? round2(item.nsat) : round2(pctFav - pctDesf);
     const mean = item.mean_0_100 != null ? round2(item.mean_0_100)
-                                         : mean0to100(total_opt1, total_opt2, total_opt3, total_opt4, total);
+                                         : mean0to100(total_opt1, total_opt2, total_opt0, total_opt3, total_opt4, total, hasOpt0);
 
     const nuevo: ItemTransformado = {
       Pregunta,
-      pct_opt1, pct_opt2, pct_opt3, pct_opt4,
+      pct_opt1, pct_opt2, pct_opt0, pct_opt3, pct_opt4,
       pctFav, pctDesf,
       nsat, mean
     };
@@ -344,11 +373,11 @@ export function transformData(data: ItemOriginal[]): Resultado {
       out[Factor] = {
         preguntas: [],
         resumen: {
-          pct_opt1: 0, pct_opt2: 0, pct_opt3: 0, pct_opt4: 0,
+          pct_opt1: 0, pct_opt2: 0, pct_opt0: 0, pct_opt3: 0, pct_opt4: 0,
           pctFav: 0, pctDesf: 0, nsat: 0, mean: 0
         }
       };
-      acc[Factor] = { t: 0, o1: 0, o2: 0, o3: 0, o4: 0 };
+      acc[Factor] = { t: 0, o1: 0, o2: 0, o0: 0, o3: 0, o4: 0, hasOpt0: false };
     }
 
     out[Factor].preguntas.push(nuevo);
@@ -357,18 +386,22 @@ export function transformData(data: ItemOriginal[]): Resultado {
     acc[Factor].t  += total;
     acc[Factor].o1 += total_opt1;
     acc[Factor].o2 += total_opt2;
+    acc[Factor].o0 += total_opt0;
     acc[Factor].o3 += total_opt3;
     acc[Factor].o4 += total_opt4;
+    acc[Factor].hasOpt0 = acc[Factor].hasOpt0 || hasOpt0;
 
     // NUEVO: acumula conteos para el resumen del Gran Factor
     if (!accGran[granFactor]) {
-      accGran[granFactor] = { t: 0, o1: 0, o2: 0, o3: 0, o4: 0 };
+      accGran[granFactor] = { t: 0, o1: 0, o2: 0, o0: 0, o3: 0, o4: 0, hasOpt0: false };
     }
     accGran[granFactor].t  += total;
     accGran[granFactor].o1 += total_opt1;
     accGran[granFactor].o2 += total_opt2;
+    accGran[granFactor].o0 += total_opt0;
     accGran[granFactor].o3 += total_opt3;
     accGran[granFactor].o4 += total_opt4;
+    accGran[granFactor].hasOpt0 = accGran[granFactor].hasOpt0 || hasOpt0;
   });
 
   // 2) Calcula resumen por factor desde los acumulados (igual que antes)
@@ -377,14 +410,15 @@ export function transformData(data: ItemOriginal[]): Resultado {
     const t = a.t;
     const pct_opt1 = safePct(a.o1, t);
     const pct_opt2 = safePct(a.o2, t);
+    const pct_opt0 = a.hasOpt0 ? safePct(a.o0, t) : undefined;
     const pct_opt3 = safePct(a.o3, t);
     const pct_opt4 = safePct(a.o4, t);
     const pctFav   = safePct(a.o1 + a.o2, t);
     const pctDesf  = safePct(a.o3 + a.o4, t);
     const nsat     = round2(pctFav - pctDesf);
-    const mean     = mean0to100(a.o1, a.o2, a.o3, a.o4, t);
+    const mean     = mean0to100(a.o1, a.o2, a.o0, a.o3, a.o4, t, a.hasOpt0);
 
-    out[factor].resumen = { pct_opt1, pct_opt2, pct_opt3, pct_opt4, pctFav, pctDesf, nsat, mean };
+    out[factor].resumen = { pct_opt1, pct_opt2, pct_opt0, pct_opt3, pct_opt4, pctFav, pctDesf, nsat, mean };
   });
 
   // 3) NUEVO: Calcula resumen por Gran Factor y agrupa factores dentro de cada uno
@@ -392,6 +426,7 @@ export function transformData(data: ItemOriginal[]): Resultado {
     resumen: {
       pct_opt1: number;
       pct_opt2: number;
+      pct_opt0?: number;
       pct_opt3: number;
       pct_opt4: number;
       pctFav: number;
@@ -408,15 +443,16 @@ export function transformData(data: ItemOriginal[]): Resultado {
     const t = a.t;
     const pct_opt1 = safePct(a.o1, t);
     const pct_opt2 = safePct(a.o2, t);
+    const pct_opt0 = a.hasOpt0 ? safePct(a.o0, t) : undefined;
     const pct_opt3 = safePct(a.o3, t);
     const pct_opt4 = safePct(a.o4, t);
     const pctFav   = safePct(a.o1 + a.o2, t);
     const pctDesf  = safePct(a.o3 + a.o4, t);
     const nsat     = round2(pctFav - pctDesf);
-    const mean     = mean0to100(a.o1, a.o2, a.o3, a.o4, t);
+    const mean     = mean0to100(a.o1, a.o2, a.o0, a.o3, a.o4, t, a.hasOpt0);
 
     granFactores[gf] = {
-      resumen: { pct_opt1, pct_opt2, pct_opt3, pct_opt4, pctFav, pctDesf, nsat, mean },
+      resumen: { pct_opt1, pct_opt2, pct_opt0, pct_opt3, pct_opt4, pctFav, pctDesf, nsat, mean },
       factores: {}
     };
   });
@@ -429,7 +465,7 @@ export function transformData(data: ItemOriginal[]): Resultado {
       // por si acaso, inicializamos vacío
       granFactores[gf] = {
         resumen: {
-          pct_opt1: 0, pct_opt2: 0, pct_opt3: 0, pct_opt4: 0,
+          pct_opt1: 0, pct_opt2: 0, pct_opt0: 0, pct_opt3: 0, pct_opt4: 0,
           pctFav: 0, pctDesf: 0, nsat: 0, mean: 0
         },
         factores: {}
@@ -547,34 +583,41 @@ function agruparPorCampo(
     MatCheckboxModule,
     MatTooltipModule,PendingByDemographicComponent,
     InfoBoxFactorComponent,
+    MatSlideToggleModule,
   
-    BarChartModule, LineChartModule, AreaChartModule, PieChartModule 
+    BarChartModule, LineChartModule, AreaChartModule 
   ],
 })
 
 export class Dashboard1Component implements OnInit {
   selectedFilters: DemographicSelection[] = [];
   public areaChartOptions!: Partial<ChartOptions>;
+  readonly COLOR_GREEN = '#92D050';
+  readonly COLOR_YELLOW = '#FFFF00';
+  readonly COLOR_ORANGE = '#FFC000';
+  readonly COLOR_RED = '#FF0000';
+  readonly COLOR_GRAY = '#7C7D7C';
+  public metodoAplicacionClima = '';
+  public showNeutralMetrics = false;
 
   public barChartOptions: Partial<ChartOptions> = {
-    chart: { type: 'bar', stacked: true, stackType: '100%', toolbar: { show: true } },
-    plotOptions: { bar: { dataLabels: { position: 'top' } } },
+    chart: { type: 'bar', stacked: true, stackType: '100%', height: 350, toolbar: { show: true } },
+    plotOptions: { bar: { horizontal: true, barHeight: '70%', dataLabels: { position: 'top' } } },
     dataLabels: {
       enabled: true,
       formatter: (val: number) => `${val.toFixed(1)}%`,
-      offsetY: -2,
+      offsetX: 8,
       style: { fontSize: '12px' }
     },
-    yaxis: {
-      min: 0, max: 100,
-      labels: { formatter: (val: number) => `${val}%` }
-    },
+    xaxis: this.buildHorizontalPercentAxis([]),
+    yaxis: this.buildHorizontalCategoryYAxis(),
     tooltip: {
       y: { formatter: (val: number) => `${val.toFixed(2)}%` }
-    }
+    },
+    colors: this.getLikertDistributionColors()
   };
 
-  public sliderRows = [];
+  public sliderRows: SliderRowView[] = [];
 
   public participacionRows = [];
 
@@ -601,28 +644,25 @@ export class Dashboard1Component implements OnInit {
 
   langStoreValue?: string;
 
-  verde = '#21A67A';
-
   barChartOptions2: Partial<ChartOptions> = {
     chart: {
       type: 'bar',
-      height: 350
+      height: 420,
+      toolbar: this.buildApexToolbar('porcentajes-satisfaccion-factor')
     },
     plotOptions: {
       bar: {
-        horizontal: false,
-        columnWidth: '90%',     // ancho de cada columna
+        horizontal: true,
+        barHeight: '72%',
         dataLabels: {
           position: 'top',
-               
         }
-        
       }
-      
     },
     dataLabels: {
       enabled: true,
-      formatter: (val: number) => `${val}%`
+      formatter: (val: number) => `${val}%`,
+      offsetX: 8,
     },
     stroke: {
       show: true,
@@ -637,10 +677,9 @@ export class Dashboard1Component implements OnInit {
         formatter: (val: number) => `${val}%`
       }
     },
-    xaxis: {
-      categories: []           // ← se cargará dinámicamente
-    },
-    colors: ['#1ba070', '#eb6841'] // verde / rojo
+    xaxis: this.buildHorizontalPercentAxis([]),
+    yaxis: this.buildHorizontalCategoryYAxis(),
+    colors: this.getFactorSatisfactionColors()
   };
 
   public barChartType: ChartType = 'bar';
@@ -648,7 +687,7 @@ export class Dashboard1Component implements OnInit {
   //public columnChartOptions: Partial<ChartOptions>;
 
   colorScheme: Color = {
-    domain: ['red', 'orange', 'yellow', 'green'],
+    domain: this.getLikertDistributionColors(),
     group: ScaleType.Ordinal,
     selectable: true,
     name: 'Customer Usage',
@@ -657,6 +696,40 @@ export class Dashboard1Component implements OnInit {
   formatPercent = (value: number): string => {
     return `${value}%`;
   };
+
+  private getHorizontalBarChartHeight(
+    itemCount: number,
+    rowHeight = 60,
+    minHeight = 350
+  ): number {
+    return Math.max(minHeight, Math.max(itemCount, 1) * rowHeight);
+  }
+
+  private buildHorizontalPercentAxis(categories: string[]): ApexXAxis {
+    return {
+      categories,
+      min: 0,
+      max: 100,
+      tickAmount: 5,
+      labels: {
+        style: { colors: '#9aa0ac' },
+        formatter: (value: string | number) => `${value}%`,
+      },
+    };
+  }
+
+  private buildHorizontalCategoryYAxis(): ApexYAxis {
+    return {
+      labels: {
+        show: true,
+        maxWidth: 320,
+        style: {
+          colors: '#9aa0ac',
+          fontSize: '12px',
+        },
+      },
+    };
+  }
 
   public barChartData: ChartData<'bar'> = {
       labels: ['2006', '2007', '2008', '2009', '2010', '2011', '2012'],
@@ -706,10 +779,12 @@ export class Dashboard1Component implements OnInit {
   public commentsDataNorm:any =[];
   public metricasFactoresPreguntasData:any = [];
   public metricasSatisfaccionPreguntasData:any = [];
+  public metricasPorcentajeSatisfaccionFactorData:any = [];
   public metricasSatisfaccionGeneralData:any = {};
   public camposDemograficosParaExcel:any = [];
   public resultadoParaExcel:any = [];
   public gaugeColor: string = '#FF0000';
+  public generalRestrictivo = false;
   public btnDisabled = true;
 
   public accessToFilter = true;
@@ -756,7 +831,8 @@ export class Dashboard1Component implements OnInit {
 
   public seriess:any = []
 
-  constructor(private languageService: LanguageService,private translate: TranslateService,
+  constructor(@Inject(DOCUMENT) private document: Document,
+    private languageService: LanguageService,private translate: TranslateService,
     private organizacionService: OrganizacionService, private authService: AuthService,
     private excel: ExcelXlsxService, private router: Router,private dialog: MatDialog
     ) {
@@ -775,18 +851,18 @@ export class Dashboard1Component implements OnInit {
       );
     }
 
-    ngOnInit() {
+    ngOnInit() { 
 
     //console.log('CURRENT USER DESDE DASHBOARD:: ', this.authService.currentUserValue);
 
       const stored = sessionStorage.getItem('routes');
       if (stored) {
         const routes: RouteInfo[] = JSON.parse(stored);
-      console.log('RUTAS DESDE DASHBOARD:: ', routes);
+        console.log('RUTAS DESDE DASHBOARD:: ', routes);
 
         //buscar path
         const found = this.existsRoute(routes, 'dashboard/dashboard1');
-      //console.log(found);
+        console.log(found);
 
         if(!found){
           this.router.navigate(['/authentication/page404']);
@@ -854,6 +930,163 @@ export class Dashboard1Component implements OnInit {
     
   ];
 
+  private normalizeMetodoAplicacion(metodoAplicacion: unknown): string {
+    return String(metodoAplicacion ?? '').trim().toLowerCase().replace(/\s+/g, '');
+  }
+
+  private isLikert5Method(metodoAplicacion: unknown): boolean {
+    const normalized = this.normalizeMetodoAplicacion(metodoAplicacion);
+    return normalized === 'likert-5' || normalized === 'likert5';
+  }
+
+  private getLikertDistributionColors(): string[] {
+    return this.showNeutralMetrics
+      ? [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_GRAY, this.COLOR_YELLOW, this.COLOR_GREEN]
+      : [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_YELLOW, this.COLOR_GREEN];
+  }
+
+  private getFactorSatisfactionColors(): string[] {
+    return this.showNeutralMetrics
+      ? [this.COLOR_GREEN, this.COLOR_RED, this.COLOR_GRAY]
+      : [this.COLOR_GREEN, this.COLOR_RED];
+  }
+
+  private syncNeutralAwareCharts(): void {
+    const distributionColors = this.getLikertDistributionColors();
+
+    this.colorScheme = {
+      ...this.colorScheme,
+      domain: [...distributionColors],
+    };
+
+    this.barChartOptions = {
+      ...this.barChartOptions,
+      colors: [...distributionColors],
+      fill: {
+        ...(this.barChartOptions.fill ?? {}),
+        colors: [...distributionColors],
+      },
+    };
+
+    this.barChartOptions2 = {
+      ...this.barChartOptions2,
+      colors: [...this.getFactorSatisfactionColors()],
+    };
+  }
+
+  private updateMetodoAplicacion(metodoAplicacion: unknown): void {
+    this.metodoAplicacionClima = typeof metodoAplicacion === 'string' ? metodoAplicacion : '';
+    this.showNeutralMetrics = this.isLikert5Method(metodoAplicacion);
+    this.syncNeutralAwareCharts();
+  }
+
+  private buildPanoramaData(item: any): Array<{ name: string; value: number }> {
+    const data = [
+      {
+        name: 'Muy desfavorable',
+        value: Number(item?.opt_4_pct ?? 0),
+      },
+      {
+        name: 'Desfavorable',
+        value: Number(item?.opt_3_pct ?? 0),
+      },
+    ];
+
+    if (this.showNeutralMetrics) {
+      data.push({
+        name: 'Neutro',
+        value: Number(item?.opt_0_pct ?? 0),
+      });
+    }
+
+    data.push(
+      {
+        name: 'Favorable',
+        value: Number(item?.opt_2_pct ?? 0),
+      },
+      {
+        name: 'Muy favorable',
+        value: Number(item?.opt_1_pct ?? 0),
+      }
+    );
+
+    return data;
+  }
+
+  private buildFactorDistributionChartData(factores: any[]): {
+    categories: string[];
+    series: Array<{ name: string; data: number[] }>;
+  } {
+    const definitions = [
+      {
+        name: 'Muy desfavorable',
+        key: 'total_totalmente_en_desacuerdo',
+      },
+      {
+        name: 'Desfavorable',
+        key: 'total_en_desacuerdo',
+      },
+    ];
+
+    if (this.showNeutralMetrics) {
+      definitions.push({
+        name: 'Neutro',
+        key: 'total_neutro',
+      });
+    }
+
+    definitions.push(
+      {
+        name: 'Favorable',
+        key: 'total_de_acuerdo',
+      },
+      {
+        name: 'Muy favorable',
+        key: 'total_totalmente_de_acuerdo',
+      }
+    );
+
+    const categories: string[] = [];
+    const series = definitions.map(({ name }) => ({
+      name,
+      data: [] as number[],
+    }));
+
+    for (const factor of factores ?? []) {
+      categories.push(factor?.Factor ?? '');
+
+      definitions.forEach(({ key }, index) => {
+        series[index].data.push(Number(factor?.[key] ?? 0));
+      });
+    }
+
+    return { categories, series };
+  }
+
+  private updateFactorDistributionChart(factores: any[]): void {
+    const { categories, series } = this.buildFactorDistributionChartData(factores);
+    const distributionColors = this.getLikertDistributionColors();
+
+    this.barChartOptions = {
+      ...this.barChartOptions,
+      chart: {
+        ...(this.barChartOptions.chart ?? {}),
+        type: 'bar',
+        stacked: true,
+        height: this.getHorizontalBarChartHeight(categories.length, 60),
+        toolbar: this.buildApexToolbar('porcentaje-respuestas-por-factor'),
+      } as ApexChart,
+      xaxis: this.buildHorizontalPercentAxis(categories),
+      yaxis: this.buildHorizontalCategoryYAxis(),
+      series,
+      colors: [...distributionColors],
+      fill: {
+        ...(this.barChartOptions.fill ?? {}),
+        colors: [...distributionColors],
+      },
+    };
+  }
+
 
 
  ///////////////////////////////////////
@@ -864,6 +1097,7 @@ export class Dashboard1Component implements OnInit {
     this.selectedFilters = [];
     this.selectedGFactors = [];
     this.dataGrandesFactores = [];
+    this.updateMetodoAplicacion(undefined);
     this.clearAll();
 
     //choripan..
@@ -884,7 +1118,7 @@ export class Dashboard1Component implements OnInit {
 
 
     this.single = [];
-    this.metricasSatisfaccionGeneralData.pct_top2 = 0;
+    this.metricasSatisfaccionGeneralData = {};
     this.totalCreadas = 0;            
     this.totalContestadas = 0;
     this.totalEmplados = 0;
@@ -894,6 +1128,7 @@ export class Dashboard1Component implements OnInit {
     this.nombreFlujo = '';
     this.metricasData = [];
     this.gMetricasData = [];
+    this.metricasPorcentajeSatisfaccionFactorData = [];
 
     const categories: string[] = [];
       const seriessx: any[] = [
@@ -916,6 +1151,32 @@ export class Dashboard1Component implements OnInit {
       
     this.commentsDataNorm = this.enrichCommentsData([]);
   };
+
+  private parseSliderPieSeries(distribucion: any): SliderPiePoint[] {
+    let parsed: any[] = [];
+
+    if (Array.isArray(distribucion)) {
+      parsed = distribucion;
+    } else if (typeof distribucion === 'string' && distribucion.trim() !== '') {
+      try {
+        parsed = JSON.parse(distribucion);
+      } catch {
+        parsed = [];
+      }
+    }
+
+    return parsed
+      .map((d: any) => ({
+        valor: Number(d?.Valor),
+        conteo: Number(d?.Conteo ?? 0),
+      }))
+      .filter((d: any) => Number.isFinite(d.valor) && Number.isFinite(d.conteo) && d.conteo > 0)
+      .sort((a: any, b: any) => a.valor - b.valor)
+      .map((d: any) => ({
+        name: `Valor ${d.valor}`,
+        value: d.conteo,
+      }));
+  }
 
   getDemograficosOrg():void {
     this.organizacionService.getMetricaDemograficos(this.idOrganization).then((resulte) => {
@@ -976,6 +1237,7 @@ export class Dashboard1Component implements OnInit {
     this.idFlujo = selectedId;
   
     const clima  = this.dataSourceClimas.find((c: { Id: number; }) => c.Id === this.idFlujo);
+    this.updateMetodoAplicacion(clima?.MetodoAplicacion);
     if(this.accessToExport){
       this.btnDisabled = false;
     }
@@ -1178,12 +1440,69 @@ export class Dashboard1Component implements OnInit {
     return Array.from(map.values());
   }
 
+  getFactorSatisfaccion(m: any): number {
+    const alterno = this.generalRestrictivo ? m?.pct_satisfaccion_equal : m?.pct_satisfaccion;
+    const principal = this.generalRestrictivo ? m?.pct_satisfaccion : m?.pct_satisfaccion_equal;
+    const n = Number(principal ?? alterno ?? 0);
+    return Number.isFinite(n) ? this.round2(n) : 0;
+  }
+
+  onGeneralRestrictivoToggle(): void {
+    this.construirSeries(this.metricasPorcentajeSatisfaccionFactorData ?? []);
+  }
+
+  private getPctSatisfaccionFactorValue(f: any): number {
+    const normal = Number(f?.pct_satisfaccion);
+    const restrictivo = Number(f?.pct_satisfaccion_restrictivo);
+    const value =
+      this.generalRestrictivo && Number.isFinite(restrictivo)
+        ? restrictivo
+        : (Number.isFinite(normal) ? normal : restrictivo);
+    return Number.isFinite(value) ? this.round2(value) : 0;
+  }
+
+  private getPctInsatisfaccionFactorValue(f: any): number {
+    const normal = Number(f?.pct_insatisfaccion);
+    const restrictivo = Number(f?.pct_insatisfaccion_restrictivo);
+    const value =
+      this.generalRestrictivo && Number.isFinite(restrictivo)
+        ? restrictivo
+        : (Number.isFinite(normal) ? normal : restrictivo);
+    return Number.isFinite(value) ? this.round2(value) : 0;
+  }
+
+  private getPctNeutroFactorValue(f: any, sat: number, insat: number): number {
+    if (!this.showNeutralMetrics) {
+      return 0;
+    }
+
+    const normal = Number(f?.pct_neutro);
+    const restrictivo = Number((f as any)?.pct_neutro_restrictivo);
+
+    if (this.generalRestrictivo && Number.isFinite(restrictivo)) {
+      return this.round2(restrictivo);
+    }
+
+    if (!this.generalRestrictivo && Number.isFinite(normal)) {
+      return this.round2(normal);
+    }
+
+    const residual = this.round2(100 - sat - insat);
+    return Math.max(0, residual);
+  }
+
   getGFPct(g: { factores?: any[] } | null | undefined): number {
     const factores = g?.factores ?? [];
-    const total = factores.reduce((s, m) => s + (m.total_respuestas ?? 0), 0);
+    const total = factores.reduce(
+      (s, m) => s + Number(m.total_respuestas ?? m.empleados_respondieron ?? 0),
+      0
+    );
     if (total <= 0) return 0;
     const ponderado = factores.reduce(
-      (s, m) => s + ((m.pct_satisfaccion_equal ?? 0) * (m.total_respuestas ?? 0)),
+      (s, m) =>
+        s +
+        (this.getFactorSatisfaccion(m) *
+          Number(m.total_respuestas ?? m.empleados_respondieron ?? 0)),
       0
     );
     // 2 decimales
@@ -1191,14 +1510,16 @@ export class Dashboard1Component implements OnInit {
   }
 
   getGFColor(pct: number): string {
-    return pct > 70 ? '#2ecc71' : pct >= 50 ? '#f39c12' : '#e74c3c';
+    return this.colorByPct(pct, false);
   }
 
   getGFStyle(g: any) {
     const pct = this.getGFPct(g);
+    const bg = this.getGFColor(pct);
+    const fg = (bg === this.COLOR_YELLOW || bg === this.COLOR_GRAY) ? '#2b2b2b' : '#fff';
     return {
-      'background-color': this.getGFColor(pct),
-      color: '#fff',
+      'background-color': bg,
+      color: fg,
       padding: '2px 8px',
       'border-radius': '999px',
       'font-weight': '600',
@@ -1412,75 +1733,38 @@ export class Dashboard1Component implements OnInit {
 
     this.organizacionService.getMetricaConteoPreguntasFactores(this.idFlujo)
       .then((response:any) => {
-        ////console.log('Metrica Preguntas Factores:', JSON.stringify(response.data));
+        console.log('Metrica Preguntas Factores:', JSON.stringify(response.data));
         
         this.metricasFactoresPreguntasData = response.data.data;
 
         if(this.metricasFactoresPreguntasData){
-          
-
-          var seriessx:any = [
-            {
-              name: 'Totalmente en Desacuerdo',
-              data:[],
-            },
-            {
-              name: 'En Desacuerdo',
-              data:[],
-            },
-            {
-              name: 'De Acuerdo',
-              data:[],
-            },
-            {
-              name: 'Totalmente de Acuerdo',
-              data:[],
-            },
-          ];
-        
-
-          this.barChartOptions.xaxis  = { categories: [] };
-          
-
-          this.metricasFactoresPreguntasData.forEach((factorx: { 
-            Factor: string, total_totalmente_de_acuerdo: number, total_de_acuerdo: number, 
-            total_en_desacuerdo: number, total_totalmente_en_desacuerdo: number  }) => {
-            
-            this.barChartOptions.xaxis?.categories.push(factorx.Factor);
-
-            var totdeacuerdo = factorx.total_totalmente_de_acuerdo;
-            var deacuerd = factorx.total_de_acuerdo;
-            var desacuerd = factorx.total_en_desacuerdo;
-            var totdesacuerd = factorx.total_totalmente_en_desacuerdo;
-
-            if(this.barChartOptions.series){
-
-              ////console.log('SOPHIE');
-
-              seriessx[3].data.push(totdeacuerdo);
-              seriessx[2].data.push(deacuerd);
-              seriessx[1].data.push(desacuerd);
-              seriessx[0].data.push(totdesacuerd);
-
-            };
-            
-            
-
-          });
+          const { categories, series } = this.buildFactorDistributionChartData(this.metricasFactoresPreguntasData);
 
           this.barChartOptions = {
             ...this.barChartOptions,
-          
-            series: seriessx,
+            chart: {
+              ...(this.barChartOptions.chart ?? {}),
+              type: 'bar',
+              stacked: true,
+              height: this.getHorizontalBarChartHeight(categories.length, 60),
+              toolbar: this.buildApexToolbar('porcentaje-respuestas-por-factor'),
+            } as ApexChart,
+            xaxis: this.buildHorizontalPercentAxis(categories),
+            series,
+            colors: [...this.getLikertDistributionColors()],
+            fill: {
+              ...(this.barChartOptions.fill ?? {}),
+              colors: [...this.getLikertDistributionColors()],
+            },
             dataLabels: {
               enabled: true,
               formatter: (val: number) => `${val.toFixed(1)}%`,
-              offsetY: -2,
+              offsetX: 8,
               style: { fontSize: '12px', colors: ['#2b2b2b']  },
               
             },
             tooltip: { y: { formatter: (val: number) => `${val.toFixed(2)}%` } },
-            yaxis: { min: 0, max: 100, labels: { formatter: (v: number) => `${v}%` } }
+            yaxis: this.buildHorizontalCategoryYAxis()
           };
 
           
@@ -1614,7 +1898,15 @@ export class Dashboard1Component implements OnInit {
       // Forzar cambio de referencia para ApexCharts/Angular
       this.barChartOptions = {
         ...this.barChartOptions,
-        xaxis: { ...(this.barChartOptions.xaxis ?? {}), categories },
+        chart: {
+          ...(this.barChartOptions.chart ?? {}),
+          type: 'bar',
+          stacked: true,
+          height: this.getHorizontalBarChartHeight(categories.length, 60),
+          toolbar: this.buildApexToolbar('porcentaje-respuestas-por-factor'),
+        } as ApexChart,
+        xaxis: this.buildHorizontalPercentAxis(categories),
+        yaxis: this.buildHorizontalCategoryYAxis(),
         series: seriessx
       };
 
@@ -1716,13 +2008,390 @@ export class Dashboard1Component implements OnInit {
 
 
   colorFor(v: number): string {
-    if (v >= 70) return 'green';
-    if (v >= 50) return 'orange';
+    const pct = Number(v);
+    if (!Number.isFinite(pct)) return 'neutral';
+    if (pct >= 91) return 'green';
+    if (pct >= 80) return 'yellow';
+    if (pct >= 60) return 'orange';
     return 'red';
   }
   
   colorClass(v: number): string {
     return this.colorFor(v); // reutiliza
+  }
+
+  private toPct(value: any): number {
+    const n = Number(value);
+    return Number.isFinite(n) ? this.round2(n) : 0;
+  }
+
+  private getGeneralMetricValue(
+    key: 'pct_top1' | 'pct_top2' | 'pct_general' | 'pct_desfavorable' | 'pct_desfavorable_restrictivo' | 'pct_bottom1'
+  ): number {
+    return this.toPct(this.metricasSatisfaccionGeneralData?.[key]);
+  }
+
+  private hasGeneralMetricValue(
+    key: 'pct_top1' | 'pct_top2' | 'pct_general' | 'pct_desfavorable' | 'pct_desfavorable_restrictivo' | 'pct_bottom1'
+  ): boolean {
+    return Number.isFinite(Number(this.metricasSatisfaccionGeneralData?.[key]));
+  }
+
+  getGeneralGaugeValue(): number {
+    return this.generalRestrictivo
+      ? this.getGeneralMetricValue('pct_general')
+      : this.getGeneralMetricValue('pct_top2');
+  }
+
+  getGeneralGaugeLabel(): string {
+    return this.generalRestrictivo ? 'Restrictivo' : 'Top-2';
+  }
+
+  getGeneralCardTooltip(): string {
+    if (this.generalRestrictivo) {
+      return 'Mide la favorabilidad general usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica general, en lugar del Top-2 estándar.';
+    }
+
+    return 'Mide la favorabilidad general del clima.\n\nSe calcula sumando las dos opciones más favorables de la escala (Top-2) y dividiéndolas entre el total de respuestas válidas.';
+  }
+
+  getTop1GaugeValue(): number {
+    return this.getGeneralMetricValue('pct_top1');
+  }
+
+  getTop1CardTooltip(): string {
+    return 'Muestra el porcentaje de respuestas ubicadas en la opción más favorable de la escala.\n\nSe calcula como Top-1 sobre el total de respuestas válidas.';
+  }
+
+  private buildApexToolbar(baseName: string) {
+    const filename = this.getExportFileName(baseName);
+    return {
+      show: true,
+      tools: {
+        download: true,
+        selection: false,
+        zoom: false,
+        zoomin: false,
+        zoomout: false,
+        pan: false,
+        reset: false,
+      },
+      export: {
+        svg: { filename },
+        png: { filename },
+        csv: {
+          filename,
+          columnDelimiter: ',',
+          headerCategory: 'Categoria',
+          headerValue: 'Valor',
+        },
+      },
+    };
+  }
+
+  private getExportFileName(chartName: string): string {
+    const clima = this.sanitizeFileName(this.nombreFlujo || 'dashboard-climas');
+    const chart = this.sanitizeFileName(chartName || 'grafica');
+    return `${clima}_${chart}`;
+  }
+
+  private sanitizeFileName(value: string): string {
+    const normalized = (value || 'grafica')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return normalized || 'grafica';
+  }
+
+  private ensureExportAccess(): boolean {
+    if (this.accessToExport) {
+      return true;
+    }
+
+    void Swal.fire({
+      icon: 'warning',
+      title: 'Sin permiso de exportación',
+      text: 'Tu usuario no tiene permiso para exportar gráficas de este dashboard.',
+      confirmButtonText: 'Entendido',
+    });
+    return false;
+  }
+
+  private getChartSvgElement(containerId: string): SVGSVGElement | null {
+    const container = this.document.getElementById(containerId);
+    return container?.querySelector('svg') ?? null;
+  }
+
+  private getSerializedSvg(containerId: string): { markup: string; width: number; height: number } | null {
+    const svg = this.getChartSvgElement(containerId);
+    if (!svg) {
+      return null;
+    }
+
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    const bounds = svg.getBoundingClientRect();
+    const viewBox = clone.viewBox?.baseVal;
+    const attrWidth = parseFloat(clone.getAttribute('width') || '0') || 0;
+    const attrHeight = parseFloat(clone.getAttribute('height') || '0') || 0;
+    const width = Math.max(
+      Math.round(bounds.width || 0),
+      Math.round(viewBox?.width || 0),
+      attrWidth,
+      1
+    );
+    const height = Math.max(
+      Math.round(bounds.height || 0),
+      Math.round(viewBox?.height || 0),
+      attrHeight,
+      1
+    );
+
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+    clone.setAttribute('width', `${width}`);
+    clone.setAttribute('height', `${height}`);
+    if (!clone.getAttribute('viewBox')) {
+      clone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
+
+    const markup = new XMLSerializer().serializeToString(clone);
+    return { markup, width, height };
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    this.document.body.appendChild(link);
+    link.click();
+    this.document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  private csvEscape(value: string | number | null | undefined): string {
+    const text = value == null ? '' : String(value);
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  }
+
+  private exportCsvFile(
+    filenameBase: string,
+    headers: string[],
+    rows: Array<Array<string | number | null | undefined>>
+  ): void {
+    if (!this.ensureExportAccess()) {
+      return;
+    }
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((value) => this.csvEscape(value)).join(','))
+      .join('\r\n');
+
+    this.downloadBlob(
+      new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }),
+      `${this.getExportFileName(filenameBase)}.csv`
+    );
+  }
+
+  exportChartSvg(containerId: string, filenameBase: string): void {
+    if (!this.ensureExportAccess()) {
+      return;
+    }
+
+    const serialized = this.getSerializedSvg(containerId);
+    if (!serialized) {
+      return;
+    }
+
+    this.downloadBlob(
+      new Blob([serialized.markup], { type: 'image/svg+xml;charset=utf-8' }),
+      `${this.getExportFileName(filenameBase)}.svg`
+    );
+  }
+
+  async exportChartPng(containerId: string, filenameBase: string): Promise<void> {
+    if (!this.ensureExportAccess()) {
+      return;
+    }
+
+    const serialized = this.getSerializedSvg(containerId);
+    if (!serialized) {
+      return;
+    }
+
+    const svgBlob = new Blob([serialized.markup], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = this.document.createElement('canvas');
+          canvas.width = serialized.width;
+          canvas.height = serialized.height;
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('No se pudo crear el contexto del canvas.'));
+            return;
+          }
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('No se pudo generar la imagen PNG.'));
+              return;
+            }
+
+            this.downloadBlob(blob, `${this.getExportFileName(filenameBase)}.png`);
+            resolve();
+          }, 'image/png');
+        };
+        image.onerror = () => reject(new Error('No se pudo renderizar el SVG para exportación.'));
+        image.src = svgUrl;
+      });
+    } catch (error) {
+      console.error('Error al exportar PNG:', error);
+      void Swal.fire({
+        icon: 'error',
+        title: 'No fue posible exportar',
+        text: 'La gráfica no pudo convertirse a PNG.',
+        confirmButtonText: 'Cerrar',
+      });
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  }
+
+  exportPanoramaCsv(): void {
+    this.exportCsvFile(
+      'panorama-general-clima',
+      ['Categoria', 'Porcentaje'],
+      (this.single || []).map((item: { name?: string; value?: number }) => [item?.name ?? '', item?.value ?? 0])
+    );
+  }
+
+  exportGeneralGaugeCsv(): void {
+    this.exportCsvFile(
+      'favorabilidad-general',
+      ['Indicador', 'Modo', 'Valor'],
+      [['Favorabilidad general', this.getGeneralGaugeLabel(), this.getGeneralGaugeValue()]]
+    );
+  }
+
+  exportTop1GaugeCsv(): void {
+    this.exportCsvFile(
+      'favorabilidad-maxima',
+      ['Indicador', 'Modo', 'Valor'],
+      [['Favorabilidad máxima', 'Top-1', this.getTop1GaugeValue()]]
+    );
+  }
+
+  exportDesfavorableGaugeCsv(): void {
+    this.exportCsvFile(
+      'desfavorabilidad-general',
+      ['Indicador', 'Modo', 'Valor'],
+      [['Desfavorabilidad general', this.getDesfavorableGaugeLabel(), this.getDesfavorableGaugeValue()]]
+    );
+  }
+
+  exportBottom1GaugeCsv(): void {
+    this.exportCsvFile(
+      'desfavorabilidad-maxima',
+      ['Indicador', 'Modo', 'Valor'],
+      [['Desfavorabilidad máxima', 'Bottom-1', this.getBottom1GaugeValue()]]
+    );
+  }
+
+  private getDesfavorableMetricKey(): 'pct_desfavorable' | 'pct_desfavorable_restrictivo' {
+    return this.generalRestrictivo ? 'pct_desfavorable_restrictivo' : 'pct_desfavorable';
+  }
+
+  getDesfavorableGaugeValue(): number {
+    const key = this.getDesfavorableMetricKey();
+    if (this.hasGeneralMetricValue(key)) {
+      return this.getGeneralMetricValue(key);
+    }
+    return this.getGeneralMetricValue('pct_desfavorable');
+  }
+
+  getDesfavorableGaugeLabel(): string {
+    return this.generalRestrictivo ? 'Bottom-2 (Restrictivo)' : 'Bottom-2';
+  }
+
+  getDesfavorableCardTooltip(): string {
+    if (this.generalRestrictivo) {
+      return 'Mide la desfavorabilidad general usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica desfavorable, en lugar del Bottom-2 estándar.';
+    }
+
+    return 'Mide la desfavorabilidad general del clima.\n\nSe calcula sumando las dos opciones menos favorables de la escala (Bottom-2) y dividiéndolas entre el total de respuestas válidas.';
+  }
+
+  getBottom1GaugeValue(): number {
+    if (this.hasGeneralMetricValue('pct_bottom1')) {
+      return this.getGeneralMetricValue('pct_bottom1');
+    }
+
+    const total = Number(this.metricasSatisfaccionGeneralData?.total_respuestas ?? 0);
+    const totalOpt4 = Number(this.metricasSatisfaccionGeneralData?.total_opt4 ?? 0);
+    return total > 0 ? this.round2((totalOpt4 * 100) / total) : 0;
+  }
+
+  getBottom1CardTooltip(): string {
+    return 'Muestra el porcentaje de respuestas ubicadas en la opción menos favorable de la escala.\n\nSe calcula como Bottom-1 sobre el total de respuestas válidas.';
+  }
+
+  private colorByPct(value: number, inverted = false): string {
+    const pct = Number(value);
+    if (!Number.isFinite(pct)) return this.COLOR_GRAY;
+
+    const normalized = inverted ? (100 - pct) : pct;
+    if (normalized >= 91) return this.COLOR_GREEN;
+    if (normalized >= 80) return this.COLOR_YELLOW;
+    if (normalized >= 60) return this.COLOR_ORANGE;
+    return this.COLOR_RED;
+  }
+
+  getGeneralGaugeColor(): string {
+    const key = this.generalRestrictivo ? 'pct_general' : 'pct_top2';
+    if (!this.hasGeneralMetricValue(key)) return this.COLOR_GRAY;
+    return this.colorByPct(this.getGeneralGaugeValue(), false);
+  }
+
+  getTop1GaugeColor(): string {
+    if (!this.hasGeneralMetricValue('pct_top1')) return this.COLOR_GRAY;
+    return this.colorByPct(this.getTop1GaugeValue(), false);
+  }
+
+  getDesfavorableGaugeColor(): string {
+    const key = this.getDesfavorableMetricKey();
+    if (!this.hasGeneralMetricValue(key) && !this.hasGeneralMetricValue('pct_desfavorable')) return this.COLOR_GRAY;
+    return this.colorByPct(this.getDesfavorableGaugeValue(), true);
+  }
+
+  getBottom1GaugeColor(): string {
+    const hasBottom1 = this.hasGeneralMetricValue('pct_bottom1');
+    const total = Number(this.metricasSatisfaccionGeneralData?.total_respuestas ?? 0);
+
+    if (!hasBottom1 && !(Number.isFinite(total) && total > 0)) return this.COLOR_GRAY;
+    return this.colorByPct(this.getBottom1GaugeValue(), true);
+  }
+
+  getFactorGaugeColor(pct: number): string {
+    return this.colorByPct(pct, false);
+  }
+
+  getFactorColorClass(pct: number): string {
+    return this.colorClass(pct);
   }
 
 
@@ -1762,17 +2431,8 @@ export class Dashboard1Component implements OnInit {
                         
             this.metricasSatisfaccionGeneralData = response.data.data[0];
            
-            const pct = this.metricasSatisfaccionGeneralData.pct_general;
-
-            if (pct >= 91) {
-              this.gaugeColor = '#92D050';    // verde 
-            } else if (pct >= 80) {
-              this.gaugeColor = '#FFFF00';    // amarillo
-            } else if (pct >= 60) {
-              this.gaugeColor = '#FFC000';    // naranja
-            } else {
-              this.gaugeColor = '#FF0000';    // rojo
-            }
+            const pct = Number(this.metricasSatisfaccionGeneralData.pct_general ?? 0);
+            this.gaugeColor = this.colorByPct(pct, false);
 
           }
 
@@ -1800,19 +2460,10 @@ export class Dashboard1Component implements OnInit {
         this.metricasSatisfaccionGeneralData = data[0];
 
         const pct = Number(this.metricasSatisfaccionGeneralData.pct_general ?? 0);
-
-        if (pct >= 91) {
-          this.gaugeColor = '#92D050'; // verde
-        } else if (pct >= 80) {
-          this.gaugeColor = '#FFFF00'; // amarillo
-        } else if (pct >= 60) {
-          this.gaugeColor = '#FFC000'; // naranja
-        } else {
-          this.gaugeColor = '#FF0000'; // rojo
-        }
+        this.gaugeColor = this.colorByPct(pct, false);
       } else {
-        this.metricasSatisfaccionGeneralData = null;
-        this.gaugeColor = '#ccc'; // color neutro si no hay datos
+        this.metricasSatisfaccionGeneralData = {};
+        this.gaugeColor = this.COLOR_GRAY; // color neutro si no hay datos
       }
     } catch (error) {
       console.error('Error al obtener la métrica de satisfacción general:', error);
@@ -1842,44 +2493,31 @@ export class Dashboard1Component implements OnInit {
 
       console.log('DATA OBTENIDA ALL METRICS:: ', data);
 
-      if(data.satisfaccionPorPregunta.length > 0 && data.satisfaccionPorPregunta[0].empleados_respondieron > 5) {
+      if(data.satisfaccionPorPregunta.length > 0 && data.satisfaccionPorPregunta[0].empleados_respondieron >= 5) {
         
         //calificacion general  
       if (data.calificacionGeneral) {
 
         this.metricasSatisfaccionGeneralData = data.calificacionGeneral;
 
-        
+        //HAY QUE AGREGARLE LOS BOTONES DE DESCARGAR EN LAS GRAFICAS TODAS
+        //CAMBIAR LA TABLA DE CALIFICACIÓN POR PREGUNTA PARA QUE NO USE COLORES LOS PRIMEROS 4
+        //LA IMAGEN NO SE CARGA EN EL ENCABEZADO DE USUARIOS
+        //AGREGAR BOTON DE ENVIAR A TODOS LOS PENDIENTES DE ENVIAR
 
         const pct = Number(this.metricasSatisfaccionGeneralData.pct_top2 ?? 0);
-        //console.log('porcentaje chorizo: ',  pct);
+        this.gaugeColor = this.colorByPct(pct, false);
 
-        if (pct >= 91) {
-          this.gaugeColor = '#21a67a'; // verde
-        } else if (pct >= 80 && pct < 91) {
-          this.gaugeColor = '#FFFF00'; // amarillo
-        } else if (pct >= 60 && pct < 80) {
-          this.gaugeColor = '#FFC000'; // naranja
-        } else {
-          this.gaugeColor = '#FF0000'; // rojo
-        }
-      } else {
-        this.metricasSatisfaccionGeneralData = null;
-        this.gaugeColor = '#ccc'; // color neutro si no hay datos
+      } 
+      else {
+        this.metricasSatisfaccionGeneralData = {};
+        this.gaugeColor = this.COLOR_GRAY; // color neutro si no hay datos
       }
 
       //porcentajes satisfación general
       if (data.satisfaccionPorcentajes) {
         const item = data.satisfaccionPorcentajes[0];
-
-        const single = [
-          { name: 'Muy en Desacuerdo', value: Number(item.opt_4_pct ?? 0) },
-          { name: 'En Desacuerdo',     value: Number(item.opt_3_pct ?? 0) },
-          { name: 'De Acuerdo',     value: Number(item.opt_2_pct ?? 0) },
-          { name: 'Muy de Acuerdo',    value: Number(item.opt_1_pct ?? 0) },
-        ];
-
-        this.single = [...single];
+        this.single = [...this.buildPanoramaData(item)];
       } else {
         this.single = []; // limpia si no hay datos
       }
@@ -1890,7 +2528,7 @@ export class Dashboard1Component implements OnInit {
         this.metricasData = data.satisfaccionPorPregunta;
         //this.metricasData = [...this.metricasData];
 
-        this.gMetricasData = this.groupByGranFactor(this.metricasData);
+        this.gMetricasData = this.groupByGranFactor(this.metricasData); //choricito
         this.metricasData = [...this.metricasData];
         
       } else {
@@ -1900,56 +2538,28 @@ export class Dashboard1Component implements OnInit {
       //porcentajes satisfacción por factor
       if(data.distribucionRespuestas){
         this.metricasFactoresPreguntasData = data.distribucionRespuestas;
-        
-        const categories: string[] = [];
-        const seriessx: any[] = [
-          { name: 'Muy en Desacuerdo', data: [] as number[] },
-          { name: 'En Desacuerdo',            data: [] as number[] },
-          { name: 'De Acuerdo',               data: [] as number[] },
-          { name: 'Muy de Acuerdo',    data: [] as number[] },
-        ];
         console.log('antes del forEach: ', this.metricasFactoresPreguntasData);
-        this.metricasFactoresPreguntasData.forEach((f: {
-          Factor: string;
-          total_totalmente_de_acuerdo: number | string;
-          total_de_acuerdo: number | string;
-          total_en_desacuerdo: number | string;
-          total_totalmente_en_desacuerdo: number | string;
-        }) => {
-          categories.push(f.Factor);
-
-          const totDeAcuerdo    = Number(f.total_totalmente_de_acuerdo);
-          const deAcuerdo       = Number(f.total_de_acuerdo);
-          const enDesacuerdo    = Number(f.total_en_desacuerdo);
-          const totEnDesacuerdo = Number(f.total_totalmente_en_desacuerdo);
-
-          // Orden consistente con la leyenda
-          seriessx[3].data.push(totDeAcuerdo);
-          seriessx[2].data.push(deAcuerdo);
-          seriessx[1].data.push(enDesacuerdo);
-          seriessx[0].data.push(totEnDesacuerdo);
-        });
-
-        // Forzar cambio de referencia para ApexCharts/Angular
-        this.barChartOptions = {
-          ...this.barChartOptions,
-          xaxis: { ...(this.barChartOptions.xaxis ?? {}), categories },
-          series: seriessx
-        };
+        this.updateFactorDistributionChart(this.metricasFactoresPreguntasData);
       }
 
       //porcentaje satisfaccion e insatisfaccion
       if(data.porcentajeSatisfaccionPorFactor){
 
         const factores = data.porcentajeSatisfaccionPorFactor;
+        this.metricasPorcentajeSatisfaccionFactorData = factores;
 
         this.construirSeries(factores);
+      } else {
+        this.metricasPorcentajeSatisfaccionFactorData = [];
+        this.construirSeries([]);
       }
 
        //satisfacción por pregunta
       this.subjects = [];
       this.subjects = [...this.subjects];
-      if(data.respuestasPorFactor){
+
+      if(data.respuestasPorFactor) {
+        
         console.log('PRINCIPE DE LAS TINIEBLAS..', data.respuestasPorFactor);
 
         this.metricasSatisfaccionPreguntasData = data.respuestasPorFactor;
@@ -1977,6 +2587,7 @@ export class Dashboard1Component implements OnInit {
             total_respuestas: number;
             total_opt1: number;
             total_opt2: number;
+            total_opt0: number;
             total_opt3: number;
             total_opt4: number;
             pct_favorable?: number;
@@ -1993,6 +2604,7 @@ export class Dashboard1Component implements OnInit {
             const total = Number(preguntax.total_respuestas ?? 0);
             const opt1  = Number(preguntax.total_opt1 ?? 0);
             const opt2  = Number(preguntax.total_opt2 ?? 0);
+            const opt0  = Number(preguntax.total_opt0 ?? 0);
             const opt3  = Number(preguntax.total_opt3 ?? 0);
             const opt4  = Number(preguntax.total_opt4 ?? 0);
 
@@ -2010,13 +2622,18 @@ export class Dashboard1Component implements OnInit {
             const mean14 = (preguntax.mean14 ?? preguntax.mean_1_4) ??
               this.calcMean1to4FromCounts(opt1, opt2, opt3, opt4, total);
 
+            const etiquetaGranFactor = String(preguntax.EtiquetaGranFactor ?? '').trim();
+            const etiquetaGranFactorVisible =
+              etiquetaGranFactor.toLowerCase() === 'generico' ? '' : etiquetaGranFactor;
+
             const subj: SubjectProgress = {
-              EtiquetaGranFactor: preguntax.EtiquetaGranFactor,
+              EtiquetaGranFactor: etiquetaGranFactorVisible,
               subject: preguntax.Pregunta,
               factor: preguntax.Factor,
               duration: total,
               totacuerdo: opt1,
               acuerdo: opt2,
+              neutro: opt0,
               desacuerdo: opt3,
               totdesacuerdo: opt4,
               pctFav: Number(pctFav),
@@ -2056,6 +2673,7 @@ export class Dashboard1Component implements OnInit {
           total_respuestas: r.total_respuestas,
           promedio: r.promedio,
           distribucionJSON: r.DistribucionJSON, // del SP
+          pieSeries: this.parseSliderPieSeries(r.DistribucionJSON),
         }));
         
       }
@@ -2110,6 +2728,13 @@ export class Dashboard1Component implements OnInit {
         
         this.commentsDataNorm = this.enrichCommentsData(datax);
 
+        if (this.resultadoParaExcel && typeof this.resultadoParaExcel === 'object') {
+          this.resultadoParaExcel.preguntasAbiertas = datax.map((item: any) => ({
+            ...item,
+            ComentariosJSON: Array.isArray(item?.ComentariosJSON) ? item.ComentariosJSON : []
+          }));
+        }
+
         // Forzar change detection (si lo necesitas)
         // this.commentsDataNorm = [...this.commentsDataNorm];
 
@@ -2118,6 +2743,9 @@ export class Dashboard1Component implements OnInit {
 
       }else{
       this.commentsDataNorm = [];
+      if (this.resultadoParaExcel && typeof this.resultadoParaExcel === 'object') {
+        this.resultadoParaExcel.preguntasAbiertas = [];
+      }
       }
 
       //PREGUNTAS ABIERTAS IA
@@ -2152,6 +2780,9 @@ export class Dashboard1Component implements OnInit {
       }
 
 
+      }
+      else {
+        Swal.fire('Sin datos suficientes', 'No hay suficientes datos para mostrar resultados.', 'warning');
       }
 
       
@@ -2219,27 +2850,7 @@ export class Dashboard1Component implements OnInit {
           //console.log('Metrica Porcentaje Respuestas:', JSON.stringify(response.data));
           
           if(response.data.data[0]){
-           
-            var single = [
-              {
-                name: 'Muy Desacuerdo',
-                value: response.data.data[0].opt_4_pct,
-              },
-              {
-                name: 'Desacuerdo',
-                value: response.data.data[0].opt_3_pct,
-              },
-              {
-                name: 'De Acuerdo',
-                value: response.data.data[0].opt_2_pct,
-              },
-              {
-                name: 'Muy Acuerdo',
-                value: response.data.data[0].opt_1_pct,
-              }
-            ];
-
-            this.single = [...single]; 
+            this.single = [...this.buildPanoramaData(response.data.data[0])]; 
 
           }
 
@@ -2259,27 +2870,7 @@ export class Dashboard1Component implements OnInit {
           //console.log('Metrica Porcentaje Respuestas:', JSON.stringify(response.data));
           
           if(response.data.data[0]){
-           
-            var single = [
-              {
-                name: 'Muy Desacuerdo',
-                value: response.data.data[0].opt_4_pct,
-              },
-              {
-                name: 'Desacuerdo',
-                value: response.data.data[0].opt_3_pct,
-              },
-              {
-                name: 'De Acuerdo',
-                value: response.data.data[0].opt_2_pct,
-              },
-              {
-                name: 'Muy Acuerdo',
-                value: response.data.data[0].opt_1_pct,
-              }
-            ];
-
-            this.single = [...single]; 
+            this.single = [...this.buildPanoramaData(response.data.data[0])]; 
 
           }
 
@@ -2300,15 +2891,7 @@ export class Dashboard1Component implements OnInit {
 
       if (data.length > 0) {
         const item = data[0];
-
-        const single = [
-          { name: 'Muy Desacuerdo', value: Number(item.opt_4_pct ?? 0) },
-          { name: 'Desacuerdo',     value: Number(item.opt_3_pct ?? 0) },
-          { name: 'De Acuerdo',     value: Number(item.opt_2_pct ?? 0) },
-          { name: 'Muy Acuerdo',    value: Number(item.opt_1_pct ?? 0) },
-        ];
-
-        this.single = [...single];
+        this.single = [...this.buildPanoramaData(item)];
       } else {
         this.single = []; // limpia si no hay datos
       }
@@ -2329,22 +2912,40 @@ export class Dashboard1Component implements OnInit {
     const categorias: string[]      = [];
     const satData: number[]         = [];
     const insatData: number[]       = [];
+    const neutroData: number[]      = [];
 
     factores.forEach(f => {
       categorias.push(f.Factor);
-      satData.push(f.pct_satisfaccion);     // % de opt_1 + opt_2
-      insatData.push(f.pct_insatisfaccion); // % de opt_3 + opt_4
+      const sat = this.getPctSatisfaccionFactorValue(f);
+      const insat = this.getPctInsatisfaccionFactorValue(f);
+      const neutro = this.getPctNeutroFactorValue(f, sat, insat);
+      satData.push(sat);
+      insatData.push(insat);
+      if (this.showNeutralMetrics) {
+        neutroData.push(neutro);
+      }
     });
 
-    this.barChartOptions2.series = [
-      { name: 'Satisfacción',     data: satData },
-      { name: 'Insatisfacción',   data: insatData }
+    const series: Array<{ name: string; data: number[] }> = [
+      { name: 'Favorable',     data: satData },
+      { name: 'Desfavorable',  data: insatData },
     ];
 
-    this.barChartOptions2.xaxis = {
-      ...this.barChartOptions2.xaxis,
-      categories: categorias
-    };
+    if (this.showNeutralMetrics) {
+      series.push({ name: 'Neutro', data: neutroData });
+    }
+
+    this.barChartOptions2.series = series;
+
+    this.barChartOptions2.xaxis = this.buildHorizontalPercentAxis(categorias);
+    this.barChartOptions2.yaxis = this.buildHorizontalCategoryYAxis();
+
+    this.barChartOptions2.chart = {
+      ...(this.barChartOptions2.chart ?? {}),
+      type: this.barChartOptions2.chart?.type ?? 'bar',
+      height: this.getHorizontalBarChartHeight(categorias.length, 80),
+      toolbar: this.buildApexToolbar('porcentajes-satisfaccion-factor')
+    } as ApexChart;
 
     // Si usas un #chart ViewChild => this.chart.updateOptions(...)
     // Si NO, basta con cambiar la referencia completa:
@@ -2353,32 +2954,13 @@ export class Dashboard1Component implements OnInit {
 
   private chartFactores() {
     this.barChartOptions = {
-      series: [
-        {
-          name: 'Totalmente de Acuerdo',
-          data: [],
-        },
-        {
-          name: 'De Acuerdo',
-          data: [],
-        },
-        {
-          name: 'En Desacuerdo',
-          data: [],
-        },
-        {
-          name: 'Totalmente en Desacuerdo',
-          data: [],
-        },
-      ],
+      series: this.buildFactorDistributionChartData([]).series,
       chart: {
         type: 'bar',
-        height: 350,
+        height: this.getHorizontalBarChartHeight(0, 60),
         foreColor: '#9aa0ac',
         stacked: true,
-        toolbar: {
-          show: false,
-        },
+        toolbar: this.buildApexToolbar('porcentaje-respuestas-por-factor'),
       },
       responsive: [
         {
@@ -2394,21 +2976,15 @@ export class Dashboard1Component implements OnInit {
       ],
       plotOptions: {
         bar: {
-          horizontal: false,
-          columnWidth: '55%',
+          horizontal: true,
+          barHeight: '70%',
         },
       },
       dataLabels: {
         enabled: false,
       },
-      xaxis: {
-        type: 'category',
-        categories: [],
-        labels: {
-          style: { colors: '#9aa0ac' },
-          rotate: -25,        // opcional: rota los labels si son muy largos
-        },
-      },
+      xaxis: this.buildHorizontalPercentAxis([]),
+      yaxis: this.buildHorizontalCategoryYAxis(),
       legend: {
         show: false,
       },
@@ -2419,8 +2995,8 @@ export class Dashboard1Component implements OnInit {
       },
       fill: {
         opacity: 0.8,
-        colors: ['#E82742', '#e89f27', '#dbee35', this.verde],
-      }, //21A67A
+        colors: this.getLikertDistributionColors(),
+      },
       tooltip: {
         theme: 'dark',
         marker: {
@@ -2439,6 +3015,7 @@ export class Dashboard1Component implements OnInit {
       .then((response:any) => {
         //console.log('Metrica porcentaje satisfaccion Factores:', JSON.stringify(response.data));
         const factores: any[] = response.data.data;
+        this.metricasPorcentajeSatisfaccionFactorData = factores;
         this.construirSeries(factores);
         this.loadingPorcentajes = false;
       })
@@ -2474,6 +3051,7 @@ export class Dashboard1Component implements OnInit {
       .getMetricaPorcentajeSatisfaccionFactorFiltradoGF(this.idFlujo, filtro, filtroGf);
 
     const factores = response?.data?.data ?? [];
+    this.metricasPorcentajeSatisfaccionFactorData = factores;
 
     this.construirSeries(factores);
 

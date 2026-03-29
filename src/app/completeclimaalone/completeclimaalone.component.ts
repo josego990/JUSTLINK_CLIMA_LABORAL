@@ -67,6 +67,7 @@ export class CompleteclimaaloneComponent implements OnInit {
       completed: false,
       startDate: ' ',
       endDate: ' ',
+      tipoEvaluacion: 'string',
       estado:1,
       estadoEnvio: ' ',
       granFactores: [],

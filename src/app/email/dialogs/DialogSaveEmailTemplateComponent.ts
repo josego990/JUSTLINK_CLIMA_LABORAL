@@ -57,69 +57,24 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
         </div>
       </div>
 
-      <mat-form-field appearance="fill" class="w-100">
-        <mat-label>Organización</mat-label>
-        <mat-select
-          formControlName="IdOrganizacion"
-          (selectionChange)="onOrganizationChange($event.value)"
-          [disabled]="loadingOrganizations || saving"
-        >
-          <mat-option
-            *ngFor="let organization of dataSourceOrganizations"
-            [value]="organization.Id"
-          >
-            {{ organization.Nombre }}
-          </mat-option>
-        </mat-select>
-
-        <!-- Spinner pequeño al lado del select (se queda bien) -->
-        <mat-progress-spinner
-          *ngIf="loadingOrganizations"
-          matSuffix
-          diameter="18"
-          mode="indeterminate"
-        ></mat-progress-spinner>
-      </mat-form-field>
+      
 
       <mat-form-field class="example-full-width" appearance="outline">
         <mat-label>Nombre de la plantilla</mat-label>
         <input
           matInput
           formControlName="Nombre"
-          maxlength="120"
+          maxlength="64"
           autocomplete="off"
           [disabled]="saving"
         />
-        <mat-hint>{{ form.value?.Nombre?.length || 0 }}/120</mat-hint>
+        <mat-hint>{{ form.value?.Nombre?.length || 0 }}/64</mat-hint>
         <mat-error *ngIf="form.controls?.['Nombre']?.hasError('required')">
           Por favor ingrese el nombre de la plantilla
         </mat-error>
       </mat-form-field>
 
-      <mat-form-field class="example-full-width" appearance="outline">
-        <mat-label>Asunto del correo</mat-label>
-        <input
-          matInput
-          formControlName="Asunto"
-          maxlength="200"
-          autocomplete="off"
-          [disabled]="saving"
-        />
-        <mat-hint>{{ form.value?.Asunto?.length || 0 }}/200</mat-hint>
-        <mat-error *ngIf="form.controls?.['Asunto']?.hasError('required')">
-          Por favor ingrese el asunto
-        </mat-error>
-      </mat-form-field>
-
-      <div style="display:flex; align-items:center; gap:12px; margin-top: 6px;">
-        <mat-slide-toggle formControlName="IsActive" [disabled]="saving">
-          Activa
-        </mat-slide-toggle>
-
-        <span style="color:#6b7c80; font-size: 12px;">
-          Si está inactiva no se mostrará en listados/selección.
-        </span>
-      </div>
+   
 
       <div *ngIf="data?.showHtmlPreview" style="margin-top:16px;">
         <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -170,12 +125,11 @@ export class DialogSaveEmailTemplateComponent implements OnInit {
   public saving = false;
   public loadingOrganizations = false;
   public loadingSaving = false;
-   public dataSourceOrganizations:any = [];
-   public idOrganization =  0;
-    public nombreOrganizacion = '';
+  public dataSourceOrganizations:any = [];
+  public idOrganization =  0;
+  public nombreOrganizacion = '';
 
   constructor(
-    private authService: AuthService,
     private organizationService: OrganizacionService,
     private fb: UntypedFormBuilder,
     public dialogRef: MatDialogRef<DialogSaveEmailTemplateComponent>,
@@ -198,121 +152,57 @@ export class DialogSaveEmailTemplateComponent implements OnInit {
     // }
 
     this.form = this.fb.group({
-      IdOrganizacion: [this.idOrganization],
+      //IdOrganizacion: [this.data?.IdOrganizacion] || v ,
       Nombre: [this.data?.Nombre || '', [Validators.required]],
-      Asunto: [this.data?.Asunto || '', [Validators.required]],
+      //Asunto: [this.data?.Asunto || '', [Validators.required]],
       IsActive: [typeof this.data?.IsActive === 'boolean' ? this.data.IsActive : true],
     });
 
-
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-        this.getOrganizations();
-      }
-      else {
-
-        //validar permisos de acciones
-        const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
-        const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'filterdash');
-
-        //console.log('permisofilter',permisofilter);
-/*
-        if(permisoexport){
-          this.accessToExport = true;
-          this.btnDisabled = false;
-        }else{
-          this.accessToExport = false;
-          this.btnDisabled = true;
-        }
-
-        if(permisofilter){
-          this.accessToFilter = true;
-          this.btnDisabled = false;
-        }else{
-          this.accessToFilter = false;
-          this.btnDisabled = true;
-        }
-*/
-        this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-
-
-      }
-
   }
 
-   getOrganizations(): void {
-    
-        this.loadingOrganizations = true;
-
-        this.organizationService.getOrganizations()
-        .then((response:any) => {
-            //console.log('Organizacionesxx:', JSON.stringify(response.data));
-            
-            this.dataSourceOrganizations = response.data;
-
-            this.loadingOrganizations = false;
-
-        })
-        .catch((error:any) => {
-            console.error('Error al obtener organizaciones:', error);
-            this.loadingOrganizations = false;
-        });
-
-        
-    }
-
-    
-  getOrganizationById(idOrganization:any): void {
-    this.loadingOrganizations = true;
-    this.organizationService.getOrganizationById(idOrganization)
-    .then((response:any) => {
-        ////console.log('Organizaciones:', JSON.stringify(response.data));
-        
-        this.dataSourceOrganizations = response.data;
-
-        this.idOrganization = idOrganization;
-        //this.dataSourceClimas = [];
-        this.nombreOrganizacion = 'cargando..'
-        this.loadingOrganizations = false;
-        //this.getFlujosLista(); 
-
-    })
-    .catch((error:any) => {
-        console.error('Error al obtener organizaciones:', error);
-        this.loadingOrganizations = false;
-    });
-  }
-
-    onOrganizationChange(selectedId: number) {
- 
-    if(selectedId > 0){
-      //this.editor?.setContent('');
-      this.idOrganization = selectedId;
-    }
-    
-  }
 
   closeDialog(): void {
     this.dialogRef.close(null);
+  }
+
+  private generateGuid(): string {
+    if (globalThis?.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+      const random = Math.random() * 16 | 0;
+      const value = char === 'x' ? random : (random & 0x3) | 0x8;
+      return value.toString(16);
+    });
   }
 
   guardar(): void {
     if (this.form.invalid) return;
 
     this.saving = true;
+    const currentCode = String(this.data?.Code ?? '').trim();
 
     const payload = {
       TemplateId: this.data?.TemplateId || 0,
-      IdOrganizacion: this.idOrganization,
+      IdOrganizacion: this.data?.IdOrganizacion,
       Nombre: this.form.value.Nombre,
-      Asunto: this.form.value.Asunto,
-      IsActive: this.form.value.IsActive,
+      Asunto: 'asunto',
+      IsActive: true,
+      HtmlBody: this.data?.HtmlBody,
 
-      // Si quieres mandarlo desde aquí también (opcional)
-      HtmlBody: this.data?.HtmlBody
+      IdFlujo: this.data?.IdFlujo,
+      IdEval: 0, //this.data?.IdEval,
+      Code: currentCode || this.generateGuid(),
+      IsDefault: this.form.value.IsActive,
+      User: 'user'
 
     };
 
-      this.organizationService.insertEmailTemplate(payload).then((restilxelxx:any)=>{
+    console.log(payload);
+
+    /* */
+    this.organizationService.insertEmailTemplate(payload).then((restilxelxx:any)=>{
       console.log('restilsxelxx:: ', restilxelxx);
 
       if(restilxelxx.data.message === 'success') {
@@ -332,10 +222,6 @@ export class DialogSaveEmailTemplateComponent implements OnInit {
             });
       }
 
-     
-
-
-    
     }).catch((err)=>{
       console.error(err);
 
@@ -343,6 +229,7 @@ export class DialogSaveEmailTemplateComponent implements OnInit {
 
 
     });
+   
 
     // No llamo al service aquí porque depende de tu estructura;
     // lo normal es cerrar devolviendo el payload y que el componente padre llame al API.

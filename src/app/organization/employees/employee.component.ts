@@ -627,8 +627,8 @@ export class CrearEmpleadosComponent implements OnInit {
         if (!email) errores.push(`Fila ${filaExcel}: El campo EMAIL es obligatorio.`);
         else if (!emailRegex.test(email)) errores.push(`Fila ${filaExcel}: EMAIL tiene un formato inválido.`);
   
-        if (!['CORREO', 'WHATSAPP', 'NINGUNO'].includes(tipoEnvioEncuesta)) {
-          errores.push(`Fila ${filaExcel}: TIPO_ENVIO_ENCUESTA puede ser: 'CORREO', 'WHATSAPP', 'NINGUNO'.`);
+        if (!['CORREO', 'WHATSAPP', 'NINGUNO', 'CORREO Y WHATSAPP'].includes(tipoEnvioEncuesta)) {
+          errores.push(`Fila ${filaExcel}: TIPO_ENVIO_ENCUESTA puede ser: 'CORREO', 'WHATSAPP', 'NINGUNO', 'CORREO Y WHATSAPP'.`);
         }
   
         const valoresDemograficos: any = {};
@@ -740,8 +740,8 @@ export class CrearEmpleadosComponent implements OnInit {
         if (!email) errores.push(`Row ${filaExcel}: EMAIL field is required.`);
         else if (!emailRegex.test(email)) errores.push(`Fila ${filaExcel}: EMAIL tiene un formato inválido.`);
   
-        if (!['EMAIL', 'WHATSAPP', 'NOTHING'].includes(tipoEnvioEncuesta)) {
-          errores.push(`Row ${filaExcel}: SEND_SURVEY_TYPE can be: 'EMAIL', 'WHATSAPP', 'NOTHING'.`);
+        if (!['EMAIL', 'WHATSAPP', 'NOTHING', 'EMAIL AND WHATSAPP'].includes(tipoEnvioEncuesta)) {
+          errores.push(`Row ${filaExcel}: SEND_SURVEY_TYPE can be: 'EMAIL', 'EMAIL AND WHATSAPP', 'WHATSAPP', 'NOTHING'.`);
         }
   
         const valoresDemograficos: any = {};

@@ -163,6 +163,8 @@
     },
 
     "QUIZ": {
+      "GRANFACTOR": "Gran Factor",
+
     "ADDGRANDFACTORTITLE": "Nuevo Gran Factor",
     "GRANDFACTORNAME": "Nombre del Gran Factor",
     "INSERTGRANDFACTORNAME": "Ingrese el nombre para el Gran Factor",
@@ -178,11 +180,13 @@
     
       "TEXT": "CLIMA",
       "CREATE": "Crear nuevo clima",
-       "EDIT": "EDITAR",
+       "EDIT": "EDITAR ENCUESTA",
       "SEND": "ENVIOS",
       "FACTORS": "Factores",
       "SELECTTYPE": "Seleccione el tipo de Evaluación",
+      "LIKERTSCALESIMPLE": "Escala LIKERT",
       "LIKERTSCALE": "Escala LIKERT",
+      "LIKERTSCALEFIVE": "Escala LIKERT (5 Niveles)",
       "CLIMATENAME": "Nombre del Clima",
       "PLEASEINSERTCLIMATE": "Por favor ingrese el nombre del clima!",
       "DESCRIPTION": "Descripción",
@@ -196,7 +200,7 @@
 
       "SAVE": "GUARDAR",
       "CANCEL": "CANCELAR",
-      "ADMINCLIMA": "Gestionar la encuesta",
+      "ADMINCLIMA": "Editar la encuesta",
       "ADDFACTOR": "Nuevo Factor",
       "ADDGRANDFACTOR": "Nuevo Gran Factor",
       "OPENQUESTION": "Pregunta Abierta",
@@ -256,6 +260,9 @@
         "YOUSUREMESSAGE": "Esta acción eliminará permanentemente la pregunta incluso de la base de datos.",
         "DELETECONFIRM": "Sí, Eliminar",
         "DELETEDMESSAGE": "La pregunta se ha eliminado correctamente.",
+
+        "DELETEDMESSAGEERROR": "No se puede eliminar la pregunta. Es posible que ya existan respuestas para esta pregunta.",
+
         "MUSTSELECTFACTOR": "Debe seleccionar un Factor para la pregunta",
         "FIELDEXIST": "Ya existe un nombre de campo ",
         "QUESTIONADDED": "Se agregó la pregnta con éxito",
@@ -384,7 +391,13 @@
         "ACCESSGFDEMOGRAPHICDESC": "Permite la visualización del módulo de Accesos a Grandes Factores por Demográfico",
 
         "ACCESSVARIABLES": "Visualizar módulo de Variables",
-        "ACCESSVARIABLESDESC": "Permite la visualización del módulo de Variables Globales en Configuración"
+        "ACCESSVARIABLESDESC": "Permite la visualización del módulo de Variables Globales en Configuración",
+
+
+        "MAILCOMPOSE": "Visualizar módulo de Correos",
+        "MAILCOMPOSEDESC": "Permite la visualización del módulo de Correos"
+
+        
       }
     
 
@@ -399,6 +412,8 @@
 
     "EMAILCOMPOSE":{
       "TEXT": "COMUNICACION",
+      "MAILS": "Correos",
+      
       "NEW_MESSAGE": "Crear Nuevo Correo",
       "COMPOSE": ""
     },

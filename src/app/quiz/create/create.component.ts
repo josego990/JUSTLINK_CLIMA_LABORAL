@@ -292,12 +292,12 @@ export class CreateComponent implements OnInit {
   }
 
   getTooltipText(factor: any): string {
-  const preguntas = (factor.fields || [])
-    .map((q: any, i: number) => `${i + 1}. ${q.label}`)
-    .join('\n');
+    const preguntas = (factor.fields || [])
+      .map((q: any, i: number) => `${i + 1}. ${q.label}`)
+      .join('\n');
 
-  return preguntas || 'Sin preguntas';
-}
+    return preguntas || 'Sin preguntas';
+  }
   
   public getClimasLista():void {
     this.loading = true;
@@ -348,6 +348,7 @@ export class CreateComponent implements OnInit {
                 estado: 1,
                 granFactores: clima.granFactores,
                 series: clima.series,
+                tipoEvaluacion: clima.MetodoAplicacion,
                 fields: [],
                 estadoEnvio: clima.estado_envio,
                 estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
@@ -388,6 +389,7 @@ export class CreateComponent implements OnInit {
                 FechaCreacion: string; // o Date
                 Imagen1Src: string;
                 Estado: number;
+                tipoEvaluacion: string;
                 granFactores: any;
                 series: any;
                 estado_envio: string;
@@ -413,6 +415,7 @@ export class CreateComponent implements OnInit {
                 estado: 1,
                 granFactores:clima.granFactores,
                 series: clima.series,
+                tipoEvaluacion: clima.MetodoAplicacion,
                 fields: [],
                 estadoEnvio: clima.estado_envio,
                 estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
@@ -521,8 +524,12 @@ export class CreateComponent implements OnInit {
     // ✅ Escuchar el cierre del diálogo
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-       //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE ÍTEMS');
-        this.getClimasLista(); // O cualquier método que refresque los datos
+        if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+            this.getClimasLista();
+          }
+          else {        
+            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
+          }
       }
     });
 
@@ -566,7 +573,7 @@ export class CreateComponent implements OnInit {
       maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
       height: 'auto',         // o '100vh' si quieres pantalla completa
       disableClose: true,
-      data: [card, this.BankData]
+      data: [card]
     });
   
     // ✅ Escuchar el cierre del diálogo

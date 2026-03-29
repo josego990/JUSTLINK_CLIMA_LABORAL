@@ -19,6 +19,7 @@ export interface Quiz {
   totalEmpleados: number;
   estado: number;
   estadoEnvio: string;
+  tipoEvaluacion: string,
   estadisticasEnvio: EstadisticasEnvio;
 }
 

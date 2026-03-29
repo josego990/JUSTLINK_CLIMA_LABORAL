@@ -35,6 +35,7 @@ import { DialogChangeRangeComponent } from '../dialogchangerange/dialogchangeran
 import { Field, Serie, SeriesDataSend, QuizBank, GFactorsDataSend } from '../models/quiz-models';
 import { DialogformSerieComponent } from '../dialogformserie/dialogformserie.component';
 import { DialogformGFactorComponent } from '../dialogformgfactor/dialogformgfactor.component';
+import { DialogLikertPresetComponent } from '../dialoglikertpreset/dialoglikertpreset.component';
 
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import Swal from 'sweetalert2';
@@ -56,6 +57,8 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { number } from 'echarts/core';
 
 export interface PreguntaField {
   Id: number;
@@ -111,7 +114,8 @@ export interface GranFactor {
     CommonModule,
     MatProgressSpinnerModule,
     TranslateModule,
-    MatInputModule
+    MatInputModule,
+    MatSlideToggleModule
 ],
 
 })
@@ -126,6 +130,9 @@ export class DialogformItemsComponent implements OnInit {
   dataSourceSerie = this.ELEMENT_DATA_SERIES;
   public series: { value: string; label: string; desc: string }[] = [];
   public ponderacion = 0;
+
+  public tipoEvaluacion = 'Likert';
+  public numeroLikert = '4';
 
   public idFlujo = 0;
   public idFactor = 0;
@@ -146,6 +153,8 @@ export class DialogformItemsComponent implements OnInit {
   };
 
   public selectedGFactor = 0;
+  public noUsarGranFactor = false;
+  public bloquearSwitchNoUsarGranFactor = false;
 
   public series_data_send: SeriesDataSend = {
     series: this.seriesx,
@@ -296,16 +305,23 @@ export class DialogformItemsComponent implements OnInit {
     private _snackBar: MatSnackBar
   ) {
 
-    
-
     this.options_context = [];
     this.card = data[0];
-    this.bankData = data[1];
+    const granFactoresFromCard = Array.isArray(this.card?.granFactores) ? this.card.granFactores : [];
+    this.card.granFactores = granFactoresFromCard;
+    this.configurarSwitchNoUsarGranFactor(granFactoresFromCard);
+    //this.bankData = data[1];
 
-    //console.log('this.card en dialogformitems: ', this.card);
+    this.tipoEvaluacion = this.data[0].tipoEvaluacion;
+
+    if(this.tipoEvaluacion == 'Likert-5') {
+      this.numeroLikert = '5';
+    }
+
+    console.log('this.data en dialogformitems: ', this.data);
 
     //magia negra ;)
-    this.dataSource = this.card.granFactores
+    this.dataSource = granFactoresFromCard
     .flatMap((granFactor: any) =>
       (granFactor.series || []).flatMap((serie: any) =>
         (serie.fields || []).map((field: any) => ({
@@ -316,7 +332,7 @@ export class DialogformItemsComponent implements OnInit {
       )
     );
 
-    this.granFactores = this.card.granFactores;
+    this.granFactores = granFactoresFromCard;
 
     console.log('this.granFactores en dialogformitems: ', this.granFactores);
 
@@ -325,23 +341,25 @@ export class DialogformItemsComponent implements OnInit {
 
     //console.log('Form keys:', Object.keys(this.formByFactor));
 
-    this.series_data_send.gfactores = this.card.granFactores;
+    this.series_data_send.gfactores = granFactoresFromCard; 
       
     this.idFlujo = this.card.id;
 
-    const allSeries = this.card.granFactores
+    const allSeries = granFactoresFromCard
 
     .map((gf:any) => gf.series)
     .reduce((acc:any, curr:any) => acc.concat(curr), []);
 
     //this.seriesx = allSeries;
     
-    this.gfactorsx = this.card.granFactores?.map((gf: any) => ({
+    this.gfactorsx = granFactoresFromCard.map((gf: any) => ({
       Id: gf.Id,
       label: gf.label,
       desc: gf.desc,
       ...gf
-    })) || [];
+    }));
+
+    this.seleccionarGranFactorGenericoPorDefecto(granFactoresFromCard);
 
     this.dataSourceSerie = allSeries;
     //this.seriesx = allSeries;
@@ -364,6 +382,53 @@ export class DialogformItemsComponent implements OnInit {
     this.gfactors_data_send.idFlujo = this.idFlujo;
     this.gfactors_data_send.gfactores = this.gfactorsx;
 
+  }
+
+  private configurarSwitchNoUsarGranFactor(granFactores: any[]): void {
+    const hasGranFactores = granFactores.length > 0;
+    const isSingleGenerico = granFactores.length === 1 && this.esGranFactorGenerico(granFactores[0]);
+    const hasSinGranFactor = granFactores.some(
+      (gf: any) => String(gf?.label ?? '').trim().toLowerCase() === 'sin gran factor',
+    );
+
+    if (hasSinGranFactor || isSingleGenerico) {
+      // Ya existe el contenedor especial "Sin gran factor".
+      this.noUsarGranFactor = true;
+      this.bloquearSwitchNoUsarGranFactor = true;
+      return;
+    }
+
+    if (hasGranFactores) {
+      // Cuando ya hay gran factores reales, no se permite activar el modo sin gran factor.
+      this.noUsarGranFactor = false;
+      this.bloquearSwitchNoUsarGranFactor = true;
+      return;
+    }
+
+    // Sin gran factores: se permite trabajar en modo "sin gran factor".
+    this.noUsarGranFactor = true;
+    this.bloquearSwitchNoUsarGranFactor = false;
+  }
+
+  private esGranFactorGenerico(gf: any): boolean {
+    return String(gf?.label ?? '').trim().toLowerCase() === 'generico';
+  }
+
+  private seleccionarGranFactorGenericoPorDefecto(granFactores: any[]): void {
+    const unicoGenerico =
+      granFactores.length === 1 && this.esGranFactorGenerico(granFactores[0])
+        ? granFactores[0]
+        : null;
+
+    if (!unicoGenerico) {
+      return;
+    }
+
+    this.selectedGFactor = unicoGenerico.Id;
+    this.idGFactor = unicoGenerico.Id;
+    this.series_data_send.idGFactor = unicoGenerico.Id;
+    this.gfactorName = unicoGenerico.label ?? '';
+    this.seriesx = Array.isArray(unicoGenerico.series) ? unicoGenerico.series : [];
   }
 
   getRowsArray(idFactor: number): FormArray {
@@ -498,7 +563,7 @@ export class DialogformItemsComponent implements OnInit {
     this.updateOrdenPreguntas(factor.Id, items); // factor.Id = IdFactor
   }
 
-  /** Estos métodos llaman tu API */
+
   updateOrdenGranFactores(items: {id:number, orden:number}[]) {
     // this.service.updateOrdenGranFactores({ items }).subscribe(...)
     console.log('SE DETECTO DRAG DE GRAN FACTOR');
@@ -564,7 +629,7 @@ export class DialogformItemsComponent implements OnInit {
     this.addTextFormIA = this.fb.group({
      
       irequired: false,
-      israndom: false,
+      israndom: false, 
     });
 
     this.addFileForm = this.fb.group({
@@ -1358,7 +1423,6 @@ export class DialogformItemsComponent implements OnInit {
   //borrar una pregunta, cambiar solo el estado
   deleteItem(item: any): void {
     this.loading = true;
-    const index = this.dataSource.indexOf(item);
 
    //console.log('item',item);
 
@@ -1367,35 +1431,86 @@ export class DialogformItemsComponent implements OnInit {
       "nuevoEstado": 3};
 
     this.organizacionService.updatePregunta(pregunta_updata_datra).then((resultix)=>{
-      if(resultix.data.message === 'Estado de la pregunta actualizado correctamente'){
+      if(resultix?.data?.message === 'Estado de la pregunta actualizado correctamente'){
 
-        if (index !== -1) {
-          this.dataSource.splice(index, 1);
-          // Actualiza la fuente de datos
-          this.dataSource = [...this.dataSource];
-    
-          this.ponderacion_rest = this.ponderacion_rest + parseInt(item.score, 10);
-    
-          this.loading = false;
+        this.removePreguntaGlobal(item.Id);
+        this.ponderacion_rest = this.ponderacion_rest + (Number(item?.score) || 0);
 
-          Swal.fire({
-            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
-            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDMESSAGE'),
-            icon: 'success',
-          });
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDMESSAGE'),
+          icon: 'success',
+        });
 
-        }
-
+      } else {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDMESSAGEERROR'),
+          icon: 'error',
+        });
       }
     }).catch((err)=>{
-      this.loading = false;
       Swal.fire({
         title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
-        text:  err,
+        text:  this.translate.instant('MENUITEMS.QUIZ.MESSAGES.DELETEDMESSAGEERROR'),
         icon: 'error',
       });
+    }).finally(() => {
+      this.loading = false;
     });
 
+  }
+
+  private removePreguntaGlobal(idPregunta: number): void {
+    let factorIdFound: number | null = null;
+    let indexFound = -1;
+
+    this.granFactores = (this.granFactores || []).map((gf: any) => ({
+      ...gf,
+      series: (gf?.series || []).map((factor: any) => {
+        const fields = Array.isArray(factor?.fields) ? factor.fields : [];
+        const idx = fields.findIndex((q: any) => q?.Id === idPregunta);
+        if (idx === -1) {
+          return factor;
+        }
+
+        factorIdFound = factor?.Id ?? null;
+        indexFound = idx;
+
+        return {
+          ...factor,
+          fields: fields.filter((q: any) => q?.Id !== idPregunta),
+        };
+      }),
+    }));
+
+    if (factorIdFound !== null && indexFound >= 0) {
+      const rows = this.formByFactor?.[factorIdFound]?.get('rows') as FormArray | undefined;
+      if (rows && rows.length > indexFound) {
+        rows.removeAt(indexFound);
+      }
+    }
+
+    this.dataSource = (this.dataSource || []).filter((x: any) => x?.Id !== idPregunta);
+    this.card.granFactores = this.granFactores;
+    this.series_data_send.gfactores = this.granFactores;
+    this.gfactors_data_send.gfactores = this.granFactores;
+
+    const allSeries = (this.granFactores || []).flatMap((gf: any) => gf?.series || []);
+    this.dataSourceSerie = allSeries;
+    this.series = allSeries;
+
+    const selectedGF = (this.granFactores || []).find((gf: any) => gf?.Id === this.idGFactor);
+    this.seriesx = Array.isArray(selectedGF?.series) ? [...selectedGF.series] : [];
+    this.series_data_send.series = this.seriesx;
+
+    this.gfactorsx = (this.granFactores || []).map((gf: any) => ({
+      Id: gf.Id,
+      label: gf.label,
+      desc: gf.desc,
+      ...gf,
+    }));
+    this.gfactors_data_send.gfactores = this.gfactorsx;
   }
 
   toggleEstado(element: any, gfId: number, fId: number): void {
@@ -1522,7 +1637,7 @@ export class DialogformItemsComponent implements OnInit {
         break;
       case 'radio':
         if (this.addRadioForm.valid) {
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addRadioForm.value.irequired;
           const isrand = this.addRadioForm.value.israndom;
 
@@ -1550,7 +1665,7 @@ export class DialogformItemsComponent implements OnInit {
         break;
       case 'select':
         if (this.addSelectForm.valid) {
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addSelectForm.value.irequired;
           const isrand = this.addSelectForm.value.israndom;
 
@@ -1578,7 +1693,7 @@ export class DialogformItemsComponent implements OnInit {
         break;
       case 'checkboxes':
         if (this.addCheckboxesForm.valid) {
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addCheckboxesForm.value.irequired;
           const isrand = this.addCheckboxesForm.value.israndom;
 
@@ -1621,6 +1736,43 @@ export class DialogformItemsComponent implements OnInit {
     return uid;
   }
 
+  private getNextQuestionSequence(): number {
+    const names = new Set<string>();
+
+    for (const gf of this.granFactores || []) {
+      for (const serie of gf?.series || []) {
+        for (const field of serie?.fields || []) {
+          const name = String(field?.name ?? '').trim();
+          if (name) {
+            names.add(name);
+          }
+        }
+      }
+    }
+
+    for (const item of this.dataSource || []) {
+      const name = String(item?.name ?? '').trim();
+      if (name) {
+        names.add(name);
+      }
+    }
+
+    let max = 0;
+    for (const name of names) {
+      const match = name.match(/_(\d+)$/);
+      if (!match) {
+        continue;
+      }
+
+      const value = Number(match[1]);
+      if (!Number.isNaN(value) && value > max) {
+        max = value;
+      }
+    }
+
+    return max + 1;
+  }
+
   onFormTextSubmitClick() {
    //console.log('Form Values', this.addTextForm.value);
 
@@ -1648,7 +1800,7 @@ export class DialogformItemsComponent implements OnInit {
           // this.dataSourceSerie[0].fields.push();
           this.loading = true;
 
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addTextForm.value.irequired;
           const isrand = this.addTextForm.value.israndom;
 
@@ -1794,7 +1946,7 @@ export class DialogformItemsComponent implements OnInit {
         } else {
           // this.dataSourceSerie[0].fields.push();
           this.loading = true;
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addTextFormIA.value.irequired;
           const isrand = this.addTextFormIA.value.israndom;
 
@@ -1904,7 +2056,7 @@ export class DialogformItemsComponent implements OnInit {
           );
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addFileForm.value.irequired;
           const isrand = this.addFileForm.value.israndom;
 
@@ -1991,7 +2143,7 @@ export class DialogformItemsComponent implements OnInit {
           );
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addDateForm.value.irequired;
           const isrand = this.addDateForm.value.israndom;
 
@@ -2081,7 +2233,7 @@ export class DialogformItemsComponent implements OnInit {
           );
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addTextareaForm.value.irequired;
           const isrand = this.addTextareaForm.value.israndom;
 
@@ -2175,7 +2327,7 @@ export class DialogformItemsComponent implements OnInit {
 
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addRadioForm.value.irequired;
           const isrand = this.addRadioForm.value.israndom;
 
@@ -2208,6 +2360,8 @@ export class DialogformItemsComponent implements OnInit {
     
                var newIdInserted = responsy.data.newId;
 
+              const likertLevels: 4 | 5 = this.numeroLikert === '5' ? 5 : 4;
+
               const newField = {
                 Id: newIdInserted,
                 type: 'radio',
@@ -2221,32 +2375,7 @@ export class DialogformItemsComponent implements OnInit {
                 is_random: isrand,
                 file_type: '',
                 serie: this.factorName,
-                options: [
-                  {
-                    "value": "opt_1",
-                    "label": "TOTALMENTE DE ACUERDO",
-                    "name": "opt_1",
-                    "is_correct": false
-                  },
-                  {
-                    "value": "opt_2",
-                    "label": "DE ACUERDO",
-                    "name": "opt_2",
-                    "is_correct": false
-                  },
-                  {
-                    "value": "opt_3",
-                    "label": "EN DESACUERDO",
-                    "name": "opt_3",
-                    "is_correct": false
-                  },
-                  {
-                    "value": "opt_4",
-                    "label": "TOTALMENTE EN DESACUERDO",
-                    "name": "opt_4",
-                    "is_correct": false
-                  }
-                ],
+                options: this.getDefaultLikertOptions(likertLevels),
                 is_active: 1
               };
 
@@ -2316,7 +2445,7 @@ export class DialogformItemsComponent implements OnInit {
           );
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addCheckboxesForm.value.irequired;
           const isrand = this.addCheckboxesForm.value.israndom;
 
@@ -2424,7 +2553,7 @@ export class DialogformItemsComponent implements OnInit {
 
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addSliderForm.value.irequired;
           const isrand = this.addSliderForm.value.israndom;
 
@@ -2539,7 +2668,7 @@ export class DialogformItemsComponent implements OnInit {
         } else {
           //if(this.ponderacion_rest)
           this.loading = true;
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addSelectForm.value.irequired;
           const isrand = this.addSelectForm.value.israndom;
 
@@ -2660,7 +2789,7 @@ export class DialogformItemsComponent implements OnInit {
           );
         } else {
           //if(this.ponderacion_rest)
-          const itemlength = this.dataSource.length + 1;
+          const itemlength = this.getNextQuestionSequence();
           const isrequired = this.addSelectDemForm.value.irequired;
           const isrand = this.addSelectDemForm.value.israndom;
 
@@ -2777,7 +2906,12 @@ export class DialogformItemsComponent implements OnInit {
   
   openValuesEditor(row: any, type: string, factorId: number, index: number) {
     // row.Id = IdPregunta
-    // type = 'select' | 'selectdem' | 'slider'
+    // type = 'radio' | 'select' | 'selectdem' | 'slider'
+
+    if (type === 'radio') {
+      this.openLikertPresetDialog(row);
+      return;
+    }
 
     if (type === 'slider') {
       // abrir modal para editar min/max
@@ -2799,6 +2933,163 @@ export class DialogformItemsComponent implements OnInit {
       return;
     }
   }
+
+  private getLikertLevels(row: any): 4 | 5 {
+    const configuredLevels: 4 | 5 = this.numeroLikert === '5' ? 5 : 4;
+    if (configuredLevels === 5) {
+      return 5;
+    }
+
+    const fromOptions = Array.isArray(row?.options) ? row.options.length : 0;
+    if (fromOptions === 4 || fromOptions === 5) {
+      return fromOptions as 4 | 5;
+    }
+
+    return configuredLevels;
+  }
+
+  private openLikertPresetDialog(row: any): void {
+    const niveles = this.getLikertLevels(row);
+
+    const dialogRef = this.dialog.open(DialogLikertPresetComponent, {
+      width: '650px',
+      disableClose: true,
+      data: {
+        levels: niveles,
+        currentOptions: row.options || [],
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (!result?.options?.length) {
+        return;
+      }
+
+      const opcionesNormalizadas = (result.options || []).map((opt: any, i: number) => {
+        const valor = this.getLikertOptionValue(niveles, i);
+        return {
+          ...opt,
+          value: valor,
+          name: valor,
+        };
+      });
+
+      const dataSend = {
+        IdPregunta: row.Id,
+        Opciones: opcionesNormalizadas.map((opt: any, i: number) => ({
+          Valor: opt.value,
+          Etiqueta: opt.label ?? '',
+          Orden: i + 1,
+        })),
+      };
+
+      try {
+        this.loading = true;
+        const resp: any = await this.organizacionService.updatePreguntaLikertOptions(dataSend);
+
+        if (resp?.data?.message === 'success' || resp?.data?.message === 'Opciones Likert actualizadas correctamente') {
+          this.syncLikertOptionsGlobal(row.Id, opcionesNormalizadas);
+          this.showNotification(
+            'bg-green',
+            'Se actualizaron los valores Likert',
+            'bottom',
+            'right'
+          );
+          return;
+        }
+
+        this.showNotification(
+          'bg-red',
+          'No fue posible actualizar las opciones Likert',
+          'bottom',
+          'right'
+        );
+      } catch (err: any) {
+        this.showNotification(
+          'bg-red',
+          'Error al actualizar opciones Likert. Error: ' + (err?.message ?? String(err)),
+          'bottom',
+          'right'
+        );
+      } finally {
+        this.loading = false;
+      }
+    });
+  }
+
+  private getDefaultLikertOptions(levels: 4 | 5): any[] {
+    const labels4 = [
+      'TOTALMENTE DE ACUERDO',
+      'DE ACUERDO',
+      'EN DESACUERDO',
+      'TOTALMENTE EN DESACUERDO',
+    ];
+
+    const labels5 = [
+      'TOTALMENTE DE ACUERDO',
+      'DE ACUERDO',
+      'NI DE ACUERDO NI EN DESACUERDO',
+      'EN DESACUERDO',
+      'TOTALMENTE EN DESACUERDO',
+    ];
+
+    const labels = levels === 5 ? labels5 : labels4;
+
+    return labels.map((label, index) => {
+      const value = this.getLikertOptionValue(levels, index);
+      return {
+        value,
+        name: value,
+        label,
+        is_correct: false,
+      };
+    });
+  }
+
+  private getLikertOptionValue(levels: 4 | 5, index: number): string {
+    if (levels === 5) {
+      const map5 = ['opt_1', 'opt_2', 'opt_0', 'opt_3', 'opt_4'];
+      return map5[index] ?? `opt_${index + 1}`;
+    }
+
+    return `opt_${index + 1}`;
+  }
+
+  private syncLikertOptionsGlobal(idPregunta: number, opciones: any[]): void {
+    const normalized = (opciones || []).map((opt: any, i: number) => ({
+      value: opt?.value ?? `opt_${i + 1}`,
+      name: opt?.name ?? `opt_${i + 1}`,
+      label: opt?.label ?? '',
+      is_correct: !!opt?.is_correct,
+    }));
+
+    for (const gf of (this.granFactores || [])) {
+      for (const factor of (gf?.series || [])) {
+        const pregunta = (factor?.fields || []).find((q: any) => q?.Id === idPregunta);
+        if (pregunta) {
+          pregunta.options = [...normalized];
+        }
+      }
+    }
+
+    this.card.granFactores = this.granFactores;
+    this.series_data_send.gfactores = this.granFactores;
+    this.gfactors_data_send.gfactores = this.granFactores;
+
+    this.dataSource = (this.dataSource || []).map((item: any) =>
+      item?.Id === idPregunta ? { ...item, options: [...normalized] } : item
+    );
+
+    const selectedGF = (this.granFactores || []).find((gf: any) => gf?.Id === this.idGFactor);
+    this.seriesx = Array.isArray(selectedGF?.series) ? [...selectedGF.series] : this.seriesx;
+    this.gfactorsx = (this.granFactores || []).map((gf: any) => ({
+      Id: gf.Id,
+      label: gf.label,
+      desc: gf.desc,
+      ...gf,
+    }));
+  }
+
   //abrir dialogo agregar valores lista
   openDialog(): void {
     console.log('se ha abierto el dialog y el valor de options_context es: ', this.options_context);
@@ -2864,8 +3155,49 @@ export class DialogformItemsComponent implements OnInit {
   
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
+        this.syncAfterSerieDialog();
       }
     });
+  }
+
+  private syncAfterSerieDialog(): void {
+    const updatedGranFactores = Array.isArray(this.series_data_send.gfactores)
+      ? this.series_data_send.gfactores
+      : [];
+
+    this.card.granFactores = updatedGranFactores;
+    this.granFactores = updatedGranFactores;
+
+    this.gfactorsx = updatedGranFactores.map((gf: any) => ({
+      Id: gf.Id,
+      label: gf.label,
+      desc: gf.desc,
+      ...gf,
+    }));
+    this.gfactors_data_send.gfactores = this.gfactorsx;
+
+    this.configurarSwitchNoUsarGranFactor(updatedGranFactores);
+
+    const selectedGFactorId = this.series_data_send.idGFactor || this.idGFactor;
+    if (selectedGFactorId) {
+      this.selectedGFactor = selectedGFactorId;
+      this.idGFactor = selectedGFactorId;
+      this.series_data_send.idGFactor = selectedGFactorId;
+
+      const selectedGF = updatedGranFactores.find((gf: any) => gf.Id === selectedGFactorId);
+      this.gfactorName = selectedGF?.label ?? '';
+      this.seriesx = Array.isArray(selectedGF?.series) ? [...selectedGF.series] : [];
+    } else {
+      this.seleccionarGranFactorGenericoPorDefecto(updatedGranFactores);
+    }
+
+    const allSeries = updatedGranFactores.flatMap((gf: any) => gf.series || []);
+    this.dataSourceSerie = allSeries;
+    this.series = allSeries;
+    this.series_data_send.series = this.seriesx;
+
+    this.formByFactor = {};
+    this.initForms(this.granFactores);
   }
 
   openDialogGFactor(gfactors_data_send: GFactorsDataSend): void {

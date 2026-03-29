@@ -66,6 +66,7 @@ export class DialogformGFactorComponent implements OnInit {
   @ViewChild(DatatableComponent, { static: false }) tablex!: DatatableComponent;
 
   ELEMENT_DATA: GFactor[] = [];
+
   NUMBER_DATA  = 0;
   ID_FLUJO = 0;
   ID_GFACTOR = 0;
@@ -119,6 +120,7 @@ export class DialogformGFactorComponent implements OnInit {
     "completed": false,
     "fields": []
     };
+    
   public field = {
     "id_quiz": 0,
     "id_item": 0,

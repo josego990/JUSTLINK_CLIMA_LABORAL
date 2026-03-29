@@ -1,7 +1,6 @@
-<ng-container *ngFor="let group of groupedSubjects">
-  <!-- Título del Gran Factor -->
-  <h3 class="gran-factor-title">
-    {{ group.granFactor }}
+<section class="factor-group" *ngFor="let group of groupedSubjects">
+  <h3 class="factor-title" *ngIf="(group.factor || '').trim() !== ''">
+    {{ group.factor }}
   </h3>
 
   <table mat-table [dataSource]="group.items" class="mat-elevation-z8">
@@ -12,57 +11,65 @@
       <td mat-cell *matCellDef="let subject">{{ subject.subject }}</td>
     </ng-container>
 
-    <!-- Factor -->
-    <ng-container matColumnDef="factor">
-      <th mat-header-cell *matHeaderCellDef>Factor</th>
-      <td mat-cell *matCellDef="let subject">{{ subject.factor }}</td>
-    </ng-container>
-
     <!-- Muy de acuerdo (conteo + barra % sobre total) -->
     <ng-container matColumnDef="totacuerdo">
-      <th mat-header-cell *matHeaderCellDef>Muy de acuerdo</th>
+      <th mat-header-cell *matHeaderCellDef>Muy favorable</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.totacuerdo }}
         ({{ getPct(subject.totacuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.totacuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getColor(getPct(subject.totacuerdo, subject.duration))">
+          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- De acuerdo -->
     <ng-container matColumnDef="acuerdo">
-      <th mat-header-cell *matHeaderCellDef>De acuerdo</th>
+      <th mat-header-cell *matHeaderCellDef>Favorable</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.acuerdo }}
         ({{ getPct(subject.acuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.acuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getColor(getPct(subject.acuerdo, subject.duration))">
+          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
+        </mat-progress-bar>
+      </td>
+    </ng-container>
+
+    <!-- Neutro -->
+    <ng-container matColumnDef="neutro">
+      <th mat-header-cell *matHeaderCellDef>Neutro</th>
+      <td mat-cell *matCellDef="let subject">
+        {{ subject.neutro }}
+        ({{ getPct(subject.neutro, subject.duration) | number:'1.0-2' }}%)
+        <mat-progress-bar
+          mode="determinate"
+          [value]="getPct(subject.neutro, subject.duration)"
+          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- En desacuerdo -->
     <ng-container matColumnDef="desacuerdo">
-      <th mat-header-cell *matHeaderCellDef>En desacuerdo</th>
+      <th mat-header-cell *matHeaderCellDef>Desfavorable</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.desacuerdo }}
         ({{ getPct(subject.desacuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.desacuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getColor(getPct(subject.desacuerdo, subject.duration))">
+          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- Muy en desacuerdo -->
     <ng-container matColumnDef="totdesacuerdo">
-      <th mat-header-cell *matHeaderCellDef>Muy en desacuerdo</th>
+      <th mat-header-cell *matHeaderCellDef>Muy desfavorable</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.totdesacuerdo }}
         ({{ getPct(subject.totdesacuerdo, subject.duration) | number:'1.0-2' }}%)
@@ -135,4 +142,4 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-</ng-container>
+</section>

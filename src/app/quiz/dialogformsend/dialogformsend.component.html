@@ -27,12 +27,20 @@
       <!-- No procesado o creado -->
       <ng-container >
         <button mat-raised-button color="primary" (click)="crearEncuestas() " style="border-radius: 8px;">
-          📤 Crear Encuestas
+          <mat-icon>add_circle</mat-icon>
+          Crear Encuestas
         </button>
       </ng-container>
-      <ng-container *ngSwitchCase="'Creado'">
-        <button mat-raised-button color="primary" (click)="enviarTodas()" style="border-radius: 8px;">
-          📤 Enviar Pendientes
+      <ng-container *ngSwitchCase="'Creado'" >
+        <button mat-raised-button color="primary" (click)="enviarTodas()" style="border-radius: 8px; margin-left: 20px;">
+          <mat-icon>send</mat-icon>
+          Enviar Pendientes
+        </button>
+      </ng-container>
+      <ng-container >
+        <button mat-raised-button color="primary" (click)="enviarTodasPendientes()" style="border-radius: 8px; margin-left: 20px;">
+          <mat-icon>send</mat-icon>
+          Enviar Pendientes Llenar
         </button>
       </ng-container>
       
@@ -149,7 +157,7 @@
       </ng-container>
       
       <ng-container matColumnDef="Reenvio">
-        <th mat-header-cell *matHeaderCellDef>Enviar/Crear</th>
+        <th mat-header-cell *matHeaderCellDef>Crear/Enviar</th>
         <td mat-cell *matCellDef="let element">
       
         

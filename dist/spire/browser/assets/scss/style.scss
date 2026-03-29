@@ -105,3 +105,31 @@
 /*                 [8. Browser ]                   			*/
 @use "browser/_ie10.scss";
 @use "browser/_ie11.scss";
+
+.tooltip-html .mat-mdc-tooltip-surface {
+  white-space: pre-line !important;
+  max-width: 380px !important;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+@import "grapesjs/dist/css/grapes.min.css";
+
+.swal2-container {
+  z-index: 2147483647 !important;
+}
+
+.dlg-save-template {
+  .mat-mdc-dialog-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Por si el surface también limita */
+  .mat-mdc-dialog-surface,
+  .mdc-dialog__surface {
+    overflow: visible !important;
+    max-height: 92vh; /* igual que en el open() */
+  }
+}

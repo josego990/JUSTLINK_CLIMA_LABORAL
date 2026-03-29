@@ -122,7 +122,7 @@ export class DemographicParticipationComponent {
       if (campo && groups.has(campo)) {
         const list = groups.get(campo)!;
         this.donutOptions.set({
-          chart: { type: 'donut', height: 360 },
+          chart: { type: 'donut', height: 360, toolbar: this.buildToolbar(`participacion-demografica-${campo}`) },
           labels: list.map(x => x.valor),
           series: list.map(x => round2n(x.porcentaje)) as ApexNonAxisChartSeries,
           title: { text: `Participación: ${campo}` },
@@ -162,7 +162,7 @@ export class DemographicParticipationComponent {
         }));
 
         this.stackedOptions.set({
-          chart: { type: 'bar', stacked: true, stackType: '100%', height: 420, toolbar: { show: false } },
+          chart: { type: 'bar', stacked: true, stackType: '100%', height: 420, toolbar: this.buildToolbar('participacion-demografica-resumen') },
           plotOptions: { bar: { horizontal: true, barHeight: '80%' } },
           xaxis: { categories: campos, labels: { formatter: (val) => `${val}` } },
           yaxis: { max: 100, tickAmount: 5, labels: { formatter: (val) => `${val}%` } },
@@ -178,6 +178,43 @@ export class DemographicParticipationComponent {
         this.stackedOptions.set({});
       }
     });
+  }
+
+  private buildToolbar(baseName: string) {
+    const filename = this.sanitizeFileName(baseName);
+    return {
+      show: true,
+      tools: {
+        download: true,
+        selection: false,
+        zoom: false,
+        zoomin: false,
+        zoomout: false,
+        pan: false,
+        reset: false,
+      },
+      export: {
+        svg: { filename },
+        png: { filename },
+        csv: {
+          filename,
+          columnDelimiter: ',',
+          headerCategory: 'Categoria',
+          headerValue: 'Valor',
+        },
+      },
+    };
+  }
+
+  private sanitizeFileName(value: string): string {
+    const normalized = (value || 'grafica')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return normalized || 'grafica';
   }
 
   private initSelectedCampo() {

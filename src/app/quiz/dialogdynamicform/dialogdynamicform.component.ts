@@ -54,6 +54,7 @@ export class DialogDynamicFormComponent implements OnInit {
     endDate: '',
     estado:1,
     estadoEnvio: '',
+    tipoEvaluacion: 'string',
     granFactores:[],
     series: [],
     fields: [

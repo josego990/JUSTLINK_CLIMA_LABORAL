@@ -12,6 +12,7 @@ export interface SubjectProgress {
 
   totacuerdo: number;
   acuerdo: number;
+  neutro: number;
   desacuerdo: number;
   totdesacuerdo: number;
   duration: number;
@@ -32,18 +33,28 @@ export interface SubjectProgress {
   standalone: true,
 })
 export class ProgressTableFactorComponent {
+  @Input() showNeutral = true;
 
-  displayedColumns: string[] = [
-    'subject', 'factor',
-    'totacuerdo', 'acuerdo', 'desacuerdo', 'totdesacuerdo',
-    'pctFav', 'pctDesf', 'nsat', 'mean',
-    'duration'
-  ];
+  get displayedColumns(): string[] {
+    return this.showNeutral
+      ? [
+          'subject',
+          'totacuerdo', 'acuerdo', 'neutro', 'desacuerdo', 'totdesacuerdo',
+          'pctFav', 'pctDesf', 'nsat', 'mean',
+          'duration'
+        ]
+      : [
+          'subject',
+          'totacuerdo', 'acuerdo', 'desacuerdo', 'totdesacuerdo',
+          'pctFav', 'pctDesf', 'nsat', 'mean',
+          'duration'
+        ];
+  }
 
   private _subjects: SubjectProgress[] = [];
 
   // Estructura agrupada para el template
-  groupedSubjects: { granFactor: string; items: SubjectProgress[] }[] = [];
+  groupedSubjects: { factor: string; items: SubjectProgress[] }[] = [];
 
   @Input() set subjects(value: SubjectProgress[]) {
     const normalized: SubjectProgress[] = (value ?? []).map((v: any) => ({
@@ -53,6 +64,7 @@ export class ProgressTableFactorComponent {
 
       totacuerdo: Number(v.totacuerdo ?? 0),
       acuerdo: Number(v.acuerdo ?? 0),
+      neutro: Number(v.neutro ?? 0),
       desacuerdo: Number(v.desacuerdo ?? 0),
       totdesacuerdo: Number(v.totdesacuerdo ?? 0),
       duration: Number(v.duration ?? 0),
@@ -67,19 +79,19 @@ export class ProgressTableFactorComponent {
 
     this._subjects = normalized;
 
-    // Agrupar por EtiquetaGranFactor
+    // Agrupar por factor conservando el orden en que llega la data
     const map = new Map<string, SubjectProgress[]>();
 
     for (const s of this._subjects) {
-      const key = s.EtiquetaGranFactor || 'SIN AGRUPAR';
+      const key = String(s.factor ?? '').trim() || 'Sin factor';
       if (!map.has(key)) {
         map.set(key, []);
       }
       map.get(key)!.push(s);
     }
 
-    this.groupedSubjects = Array.from(map.entries()).map(([granFactor, items]) => ({
-      granFactor,
+    this.groupedSubjects = Array.from(map.entries()).map(([factor, items]) => ({
+      factor,
       items
     }));
   }
@@ -89,10 +101,16 @@ export class ProgressTableFactorComponent {
   }
 
   getColor(p: number): string {
-    return p < 50 ? '#e74c3c'
-         : p < 70 ? '#f39c12'
-                  : '#2ecc71';
-  }
+  return p >= 91 ? '#8bc34a'   // verde - Fortaleza
+       : p >= 80 ? '#f1c40f'   // amarillo - Adecuado
+       : p >= 60 ? '#f39c12'   // naranja - Cautela
+                 : '#e74c3c';  // rojo - Oportunidad
+}
+
+getBlueColor(): string {
+  return '#558AE6'   
+       
+}
 
   getPct(count: number, total: number): number {
     if (!total || total <= 0) return 0;

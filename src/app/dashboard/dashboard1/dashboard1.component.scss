@@ -8,16 +8,116 @@
   /* 2) El mat-card */
   .fixed-card {
     flex: 1 1 auto;               /* todos crecen lo mismo en la fila flex */
-    height: 482px;            /* 👉 altura que desees compartir */
+    height: 300px;            /* 👉 altura que desees compartir */
     display: flex;
     flex-direction: column;       /* para aislar el body del header/footer */
   }
   
   /* 3) Zona que debe hacer scroll si se desborda */
-  .fixed-card .mat-card-content {
+.fixed-card .mat-card-content {
     flex: 1 1 auto;               /* ocupa todo el espacio libre */
     overflow-y: auto;             /* scroll vertical cuando sea necesario */
   }
+
+.metric-cards-row {
+  margin-bottom: 10px;
+}
+
+.selected-clima-row {
+  margin: 2px 4px 10px 4px;
+}
+
+.selected-clima-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe3e9;
+  background: #f8fafc;
+}
+
+.selected-clima-img,
+.selected-clima-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: 0 0 48px;
+}
+
+.selected-clima-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7edf7;
+  color: #205493;
+}
+
+.selected-clima-text {
+  min-width: 0;
+}
+
+.selected-clima-label {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.1;
+}
+
+.selected-clima-name {
+  margin: 2px 0 0 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.metric-kpi-card {
+  overflow: hidden;
+}
+
+.metric-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 16px 0 16px;
+}
+
+.metric-card-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.metric-card-tooltip-target {
+  cursor: help;
+}
+
+.metric-card-actions { display: flex; align-items: center; gap: 4px; }
+.chart-header-with-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chart-export-inline-actions { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+
+.metric-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7f0ff;
+  color: #205493;
+}
+
+.metric-card-head mat-card-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.metric-card-head mat-card-subtitle {
+  margin: 4px 0 0 0;
+}
 
   .icon-positive {
   color: green;
@@ -69,9 +169,11 @@
   background: #fff;
   box-shadow: 0 6px 18px rgba(0,0,0,.06);
 }
-.factor-card.green{ border-left: 4px solid #21a67a; }
-.factor-card.orange{ border-left: 4px solid #ff9f1a; }
-.factor-card.red{ border-left: 4px solid #e54b4b; }
+.factor-card.green{ border-left: 4px solid #92d050; }
+.factor-card.yellow{ border-left: 4px solid #ffff00; }
+.factor-card.orange{ border-left: 4px solid #ffc000; }
+.factor-card.red{ border-left: 4px solid #ff0000; }
+.factor-card.neutral{ border-left: 4px solid #7c7d7c; }
 
 .fc-header{
   display:flex; align-items:center; justify-content:space-between;
@@ -107,9 +209,11 @@
   box-shadow: 0 6px 18px rgba(0,0,0,.06);
   border-left: 4px solid transparent;
 
-  &.green  { border-left-color: #21a67a; }
-  &.orange { border-left-color: #ff9f1a; }
-  &.red    { border-left-color: #e54b4b; }
+  &.green  { border-left-color: #92d050; }
+  &.yellow { border-left-color: #ffff00; }
+  &.orange { border-left-color: #ffc000; }
+  &.red    { border-left-color: #ff0000; }
+  &.neutral { border-left-color: #7c7d7c; }
 }
 
 .fc-header {
@@ -238,3 +342,21 @@
 .t2 { font-size: 44px; font-weight: 800; line-height: 1; }
 .t2 span { font-size: 18px; font-weight: 700; margin-left: 4px; }
 .t3 { margin-top: 6px; font-size: 16px; font-weight: 600; }
+
+.slider-pie-toggle {
+  margin-top: 14px;
+}
+
+.slider-pie-accordion {
+  margin-top: 12px;
+}
+
+.slider-pie-chart-wrap {
+  min-height: 320px;
+}
+
+.slider-pie-empty {
+  padding: 12px 0 6px 0;
+  color: #6b7280;
+  font-size: 14px;
+}

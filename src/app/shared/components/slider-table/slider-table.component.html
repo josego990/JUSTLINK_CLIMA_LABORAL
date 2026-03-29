@@ -1,55 +1,92 @@
-<mat-card>
-  <mat-card-header>
-    <mat-card-title>Resultados de Rangos</mat-card-title>
-  </mat-card-header>
-
-  <mat-card-content>
-    <div class="table-wrap">
-      <table mat-table [dataSource]="rows" class="mat-elevation-z8 slider-table">
-
-        <!-- Pregunta -->
-        <ng-container matColumnDef="pregunta">
-          <th mat-header-cell *matHeaderCellDef>Pregunta</th>
-          <td mat-cell *matCellDef="let row">{{ row.pregunta }}</td>
-        </ng-container>
-
-        <!-- Factor -->
-        <ng-container matColumnDef="factor">
-          <th mat-header-cell *matHeaderCellDef>Factor</th>
-          <td mat-cell *matCellDef="let row">{{ row.factor }}</td>
-        </ng-container>
-
-        <!-- Columnas dinámicas por valor del rango -->
-        <ng-container *ngFor="let v of valueColumns" [matColumnDef]="'v_' + v">
-          <th mat-header-cell *matHeaderCellDef class="val-header">{{ v }}</th>
-          <td mat-cell *matCellDef="let row" class="val-cell">
-            <ng-container *ngIf="cell(row, v) as d">
-              {{ d.Conteo }}
-              ({{ pct(d.Porcentaje) | number:'1.0-2' }}%)
-              <mat-progress-bar
-                mode="determinate"
-                [value]="d.Porcentaje"
-                [style.--mdc-linear-progress-active-indicator-color]="getColor(d.Porcentaje)">
-              </mat-progress-bar>
-            </ng-container>
-          </td>
-        </ng-container>
-
-        <!-- Promedio -->
-        <ng-container matColumnDef="promedio">
-          <th mat-header-cell *matHeaderCellDef>Promedio</th>
-          <td mat-cell *matCellDef="let row">{{ row.promedio | number:'1.2-2' }}</td>
-        </ng-container>
-
-        <!-- Total respuestas -->
-        <ng-container matColumnDef="total">
-          <th mat-header-cell *matHeaderCellDef>Respuestas</th>
-          <td mat-cell *matCellDef="let row">{{ row.total_respuestas }}</td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
+<section class="slider-factor-group" *ngFor="let group of groupedRows">
+  <div class="slider-factor-header">
+    <div>
+      <p class="slider-factor-eyebrow">Factor</p>
+      <h3 class="slider-factor-title">{{ group.factor }}</h3>
     </div>
-  </mat-card-content>
-</mat-card>
+    <span class="slider-factor-count">{{ group.questions.length }} preguntas</span>
+  </div>
+
+  <div class="slider-question-grid">
+    <article class="slider-question-card" *ngFor="let row of group.questions">
+      <div class="slider-question-head">
+        <div class="slider-question-copy">
+          <p class="slider-question-eyebrow">Pregunta</p>
+          <h4 class="slider-question-title">{{ row.pregunta }}</h4>
+        </div>
+
+        <button
+          *ngIf="accessToExport && row.pieData.length"
+          mat-icon-button
+          class="slider-export-trigger"
+          [matMenuTriggerFor]="questionChartMenu"
+          matTooltip="Exportar gráfica"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #questionChartMenu="matMenu">
+          <button mat-menu-item (click)="exportChartSvg(getExportChartId(row), 'rangos-' + row.factor + '-' + row.idPregunta)">Descargar SVG</button>
+          <button mat-menu-item (click)="exportChartPng(getExportChartId(row), 'rangos-' + row.factor + '-' + row.idPregunta)">Descargar PNG</button>
+          <button mat-menu-item (click)="exportDistributionCsv(row)">Descargar CSV</button>
+        </mat-menu>
+      </div>
+
+      <div class="slider-question-meta">
+        <span class="meta-pill">Rango {{ row.rangoMin }}-{{ row.rangoMax }}</span>
+        <span class="meta-pill">{{ row.total_respuestas }} respuestas</span>
+        <span class="meta-pill meta-pill-strong">Promedio {{ row.promedio | number:'1.2-2' }}</span>
+      </div>
+
+      <div class="slider-question-body">
+        <div class="slider-details-panel">
+          <table class="slider-distribution-table">
+            <thead>
+              <tr>
+                <th>Valor</th>
+                <th>Respuestas</th>
+                <th>Porcentaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of row.distribution">
+                <td class="value-cell">{{ item.Valor }}</td>
+                <td>{{ item.Conteo }}</td>
+                <td>
+                  <div class="pct-label">{{ pct(item.Porcentaje) | number:'1.0-2' }}%</div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="item.Porcentaje"
+                    [style.--mdc-linear-progress-active-indicator-color]="getBarColor(item.Porcentaje)"
+                  ></mat-progress-bar>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="slider-chart-panel">
+          <div *ngIf="row.pieData.length; else emptyChartState" class="slider-chart-box" [attr.id]="getExportChartId(row)">
+            <apx-chart
+              [series]="row.chartOptions.series!"
+              [chart]="row.chartOptions.chart!"
+              [labels]="row.chartOptions.labels!"
+              [legend]="row.chartOptions.legend!"
+              [dataLabels]="row.chartOptions.dataLabels!"
+              [plotOptions]="row.chartOptions.plotOptions!"
+              [colors]="row.chartOptions.colors!"
+              [stroke]="row.chartOptions.stroke!"
+              [tooltip]="row.chartOptions.tooltip!"
+              [responsive]="row.chartOptions.responsive!"
+            ></apx-chart>
+          </div>
+
+          <ng-template #emptyChartState>
+            <div class="slider-chart-empty">
+              Sin respuestas suficientes para graficar esta pregunta.
+            </div>
+          </ng-template>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>

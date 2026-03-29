@@ -489,6 +489,9 @@ export class DynamicFormComponent implements OnInit {
     }
 
     const respuestas = this.form.value;
+    
+    console.log('respuestas:: ', respuestas);
+
     const entries: [string, any][] = Object.entries(respuestas);
     const g_d: any = 
       { 

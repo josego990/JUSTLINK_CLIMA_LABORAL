@@ -44,9 +44,11 @@
               <div class="text-inside">
                 <mat-form-field class="example-full-width" appearance="fill">
                   <mat-label>{{'MENUITEMS.QUIZ.SELECTTYPE' | translate}}</mat-label>
-                  <mat-select formControlName="IdProof" >
+                  <mat-select (selectionChange)="onTypeChange($event.value)" formControlName="MetodoAplicacion" >
 
-                    <mat-option value="1">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+                    <mat-option [value]="1">{{'MENUITEMS.QUIZ.LIKERTSCALE' | translate}}</mat-option>
+                    <mat-option [value]="2">{{'MENUITEMS.QUIZ.LIKERTSCALEFIVE' | translate}}</mat-option>
+
 
 
                   </mat-select>

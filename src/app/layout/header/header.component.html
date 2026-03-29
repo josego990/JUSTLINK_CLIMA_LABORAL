@@ -65,7 +65,7 @@
         </li>
       </ul>
     </div>
-    <div style="margin-right: 50px;" class="collapse navbar-collapse" [ngClass]="isNavbarCollapsed ? '' : 'show'">
+    <div class="collapse navbar-collapse header-right-collapse" [ngClass]="isNavbarCollapsed ? '' : 'show'">
       <ul class="nav navbar-nav navbar-right">
         <!-- Full Screen Button -->
         <li class="fullscreen m-l-5 m-r-5">
@@ -146,11 +146,15 @@
         <!-- #END# Notifications-->
 
         
-        <li class="nav-item user_profile">
-          <button mat-button [matMenuTriggerFor]="profilemenu">
-            <div class="chip dropdown-toggle" ngbDropdownToggle class="">
-              <span>{{userContext.nombres}} {{userContext.apellidos}} [{{userContext.username}}]</span>
-              <img src="{{ 'https://justlink-objects.s3.us-east-1.amazonaws.com/' + userContext.imagenUrl}}" class="user_img" width="25" height="25" alt="User">
+        <li class="nav-item user_profile" >
+          <button mat-button [matMenuTriggerFor]="profilemenu" >
+            <div class="chip dropdown-toggle" ngbDropdownToggle>
+              <img src="{{ 'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/' + userContext.imagenUrl}}" 
+                class="user_img" width="40" height="40" alt="User">
+              <div class="user-text">
+                <span class="user-username">{{userContext.username}}</span>
+                <span class="user-fullname">{{userContext.nombres}} {{userContext.apellidos}}</span> 
+              </div>
             </div>
           </button>
           <mat-menu #profilemenu="matMenu" class="profile-menu">

@@ -117,6 +117,52 @@
       ]
     },
     
+     {
+      "path": "",
+      "title": "MENUITEMS.EMAIL.TEXT",
+      "iconType": "feather",
+      "icon": "mail",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "/email/inbox",
+          "title": "MENUITEMS.EMAIL.LIST.INBOX",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/email/compose",
+          "title": "MENUITEMS.EMAIL.LIST.COMPOSE",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/email/read-mail",
+          "title": "MENUITEMS.EMAIL.LIST.READ",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
+    },
+
     {
       "path": "",
       "title": "MENUITEMS.SECURE.TEXT",

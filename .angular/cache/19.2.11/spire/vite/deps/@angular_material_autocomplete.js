@@ -3,8 +3,11 @@ import {
 } from "./chunk-IWNIYR3E.js";
 import "./chunk-WWSOESXV.js";
 import {
+  NG_VALUE_ACCESSOR
+} from "./chunk-JZNJFBOG.js";
+import {
   MatOptionModule
-} from "./chunk-E2GIMAVH.js";
+} from "./chunk-ZSVV5W5J.js";
 import {
   MAT_OPTGROUP,
   MAT_OPTION_PARENT_COMPONENT,
@@ -13,13 +16,13 @@ import {
   MatOptionSelectionChange,
   _countGroupLabelsBeforeOption,
   _getOptionScrollPosition
-} from "./chunk-LUCD6LBG.js";
-import "./chunk-SM5O4Y4I.js";
+} from "./chunk-4AZUEIXS.js";
+import "./chunk-44U32HUB.js";
 import "./chunk-OIM6NNUD.js";
-import "./chunk-WCRMOZP4.js";
+import "./chunk-H2VH33AN.js";
 import "./chunk-T3XN2H52.js";
-import "./chunk-YWKBOROT.js";
 import "./chunk-VL7QC4A6.js";
+import "./chunk-YWKBOROT.js";
 import "./chunk-OZ7C5UV6.js";
 import {
   Breakpoints
@@ -28,7 +31,7 @@ import {
   Overlay,
   OverlayConfig,
   OverlayModule
-} from "./chunk-XMQ4J77J.js";
+} from "./chunk-PFONXOAX.js";
 import "./chunk-OIBNGD5S.js";
 import {
   TemplatePortal
@@ -37,24 +40,14 @@ import "./chunk-42FJBLFI.js";
 import "./chunk-GV5LUSDY.js";
 import {
   MatCommonModule
-} from "./chunk-7PAZUSFO.js";
+} from "./chunk-OTB5LYNR.js";
 import {
   ActiveDescendantKeyManager,
   BreakpointObserver,
   addAriaReferencedId,
   removeAriaReferencedId
-} from "./chunk-TTHISNLM.js";
+} from "./chunk-O4U5JBOQ.js";
 import "./chunk-HLX6YUUY.js";
-import {
-  NG_VALUE_ACCESSOR
-} from "./chunk-JZNJFBOG.js";
-import {
-  _IdGenerator
-} from "./chunk-DSSDW2YN.js";
-import {
-  _getEventTarget,
-  _getFocusedElementPierceShadowDom
-} from "./chunk-KQB4LJPA.js";
 import {
   DOWN_ARROW,
   ENTER,
@@ -64,14 +57,21 @@ import {
   hasModifierKey
 } from "./chunk-MMVZ32PN.js";
 import {
+  _IdGenerator
+} from "./chunk-DSSDW2YN.js";
+import {
+  _getEventTarget,
+  _getFocusedElementPierceShadowDom
+} from "./chunk-KQB4LJPA.js";
+import {
   CdkScrollableModule,
   ViewportRuler
-} from "./chunk-LINYNOPW.js";
+} from "./chunk-PIYZR644.js";
 import "./chunk-2O4WY5GE.js";
-import "./chunk-QPYGKNNE.js";
 import {
   Directionality
 } from "./chunk-PJ2U5DKU.js";
+import "./chunk-QPYGKNNE.js";
 import "./chunk-CORJMSJK.js";
 import "./chunk-MQUILGSN.js";
 import {
@@ -126,11 +126,11 @@ import {
   ɵɵtemplate,
   ɵɵviewQuery
 } from "./chunk-2IQXLFEV.js";
+import "./chunk-ISM5WLAM.js";
 import {
   defer,
   merge
 } from "./chunk-IC62NIWK.js";
-import "./chunk-ISM5WLAM.js";
 import {
   Observable,
   Subject,

@@ -5,9 +5,11 @@
   border-left: 4px solid transparent;
   background: #fff;
 
-  &.green  { border-left-color: #21a67a; }
-  &.orange { border-left-color: #ff9f1a; }
-  &.red    { border-left-color: #e54b4b; }
+  &.green  { border-left-color: #92d050; }
+  &.yellow { border-left-color: #ffff00; }
+  &.orange { border-left-color: #ffc000; }
+  &.red    { border-left-color: #ff0000; }
+  &.neutral { border-left-color: #7c7d7c; }
 }
 
 .fc-header {

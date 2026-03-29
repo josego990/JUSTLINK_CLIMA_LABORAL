@@ -10,17 +10,18 @@ import { OrganizacionService } from 'app/organization/services/organizacion.serv
   
 })
 export class AdvanceTableService {
-  /*
+ 
   private readonly API_URL = 'https://api.justlink360.net/get-users-json';
   private readonly API_URL_BY_ID = 'https://api.justlink360.net/get-users-by-id-org-json';
   private readonly API_URL_SAVE_USER = 'https://api.justlink360.net/insert-user';
   private readonly API_URL_UPDATE_USER = 'https://api.justlink360.net/update-user';
-*/
+
+ /*
   private readonly API_URL = 'http://localhost:3030/get-users-json';
   private readonly API_URL_BY_ID = 'http://localhost:3030/get-users-by-id-org-json';
   private readonly API_URL_SAVE_USER = 'http://localhost:3030/insert-user';
   private readonly API_URL_UPDATE_USER = 'http://localhost:3030/update-user';
-
+  */
 
   dataChange: BehaviorSubject<UserModel[]> = new BehaviorSubject<
     UserModel[]

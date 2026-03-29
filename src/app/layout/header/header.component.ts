@@ -154,7 +154,7 @@ export class HeaderComponent
   getUserInfo():void{
     this.organizationService.getUserById(this.authService.currentUserValue!.userId).then((resulx)=>{
       if(resulx.data){
-       //console.log('resulx.data', resulx.data);
+       console.log('resulx.data o userContext en header.components:: ', resulx.data); 
         this.userContext = resulx.data[0];
       }
     }).catch((err)=>{

@@ -184,6 +184,9 @@
         "YOUSUREMESSAGE": "This action will permanently delete the question even from the database.",
         "DELETECONFIRM": "Yes, Delete",
         "DELETEDMESSAGE": "The question was successfully deleted.",
+
+        "DELETEDMESSAGEERROR": "Question deleted error. Is posible that contains answers.",
+
         "MUSTSELECTFACTOR": "You must select a Factor for the question",
         "FIELDEXIST": "Field name already exists",
         "QUESTIONADDED": "Question added successfully",
@@ -268,7 +271,7 @@
       "CONDITION3_APDE_4": "it is confidential",
       "CONDITION3_APDE_5": " so that you can use this tool in a constructive way and thus help strengthen our work environment.",
 
-
+      
 
       
       "SEND": "SEND SURVEY"

@@ -1,17 +1,214 @@
-.table-wrap {
-  overflow: auto;
-  max-height: 600px;  // igual que tu tabla likert
+:host {
+  display: block;
 }
 
-.slider-table {
-  th, td { white-space: nowrap; vertical-align: top; }
-  .val-header { text-align: center; }
-  .val-cell {
-    min-width: 130px;
-    mat-progress-bar {
-      margin-top: 4px;
-      height: 8px;
-      border-radius: 6px;
-    }
+.slider-factor-group {
+  margin-bottom: 28px;
+}
+
+.slider-factor-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e4e8ee;
+}
+
+.slider-factor-eyebrow,
+.slider-question-eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7b8794;
+}
+
+.slider-factor-title,
+.slider-question-title {
+  margin: 0;
+  color: #1f2937;
+}
+
+.slider-factor-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.slider-factor-count {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #eef4ff;
+  color: #355070;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.slider-question-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.slider-question-card {
+  border: 1px solid #e4e8ee;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+  box-shadow: 0 10px 24px rgba(31, 41, 55, 0.06);
+  padding: 18px;
+}
+
+.slider-question-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.slider-question-copy {
+  min-width: 0;
+}
+
+.slider-question-title {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.slider-question-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #f3f6fb;
+  color: #52606d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.meta-pill-strong {
+  background: #e8f5ee;
+  color: #1f7a4f;
+}
+
+.slider-question-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.slider-details-panel,
+.slider-chart-panel {
+  border-radius: 14px;
+  border: 1px solid #ebeff5;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.slider-distribution-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.slider-distribution-table th,
+.slider-distribution-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #edf1f6;
+  text-align: left;
+  vertical-align: top;
+}
+
+.slider-distribution-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.slider-distribution-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.value-cell {
+  width: 64px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.pct-label {
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.slider-chart-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  background:
+    radial-gradient(circle at top, rgba(53, 80, 112, 0.08), transparent 58%),
+    linear-gradient(180deg, #fcfdff 0%, #f7f9fc 100%);
+}
+
+.slider-chart-box {
+  width: 100%;
+}
+
+.slider-chart-box apx-chart {
+  display: block;
+  width: 100%;
+}
+
+.slider-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 220px;
+  border: 1px dashed #cfd8e3;
+  border-radius: 12px;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+@media (max-width: 991px) {
+  .slider-question-body {
+    grid-template-columns: 1fr;
+  }
+
+  .slider-chart-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .slider-factor-header,
+  .slider-question-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .slider-question-card {
+    padding: 14px;
+  }
+
+  .slider-details-panel,
+  .slider-chart-panel {
+    padding: 12px;
   }
 }

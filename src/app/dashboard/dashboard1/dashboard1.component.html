@@ -4,6 +4,27 @@
       <!-- breadcrumb -->
       <app-breadcrumb [title]="'MENUITEMS.DASHBOARD.LIST.DASHBOARD1' | translate" [items]="['Home']" [active_item]="'Dashboad Climas'"></app-breadcrumb>
     </div>
+
+    <div class="row selected-clima-row" *ngIf="nombreFlujo">
+      <div class="col-12">
+        <div class="selected-clima-banner">
+          <ng-container *ngIf="imgFlujo; else climaIconFallback">
+            <img [src]="imgFlujo" [alt]="nombreFlujo" class="selected-clima-img" />
+          </ng-container>
+          <ng-template #climaIconFallback>
+            <div class="selected-clima-icon">
+              <mat-icon>image</mat-icon>
+            </div>
+          </ng-template>
+
+          <div class="selected-clima-text">
+            <span class="selected-clima-label">Clima seleccionado</span>
+            <h5 class="selected-clima-name">{{ nombreFlujo }}</h5>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row" style="margin-left: 4px;">
       
       <div class="col-md-6 col-lg-4 col-sm-6 g-1">
@@ -117,142 +138,267 @@
       </div>
     </div>
 
+    <div class="row" *ngIf="idFlujo > 0">
+      <div class="col-12">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px 0;">
+          <mat-progress-spinner
+            *ngIf="loadingEnvios"
+            diameter="18"
+            mode="indeterminate"
+          ></mat-progress-spinner>
+
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            <span style="opacity:.8;">Estado:</span>
+            <strong [ngStyle]="{
+              color: estadoEnvio === 'Creado' ? '#72dcf9' :
+                     (estadoEnvio === 'Enviado' ? '#13db4a' : 'red')
+            }">
+              {{ estadoEnvio || 'Sin datos' }}
+            </strong>
+          </div>
+
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            👥 <strong>Empleados:</strong> {{ totalEmplados }}
+          </div>
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            📝 <strong>Encuestas:</strong> {{ totalCreadas }}
+          </div>
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            📤 <strong>Enviadas:</strong> {{ totalEnviadas }}
+          </div>
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            ✅ <strong>Contestadas:</strong> {{ totalContestadas }}
+          </div>
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            📋 <strong>Pendientes:</strong> {{ totalCreadas - totalContestadas }}
+          </div>
+          <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            📊 <strong>Completado:</strong> {{ porcentajeEnvio | number:'1.0-2' }}%
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row metric-cards-row">
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card metric-kpi-card">
+          <div class="card-loader" *ngIf="loadingGeneral">
+            <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+          </div>
+
+          <div class="metric-card-head">
+            <div
+              class="metric-card-title-wrap metric-card-tooltip-target"
+              [matTooltip]="getGeneralCardTooltip()"
+              [matTooltipClass]="'tooltip-html'"
+              matTooltipPosition="above"
+            >
+              <mat-icon mat-card-avatar class="metric-card-avatar">analytics</mat-icon>
+              <div>
+                <mat-card-title>Favorabilidad general</mat-card-title>
+                <mat-card-subtitle>{{ getGeneralGaugeLabel() }}</mat-card-subtitle>
+              </div>
+            </div>
+            <div class="metric-card-actions">
+              <mat-slide-toggle [(ngModel)]="generalRestrictivo" (ngModelChange)="onGeneralRestrictivoToggle()">Restrictivo</mat-slide-toggle>
+              
+            </div>
+          </div>
+
+          <div id="kpi-general-chart" class="chart-export-surface">
+            <ngx-gauge
+              [value]="getGeneralGaugeValue()"
+              [size]="200"
+              [type]="guageType1"
+              [thick]="15"
+              class="guage-chart-center"
+              [foregroundColor]="getGeneralGaugeColor()"
+            >
+              <ngx-gauge-append>
+                <span class="font-25">%</span>
+              </ngx-gauge-append>
+
+              <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+                General
+              </ngx-gauge-label>
+
+              <ngx-gauge-value>
+                {{ getGeneralGaugeValue() | number:'1.0-2' }}
+              </ngx-gauge-value>
+            </ngx-gauge>
+          </div>
+        </mat-card>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card metric-kpi-card">
+          <div class="card-loader" *ngIf="loadingGeneral">
+            <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+          </div>
+
+          <div class="metric-card-head">
+            <div
+              class="metric-card-title-wrap metric-card-tooltip-target"
+              [matTooltip]="getTop1CardTooltip()"
+              [matTooltipClass]="'tooltip-html'"
+              matTooltipPosition="above"
+            >
+              <mat-icon mat-card-avatar class="metric-card-avatar">trending_up</mat-icon>
+              <div>
+                <mat-card-title>Favorabilidad máxima</mat-card-title>
+                <mat-card-subtitle>Top-1</mat-card-subtitle>
+              </div>
+            </div>
+            <div class="metric-card-actions">
+              
+            </div>
+          </div>
+
+          <div id="kpi-top1-chart" class="chart-export-surface">
+            <ngx-gauge
+              [value]="getTop1GaugeValue()"
+              [size]="200"
+              [type]="guageType1"
+              [thick]="15"
+              class="guage-chart-center"
+              [foregroundColor]="getTop1GaugeColor()"
+            >
+              <ngx-gauge-append>
+                <span class="font-25">%</span>
+              </ngx-gauge-append>
+
+              <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+                Top 1
+              </ngx-gauge-label>
+
+              <ngx-gauge-value>
+                {{ getTop1GaugeValue() | number:'1.0-2' }}
+              </ngx-gauge-value>
+            </ngx-gauge>
+          </div>
+        </mat-card>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card metric-kpi-card">
+          <div class="card-loader" *ngIf="loadingGeneral">
+            <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+          </div>
+
+          <div class="metric-card-head">
+            <div
+              class="metric-card-title-wrap metric-card-tooltip-target"
+              [matTooltip]="getDesfavorableCardTooltip()"
+              [matTooltipClass]="'tooltip-html'"
+              matTooltipPosition="above"
+            >
+              <mat-icon mat-card-avatar class="metric-card-avatar">trending_down</mat-icon>
+              <div>
+                <mat-card-title>Desfavorabilidad general</mat-card-title>
+                <mat-card-subtitle>{{ getDesfavorableGaugeLabel() }}</mat-card-subtitle>
+              </div>
+            </div>
+            <div class="metric-card-actions">
+            
+            </div>
+          </div>
+
+          <div id="kpi-desfavorable-chart" class="chart-export-surface">
+            <ngx-gauge
+              [value]="getDesfavorableGaugeValue()"
+              [size]="200"
+              [type]="guageType1"
+              [thick]="15"
+              class="guage-chart-center"
+              [foregroundColor]="getDesfavorableGaugeColor()"
+            >
+              <ngx-gauge-append>
+                <span class="font-25">%</span>
+              </ngx-gauge-append>
+
+              <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+                Desfavorable
+              </ngx-gauge-label>
+
+              <ngx-gauge-value>
+                {{ getDesfavorableGaugeValue() | number:'1.0-2' }}
+              </ngx-gauge-value>
+            </ngx-gauge>
+          </div>
+        </mat-card>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+        <mat-card class="fixed-card metric-kpi-card">
+          <div class="card-loader" *ngIf="loadingGeneral">
+            <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+          </div>
+
+          <div class="metric-card-head">
+            <div
+              class="metric-card-title-wrap metric-card-tooltip-target"
+              [matTooltip]="getBottom1CardTooltip()"
+              [matTooltipClass]="'tooltip-html'"
+              matTooltipPosition="above"
+            >
+              <mat-icon mat-card-avatar class="metric-card-avatar">trending_down</mat-icon>
+              <div>
+                <mat-card-title>Desfavorabilidad máxima</mat-card-title>
+                <mat-card-subtitle>Bottom-1</mat-card-subtitle>
+              </div>
+            </div>
+            <div class="metric-card-actions">
+            
+            </div>
+          </div>
+
+          <div id="kpi-bottom1-chart" class="chart-export-surface">
+            <ngx-gauge
+              [value]="getBottom1GaugeValue()"
+              [size]="200"
+              [type]="guageType1"
+              [thick]="15"
+              class="guage-chart-center"
+              [foregroundColor]="getBottom1GaugeColor()"
+            >
+              <ngx-gauge-append>
+                <span class="font-25">%</span>
+              </ngx-gauge-append>
+
+              <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
+                Bottom 1
+              </ngx-gauge-label>
+
+              <ngx-gauge-value>
+                {{ getBottom1GaugeValue() | number:'1.0-2' }}
+              </ngx-gauge-value>
+            </ngx-gauge>
+          </div>
+        </mat-card>
+      </div>
+    </div>
+
     <div class="row">
-
-      <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
-        <mat-card class="fixed-card">
-           <div class="card-loader" *ngIf="loadingGeneral">
-              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-            </div>
-          <mat-card-header>
-            <img mat-card-avatar src={{imgFlujo}}>
-            <mat-card-title>{{nombreFlujo}}</mat-card-title>
-            <mat-card-subtitle>{{nombreOrganizacion}}</mat-card-subtitle>
-          </mat-card-header>
-
-          <ngx-gauge  
-            [value]="metricasSatisfaccionGeneralData.pct_top2"  
-            [size]="200"  
-            [type]="guageType1"  
-            [thick]="15"  
-            class="guage-chart-center"
-            [foregroundColor]="gaugeColor"
-          >
-            <ngx-gauge-append>
-              <span class="font-25">%</span>
-            </ngx-gauge-append>
-
-            <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
-              General
-            </ngx-gauge-label>
-
-            <ngx-gauge-value>
-              {{metricasSatisfaccionGeneralData.pct_top2}}
-            </ngx-gauge-value>
-          </ngx-gauge>
-
-
-          <mat-card-content>
-            <p>{{objetivoFlujo}}</p>
-          </mat-card-content>
-      
-          
-        </mat-card>
-      </div>
-
-      <div  class="col-12 col-md-6 col-lg-4 col-xl-3">
-        <mat-card class="fixed-card">
-          <div class="card-loader" *ngIf="loadingEnvios">
-              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-            </div>
-          <mat-card-header>
-            <mat-card-title>Estado</mat-card-title>
-            <img mat-card-avatar src='https://w7.pngwing.com/pngs/10/412/png-transparent-computer-icons-send-miscellaneous-angle-rectangle-thumbnail.png'>
-            <mat-card-title>Envío</mat-card-title>
-            
-          </mat-card-header>
-          <ngx-gauge  
-            [value]="porcentajeEnvio"  
-            [size]="200"  
-            [type]="guageType1"  
-            [thick]="15"  
-            class="guage-chart-center"
-          >
-            <ngx-gauge-append>
-              <span class="font-25">%</span>
-            </ngx-gauge-append>
-
-            <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
-              Completado
-            </ngx-gauge-label>
-
-            <ngx-gauge-value>
-              {{porcentajeEnvio}}
-            </ngx-gauge-value>
-          </ngx-gauge>
-          
-
-          <mat-card-content style="margin-left: -35px;">
-            <div class="metrics" style="display: flex; flex-wrap: wrap; gap: 12px; margin-left: 50px;">
-              
-              <div style="flex: 1 1 45%; display: flex; align-items: center;">
-                <span
-                  [ngStyle]="{
-                    color: estadoEnvio === 'Creado' ? '#72dcf9' :
-                           (estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
-                    'font-size': '18px',
-                    'margin-right': '8px'
-                  }"
-                >
-                  {{ estadoEnvio === 'Creado' ? '🕓' :
-                     estadoEnvio === 'Enviado' ? '✅' : '⌛' }}
-                </span>
-                <strong
-                  [ngStyle]="{
-                    color: estadoEnvio === 'Creado' ? 'green' :
-                           (estadoEnvio === 'Enviado' ? '#13db4a' : 'red')
-                  }"
-                >
-                  {{ estadoEnvio }}
-                </strong>
-              </div>
-              <div style="flex: 1 1 45%;">
-                👥 <strong>Empleados:</strong> {{totalEmplados}}
-              </div>
-  
-              <div style="flex: 1 1 45%;">
-                📝 <strong>Encuestas:</strong> {{totalCreadas}}
-              </div>
-  
-              <div style="flex: 1 1 45%;">
-                📤 <strong>Enviadas:</strong> {{totalEnviadas}}
-              </div>
-              
-              <div style="flex: 1 1 45%;">
-                ✅ <strong>Contestadas:</strong> {{totalContestadas}}
-              </div>
-              <div style="flex: 1 1 45%;">
-                📋 <strong>Pendientes:</strong> {{totalCreadas - totalContestadas}}
-  
-              </div>
-            
-            </div>
-          </mat-card-content>
-         
-          
-        </mat-card>
-      </div>
-
-      <div class="col-lg-12 col-md-12 col-sm-12 col-xl-6">
+      <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
         <div class="card">
-           <div class="card-loader" *ngIf="loadingPanorama">
-              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-            </div>
+          <div class="card-loader" *ngIf="loadingPanorama">
+            <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+          </div>
           <div class="header">
-            <h2>PANORAMA GENERAL CLIMA</h2>
+            <div class="chart-header-with-actions">
+              <h2>PANORAMA GENERAL CLIMA</h2>
+              <button mat-icon-button class="chart-menu-trigger" [matMenuTriggerFor]="panoramaChartMenu" [disabled]="!accessToExport" matTooltip="Exportar gráfica">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #panoramaChartMenu="matMenu">
+                <button mat-menu-item (click)="exportChartSvg('panorama-general-chart', 'panorama-general-clima')">Descargar SVG</button>
+                <button mat-menu-item (click)="exportChartPng('panorama-general-chart', 'panorama-general-clima')">Descargar PNG</button>
+                <button mat-menu-item (click)="exportPanoramaCsv()">Descargar CSV</button>
+              </mat-menu>
+            </div>
           </div>
           <div class="card-body">
-            <div style="height: 400px">
+            <div id="panorama-general-chart" style="height: 400px" class="chart-export-surface">
               <ngx-charts-bar-vertical [scheme]="colorScheme" [results]="single" [gradient]="gradient"
                 [xAxis]="showXAxis" [yAxis]="showYAxis" [legend]="showLegend" [legendPosition]="legendPosition"
                 [showXAxisLabel]="showXAxisLabel" [showYAxisLabel]="showYAxisLabel" [xAxisLabel]="vbarxAxisLabel"
@@ -263,8 +409,6 @@
           </div>
         </div>
       </div>
-
-      
     </div>
 
    
@@ -273,7 +417,7 @@
      
       <div *ngFor="let g of gMetricasData;" class="mb-3">
         <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
-          <span>{{ g.etiqueta }}</span>
+          <span *ngIf="(g.etiqueta || '').toLowerCase() !== 'generico'">{{ g.etiqueta }}</span>
 
           
           <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
@@ -303,8 +447,8 @@
               [desfav]="m.desfavorable"
               [stdev]="m.stdev_score"
 
-              [colorClass]="m.pct_satisfaccion >= 70 ? 'green' : (m.pct_satisfaccion >= 50 ? 'orange' : 'red')"
-              [gaugeColor]="m.pct_satisfaccion >= 70 ? '#21a67a' : (m.pct_satisfaccion >= 50 ? '#ff9f1a' : '#e54b4b')"
+              [colorClass]="getFactorColorClass(m.pct_satisfaccion)"
+              [gaugeColor]="getFactorGaugeColor(m.pct_satisfaccion)"
             >
             </app-info-box-factor>
 
@@ -316,7 +460,14 @@
 
       </div>
 -->
-      <div class="col-12 col-md-12 col-sm-12 col-xs-12">
+      
+    <div class="col-12 col-md-12 col-sm-12 col-xs-12">
+
+          <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
+            <span>Resultados por Factor</span>
+          
+            
+          </h5>
 
          <div class="card-loader" *ngIf="loadingFactores">
           <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
@@ -324,7 +475,7 @@
 
         <div *ngFor="let g of gMetricasData;" class="mb-3">
           <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
-            <span>{{ g.etiqueta }}</span>
+            <span *ngIf="(g.etiqueta || '').toLowerCase() !== 'generico'">{{ g.etiqueta }}</span>
           
             <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
               {{ getGFPct(g) | number:'1.0-2' }}%
@@ -339,23 +490,25 @@
                 [title]="m.Factor"
                 [value]="(m.empleados_respondieron || 0).toString()"
 
-                [gaugeValue]="m.pct_satisfaccion_equal"
+                [gaugeValue]="getFactorSatisfaccion(m)"
                 [gaugeSize]="96"
                 [gaugeType]="'full'"
                 [gaugeThick]="14"
                 [gaugeBg]="'#eef3f9'"
 
-                [trendDirection]="m.pct_satisfaccion_equal >= 70 ? 'up' : 'down'"
+                [trendDirection]="getFactorSatisfaccion(m) >= 70 ? 'up' : 'down'"
                 [trendText]="'Satisfacción'"
 
                 [pct_opt1]="m.pct_opt1"
                 [pct_opt2]="m.pct_opt2"
+                [pct_opt0]="m.pct_opt0"
                 [pct_opt3]="m.pct_opt3"
                 [pct_opt4]="m.pct_opt4"
+                [showNeutral]="showNeutralMetrics"
                 
 
-                [colorClass]="m.pct_satisfaccion_equal >= 70 ? 'green' : (m.pct_satisfaccion_equal >= 50 ? 'orange' : 'red')"
-                [gaugeColor]="m.pct_satisfaccion_equal >= 70 ? '#21a67a' : (m.pct_satisfaccion_equal >= 50 ? '#ff9f1a' : '#e54b4b')"
+                [colorClass]="getFactorColorClass(getFactorSatisfaccion(m))"
+                [gaugeColor]="getFactorGaugeColor(getFactorSatisfaccion(m))"
               >
               </app-info-box-factor>
 
@@ -429,10 +582,13 @@
           <div class="card-loader" *ngIf="loadingCalificacion">
               <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
             </div>
+          <mat-card-header>
+            <mat-card-title>Resultados de Rangos</mat-card-title>
+          </mat-card-header>
    
           <mat-card-content>
             <ng-scrollbar >
-              <app-slider-table [rows]="sliderRows"></app-slider-table>
+              <app-slider-table [rows]="sliderRows" [accessToExport]="accessToExport"></app-slider-table>
             </ng-scrollbar>
           </mat-card-content>
         </mat-card>
@@ -451,7 +607,7 @@
           </mat-card-header>
           <mat-card-content>
             <ng-scrollbar style="height: 600px" visibility="hover">
-              <app-progress-table-factor [subjects]="subjects"></app-progress-table-factor>
+              <app-progress-table-factor [subjects]="subjects" [showNeutral]="showNeutralMetrics"></app-progress-table-factor>
             </ng-scrollbar>
           </mat-card-content>
         </mat-card>

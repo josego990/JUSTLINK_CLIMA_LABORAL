@@ -17,7 +17,7 @@ export class InfoBoxFactorComponent {
   @Input() trendPercentage: string = '';
   @Input() trendText: string = '';
 
-  @Input() colorClass: string = '';   // 'green' | 'orange' | 'red'
+  @Input() colorClass: string = '';   // 'green' | 'yellow' | 'orange' | 'red' | 'neutral'
   @Input() gaugeColor: string = '';
   @Input() gaugeBg?: string;          // NUEVO: color de pista del gauge
 
@@ -29,8 +29,10 @@ export class InfoBoxFactorComponent {
   // NUEVOS: métricas compactas
   @Input() pct_opt1: number | null = null;
   @Input() pct_opt2: number | null = null;
+  @Input() pct_opt0: number | null = null;
   @Input() pct_opt3: number | null = null;
   @Input() pct_opt4: number | null = null;
+  @Input() showNeutral = true;
 
 
 
