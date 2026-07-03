@@ -1,24 +1,169 @@
-// nombre.component.scss
-
-// Estilo general para todos los controles
-div {
-  margin-left: 5px;
+:host {
+  display: block;
 }
 
-// Estilo específico para el tipo de archivo
+.employee-card {
+  margin-left: 0;
+}
+
+.employee-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.employee-organization-control {
+  flex: 1 1 360px;
+  max-width: 560px;
+}
+
+.organization-select {
+  width: 100%;
+}
+
+.employee-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.employee-add-button {
+  min-height: 40px;
+}
+
+.employee-add-button mat-icon {
+  margin-right: 6px;
+}
+
+.employee-dialog-content {
+  padding-top: 8px;
+}
+
+.employee-dialog-form {
+  width: 100%;
+}
+
+.employee-form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px 24px;
+  align-items: start;
+}
+
+.employee-form-field {
+  grid-column: span 4;
+  min-width: 0;
+}
+
+.employee-form-field--small {
+  grid-column: span 3;
+}
+
+.employee-form-field--wide {
+  grid-column: span 6;
+}
+
+.employee-form-field--full {
+  grid-column: 1 / -1;
+}
+
+.employee-demographic-section {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+.employee-demographic-title {
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #3f4550;
+}
+
+.employee-demographic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+
+.employee-demographic-grid .employee-form-field {
+  grid-column: auto;
+}
+
+.employee-dialog-actions {
+  gap: 8px;
+  padding: 8px 24px 20px;
+}
+
+.employee-manager-input {
+  cursor: pointer;
+}
+
+.employee-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.employee-status-chip--active {
+  background: #d9fbe8;
+  color: #0b7a3b;
+}
+
+.employee-status-chip--inactive {
+  background: #ffe1e1;
+  color: #b42318;
+}
+
 input[type="file"] {
-  // Puedes agregar estilos específicos para el control de archivo aquí
   margin-left: 5px;
 }
 
-input[type="textarea"] {
-  // Puedes agregar estilos específicos para el control de archivo aquí
-  margin-left: 10px;
+@media (max-width: 960px) {
+  .employee-form-field,
+  .employee-form-field--small,
+  .employee-form-field--wide {
+    grid-column: span 6;
+  }
 }
 
-// Estilo específico para el tipo de slider y su label
-input[type="range"], label {
-  display: inline-block;
-  vertical-align: middle;
-}
+@media (max-width: 600px) {
+  .employee-card {
+    margin-left: 0;
+  }
 
+  .employee-toolbar {
+    flex-direction: column;
+  }
+
+  .employee-organization-control,
+  .employee-toolbar-actions,
+  .employee-add-button {
+    width: 100%;
+  }
+
+  .employee-toolbar-actions {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .employee-form-field,
+  .employee-form-field--small,
+  .employee-form-field--wide,
+  .employee-form-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .employee-demographic-grid {
+    grid-template-columns: 1fr;
+  }
+}

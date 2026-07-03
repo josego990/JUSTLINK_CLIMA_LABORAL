@@ -62,6 +62,43 @@ export interface PreguntaAbiertaExport {
   ComentariosJSON?: string | PreguntaAbiertaComentario[];
 }
 
+export interface PreguntaRangoDistribucionItem {
+  Valor?: number;
+  Conteo?: number;
+  Porcentaje?: number;
+}
+
+export interface PreguntaRangoExport {
+  idGranFactor?: number;
+  etiquetaGranFactor?: string;
+  idFactor?: number;
+  factor?: string;
+  idPregunta?: number;
+  pregunta?: string;
+  rangoMin?: number;
+  rangoMax?: number;
+  total_respuestas?: number;
+  promedio?: number;
+  distribucionJSON?: string | PreguntaRangoDistribucionItem[];
+}
+
+export interface EncuestaEnvioExcelColumn {
+  key: string;
+  header: string;
+  width?: number;
+  dynamic?: boolean;
+}
+
+export interface EncuestaEnvioExcelData {
+  fileName?: string;
+  sheetName?: string;
+  title?: string;
+  subtitle?: string;
+  filters?: string[];
+  columns: EncuestaEnvioExcelColumn[];
+  rows: Array<Record<string, unknown>>;
+}
+
 export interface ClimaExportData {
   [factor: string]: FactorGroup | any;
   header?: {
@@ -73,10 +110,121 @@ export interface ClimaExportData {
   // NUEVO
   granFactores?: Record<string, GranFactorGroup>;
   preguntasAbiertas?: PreguntaAbiertaExport[];
+  preguntasRango?: PreguntaRangoExport[];
 }
 
 @Injectable({ providedIn: 'root' })
 export class ExcelXlsxService {
+  exportarEncuestasEnvio(data: EncuestaEnvioExcelData): void {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Tu App';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet(data.sheetName || 'Envio encuestas', {
+      views: [{ showGridLines: true }]
+    });
+
+    const columns = data.columns ?? [];
+    const rows = data.rows ?? [];
+    const totalColumns = Math.max(columns.length, 1);
+
+    columns.forEach((column, index) => {
+      const excelColumn = worksheet.getColumn(index + 1);
+      excelColumn.key = column.key;
+      excelColumn.width = column.width ?? (column.dynamic ? 22 : 18);
+    });
+
+    const mergeAcross = (rowNumber: number) => {
+      worksheet.mergeCells(rowNumber, 1, rowNumber, totalColumns);
+    };
+
+    mergeAcross(1);
+    const titleCell = worksheet.getCell(1, 1);
+    titleCell.value = data.title || 'Reporte de envio de encuestas';
+    titleCell.font = { bold: true, size: 16, color: { argb: 'FF0F172A' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    mergeAcross(2);
+    const subtitleCell = worksheet.getCell(2, 1);
+    subtitleCell.value = data.subtitle || '';
+    subtitleCell.font = { size: 11, color: { argb: 'FF475569' } };
+    subtitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    mergeAcross(3);
+    const filtersCell = worksheet.getCell(3, 1);
+    filtersCell.value = (data.filters ?? []).filter(Boolean).join(' | ');
+    filtersCell.font = { size: 10, color: { argb: 'FF64748B' }, italic: true };
+    filtersCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    worksheet.addRow([]);
+
+    const headerRow = worksheet.addRow(columns.map((column) => column.header));
+    headerRow.height = 24;
+
+    headerRow.eachCell((cell: any, colNumber: number) => {
+      const column = columns[colNumber - 1];
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: column?.dynamic ? 'FF9CA3AF' : 'FF1D4ED8' }
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+    });
+
+    rows.forEach((rowData, rowIndex) => {
+      const row = worksheet.addRow(columns.map((column) => rowData[column.key] ?? '-'));
+
+      row.eachCell((cell: any, colNumber: number) => {
+        const column = columns[colNumber - 1];
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber <= 2 ? 'left' : 'center',
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+
+        if (column?.dynamic) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: rowIndex % 2 === 0 ? 'FFF8FAFC' : 'FFF3F4F6' }
+          };
+        }
+      });
+    });
+
+    worksheet.autoFilter = {
+      from: { row: headerRow.number, column: 1 },
+      to: { row: headerRow.number, column: totalColumns }
+    };
+
+    worksheet.views = [{ state: 'frozen', ySplit: headerRow.number }];
+
+    workbook.xlsx
+      .writeBuffer()
+      .then((buffer: ArrayBuffer) => {
+        const blob = new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        saveAs(blob, data.fileName || 'EnvioEncuestas.xlsx');
+      })
+      .catch((error: unknown) => {
+        console.error('Error al exportar Excel de envio de encuestas:', error);
+      });
+  }
+
   exportar(climaData: ClimaExportData): void {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Tu App';
@@ -87,6 +235,81 @@ export class ExcelXlsxService {
       if (pct >= 80) return { argb: 'FFFFFF00' }; // Amarillo
       if (pct >= 60) return { argb: 'FFFFC000' }; // Naranja
       return { argb: 'FFFF0000' };                // Rojo
+    };
+
+    const colorNps = (nps: number): { argb: string } => {
+      if (nps >= 50) return { argb: 'FF92D050' };
+      if (nps >= 0) return { argb: 'FFFFFF99' };
+      return { argb: 'FFFFC7CE' };
+    };
+
+    const colorRangeValueHeader = (value: number): string => {
+      if (value >= 1 && value <= 6) return 'FFFFC7CE';
+      if (value >= 7 && value <= 8) return 'FFFFEB9C';
+      if (value >= 9 && value <= 10) return 'FFC6EFCE';
+      return 'FFD9E2F3';
+    };
+
+    const parseRangeDistribution = (
+      raw: string | PreguntaRangoDistribucionItem[] | undefined,
+    ): Array<{ Valor: number; Conteo: number; Porcentaje: number }> => {
+      let parsed: PreguntaRangoDistribucionItem[] = [];
+
+      if (Array.isArray(raw)) {
+        parsed = raw;
+      } else if (typeof raw === 'string' && raw.trim() !== '') {
+        try {
+          const asJson = JSON.parse(raw);
+          parsed = Array.isArray(asJson) ? asJson : [];
+        } catch {
+          parsed = [];
+        }
+      }
+
+      return parsed
+        .map((item) => ({
+          Valor: Number(item?.Valor ?? 0),
+          Conteo: Number(item?.Conteo ?? 0),
+          Porcentaje: Number(item?.Porcentaje ?? 0),
+        }))
+        .filter((item) => Number.isFinite(item.Valor))
+        .sort((a, b) => a.Valor - b.Valor);
+    };
+
+    const buildRangeNpsSummary = (
+      distribution: Array<{ Valor: number; Conteo: number; Porcentaje: number }>,
+      totalResponses: number,
+    ) => {
+      const normalizedTotal = totalResponses > 0
+        ? totalResponses
+        : distribution.reduce((total, item) => total + Number(item.Conteo ?? 0), 0);
+
+      const sumCounts = (from: number, to: number) =>
+        distribution
+          .filter((item) => item.Valor >= from && item.Valor <= to)
+          .reduce((total, item) => total + Number(item.Conteo ?? 0), 0);
+
+      const toPct = (count: number) =>
+        normalizedTotal > 0
+          ? Math.round((((count / normalizedTotal) * 100) + Number.EPSILON) * 100) / 100
+          : 0;
+
+      const detractorsCount = sumCounts(1, 6);
+      const passivesCount = sumCounts(7, 8);
+      const promotersCount = sumCounts(9, 10);
+      const detractorsPct = toPct(detractorsCount);
+      const passivesPct = toPct(passivesCount);
+      const promotersPct = toPct(promotersCount);
+
+      return {
+        detractorsCount,
+        detractorsPct,
+        passivesCount,
+        passivesPct,
+        promotersCount,
+        promotersPct,
+        nps: Math.round(((promotersPct - detractorsPct) + Number.EPSILON) * 100) / 100,
+      };
     };
 
     const hasNeutralLikert = (() => {
@@ -1311,7 +1534,291 @@ if (climaData.granFactores) {
 
 
     // ───────────────────────────────────────────────────────────────────────────
-    // 6) HOJA 6: “Preguntas Abiertas” (agrupadas por Factor)
+    // 6) HOJA 6: “Rangos y NPS”
+    // ───────────────────────────────────────────────────────────────────────────
+    const preguntasRangoRaw = Array.isArray(climaData.preguntasRango)
+      ? climaData.preguntasRango
+      : [];
+
+    if (preguntasRangoRaw.length > 0) {
+      const preguntasRango = preguntasRangoRaw
+        .map((item: PreguntaRangoExport) => {
+          const distribution = parseRangeDistribution(item.distribucionJSON);
+          const totalResponses = Number(item.total_respuestas ?? 0) > 0
+            ? Number(item.total_respuestas)
+            : distribution.reduce((total, value) => total + Number(value.Conteo ?? 0), 0);
+
+          return {
+            etiquetaGranFactor: String(item.etiquetaGranFactor ?? 'Sin gran factor').trim() || 'Sin gran factor',
+            factor: String(item.factor ?? 'Sin factor').trim() || 'Sin factor',
+            idPregunta: Number(item.idPregunta ?? 0),
+            pregunta: String(item.pregunta ?? '').trim(),
+            rangoMin: Number(item.rangoMin ?? 0),
+            rangoMax: Number(item.rangoMax ?? 0),
+            totalResponses,
+            promedio: Number(item.promedio ?? 0),
+            distribution,
+            distributionMap: new Map(distribution.map((value) => [value.Valor, value])),
+            nps: buildRangeNpsSummary(distribution, totalResponses),
+          };
+        })
+        .sort((a, b) => {
+          const byGranFactor = a.etiquetaGranFactor.localeCompare(b.etiquetaGranFactor, 'es', { sensitivity: 'base' });
+          if (byGranFactor !== 0) return byGranFactor;
+          const byFactor = a.factor.localeCompare(b.factor, 'es', { sensitivity: 'base' });
+          if (byFactor !== 0) return byFactor;
+          return a.idPregunta - b.idPregunta;
+        });
+
+      const rangeValues = Array.from(
+        new Set(
+          preguntasRango.flatMap((item) => item.distribution.map((value) => value.Valor)),
+        ),
+      ).sort((a, b) => a - b);
+
+      const sheetRange = workbook.addWorksheet('Rangos y NPS', {
+        views: [{ showGridLines: true }],
+      });
+
+      sheetRange.getColumn(1).width = 22;
+      sheetRange.getColumn(2).width = 24;
+      sheetRange.getColumn(3).width = 48;
+      sheetRange.getColumn(4).width = 14;
+      sheetRange.getColumn(5).width = 14;
+      sheetRange.getColumn(6).width = 12;
+
+      rangeValues.forEach((_, index) => {
+        sheetRange.getColumn(7 + index).width = 10;
+      });
+
+      const detailMetricsStartCol = 7 + rangeValues.length;
+      sheetRange.getColumn(detailMetricsStartCol).width = 14;
+      sheetRange.getColumn(detailMetricsStartCol + 1).width = 12;
+      sheetRange.getColumn(detailMetricsStartCol + 2).width = 14;
+      sheetRange.getColumn(detailMetricsStartCol + 3).width = 12;
+
+      let rowRange = 1;
+
+      if (climaData.header) {
+        const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
+        const titleRow = sheetRange.getRow(rowRange);
+        titleRow.getCell(1).value = `Resultados de Rangos y NPS • ${h.nombre_clima}`;
+        sheetRange.mergeCells(rowRange, 1, rowRange, detailMetricsStartCol + 3);
+        titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true };
+        titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        rowRange++;
+
+        const orgRow = sheetRange.getRow(rowRange);
+        orgRow.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
+        sheetRange.mergeCells(rowRange, 1, rowRange, detailMetricsStartCol + 3);
+        orgRow.getCell(1).font = { name: 'Calibri', size: 12, italic: true };
+        orgRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        rowRange += 2;
+      }
+
+      if (Array.isArray(climaData.camposDemograficos) && climaData.camposDemograficos.length > 0) {
+        climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
+          const rowDemo = sheetRange.getRow(rowRange);
+          rowDemo.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
+          sheetRange.mergeCells(rowRange, 1, rowRange, detailMetricsStartCol + 3);
+          rowDemo.getCell(1).font = { name: 'Calibri', size: 11 };
+          rowDemo.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+          rowRange++;
+        });
+        rowRange++;
+      }
+
+      const summaryTitleRow = sheetRange.getRow(rowRange);
+      summaryTitleRow.getCell(1).value = 'Resumen Ejecutivo por Pregunta';
+      sheetRange.mergeCells(rowRange, 1, rowRange, 10);
+      summaryTitleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+      summaryTitleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+      summaryTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+      rowRange++;
+
+      const summaryHeader = sheetRange.getRow(rowRange);
+      const summaryHeaders = [
+        'Gran Factor',
+        'Factor',
+        'Pregunta',
+        'Rango',
+        'Total respuestas',
+        'Promedio',
+        'Detractores %',
+        'Pasivos %',
+        'Promotores %',
+        'NPS',
+      ];
+
+      summaryHeaders.forEach((label, index) => {
+        const cell = summaryHeader.getCell(index + 1);
+        cell.value = label;
+        cell.font = {
+          name: 'Calibri',
+          size: 11,
+          bold: true,
+          color: { argb: index < 3 ? 'FFFFFFFF' : 'FF000000' },
+        };
+
+        let fill = 'FF95B3D7';
+        if (index < 3) fill = 'FF4472C4';
+        if (index === 6) fill = 'FFFFC7CE';
+        if (index === 7) fill = 'FFFFEB9C';
+        if (index === 8) fill = 'FFC6EFCE';
+        if (index === 9) fill = 'FFD9EAD3';
+
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+      rowRange++;
+
+      preguntasRango.forEach((item, index) => {
+        const row = sheetRange.getRow(rowRange + index);
+        row.getCell(1).value = item.etiquetaGranFactor;
+        row.getCell(2).value = item.factor;
+        row.getCell(3).value = item.pregunta;
+        row.getCell(4).value = `${item.rangoMin}-${item.rangoMax}`;
+        row.getCell(5).value = item.totalResponses;
+        row.getCell(6).value = item.promedio;
+        row.getCell(6).numFmt = '0.00';
+        row.getCell(7).value = item.nps.detractorsPct;
+        row.getCell(7).numFmt = '0.00';
+        row.getCell(8).value = item.nps.passivesPct;
+        row.getCell(8).numFmt = '0.00';
+        row.getCell(9).value = item.nps.promotersPct;
+        row.getCell(9).numFmt = '0.00';
+        row.getCell(10).value = item.nps.nps;
+        row.getCell(10).numFmt = '0.00';
+
+        for (let col = 1; col <= 10; col++) {
+          const cell = row.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.alignment = {
+            horizontal: col <= 3 ? 'left' : 'center',
+            vertical: 'middle',
+            wrapText: col === 3,
+          };
+          cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+        }
+
+        row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
+        row.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF8E1' } };
+        row.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+        row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: colorNps(item.nps.nps) };
+      });
+      rowRange += preguntasRango.length + 2;
+
+      const detailTitleRow = sheetRange.getRow(rowRange);
+      detailTitleRow.getCell(1).value = 'Distribución Detallada por Valor';
+      sheetRange.mergeCells(rowRange, 1, rowRange, detailMetricsStartCol + 3);
+      detailTitleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+      detailTitleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
+      detailTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+      rowRange++;
+
+      const detailHeader = sheetRange.getRow(rowRange);
+      const baseHeaders = ['Gran Factor', 'Factor', 'Pregunta', 'Rango', 'Total respuestas', 'Promedio'];
+      baseHeaders.forEach((label, index) => {
+        const cell = detailHeader.getCell(index + 1);
+        cell.value = label;
+        cell.font = {
+          name: 'Calibri',
+          size: 11,
+          bold: true,
+          color: { argb: index < 3 ? 'FFFFFFFF' : 'FF000000' },
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: index < 3 ? 'FF4472C4' : 'FF95B3D7' },
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+
+      rangeValues.forEach((value, index) => {
+        const cell = detailHeader.getCell(7 + index);
+        cell.value = String(value);
+        cell.font = { name: 'Calibri', size: 11, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorRangeValueHeader(value) } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+
+      ['Detractores %', 'Pasivos %', 'Promotores %', 'NPS'].forEach((label, index) => {
+        const cell = detailHeader.getCell(detailMetricsStartCol + index);
+        cell.value = label;
+        cell.font = { name: 'Calibri', size: 11, bold: true };
+        let fill = 'FFD9EAD3';
+        if (index === 0) fill = 'FFFFC7CE';
+        if (index === 1) fill = 'FFFFEB9C';
+        if (index === 2) fill = 'FFC6EFCE';
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+      rowRange++;
+
+      preguntasRango.forEach((item, index) => {
+        const row = sheetRange.getRow(rowRange + index);
+        row.getCell(1).value = item.etiquetaGranFactor;
+        row.getCell(2).value = item.factor;
+        row.getCell(3).value = item.pregunta;
+        row.getCell(4).value = `${item.rangoMin}-${item.rangoMax}`;
+        row.getCell(5).value = item.totalResponses;
+        row.getCell(6).value = item.promedio;
+        row.getCell(6).numFmt = '0.00';
+
+        rangeValues.forEach((value, valueIndex) => {
+          const pctValue = Number(item.distributionMap.get(value)?.Porcentaje ?? 0);
+          const cell = row.getCell(7 + valueIndex);
+          cell.value = pctValue;
+          cell.numFmt = '0.00';
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorRangeValueHeader(value) } };
+          cell.font = { name: 'Calibri', size: 10 };
+        });
+
+        row.getCell(detailMetricsStartCol).value = item.nps.detractorsPct;
+        row.getCell(detailMetricsStartCol).numFmt = '0.00';
+        row.getCell(detailMetricsStartCol + 1).value = item.nps.passivesPct;
+        row.getCell(detailMetricsStartCol + 1).numFmt = '0.00';
+        row.getCell(detailMetricsStartCol + 2).value = item.nps.promotersPct;
+        row.getCell(detailMetricsStartCol + 2).numFmt = '0.00';
+        row.getCell(detailMetricsStartCol + 3).value = item.nps.nps;
+        row.getCell(detailMetricsStartCol + 3).numFmt = '0.00';
+
+        for (let col = 1; col <= detailMetricsStartCol + 3; col++) {
+          const cell = row.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          if (col <= 6) {
+            cell.alignment = {
+              horizontal: col <= 3 ? 'left' : 'center',
+              vertical: 'middle',
+              wrapText: col === 3,
+            };
+            cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+          }
+        }
+
+        row.getCell(detailMetricsStartCol).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } };
+        row.getCell(detailMetricsStartCol + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF8E1' } };
+        row.getCell(detailMetricsStartCol + 2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+        row.getCell(detailMetricsStartCol + 3).fill = { type: 'pattern', pattern: 'solid', fgColor: colorNps(item.nps.nps) };
+        row.getCell(detailMetricsStartCol).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+        row.getCell(detailMetricsStartCol + 1).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+        row.getCell(detailMetricsStartCol + 2).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+        row.getCell(detailMetricsStartCol + 3).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+
+      sheetRange.eachRow({ includeEmpty: false }, (row: any) => row.commit());
+    }
+
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // 7) HOJA 7: “Preguntas Abiertas” (agrupadas por Factor)
     // ───────────────────────────────────────────────────────────────────────────
     const preguntasAbiertasRaw = Array.isArray(climaData.preguntasAbiertas)
       ? climaData.preguntasAbiertas
@@ -1466,7 +1973,7 @@ if (climaData.granFactores) {
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // 7) Generar y descargar
+    // 8) Generar y descargar
     // ───────────────────────────────────────────────────────────────────────────
     workbook.xlsx
       .writeBuffer()

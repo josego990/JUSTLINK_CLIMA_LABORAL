@@ -1,0 +1,319 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="breadcrumbTitleKey | translate"
+        [items]="breadcrumbItems"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body">
+            <div class="row">
+              <div class="col-xl-4 col-lg-5 col-md-6 col-sm-12 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.ORGANIZATION' | translate }}</mat-label>
+                  <mat-select
+                    [value]="selectedOrganizationId"
+                    [disabled]="isLoadingOrganizations"
+                    (selectionChange)="onOrganizationChange($event.value)"
+                  >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.FILTER_STATUS' | translate }}</mat-label>
+                  <mat-select
+                    [value]="selectedActiveFilter"
+                    [disabled]="!hasSelectedOrganization || isLoadingScales"
+                    (selectionChange)="onActiveFilterChange($event.value)"
+                  >
+                    <mat-option *ngFor="let option of activeFilterOptions" [value]="option.value">
+                      {{ option.labelKey | translate }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-5 col-lg-4 col-md-12 col-sm-12 mb-2 d-flex justify-content-xl-end justify-content-start align-items-center">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!hasSelectedOrganization"
+                  (click)="startCreate()"
+                >
+                  <mat-icon>add</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.NEW' | translate }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-xl-5 col-lg-5 col-md-12 col-sm-12">
+        <div class="card">
+          <div class="body table-responsive">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h4 class="mb-0">{{ 'DESEMPENO_MENUITEMS.ESCALAS.LIST_TITLE' | translate }}</h4>
+                <div class="scale-panel-note">{{ 'DESEMPENO_MENUITEMS.ESCALAS.LIST_NOTE' | translate }}</div>
+              </div>
+            </div>
+
+            <div class="text-center py-4" *ngIf="isLoadingScales">
+              <mat-spinner diameter="40" class="mx-auto"></mat-spinner>
+            </div>
+
+            <table
+              mat-table
+              [dataSource]="dataSourceScales"
+              class="table"
+              *ngIf="!isLoadingScales && dataSourceScales.length > 0"
+            >
+              <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef>{{ 'DESEMPENO_MENUITEMS.ESCALAS.NAME' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Nombre }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="TipoEscala">
+                <th mat-header-cell *matHeaderCellDef>{{ 'DESEMPENO_MENUITEMS.ESCALAS.TYPE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ getScaleTypeLabel(element.TipoEscala) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Activo">
+                <th mat-header-cell *matHeaderCellDef>{{ 'DESEMPENO_MENUITEMS.ESCALAS.STATUS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <span
+                    class="scale-badge"
+                    [style.background]="element.Activo ? '#d4f8e8' : '#ffe5e5'"
+                    [style.color]="element.Activo ? '#0d8a53' : '#b42318'"
+                  >
+                    {{ getStatusLabel(element.Activo) }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="TotalNiveles">
+                <th mat-header-cell *matHeaderCellDef>{{ 'DESEMPENO_MENUITEMS.ESCALAS.LEVELS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ getLevelCountLabel(element) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Acciones">
+                <th mat-header-cell *matHeaderCellDef>{{ 'DESEMPENO_MENUITEMS.ESCALAS.ACTIONS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    type="button"
+                    (click)="loadScale(element.IdEscala)"
+                    [matTooltip]="'DESEMPENO_MENUITEMS.ESCALAS.OPEN' | translate"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: displayedColumns;"
+                class="scale-row-clickable"
+                [class.scale-row-selected]="isSelectedScale(row)"
+                (click)="loadScale(row.IdEscala)"
+              ></tr>
+            </table>
+
+            <div class="scale-empty" *ngIf="!isLoadingScales && dataSourceScales.length === 0">
+              {{ 'DESEMPENO_MENUITEMS.ESCALAS.EMPTY_LIST' | translate }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-7 col-lg-7 col-md-12 col-sm-12">
+        <div class="card">
+          <div class="body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+              <div>
+                <h4 class="mb-0">
+                  {{ isEditing ? ('DESEMPENO_MENUITEMS.ESCALAS.EDIT_TITLE' | translate) : ('DESEMPENO_MENUITEMS.ESCALAS.CREATE_TITLE' | translate) }}
+                </h4>
+                <div class="scale-panel-note" *ngIf="isEditing">
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.NUMBER' | translate:{ id: selectedScaleId } }}
+                </div>
+                <div class="scale-panel-note" *ngIf="!isEditing">
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.CREATE_NOTE' | translate }}
+                </div>
+              </div>
+
+              <div class="text-center" *ngIf="isLoadingScaleDetail">
+                <mat-spinner diameter="32"></mat-spinner>
+              </div>
+            </div>
+
+            <form [formGroup]="escalaForm">
+              <div class="row">
+                <div class="col-xl-7 col-lg-7 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.NAME' | translate }}</mat-label>
+                    <input matInput formControlName="Nombre" />
+                    <mat-error *ngIf="escalaForm.get('Nombre')?.hasError('required')">
+                      {{ 'DESEMPENO_MENUITEMS.ESCALAS.NAME_REQUIRED' | translate }}
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-5 col-lg-5 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.TYPE_LABEL' | translate }}</mat-label>
+                    <mat-select formControlName="TipoEscala">
+                      <mat-option *ngFor="let option of scaleTypeOptions" [value]="option.value">
+                        {{ option.labelKey | translate }}
+                      </mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="escalaForm.get('TipoEscala')?.hasError('required')">
+                      {{ 'DESEMPENO_MENUITEMS.ESCALAS.TYPE_REQUIRED' | translate }}
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <mat-checkbox formControlName="Activo">{{ 'DESEMPENO_MENUITEMS.ESCALAS.ACTIVE_CHECKBOX' | translate }}</mat-checkbox>
+                <div class="scale-panel-note mt-1" *ngIf="isEditing">
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.STATUS_NOTE' | translate }}
+                </div>
+              </div>
+            </form>
+
+            <div class="d-flex gap-2 flex-wrap mb-4">
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                [disabled]="isSavingScale || !hasSelectedOrganization"
+                (click)="onSubmitScale()"
+              >
+                {{ isEditing ? ('DESEMPENO_MENUITEMS.ESCALAS.SAVE_CHANGES' | translate) : ('DESEMPENO_MENUITEMS.ESCALAS.CREATE_BUTTON' | translate) }}
+              </button>
+
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="isSavingScale"
+                (click)="startCreate()"
+              >
+                {{ 'DESEMPENO_MENUITEMS.ESCALAS.CLEAR' | translate }}
+              </button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+              <div>
+                <h5 class="mb-1">{{ 'DESEMPENO_MENUITEMS.ESCALAS.DETAIL_TITLE' | translate }}</h5>
+                <div class="scale-panel-note">
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.DETAIL_NOTE' | translate }}
+                </div>
+              </div>
+
+              <div class="d-flex gap-2 flex-wrap">
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  (click)="addDetailRow()"
+                >
+                  <mat-icon>add</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.ESCALAS.ADD_ROW' | translate }}
+                </button>
+
+              </div>
+            </div>
+
+            <div class="scale-panel-note mb-3" *ngIf="!isEditing">
+              {{ 'DESEMPENO_MENUITEMS.ESCALAS.DETAIL_DRAFT_NOTE' | translate }}
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm scale-detail-table mb-0">
+                <thead>
+                  <tr>
+                    <th style="min-width: 120px;">{{ 'DESEMPENO_MENUITEMS.ESCALAS.ORDER' | translate }}</th>
+                    <th style="min-width: 120px;">{{ 'DESEMPENO_MENUITEMS.ESCALAS.VALUE' | translate }}</th>
+                    <th style="min-width: 260px;">{{ 'DESEMPENO_MENUITEMS.ESCALAS.DESCRIPTION' | translate }}</th>
+                    <th style="width: 80px;">{{ 'DESEMPENO_MENUITEMS.ESCALAS.ACTIONS' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of detailControls; let index = index" [formGroup]="row">
+                    <td>
+                      <mat-form-field appearance="fill">
+                        <input matInput type="number" formControlName="Orden" />
+                        <mat-error *ngIf="row.get('Orden')?.hasError('required')">
+                          {{ 'DESEMPENO_MENUITEMS.ESCALAS.REQUIRED' | translate }}
+                        </mat-error>
+                        <mat-error *ngIf="row.get('Orden')?.hasError('duplicate')">
+                          {{ 'DESEMPENO_MENUITEMS.ESCALAS.DUPLICATE_ORDER' | translate }}
+                        </mat-error>
+                      </mat-form-field>
+                    </td>
+
+                    <td>
+                      <mat-form-field appearance="fill">
+                        <input matInput type="number" formControlName="Valor" />
+                        <mat-error *ngIf="row.get('Valor')?.hasError('required')">
+                          {{ 'DESEMPENO_MENUITEMS.ESCALAS.REQUIRED' | translate }}
+                        </mat-error>
+                        <mat-error *ngIf="row.get('Valor')?.hasError('duplicate')">
+                          {{ 'DESEMPENO_MENUITEMS.ESCALAS.DUPLICATE_VALUE' | translate }}
+                        </mat-error>
+                      </mat-form-field>
+                    </td>
+
+                    <td>
+                      <mat-form-field appearance="fill">
+                        <input matInput formControlName="Descripcion" />
+                        <mat-error *ngIf="row.get('Descripcion')?.hasError('required')">
+                          {{ 'DESEMPENO_MENUITEMS.ESCALAS.DESCRIPTION_REQUIRED' | translate }}
+                        </mat-error>
+                      </mat-form-field>
+                    </td>
+
+                    <td class="text-center">
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        type="button"
+                        (click)="removeDetailRow(index)"
+                        [matTooltip]="'DESEMPENO_MENUITEMS.ESCALAS.DELETE_ROW' | translate"
+                      >
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="detailArray.length === 0">
+                    <td colspan="4" class="scale-empty">
+                      {{ 'DESEMPENO_MENUITEMS.ESCALAS.EMPTY_DETAIL' | translate }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

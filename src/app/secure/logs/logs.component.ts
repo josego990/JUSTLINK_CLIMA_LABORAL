@@ -14,6 +14,7 @@ import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcru
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CommonModule, DatePipe, formatDate, NgClass } from '@angular/common';
 import { rowsAnimation, TableExportUtil } from '@shared';
+import { AuthService } from '@core';
 @Component({
     selector: 'app-ngx-logs',
     templateUrl: './logs.component.html',
@@ -55,9 +56,7 @@ export class LogsComponent implements OnInit {
     { def: 'Resultado',     label: 'Resultado',      type: 'text',     visible: true },
   ];
 
-  constructor(
-    
-  ) {
+  constructor(private authService: AuthService) {
   
   }
   ngOnInit() {
@@ -69,10 +68,20 @@ export class LogsComponent implements OnInit {
   }
 
   fetch(cb: (i: NgxDatableLogs[]) => void) {
+    if (!this.authService.isAuthenticated()) {
+      this.authService.logoutAndRedirect();
+      return;
+    }
 
     const req = new XMLHttpRequest();
     req.open('POST', 'https://api.justlink360.net/get-logs');
+    req.setRequestHeader('Authorization', `Bearer ${this.authService.currentUserValue?.token}`);
     req.onload = () => {
+      if (req.status === 401) {
+        this.authService.logoutAndRedirect();
+        return;
+      }
+
       const data = JSON.parse(req.response);
      //console.log('LOGS:: ', data);
       cb(data.data);

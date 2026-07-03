@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, of, throwError, from } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, map } from 'rxjs/operators';
 import { UserModel } from './users-table.model';
 import { OrganizacionService } from 'app/organization/services/organizacion.service';
@@ -10,35 +10,22 @@ import { OrganizacionService } from 'app/organization/services/organizacion.serv
   
 })
 export class AdvanceTableService {
- 
-  private readonly API_URL = 'https://api.justlink360.net/get-users-json';
-  private readonly API_URL_BY_ID = 'https://api.justlink360.net/get-users-by-id-org-json';
-  private readonly API_URL_SAVE_USER = 'https://api.justlink360.net/insert-user';
-  private readonly API_URL_UPDATE_USER = 'https://api.justlink360.net/update-user';
-
- /*
-  private readonly API_URL = 'http://localhost:3030/get-users-json';
-  private readonly API_URL_BY_ID = 'http://localhost:3030/get-users-by-id-org-json';
-  private readonly API_URL_SAVE_USER = 'http://localhost:3030/insert-user';
-  private readonly API_URL_UPDATE_USER = 'http://localhost:3030/update-user';
-  */
-
   dataChange: BehaviorSubject<UserModel[]> = new BehaviorSubject<
     UserModel[]
   >([]);
 
-  constructor(private httpClient: HttpClient, private organizationService: OrganizacionService) {}
+  constructor(private organizationService: OrganizacionService) {}
 
   /** GET: Fetch all advance tables */
   getAllAdvanceTables(): Observable<UserModel[]> {
-    return this.httpClient
-      .get<UserModel[]>(this.API_URL)
+    return from(this.organizationService.getUsers())
+      .pipe(map((response: any) => response?.data ?? []))
       .pipe(catchError(this.handleError));
   }
 
   getAllUsersById(idOrganization:any): Observable<UserModel[]> {
-    return this.httpClient
-      .post<UserModel[]>(this.API_URL_BY_ID,{idOrganization:idOrganization})
+    return from(this.organizationService.getUsersByIdOrg(idOrganization))
+      .pipe(map((response: any) => response?.data ?? []))
       .pipe(catchError(this.handleError));
   }
   
@@ -47,9 +34,9 @@ export class AdvanceTableService {
 
    //console.log('A GUARDAR:: ', newUser);
 
-     return this.httpClient.post<UserModel>(this.API_URL_SAVE_USER, newUser).pipe(
-       map((response) => {
-         return response; // Return response from API
+     return from(this.organizationService.saveUser(newUser)).pipe(
+       map((response: any) => {
+         return response?.data; // Return response from API
        }),
        catchError(this.handleError)
      );
@@ -61,9 +48,9 @@ export class AdvanceTableService {
     console.log("updateUser: ",  updateUser);
 
     // API call to update the advance table
-     return this.httpClient.post<UserModel>(`${this.API_URL_UPDATE_USER}`, updateUser).pipe(
-       map((response) => {
-         return response; // Return response from API
+     return from(this.organizationService.updateUser(updateUser)).pipe(
+       map((response: any) => {
+         return response?.data; // Return response from API
        }),
        catchError(this.handleError)
      );

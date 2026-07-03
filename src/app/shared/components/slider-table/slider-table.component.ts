@@ -19,6 +19,16 @@ import {
 
 type DistItem = { Valor: number; Conteo: number; Porcentaje: number };
 type SliderPiePoint = { name: string; value: number };
+type NpsSummary = {
+  show: boolean;
+  detractorsCount: number;
+  detractorsPct: number;
+  passivesCount: number;
+  passivesPct: number;
+  promotersCount: number;
+  promotersPct: number;
+  nps: number;
+};
 
 export interface SliderQuestionRow {
   idGranFactor: number;
@@ -39,6 +49,7 @@ type SliderQuestionCard = SliderQuestionRow & {
   chartId: string;
   distribution: DistItem[];
   pieData: SliderPiePoint[];
+  npsSummary: NpsSummary;
   chartOptions: Partial<RangeDonutChartOptions>;
 };
 
@@ -94,6 +105,24 @@ export class SliderTableComponent {
 
   pct(n: number): number {
     return Math.round((Number(n ?? 0) + Number.EPSILON) * 100) / 100;
+  }
+
+  getNpsScoreClass(nps: number): string {
+    if (nps >= 50) return 'slider-nps-score-excellent';
+    if (nps >= 0) return 'slider-nps-score-positive';
+    return 'slider-nps-score-negative';
+  }
+
+  getNpsScoreStyles(nps: number): Record<string, string> {
+    if (nps >= 50) {
+      return { background: '#dcfce7', color: '#166534' };
+    }
+
+    if (nps >= 0) {
+      return { background: '#ecfccb', color: '#3f6212' };
+    }
+
+    return { background: '#fee2e2', color: '#991b1b' };
   }
 
   getBarColor(pct: number): string {
@@ -189,12 +218,14 @@ export class SliderTableComponent {
     const groups = new Map<string, SliderQuestionCard[]>();
 
     for (const row of this.rows) {
+      const distribution = this.buildDistribution(row);
       const factor = String(row.factor ?? '').trim() || 'Sin factor';
       const questionCard: SliderQuestionCard = {
         ...row,
         chartId: `slider-pie-chart-${row.idPregunta}`,
-        distribution: this.buildDistribution(row),
-        pieData: this.buildPieSeries(row),
+        distribution,
+        pieData: this.buildPieSeries(row, distribution),
+        npsSummary: this.buildNpsSummary(row, distribution),
         chartOptions: {},
       };
 
@@ -239,7 +270,7 @@ export class SliderTableComponent {
     return distribution;
   }
 
-  private buildPieSeries(row: SliderQuestionRow): SliderPiePoint[] {
+  private buildPieSeries(row: SliderQuestionRow, distribution: DistItem[]): SliderPiePoint[] {
     if (Array.isArray(row.pieSeries) && row.pieSeries.length > 0) {
       return row.pieSeries.map((item) => ({
         name: String(item.name),
@@ -247,12 +278,67 @@ export class SliderTableComponent {
       }));
     }
 
-    return this.buildDistribution(row)
+    return distribution
       .filter((item) => item.Conteo > 0 || item.Porcentaje > 0)
       .map((item) => ({
         name: String(item.Valor),
         value: this.pct(item.Porcentaje),
       }));
+  }
+
+  private buildNpsSummary(row: SliderQuestionRow, distribution: DistItem[]): NpsSummary {
+    const rangeMin = Number(row.rangoMin ?? 0);
+    const rangeMax = Number(row.rangoMax ?? 0);
+    const show = rangeMin <= 1 && rangeMax >= 10;
+
+    if (!show) {
+      return {
+        show: false,
+        detractorsCount: 0,
+        detractorsPct: 0,
+        passivesCount: 0,
+        passivesPct: 0,
+        promotersCount: 0,
+        promotersPct: 0,
+        nps: 0,
+      };
+    }
+
+    const totalResponsesFromDistribution = distribution.reduce(
+      (total, item) => total + Number(item.Conteo ?? 0),
+      0,
+    );
+    const totalResponses = Number(row.total_respuestas ?? 0) > 0
+      ? Number(row.total_respuestas)
+      : totalResponsesFromDistribution;
+
+    const detractorsCount = distribution
+      .filter((item) => item.Valor >= 1 && item.Valor <= 6)
+      .reduce((total, item) => total + Number(item.Conteo ?? 0), 0);
+    const passivesCount = distribution
+      .filter((item) => item.Valor >= 7 && item.Valor <= 8)
+      .reduce((total, item) => total + Number(item.Conteo ?? 0), 0);
+    const promotersCount = distribution
+      .filter((item) => item.Valor >= 9 && item.Valor <= 10)
+      .reduce((total, item) => total + Number(item.Conteo ?? 0), 0);
+
+    const toPct = (count: number) =>
+      totalResponses > 0 ? this.pct((count / totalResponses) * 100) : 0;
+
+    const detractorsPct = toPct(detractorsCount);
+    const passivesPct = toPct(passivesCount);
+    const promotersPct = toPct(promotersCount);
+
+    return {
+      show: true,
+      detractorsCount,
+      detractorsPct,
+      passivesCount,
+      passivesPct,
+      promotersCount,
+      promotersPct,
+      nps: this.pct(promotersPct - detractorsPct),
+    };
   }
 
   private buildChartOptions(row: SliderQuestionCard): Partial<RangeDonutChartOptions> {

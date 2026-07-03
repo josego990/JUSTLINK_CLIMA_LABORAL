@@ -1,0 +1,137 @@
+<form class="performance-form" [formGroup]="form" (ngSubmit)="finalize()" novalidate>
+  <section
+    class="performance-dimension-section"
+    *ngFor="let dimension of evaluation.dimensiones; trackBy: trackById">
+    <header class="performance-dimension-header">
+      <div class="performance-dimension-index">{{ dimension.orden }}</div>
+      <div class="performance-dimension-heading">
+        <div class="performance-dimension-title-line">
+          <h2>{{ dimension.nombre }}</h2>
+        </div>
+        <p>{{ dimension.descripcion }}</p>
+      </div>
+    </header>
+
+    <mat-accordion multi>
+      <mat-expansion-panel
+        class="criterion-panel"
+        *ngFor="let criterion of dimension.criterios; trackBy: trackById"
+        [expanded]="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ criterion.nombre }}</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <article
+          class="performance-question"
+          *ngFor="let item of criterion.items; trackBy: trackById"
+          [class.is-invalid]="isInvalid(item)">
+          <div class="question-copy">
+            <div>
+              <h3>
+                {{ questionIndex(item) }}.
+                {{ item.texto }}
+              </h3>
+              <span class="required-label" *ngIf="item.requerido">Obligatoria</span>
+            </div>
+          </div>
+
+          <mat-radio-group
+            *ngIf="shouldShowSingle(item)"
+            class="likert-options"
+            [formControlName]="controlName(item)"
+            [attr.aria-label]="item.texto">
+            <mat-radio-button
+              class="likert-option"
+              *ngFor="let option of item.valoresEscala; trackBy: trackById"
+              [value]="option.id">
+              <span class="option-value">{{ option.valor }}</span>
+              <span class="option-label">{{ option.etiqueta }}</span>
+            </mat-radio-button>
+          </mat-radio-group>
+
+          <mat-form-field
+            *ngIf="shouldShowMultiple(item)"
+            appearance="outline"
+            class="answer-field">
+            <mat-label>Selecciona una o más opciones</mat-label>
+            <mat-select multiple [formControlName]="controlName(item)">
+              <mat-option
+                *ngFor="let option of item.valoresEscala; trackBy: trackById"
+                [value]="option.id">
+                {{ option.valor }}. {{ option.etiqueta }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field
+            *ngIf="shouldShowText(item)"
+            appearance="outline"
+            class="answer-field">
+            <mat-label>Respuesta</mat-label>
+            <textarea
+              matInput
+              rows="4"
+              maxlength="1500"
+              [formControlName]="controlName(item)"></textarea>
+          </mat-form-field>
+
+          <mat-form-field
+            *ngIf="shouldShowNumber(item)"
+            appearance="outline"
+            class="answer-field">
+            <mat-label>Valor</mat-label>
+            <input matInput type="number" [formControlName]="controlName(item)">
+          </mat-form-field>
+
+          <mat-checkbox
+            *ngIf="item.permiteNoAplica"
+            [formControlName]="noApplyControlName(item)"
+            (change)="toggleNoApply(item, $event.checked)">
+            No aplica
+          </mat-checkbox>
+
+          <div class="question-error" *ngIf="isInvalid(item)">
+            <mat-icon>error_outline</mat-icon>
+            Selecciona una respuesta para continuar.
+          </div>
+        </article>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </section>
+
+  <footer class="submit-bar">
+    <div class="progress-area">
+      <div class="progress-label">
+        <strong>{{ answeredItems }} de {{ totalItems }}</strong>
+        <span>{{ progress }}% completado</span>
+      </div>
+      <div class="progress-track" aria-hidden="true">
+        <div class="progress-fill" [style.width.%]="progress"></div>
+      </div>
+      <small *ngIf="unansweredRequiredCount">
+        Faltan {{ unansweredRequiredCount }} respuestas obligatorias.
+      </small>
+    </div>
+
+    <div class="submit-actions">
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        (click)="saveDraft()"
+        [disabled]="disabled || isSavingDraft || isFinalizing">
+        <mat-icon>{{ isSavingDraft ? 'sync' : 'save' }}</mat-icon>
+        Guardar borrador
+      </button>
+
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="disabled || isSavingDraft || isFinalizing">
+        <mat-icon>{{ isFinalizing ? 'sync' : 'fact_check' }}</mat-icon>
+        Finalizar
+      </button>
+    </div>
+  </footer>
+</form>

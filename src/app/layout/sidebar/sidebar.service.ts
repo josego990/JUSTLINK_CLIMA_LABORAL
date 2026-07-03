@@ -39,8 +39,8 @@ export class SidebarService {
         return of([]);
       })
     );
-  
-/*
+  /*
+
      
     return this.http
       .get<{ routes: RouteInfo[] }>('assets/data/routes.json')
@@ -49,7 +49,7 @@ export class SidebarService {
 
   }
 
-   getConfigsInfo(): Observable<ConfigInfo[]> {
+  getConfigsInfo(): Observable<ConfigInfo[]> {
     return from(this.organizationService.getConfigs()).pipe(
       map(res => {
         return res.data || [];

@@ -1,0 +1,107 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb [title]="'Historial de correos'" [items]="['Home', 'Email']" [active_item]="'Historial de correos'"></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body">
+            <div class="row align-items-end m-b-10">
+              <div class="col-lg-6 col-md-8 col-sm-12">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Organización</mat-label>
+                  <mat-select
+                    [ngModel]="selectedOrganization"
+                    (ngModelChange)="onOrganizationChange($event)"
+                    [disabled]="loadingOrganizations"
+                  >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization">
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+
+                  <mat-progress-spinner
+                    *ngIf="loadingOrganizations"
+                    matSuffix
+                    diameter="18"
+                    mode="indeterminate"
+                  ></mat-progress-spinner>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="history-table-wrapper" *ngIf="selectedOrganization; else noOrganizationSelected">
+              <table class="table table-hover history-table">
+                <thead>
+                  <tr>
+                    <th style="width: 90px;">ID</th>
+                    <th>Asunto</th>
+                    <th style="width: 130px;">Estado</th>
+                    <th>Destinatario</th>
+                    <th>Nombre clima</th>
+                    <th>Mensaje error</th>
+                    <th style="width: 90px;" class="text-center">Ver</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <ng-container *ngFor="let item of filteredHistory">
+                    <tr>
+                      <td>{{ item.idCorreo }}</td>
+                      <td>{{ item.asunto }}</td>
+                      <td>
+                        <span class="history-status" [ngClass]="getStatusClass(item.estado)">
+                          {{ item.estado }}
+                        </span>
+                      </td>
+                      <td>{{ item.destinatario }}</td>
+                      <td>{{ item.nombreClima }}</td>
+                      <td>
+                        <span class="history-error-message" [class.empty]="!item.mensajeError">
+                          {{ item.mensajeError || '-' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <button
+                          mat-icon-button
+                          color="primary"
+                          type="button"
+                          (click)="toggleHistoryRow(item)"
+                          [matTooltip]="item.expanded ? 'Ocultar correo' : 'Ver correo'"
+                        >
+                          <mat-icon>{{ item.expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+                        </button>
+                      </td>
+                    </tr>
+
+                    <tr *ngIf="item.expanded" class="history-detail-row">
+                      <td colspan="7">
+                        <div class="history-detail-card">
+                          <div class="history-detail-header">
+                            <strong>Contenido del correo</strong>
+                          </div>
+                          <div class="history-detail-body" [innerHTML]="item.contenidoSeguro"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
+                </tbody>
+              </table>
+
+              <div class="history-empty" *ngIf="filteredHistory.length === 0">
+                No hay correos enviados de ejemplo para la organización seleccionada.
+              </div>
+            </div>
+
+            <ng-template #noOrganizationSelected>
+              <div class="history-empty">
+                Selecciona una organización para ver el historial de correos enviados.
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -47,6 +47,13 @@ export const APP_ROUTE: Route[] = [
                     ),
             },
             {
+                path: 'desempeno',
+                loadChildren: () =>
+                    import('./desempeno/desempeno.routes').then(
+                        (m) => m.DESEMPENO_ROUTE
+                    ),
+            },
+            {
                 path: 'calendar',
                 loadChildren: () =>
                     import('./calendar/calendar.routes').then((m) => m.CALENDAR_ROUTE),
@@ -131,6 +138,13 @@ export const APP_ROUTE: Route[] = [
         //component: CompleteclimaaloneComponent,
         loadChildren: () =>
             import('./completeclimaalone/completeclimaalone.routes').then((m) => m.COMPLETE_CLIMA_ROUTE),
+    },
+    {
+        path: 'completeclima/completedesempenoalone',
+        loadChildren: () =>
+            import('./completedesempenoalone/completedesempenoalone.routes').then(
+                (m) => m.COMPLETE_DESEMPENO_ROUTE
+            ),
     },
     
     {

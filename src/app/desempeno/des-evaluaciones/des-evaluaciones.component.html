@@ -1,0 +1,1790 @@
+<section class="content des-evaluaciones-page">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="breadcrumbItems"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="evaluaciones-shell">
+          <div class="evaluaciones-toolbar">
+            <div class="evaluaciones-toolbar-left">
+              <mat-form-field appearance="outline" class="org-selector">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ORGANIZATION' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="selectedOrganizationId"
+                  (ngModelChange)="onOrganizationChange($event)"
+                  [disabled]="isLoadingOrganizations"
+                >
+                  <mat-option *ngFor="let organization of organizations; trackBy: trackByAnyId" [value]="organization.Id">
+                    {{ organization.Nombre }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="toolbar-summary">
+                <span class="summary-pill">
+                  <mat-icon>groups</mat-icon>
+                  {{ employees.length }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.COLLABORATORS_LOADED' | translate }}
+                </span>
+                <span class="summary-pill">
+                  <mat-icon>tune</mat-icon>
+                  {{ demographicFields.length }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEMOGRAPHIC_FIELDS_LOADED' | translate }}
+                </span>
+              </div>
+            </div>
+
+            <div class="evaluaciones-toolbar-actions">
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="openCreateDialog()"
+                [disabled]="
+                  !hasSelectedOrganization ||
+                  isLoadingEmployees ||
+                  isLoadingDemographics ||
+                  isLoadingCatalogs ||
+                  isLoadingModels
+                "
+              >
+                <mat-icon>add</mat-icon>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NEW' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="loading-strip"
+            *ngIf="
+              isLoadingOrganizations ||
+              isLoadingEmployees ||
+              isLoadingDemographics ||
+              isLoadingCatalogs ||
+              isLoadingModels
+            ">
+            <mat-progress-spinner mode="indeterminate" diameter="28"></mat-progress-spinner>
+            <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.LOADING' | translate }}</span>
+          </div>
+
+          <div
+            class="cards-grid"
+            *ngIf="!isLoadingOrganizations && !isLoadingModels && hasSelectedOrganization">
+            <mat-card class="evaluation-card" *ngFor="let card of visibleEvaluations; trackBy: trackByAnyId">
+              <mat-card-header>
+                <img
+                  mat-card-avatar
+                  [src]="card.avatarSrc"
+                  [alt]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CARD_ALT' | translate"
+                />
+                <mat-card-title>{{ card.name }}</mat-card-title>
+                <mat-card-subtitle>{{ currentOrganizationName }} · {{ card.modelName }}</mat-card-subtitle>
+              </mat-card-header>
+
+              <mat-card-content>
+                <p class="card-description">{{ card.description }}</p>
+
+                <div class="status-row">
+                  <span class="status-pill" [ngClass]="getStatusClass(card.status)">{{ getPeriodStateLabel(card.status) }}</span>
+                  <span class="mini-pill">
+                    <mat-icon>fact_check</mat-icon>
+                    {{ card.scaleLabel }}
+                  </span>
+                  <span class="mini-pill">
+                    <mat-icon>share</mat-icon>
+                    {{ getSurveyTypeLabel(card.surveyType) }}
+                  </span>
+                </div>
+
+                <div class="stats-panel">
+                  <div class="stat-item">
+                    <span class="material-icons">group</span>
+                    <div>
+                      <strong>{{ card.stats.total_empleados_activos }}</strong>
+                      <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.STAT_EVALUATED' | translate }}</small>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <span class="material-icons">assignment</span>
+                    <div>
+                      <strong>{{ card.bigFactors.length }}</strong>
+                      <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.STAT_DIMENSIONS' | translate }}</small>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <span class="material-icons">quiz</span>
+                    <div>
+                      <strong>{{ card.stats.total_contestadas }}</strong>
+                      <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.STAT_ANSWERED' | translate }}</small>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <span class="material-icons">bar_chart</span>
+                    <div>
+                      <strong>{{ card.stats.porcentaje }}%</strong>
+                      <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.STAT_PROGRESS' | translate }}</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="period-row">
+                  <div>
+                    <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DATES' | translate }}:</strong>
+                    {{ card.period.startDate }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TO' | translate }} {{ card.period.endDate }}
+                  </div>
+                </div>
+
+                <div class="big-factor-list">
+                  <div class="big-factor-card" *ngFor="let bigFactor of card.bigFactors; trackBy: trackByAnyId">
+                    <div class="big-factor-head">
+                      <strong>{{ bigFactor.name }}</strong>
+                      <span>{{ bigFactor.weight }}%</span>
+                    </div>
+                    <div class="factor-chip-list">
+                      <span
+                        class="factor-chip"
+                        *ngFor="let factor of getDistinctFactorSummaries(bigFactor); trackBy: trackByFactorSummary">
+                        {{ factor.name }} ({{ factor.questionCount }})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </mat-card-content>
+
+              <mat-divider></mat-divider>
+
+              <mat-card-actions>
+                <button mat-raised-button color="primary" (click)="openEditDialog(card)">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_SURVEY' | translate }}
+                </button>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="openSendDialog(card)"
+                  [disabled]="isLoadingSendDialog">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SENDS' | translate }}
+                </button>
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  (click)="openModelDialog(card)"
+                  [disabled]="isLoadingModelDiagram">
+                  <mat-icon>{{ isLoadingModelDiagram ? 'sync' : 'account_tree' }}</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL' | translate }}
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+
+          <div
+            class="empty-state"
+            *ngIf="
+              hasSelectedOrganization &&
+              visibleEvaluations.length === 0 &&
+              !isLoadingEmployees &&
+              !isLoadingCatalogs &&
+              !isLoadingModels
+            ">
+            <mat-icon>assignment_late</mat-icon>
+            <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMPTY_TITLE' | translate }}</h4>
+            <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMPTY_TEXT' | translate }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<ng-template #editorDialogTemplate>
+  <div class="editor-dialog" *ngIf="draftEvaluation">
+    <div class="editor-header">
+      <div>
+        <h2>
+          {{ editingEvaluation
+            ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_TITLE' | translate)
+            : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CREATE_TITLE' | translate) }}
+        </h2>
+        <p>{{ currentOrganizationName }}</p>
+      </div>
+      <button mat-icon-button type="button" (click)="closeEditorDialog()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <mat-tab-group [(selectedIndex)]="activeEditorTabIndex" animationDuration="0ms">
+      <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_MODEL_CATALOG' | translate">
+        <div class="tab-body">
+          <div class="row g-3">
+            <div class="col-lg-6 col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATION_NAME' | translate }}</mat-label>
+                <input matInput [(ngModel)]="draftEvaluation.name" />
+              </mat-form-field>
+            </div>
+            <div class="col-lg-6 col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_LABEL' | translate }}</mat-label>
+                <input
+                  matInput
+                  [ngModel]="draftEvaluation.modelName"
+                  (ngModelChange)="onModelCatalogNameChange($event)"
+                  autocomplete="off"
+                  [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_PLACEHOLDER' | translate"
+                />
+                <button
+                  mat-icon-button
+                  matSuffix
+                  type="button"
+                  (click)="openModelCatalogSearchDialog()"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_MODEL_CATALOG' | translate">
+                  <mat-icon>search</mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DESCRIPTION' | translate }}</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="draftEvaluation.description"></textarea>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-4 col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TYPE' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="draftEvaluation.modelType"
+                  (ngModelChange)="onSurveyTypeChange($event)"
+                >
+                  <mat-option *ngFor="let type of surveyTypes" [value]="type">{{ getSurveyTypeLabel(type) }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-4 col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_STATE' | translate }}</mat-label>
+                <mat-select [(ngModel)]="draftEvaluation.modelState">
+                  <mat-option *ngFor="let state of modelStates" [value]="state">{{ getModelStateLabel(state) }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-4 col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCALE' | translate }}</mat-label>
+                <mat-select [(ngModel)]="draftEvaluation.scaleId" (ngModelChange)="draftEvaluation.scaleLabel = getScaleLabel($event)">
+                  <mat-option *ngFor="let scale of scaleOptions; trackBy: trackByAnyId" [value]="scale.id">
+                    {{ getScaleLabel(scale.id) }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-6 col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.START_DATE' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="date"
+                  required
+                  [max]="draftEvaluation.period.endDate || null"
+                  [ngModel]="draftEvaluation.period.startDate"
+                  (ngModelChange)="setPeriodStartDate($event)"
+                  #startDateModel="ngModel"
+                />
+                <mat-icon matSuffix>calendar_today</mat-icon>
+                <mat-error *ngIf="startDateModel.hasError('required')">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DATE_REQUIRED' | translate }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+            <div class="col-lg-6 col-md-12">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.END_DATE' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="date"
+                  required
+                  [min]="draftEvaluation.period.startDate || null"
+                  [ngModel]="draftEvaluation.period.endDate"
+                  (ngModelChange)="setPeriodEndDate($event)"
+                  #endDateModel="ngModel"
+                />
+                <mat-icon matSuffix>calendar_today</mat-icon>
+                <mat-error *ngIf="endDateModel.hasError('required')">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DATE_REQUIRED' | translate }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="editor-section catalog-dimensions-section">
+            <div class="section-title">
+              <div>
+                <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS' | translate }}</h3>
+                <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS_HELP' | translate }}</p>
+              </div>
+              <div class="section-actions">
+                <span class="weight-total" [class.ok]="bigFactorWeightTotal === 100">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}: {{ bigFactorWeightTotal }}%
+                </span>
+                <button mat-stroked-button color="primary" type="button" (click)="openBigFactorDialog()">
+                  <mat-icon>add</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_DIMENSION' | translate }}
+                </button>
+              </div>
+            </div>
+
+            <div class="factor-grid" *ngIf="draftEvaluation.bigFactors.length > 0">
+              <div
+                class="factor-box"
+                *ngFor="let bigFactor of draftEvaluation.bigFactors; let bigFactorIndex = index; trackBy: trackByAnyId">
+                <div class="factor-box-head">
+                  <div>
+                    <h4>{{ bigFactor.name }}</h4>
+                    <p>{{ bigFactor.description || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DESCRIPTION' | translate) }}</p>
+                  </div>
+                  <div class="factor-box-actions">
+                    <span class="weight-total">{{ bigFactor.weight }}%</span>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      (click)="openBigFactorDialog(bigFactorIndex)"
+                      [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_DIMENSION' | translate">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      color="warn"
+                      (click)="removeBigFactor(bigFactorIndex)"
+                      [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DELETE_DIMENSION' | translate">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <div class="dimension-summary">
+                  <span>{{ getDistinctFactorSummaries(bigFactor).length }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.COMPETENCIES' | translate }}</span>
+                  <span>{{ getBigFactorQuestionCount(bigFactor) }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTIONS' | translate }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="position-question-empty" *ngIf="draftEvaluation.bigFactors.length === 0">
+              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DIMENSIONS' | translate }}
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_EVALUATION_SCENARIOS' | translate">
+        <div class="tab-body participants-tab-body">
+          <div class="soft-panel participants-config-panel">
+            <div class="row g-3">
+              <div class="col-12">
+                <mat-checkbox
+                  [ngModel]="draftEvaluation.participants.onlyActive"
+                  (ngModelChange)="onParticipantOnlyActiveChange($event)">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ONLY_ACTIVE' | translate }}
+                </mat-checkbox>
+              </div>
+              <div class="col-12">
+                <div class="participant-selection-card">
+                  <div class="participant-selection-head">
+                    <div>
+                      <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITIONS' | translate }}</h4>
+                      <p>
+                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECTED_COUNT' | translate: {
+                          count: draftEvaluation.participants.positions.length
+                        } }}
+                      </p>
+                    </div>
+                    <button mat-stroked-button color="primary" type="button" (click)="openParticipantPositionsDialog()">
+                      <mat-icon>search</mat-icon>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_POSITIONS' | translate }}
+                    </button>
+                  </div>
+
+                  <div class="selection-chip-box" [class.empty]="draftEvaluation.participants.positions.length === 0">
+                    <span
+                      class="selection-chip"
+                      *ngFor="let position of draftEvaluation.participants.positions; trackBy: trackByPosition">
+                      {{ position }}
+                      <button
+                        mat-icon-button
+                        type="button"
+                        (click)="removeParticipantPosition(position)"
+                        [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REMOVE_SELECTION' | translate">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </span>
+                    <span class="selection-empty" *ngIf="draftEvaluation.participants.positions.length === 0">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITIONS_SELECTED' | translate }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <mat-expansion-panel class="specific-employees-panel" [expanded]="true">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon>groups</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SPECIFIC_EMPLOYEES' | translate }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECTED_COUNT' | translate: {
+                    count: draftEvaluation.participants.employeeIds.length
+                  } }}
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="specific-employees-content">
+                <div class="participant-picker-toolbar specific-employees-toolbar">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_EMPLOYEES' | translate }}</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="participantEmployeeSearchTerm"
+                      autocomplete="off"
+                      [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_EMPLOYEES_PLACEHOLDER' | translate"
+                    />
+                    <mat-icon matSuffix>search</mat-icon>
+                  </mat-form-field>
+
+                  <div class="participant-picker-toolbar-actions">
+                    <button mat-stroked-button color="primary" type="button" (click)="selectAllFilteredParticipantEmployees()">
+                      <mat-icon>done_all</mat-icon>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+                    </button>
+                    <button mat-button type="button" (click)="clearParticipantEmployees()">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  class="participant-picker-table-wrap specific-employees-table-wrap"
+                  *ngIf="getFilteredParticipantEmployees().length; else noInlineEmployees">
+                  <table class="participant-picker-table employee-picker-table">
+                    <thead>
+                      <tr>
+                        <th class="participant-check-cell"></th>
+                        <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMPLOYEE' | translate }}</th>
+                        <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION' | translate }}</th>
+                        <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMAIL' | translate }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        *ngFor="let employee of getFilteredParticipantEmployees(); trackBy: trackByAnyId"
+                        [class.is-selected]="isParticipantEmployeeSelected(employee.id)"
+                        (click)="toggleParticipantEmployee(employee)">
+                        <td class="participant-check-cell">
+                          <mat-checkbox
+                            [ngModel]="isParticipantEmployeeSelected(employee.id)"
+                            (ngModelChange)="setParticipantEmployeeSelected(employee.id, $event)"
+                            (click)="$event.stopPropagation()">
+                          </mat-checkbox>
+                        </td>
+                        <td><strong>{{ employee.fullName }}</strong></td>
+                        <td>{{ employee.cargo || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}</td>
+                        <td>{{ employee.email || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <ng-template #noInlineEmployees>
+                  <div class="participant-picker-empty">
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_PICKER_RESULTS' | translate }}
+                  </div>
+                </ng-template>
+              </div>
+            </mat-expansion-panel>
+          </div>
+
+          <div class="soft-panel">
+            <div class="section-title">
+              <div>
+                <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_TITLE' | translate }}</h4>
+                <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_HELP' | translate }}</p>
+              </div>
+            </div>
+
+            <div
+              class="position-model-empty"
+              *ngIf="draftEvaluation.participants.positions.length === 0">
+              <mat-icon>badge</mat-icon>
+              <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_EMPTY' | translate }}</span>
+            </div>
+
+            <mat-accordion
+              class="position-scenario-configs"
+              multi
+              *ngIf="draftEvaluation.participants.positions.length > 0">
+              <mat-expansion-panel
+                class="position-scenario-config-panel"
+                [class.evaluator-only]="isPositionEvaluatorOnly(position)"
+                *ngFor="let position of draftEvaluation.participants.positions; let positionIndex = index; trackBy: trackByPosition"
+                [expanded]="positionIndex === 0">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>badge</mat-icon>
+                    {{ position }}
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    <ng-container *ngIf="isPositionEvaluatorOnly(position); else positionScenarioTotal">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
+                    </ng-container>
+                    <ng-template #positionScenarioTotal>
+                      <span
+                        class="weight-total"
+                        [class.ok]="getPositionScenarioWeightTotal(position) === 100">
+                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}:
+                        {{ getPositionScenarioWeightTotal(position) }}%
+                      </span>
+                    </ng-template>
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <mat-checkbox
+                  class="position-evaluator-only-toggle"
+                  [ngModel]="isPositionEvaluatorOnly(position)"
+                  (ngModelChange)="setPositionEvaluatorOnly(position, $event)">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
+                </mat-checkbox>
+
+                <div class="position-scenario-help">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_HELP' | translate }}
+                </div>
+
+                <div
+                  class="scenario-row"
+                  [class.inactive]="!isPositionScenarioSelected(position, scenario.key)"
+                  [class.not-applicable]="!isPositionScenarioStructurallyApplicable(position, scenario.key)"
+                  *ngFor="let scenario of getPositionScenarioOptions(position); trackBy: trackByEvaluationScenario">
+                  <mat-checkbox
+                    [ngModel]="isPositionScenarioSelected(position, scenario.key)"
+                    (ngModelChange)="setPositionScenarioSelected(position, scenario.key, $event)"
+                    [disabled]="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_ACTIVE' | translate }}
+                  </mat-checkbox>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO' | translate }}</mat-label>
+                    <input matInput [ngModel]="scenario.name" readonly />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      min="0"
+                      max="100"
+                      [disabled]="
+                        !isPositionScenarioSelected(position, scenario.key) ||
+                        !isPositionScenarioStructurallyApplicable(position, scenario.key)
+                      "
+                      [ngModel]="scenario.weight"
+                      (ngModelChange)="setPositionScenarioWeight(position, scenario.key, $event)" />
+                  </mat-form-field>
+                  <span
+                    class="scenario-not-applicable"
+                    *ngIf="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                    <mat-icon>block</mat-icon>
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_NOT_APPLICABLE' | translate }}
+                  </span>
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_COMPETENCIES_QUESTIONS' | translate">
+        <div class="tab-body">
+          <div class="position-models-toolbar">
+            <div>
+              <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_MODELS_TITLE' | translate }}</h3>
+              <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_MODELS_HELP' | translate }}</p>
+            </div>
+          </div>
+
+          <div
+            class="position-model-empty"
+            *ngIf="draftEvaluation.participants.positions.length === 0">
+            <mat-icon>badge</mat-icon>
+            <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_MODELS_EMPTY' | translate }}</span>
+          </div>
+
+          <mat-accordion
+            class="position-models"
+            multi
+            *ngIf="draftEvaluation.participants.positions.length > 0">
+            <div
+              class="position-model-entry"
+              [class.evaluator-only]="isPositionEvaluatorOnly(position)"
+              *ngFor="let position of draftEvaluation.participants.positions; let positionIndex = index; trackBy: trackByPosition">
+              <mat-expansion-panel
+                #positionPanel
+                class="position-model-panel"
+                [class.evaluator-only]="isPositionEvaluatorOnly(position)"
+                [disabled]="isPositionEvaluatorOnly(position)"
+                [expanded]="positionIndex === 0 && !isPositionEvaluatorOnly(position)">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon>badge</mat-icon>
+                  {{ position }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  <ng-container *ngIf="isPositionEvaluatorOnly(position); else positionQuestionCount">
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
+                  </ng-container>
+                  <ng-template #positionQuestionCount>
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
+                      count: getPositionQuestionCount(position)
+                    } }}
+                  </ng-template>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <mat-accordion class="position-scenarios" multi>
+                <mat-expansion-panel
+                  class="position-scenario-panel"
+                  [class.not-applicable]="!isPositionScenarioApplicable(position, scenario.key)"
+                  *ngFor="let scenario of getEvaluationScenarioOptions(); let scenarioIndex = index; trackBy: trackByEvaluationScenario"
+                  [disabled]="!isPositionScenarioApplicable(position, scenario.key)"
+                  [expanded]="scenarioIndex === 0 && isPositionScenarioApplicable(position, scenario.key)">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      <mat-icon>compare_arrows</mat-icon>
+                      {{ scenario.name }}
+                    </mat-panel-title>
+                    <mat-panel-description>
+                      <ng-container *ngIf="isPositionScenarioApplicable(position, scenario.key); else positionScenarioNotApplicable">
+                        <span>{{ getPositionScenarioWeight(position, scenario.key) }}%</span>
+                        <span>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
+                            count: getPositionScenarioQuestionCount(position, scenario.key)
+                          } }}
+                        </span>
+                      </ng-container>
+                      <ng-template #positionScenarioNotApplicable>
+                        <span class="scenario-not-applicable">
+                          <mat-icon>block</mat-icon>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_NOT_APPLICABLE' | translate }}
+                        </span>
+                      </ng-template>
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <mat-accordion class="position-dimensions" multi>
+                    <mat-expansion-panel
+                      class="position-dimension-panel"
+                      *ngFor="let bigFactor of draftEvaluation.bigFactors; let bigFactorIndex = index; trackBy: trackByAnyId"
+                      [expanded]="bigFactorIndex === 0">
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          <div class="position-dimension-title">
+                            <strong>{{ bigFactor.name }}</strong>
+                            <small>{{ bigFactor.description || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DESCRIPTION' | translate) }}</small>
+                          </div>
+                        </mat-panel-title>
+                        <mat-panel-description>
+                          <span>{{ bigFactor.weight }}%</span>
+                          <span>
+                            {{ getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length }}
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.COMPETENCIES' | translate }}
+                          </span>
+                        </mat-panel-description>
+                      </mat-expansion-panel-header>
+
+                      <div class="position-dimension-toolbar">
+                        <span
+                          class="weight-total"
+                          [class.ok]="getFactorWeightTotal(bigFactor, position, scenario.key) === 100 || getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length === 0">
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}:
+                          {{ getFactorWeightTotal(bigFactor, position, scenario.key) }}%
+                        </span>
+                        <button
+                          mat-stroked-button
+                          color="primary"
+                          type="button"
+                          (click)="openFactorDialog(bigFactorIndex, null, position, scenario.key)">
+                          <mat-icon>playlist_add</mat-icon>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_COMPETENCY' | translate }}
+                        </button>
+                      </div>
+
+                      <div class="position-competencies">
+                        <div
+                          class="question-card"
+                          *ngFor="let factorItem of getFactorsForPositionAndScenario(bigFactor, position, scenario.key); trackBy: trackByPositionFactor">
+                          <div class="question-card-head">
+                            <div>
+                              <h4>{{ factorItem.factor.name }}</h4>
+                              <p>{{ factorItem.factor.description || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DESCRIPTION' | translate) }}</p>
+                            </div>
+                            <div class="question-card-tools">
+                              <span>{{ factorItem.factor.weight }}%</span>
+                              <span class="required-level-chip">
+                                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL_VALUE' | translate: {
+                                  level: getFactorRequiredRatingLevel(factorItem.factor)
+                                } }}
+                              </span>
+                              <button
+                                mat-icon-button
+                                type="button"
+                                [disabled]="draftEvaluation.participants.positions.length < 2"
+                                (click)="openDuplicateCriterionDialog(bigFactorIndex, factorItem.index, position, scenario.key)"
+                                [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_COMPETENCY' | translate">
+                                <mat-icon>content_copy</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                type="button"
+                                (click)="openFactorDialog(bigFactorIndex, factorItem.index, position, scenario.key)"
+                                [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_COMPETENCY' | translate">
+                                <mat-icon>edit</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                type="button"
+                                color="warn"
+                                (click)="removeFactorForPosition(bigFactorIndex, factorItem.index, position, scenario.key)"
+                                [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DELETE_COMPETENCY' | translate">
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="question-toolbar">
+                            <span class="mini-pill">{{ getQuestionTypeLabel(factorItem.factor.defaultQuestionType) }}</span>
+                            <button
+                              mat-raised-button
+                              color="primary"
+                              type="button"
+                              (click)="openQuestionDialog(bigFactorIndex, factorItem.index, null, position, scenario.key)">
+                              <mat-icon>add</mat-icon>
+                              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_QUESTION' | translate }}
+                            </button>
+                          </div>
+
+                          <div class="question-list">
+                            <div
+                              class="question-row"
+                              *ngFor="let item of getQuestionsForPositionAndScenario(factorItem.factor, position, scenario.key); trackBy: trackByPositionQuestion">
+                              <div>
+                                <strong>{{ item.question.label }}</strong>
+                                <p>{{ getQuestionTypeLabel(item.question.type) }}</p>
+                                <div class="question-scope-summary">
+                                  <span
+                                    class="question-scope-chip likert-scope"
+                                    *ngIf="getQuestionLikertStatementType(item.question) as statementType">
+                                    <mat-icon>format_quote</mat-icon>
+                                    {{ statementType }}
+                                  </span>
+                                </div>
+                                <div class="question-options" *ngIf="item.question.options.length > 0">
+                                  {{ item.question.options.join(' · ') }}
+                                </div>
+                              </div>
+                              <div class="question-row-actions">
+                                <button
+                                  mat-icon-button
+                                  type="button"
+                                  [disabled]="draftEvaluation.participants.positions.length < 2"
+                                  (click)="openDuplicateItemDialog(bigFactorIndex, factorItem.index, item.index, position, scenario.key)"
+                                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_QUESTION' | translate">
+                                  <mat-icon>content_copy</mat-icon>
+                                </button>
+                                <button
+                                  mat-icon-button
+                                  type="button"
+                                  (click)="openQuestionDialog(bigFactorIndex, factorItem.index, item.index, position, scenario.key)"
+                                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_QUESTION' | translate">
+                                  <mat-icon>edit</mat-icon>
+                                </button>
+                                <button
+                                  mat-icon-button
+                                  type="button"
+                                  color="warn"
+                                  (click)="removeQuestionForPosition(bigFactorIndex, factorItem.index, item.index, position, scenario.key)"
+                                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DELETE_QUESTION' | translate">
+                                  <mat-icon>delete</mat-icon>
+                                </button>
+                              </div>
+                            </div>
+
+                            <span
+                              class="position-question-empty"
+                              *ngIf="getQuestionsForPositionAndScenario(factorItem.factor, position, scenario.key).length === 0">
+                              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION_QUESTIONS' | translate }}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span
+                          class="position-question-empty"
+                          *ngIf="getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length === 0">
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_COMPETENCIES' | translate }}
+                        </span>
+                      </div>
+                    </mat-expansion-panel>
+                  </mat-accordion>
+                </mat-expansion-panel>
+              </mat-accordion>
+
+              <div class="position-question-empty" *ngIf="draftEvaluation.bigFactors.length === 0">
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DIMENSIONS' | translate }}
+              </div>
+              </mat-expansion-panel>
+            </div>
+          </mat-accordion>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_SAMPLE_JSON' | translate">
+        <div class="tab-body json-tab-body">
+          <div class="soft-panel json-panel">
+            <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAMPLE_JSON_TITLE' | translate }}</h4>
+            <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAMPLE_JSON_HELP' | translate }}</p>
+            <pre class="json-preview">{{ getDraftPreviewJson() }}</pre>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <div class="editor-footer">
+      <button mat-button type="button" (click)="closeEditorDialog()" [disabled]="isSavingModel">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="saveDraftEvaluation()"
+        [disabled]="isSavingModel">
+        <mat-icon>save</mat-icon>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE_EVALUATION' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #modelCatalogSearchDialogTemplate>
+  <div class="participant-picker-dialog model-catalog-search-dialog" *ngIf="draftEvaluation">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_SEARCH_TITLE' | translate }}</h2>
+        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_SEARCH_HELP' | translate }}</p>
+      </div>
+      <button mat-icon-button type="button" (click)="modelCatalogDialogRef?.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body participant-picker-body">
+      <div class="participant-picker-toolbar">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_MODEL_CATALOG' | translate }}</mat-label>
+          <input
+            matInput
+            [(ngModel)]="modelCatalogSearchTerm"
+            autocomplete="off"
+            [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_MODEL_CATALOG_PLACEHOLDER' | translate"
+          />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="model-catalog-search-list" *ngIf="getFilteredModelCatalog().length; else noModelCatalogResults">
+        <button
+          class="model-catalog-search-item"
+          type="button"
+          *ngFor="let model of getFilteredModelCatalog(); trackBy: trackByAnyId"
+          [class.is-selected]="selectedModelCatalogId === model.id"
+          (click)="selectModelCatalogModel(model)">
+          <div>
+            <strong>{{ getModelCatalogName(model) }}</strong>
+            <span>{{ getSurveyTypeLabel(model.type) }}</span>
+          </div>
+          <p>{{ getModelCatalogDescription(model) }}</p>
+        </button>
+      </div>
+
+      <ng-template #noModelCatalogResults>
+        <div class="participant-picker-empty">
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_MODEL_CATALOG_RESULTS' | translate }}
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-button type="button" (click)="modelCatalogDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #participantPositionsDialogTemplate>
+  <div class="participant-picker-dialog" *ngIf="draftEvaluation">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_PICKER_TITLE' | translate }}</h2>
+        <p>
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECTED_COUNT' | translate: {
+            count: draftEvaluation.participants.positions.length
+          } }}
+        </p>
+      </div>
+      <button mat-icon-button mat-dialog-close>
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body participant-picker-body">
+      <div class="participant-picker-toolbar">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_POSITIONS' | translate }}</mat-label>
+          <input
+            matInput
+            [(ngModel)]="participantPositionSearchTerm"
+            autocomplete="off"
+            [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_POSITIONS_PLACEHOLDER' | translate"
+          />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <div class="participant-picker-toolbar-actions">
+          <button mat-stroked-button color="primary" type="button" (click)="selectAllFilteredParticipantPositions()">
+            <mat-icon>done_all</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+          </button>
+          <button mat-button type="button" (click)="clearParticipantPositions()">
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="participant-picker-table-wrap" *ngIf="getFilteredParticipantPositions().length; else noPositionsToShow">
+        <table class="participant-picker-table">
+          <thead>
+            <tr>
+              <th class="participant-check-cell"></th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let position of getFilteredParticipantPositions(); trackBy: trackByPosition"
+              [class.is-selected]="isParticipantPositionSelected(position)"
+              (click)="toggleParticipantPosition(position)">
+              <td class="participant-check-cell">
+                <mat-checkbox
+                  [ngModel]="isParticipantPositionSelected(position)"
+                  (ngModelChange)="setParticipantPositionSelected(position, $event)"
+                  (click)="$event.stopPropagation()">
+                </mat-checkbox>
+              </td>
+              <td>{{ position }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noPositionsToShow>
+        <div class="participant-picker-empty">
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_PICKER_RESULTS' | translate }}
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #duplicatePositionsDialogTemplate>
+  <div class="participant-picker-dialog" *ngIf="draftEvaluation && duplicateContext">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>
+          {{ (duplicateContext.type === 'CRITERION'
+            ? 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_CRITERION_DIALOG_TITLE'
+            : 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_ITEM_DIALOG_TITLE') | translate }}
+        </h2>
+        <p>
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_SOURCE_POSITION' | translate: {
+            position: duplicateContext.sourcePosition
+          } }}
+          · {{ getQuestionScenarioLabel(duplicateContext.scenarioKey) }}
+        </p>
+      </div>
+      <button mat-icon-button type="button" (click)="duplicatePositionsDialogRef?.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body participant-picker-body">
+      <p class="duplicate-dialog-help">
+        {{ (duplicateContext.type === 'CRITERION'
+          ? 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_CRITERION_HELP'
+          : 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_ITEM_HELP') | translate }}
+      </p>
+
+      <div class="participant-picker-toolbar">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_POSITIONS' | translate }}</mat-label>
+          <input
+            matInput
+            [(ngModel)]="duplicatePositionSearchTerm"
+            autocomplete="off"
+            [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_POSITIONS_PLACEHOLDER' | translate"
+          />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <div class="participant-picker-toolbar-actions">
+          <span class="duplicate-selected-count">
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECTED_COUNT' | translate: {
+              count: selectedDuplicatePositions.length
+            } }}
+          </span>
+          <button mat-stroked-button color="primary" type="button" (click)="selectAllFilteredDuplicatePositions()">
+            <mat-icon>done_all</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+          </button>
+          <button mat-button type="button" (click)="clearDuplicatePositions()">
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="participant-picker-table-wrap" *ngIf="getFilteredDuplicatePositions().length; else noDuplicatePositions">
+        <table class="participant-picker-table">
+          <thead>
+            <tr>
+              <th class="participant-check-cell"></th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DESTINATION_POSITION' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_STATUS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let position of getFilteredDuplicatePositions(); trackBy: trackByPosition"
+              [class.is-selected]="isDuplicatePositionSelected(position)"
+              [class.is-unavailable]="isDuplicateTargetUnavailable(position)"
+              (click)="toggleDuplicatePosition(position)">
+              <td class="participant-check-cell">
+                <mat-checkbox
+                  [disabled]="isDuplicateTargetUnavailable(position)"
+                  [ngModel]="isDuplicatePositionSelected(position)"
+                  (ngModelChange)="setDuplicatePositionSelected(position, $event)"
+                  (click)="$event.stopPropagation()">
+                </mat-checkbox>
+              </td>
+              <td><strong>{{ position }}</strong></td>
+              <td>
+                <span class="duplicate-status" *ngIf="getDuplicateTargetStatusKey(position) as statusKey">
+                  {{ statusKey | translate }}
+                </span>
+                <span *ngIf="!getDuplicateTargetStatusKey(position)">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noDuplicatePositions>
+        <div class="participant-picker-empty">
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DUPLICATE_POSITIONS' | translate }}
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-button type="button" (click)="duplicatePositionsDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        [disabled]="selectedDuplicatePositions.length === 0"
+        (click)="applyPositionDuplication()">
+        <mat-icon>content_copy</mat-icon>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_IN_POSITIONS' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #sendDialogTemplate>
+  <div
+    class="simple-dialog send-dialog"
+    *ngIf="sendPreviewEvaluation">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DIALOG_TITLE' | translate }}</h2>
+        <p>{{ sendPreviewEvaluation.name }}</p>
+      </div>
+      <button mat-icon-button mat-dialog-close>
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body send-dialog-body">
+      <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DIALOG_HELP' | translate }}</p>
+
+      <div class="send-summary-grid">
+        <div class="send-summary-card">
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_EVALUATORS' | translate }}</span>
+          <strong>{{ getSendSummaryTotal() }}</strong>
+        </div>
+        <div class="send-summary-card">
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_ASSIGNMENTS' | translate }}</span>
+          <strong>{{ getSendSummaryAssigned() }}</strong>
+        </div>
+      </div>
+
+      <div class="send-actions-bar">
+        <div>
+          <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ASSIGNMENTS_TITLE' | translate }}</h4>
+          <p>
+            {{
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ASSIGNMENTS_HELP'
+                | translate: { count: sendAssignments.length }
+            }}
+          </p>
+        </div>
+        <div class="section-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            (click)="markSendAssignmentsCreated()"
+            [disabled]="isCreatingSendAssignments">
+            <mat-icon>{{ isCreatingSendAssignments ? 'sync' : 'playlist_add_check' }}</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_CREATE' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div
+        class="send-table-wrapper"
+        *ngIf="sendAssignments.length; else noSendAssignments">
+        <table class="send-assignment-table">
+          <thead>
+            <tr>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATOR' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION' | translate }}</th>
+              <th *ngFor="let field of getSendDialogDemographicFields()">{{ field }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATEES' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_TYPE' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_STATUS' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let assignment of sendAssignments; trackBy: trackByAnyId">
+              <td class="send-evaluator-cell" [style.padding-left.px]="12 + assignment.hierarchyLevel * 18">
+                <strong>{{ assignment.evaluator.fullName }}</strong>
+                <small>{{ assignment.evaluator.email || '-' }}</small>
+              </td>
+              <td class="send-position-cell">
+                {{ assignment.evaluator.cargo || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}
+              </td>
+              <td *ngFor="let field of getSendDialogDemographicFields()">
+                {{ assignment.evaluator.demographicValues[field] || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_SEGMENT' | translate) }}
+              </td>
+              <td class="send-select-cell">
+                <mat-form-field appearance="outline">
+                  <mat-label>
+                    {{
+                      'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATEE_PLACEHOLDER_COUNT'
+                        | translate: { count: assignment.evaluateeIds.length }
+                    }}
+                  </mat-label>
+                  <mat-select multiple [(ngModel)]="assignment.evaluateeIds">
+                    <mat-option
+                      *ngFor="let employee of getSendAssignmentEvaluateeOptions(assignment)"
+                      [value]="employee.id">
+                      {{ getSendEvaluateeOptionLabel(assignment, employee) }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </td>
+              <td>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_TYPE' | translate }}</mat-label>
+                  <mat-select [(ngModel)]="assignment.sendType">
+                    <mat-option *ngFor="let option of sendTypeOptions" [value]="option.value">
+                      {{ getSendTypeLabel(option.value) }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+	              </td>
+	              <td>
+	                <div class="send-status-stack">
+	                  <span class="send-status-pill" [ngClass]="getSendStatusClass(assignment.sendStatus)">
+	                    {{ getSendStatusLabel(assignment.sendStatus) }}
+	                  </span>
+	                  <span
+	                    *ngIf="getSendResponseStatus(assignment) as responseStatus"
+	                    class="send-status-pill"
+	                    [ngClass]="getSendStatusClass(responseStatus)">
+	                    {{ getSendStatusLabel(responseStatus) }}
+	                  </span>
+	                </div>
+	                <ng-container *ngIf="getSendResponseProgress(assignment) as progress">
+	                  <div class="send-progress" *ngIf="progress.total > 0">
+	                    <div class="send-progress-head">
+	                      <strong>
+	                        {{
+	                          'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ANSWERED_PROGRESS'
+	                            | translate: { answered: progress.answered, total: progress.total }
+	                        }}
+	                      </strong>
+	                      <span>{{ progress.percent }}%</span>
+	                    </div>
+	                    <progress max="100" [value]="progress.percent"></progress>
+	                  </div>
+	                </ng-container>
+	                <small class="send-last-date" *ngIf="assignment.lastSent">
+	                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_LAST_SENT' | translate }}:
+	                  {{ assignment.lastSent }}
+	                </small>
+	              </td>
+              <td class="send-actions-cell">
+                <button
+                  mat-icon-button
+                  color="primary"
+                  type="button"
+                  (click)="createSurveySendsForAssignment(assignment)"
+                  [disabled]="assignment.isCreating || isCreatingSendAssignments"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_INDIVIDUAL' | translate">
+                  <mat-icon>{{ assignment.isCreating ? 'sync' : 'add_task' }}</mat-icon>
+                </button>
+                <button
+                  *ngIf="assignment.sendStatus === 'CREADO'"
+                  mat-icon-button
+                  type="button"
+                  (click)="previewPerformanceEmail(assignment)"
+                  [disabled]="assignment.isSending"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.PREVIEW_EMAIL' | translate">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button
+                  *ngIf="assignment.sendStatus === 'CREADO'"
+                  mat-icon-button
+                  color="accent"
+                  type="button"
+                  (click)="sendPerformanceEmail(assignment)"
+                  [disabled]="assignment.isSending"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATION' | translate">
+                  <mat-icon>{{ assignment.isSending ? 'sync' : 'send' }}</mat-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noSendAssignments>
+        <div class="send-empty">
+          <mat-icon>group_off</mat-icon>
+          <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_NO_ASSIGNMENTS' | translate }}</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #performanceEmailPreviewDialogTemplate>
+  <div class="simple-dialog" *ngIf="performanceEmailHtml">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMAIL_PREVIEW_TITLE' | translate }}</h2>
+        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EMAIL_PREVIEW_HELP' | translate }}</p>
+      </div>
+      <button mat-icon-button mat-dialog-close>
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body email-payload-dialog-body">
+      <section class="email-payload-section">
+        <div class="email-template-preview" [innerHTML]="performanceEmailHtml"></div>
+      </section>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #modelDialogTemplate>
+  <div class="simple-dialog model-diagram-dialog" *ngIf="modelPreviewEvaluation">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIALOG_TITLE' | translate }}</h2>
+        <p>{{ modelPreviewEvaluation.name }}</p>
+      </div>
+      <button mat-icon-button mat-dialog-close>
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body model-diagram-body">
+      <div class="model-diagram-summary">
+        <div class="model-diagram-summary-card">
+          <mat-icon>groups</mat-icon>
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_EVALUATORS' | translate }}</span>
+          <strong>{{ modelDiagramSummary.evaluators }}</strong>
+        </div>
+        <div class="model-diagram-summary-card">
+          <mat-icon>person_search</mat-icon>
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATEES' | translate }}</span>
+          <strong>{{ modelDiagramSummary.evaluatees }}</strong>
+        </div>
+        <div class="model-diagram-summary-card">
+          <mat-icon>hub</mat-icon>
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_ASSIGNMENTS' | translate }}</span>
+          <strong>{{ modelDiagramSummary.assignments }}</strong>
+        </div>
+        <div class="model-diagram-summary-card">
+          <mat-icon>person_check</mat-icon>
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_SELF' | translate }}</span>
+          <strong>{{ modelDiagramSummary.selfEvaluations }}</strong>
+        </div>
+        <div class="model-diagram-summary-card">
+          <mat-icon>compare_arrows</mat-icon>
+          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_BIDIRECTIONAL' | translate }}</span>
+          <strong>{{ modelDiagramSummary.bidirectionalRelations }}</strong>
+        </div>
+      </div>
+
+      <div class="model-diagram-content" *ngIf="modelDiagramNodes.length; else noModelDiagram">
+        <div class="model-diagram-graph-shell" [style.height.px]="modelDiagramView[1]">
+          <ngx-graph
+            *ngIf="modelDiagramLinks.length > 0; else isolatedModelDiagram"
+            class="model-diagram-graph"
+            [style.height.px]="modelDiagramView[1]"
+            [view]="modelDiagramView"
+            [nodes]="modelDiagramNodes"
+            [links]="modelDiagramLinks"
+            [layout]="'dagre'"
+            [layoutSettings]="modelDiagramLayoutSettings"
+            [nodeWidth]="modelDiagramNodeWidth"
+            [nodeHeight]="modelDiagramNodeHeight"
+            [draggingEnabled]="false"
+            [panningEnabled]="true"
+            [panningAxis]="modelDiagramPanningAxis"
+            [enableZoom]="true"
+            [panOnZoom]="true"
+            [autoZoom]="true"
+            [autoCenter]="true"
+            [showMiniMap]="true"
+            [miniMapMaxWidth]="180"
+            [miniMapMaxHeight]="112"
+            [miniMapPosition]="modelDiagramMiniMapPosition"
+            [enableTrackpadSupport]="true"
+            [deferDisplayUntilPosition]="true">
+            <ng-template #defsTemplate>
+              <svg:marker
+                id="desEvalDiagramArrowHead"
+                viewBox="0 -5 10 10"
+                refX="8"
+                refY="0"
+                markerWidth="5"
+                markerHeight="5"
+                orient="auto">
+                <svg:path d="M0,-5L10,0L0,5" class="model-diagram-arrow-head"></svg:path>
+              </svg:marker>
+              <svg:marker
+                id="desEvalDiagramArrowTail"
+                viewBox="0 -5 10 10"
+                refX="2"
+                refY="0"
+                markerWidth="5"
+                markerHeight="5"
+                orient="auto-start-reverse">
+                <svg:path d="M0,-5L10,0L0,5" class="model-diagram-arrow-head"></svg:path>
+              </svg:marker>
+            </ng-template>
+
+            <ng-template #linkTemplate let-link>
+              <svg:g [ngClass]="getModelDiagramLinkClass(link)">
+                <svg:path
+                  class="line"
+                  stroke-width="2.4"
+                  marker-end="url(#desEvalDiagramArrowHead)"
+                  [attr.marker-start]="link.data?.bidirectional ? 'url(#desEvalDiagramArrowTail)' : null"></svg:path>
+              </svg:g>
+            </ng-template>
+
+            <ng-template #nodeTemplate let-node>
+              <svg:g class="model-diagram-node" (click)="selectModelDiagramNode(node)">
+                <svg:foreignObject
+                  [attr.width]="node.dimension?.width || modelDiagramNodeWidth"
+                  [attr.height]="node.dimension?.height || modelDiagramNodeHeight">
+                  <div xmlns="http://www.w3.org/1999/xhtml" class="model-diagram-node-wrap">
+                    <div class="model-diagram-node-card" [ngClass]="getModelDiagramNodeClass(node)">
+                      <div class="model-diagram-node-topline">
+                        <span class="model-diagram-avatar">{{ node.data?.initials }}</span>
+                        <div>
+                          <strong>{{ node.data?.fullName }}</strong>
+                          <small>{{ node.data?.position || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}</small>
+                        </div>
+                      </div>
+                      <div class="model-diagram-node-roles">
+                        <span *ngIf="node.data?.isEvaluator">
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATOR' | translate }}
+                        </span>
+                        <span *ngIf="node.data?.isEvaluatee">
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATED' | translate }}
+                        </span>
+                        <span class="self" *ngIf="node.data?.hasSelfEvaluation">
+                          <mat-icon>person_check</mat-icon>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_SELF_LABEL' | translate }}
+                        </span>
+                      </div>
+                      <div class="model-diagram-node-meta">
+                        <span>{{ node.data?.evaluatesCount }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATES_SHORT' | translate }}</span>
+                        <span>{{ node.data?.evaluatedByCount }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATED_BY_SHORT' | translate }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </svg:foreignObject>
+              </svg:g>
+            </ng-template>
+          </ngx-graph>
+
+          <ng-template #isolatedModelDiagram>
+            <div
+              class="model-diagram-isolated-grid"
+              [style.height.px]="modelDiagramView[1]">
+              <button
+                class="model-diagram-isolated-node"
+                type="button"
+                *ngFor="let node of modelDiagramNodes; trackBy: trackByAnyId"
+                (click)="selectModelDiagramNode(node)">
+                <div class="model-diagram-node-card" [ngClass]="getModelDiagramNodeClass(node)">
+                  <div class="model-diagram-node-topline">
+                    <span class="model-diagram-avatar">{{ node.data?.initials }}</span>
+                    <div>
+                      <strong>{{ node.data?.fullName }}</strong>
+                      <small>{{ node.data?.position || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}</small>
+                    </div>
+                  </div>
+                  <div class="model-diagram-node-roles">
+                    <span *ngIf="node.data?.isEvaluator">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATOR' | translate }}
+                    </span>
+                    <span *ngIf="node.data?.isEvaluatee">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATED' | translate }}
+                    </span>
+                    <span class="self" *ngIf="node.data?.hasSelfEvaluation">
+                      <mat-icon>person_check</mat-icon>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_SELF_LABEL' | translate }}
+                    </span>
+                  </div>
+                  <div class="model-diagram-node-meta">
+                    <span>{{ node.data?.evaluatesCount }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATES_SHORT' | translate }}</span>
+                    <span>{{ node.data?.evaluatedByCount }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATED_BY_SHORT' | translate }}</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </ng-template>
+        </div>
+
+        <aside class="model-diagram-side">
+          <section class="model-diagram-note">
+            <mat-icon>info</mat-icon>
+            <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_HELP' | translate }}</p>
+          </section>
+
+          <section class="model-diagram-selected" *ngIf="selectedModelDiagramNodeData as selectedNode">
+            <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_SELECTED_EMPLOYEE' | translate }}</span>
+            <h3>{{ selectedNode.fullName }}</h3>
+            <p>{{ selectedNode.position || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}</p>
+            <div class="model-diagram-detail-grid">
+              <div>
+                <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATES' | translate }}</small>
+                <strong>{{ selectedNode.evaluatesCount }}</strong>
+              </div>
+              <div>
+                <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EVALUATED_BY' | translate }}</small>
+                <strong>{{ selectedNode.evaluatedByCount }}</strong>
+              </div>
+            </div>
+            <div class="model-diagram-chip-list">
+              <span *ngFor="let scenarioKey of selectedNode.scenarioKeys">
+                {{ getQuestionScenarioLabel(scenarioKey) }}
+              </span>
+              <span class="self" *ngIf="selectedNode.hasSelfEvaluation">
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_SELF_LABEL' | translate }}
+              </span>
+            </div>
+          </section>
+
+          <section class="model-diagram-legend">
+            <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_LEGEND' | translate }}</h3>
+            <div>
+              <span class="legend-line one-way"></span>
+              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_DIRECTION' | translate }}
+            </div>
+            <div>
+              <span class="legend-line two-way"></span>
+              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_DOUBLE_DIRECTION' | translate }}
+            </div>
+          </section>
+
+          <section class="model-diagram-relations" *ngIf="modelDiagramRelations.length">
+            <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_RELATIONS' | translate }}</h3>
+            <div
+              class="model-diagram-relation-row"
+              *ngFor="let relation of modelDiagramRelations.slice(0, 8); trackBy: trackByDiagramRelation">
+              <strong>{{ relation.sourceName }}</strong>
+              <mat-icon>{{ relation.bidirectional ? 'compare_arrows' : 'arrow_forward' }}</mat-icon>
+              <strong>{{ relation.targetName }}</strong>
+              <small>{{ getModelDiagramScenarioLabels(relation.scenarioKeys) }}</small>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <ng-template #noModelDiagram>
+        <div class="model-placeholder">
+          <mat-icon>account_tree</mat-icon>
+          <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EMPTY_TITLE' | translate }}</h3>
+          <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_DIAGRAM_EMPTY_HELP' | translate }}</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #bigFactorDialogTemplate>
+  <div class="nested-dialog">
+    <h3>
+      {{ editBigFactorIndex !== null
+        ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_DIMENSION_EDIT' | translate)
+        : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_DIMENSION_NEW' | translate) }}
+    </h3>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NAME' | translate }}</mat-label>
+      <input matInput [(ngModel)]="bigFactorDraft.name" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DESCRIPTION' | translate }}</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="bigFactorDraft.description"></textarea>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
+      <input matInput type="number" min="0" max="100" [(ngModel)]="bigFactorDraft.weight" />
+    </mat-form-field>
+    <div class="nested-dialog-actions">
+      <button mat-button type="button" (click)="nestedDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button mat-raised-button color="primary" type="button" (click)="saveBigFactorDialog()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #factorDialogTemplate>
+  <div class="nested-dialog">
+    <h3>
+      {{ editFactorContext?.factorIndex !== null
+        ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_COMPETENCY_EDIT' | translate)
+        : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_COMPETENCY_NEW' | translate) }}
+    </h3>
+    <div class="scenario-context" *ngIf="editFactorContext?.scenarioKey as scenarioKey">
+      <mat-icon>compare_arrows</mat-icon>
+      {{ getQuestionScenarioLabel(scenarioKey) }}
+    </div>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NAME' | translate }}</mat-label>
+      <input matInput [(ngModel)]="factorDraft.name" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DESCRIPTION' | translate }}</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="factorDraft.description"></textarea>
+    </mat-form-field>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
+          <input matInput type="number" min="0" max="100" [(ngModel)]="factorDraft.weight" />
+        </mat-form-field>
+      </div>
+      <div class="col-md-4">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            min="1"
+            max="5"
+            step="0.01"
+            [(ngModel)]="factorDraft.requiredRatingLevel"
+          />
+          <mat-hint>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL_HINT' | translate }}</mat-hint>
+        </mat-form-field>
+      </div>
+      <div class="col-md-4">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEFAULT_QUESTION_TYPE' | translate }}</mat-label>
+          <mat-select [(ngModel)]="factorDraft.defaultQuestionType">
+            <mat-option *ngFor="let questionType of questionTypes" [value]="questionType.value">
+              {{ getQuestionTypeLabel(questionType.value) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="nested-dialog-actions">
+      <button mat-button type="button" (click)="nestedDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button mat-raised-button color="primary" type="button" (click)="saveFactorDialog()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #questionDialogTemplate>
+  <div class="nested-dialog question-dialog">
+    <h3>
+      {{ editQuestionContext?.questionIndex !== null
+        ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_QUESTION_EDIT' | translate)
+        : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIALOG_QUESTION_NEW' | translate) }}
+    </h3>
+    <div class="scenario-context" *ngIf="editQuestionContext?.scenarioKey as scenarioKey">
+      <mat-icon>compare_arrows</mat-icon>
+      {{ getQuestionScenarioLabel(scenarioKey) }}
+    </div>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION' | translate }}</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="questionDraft.label"></textarea>
+    </mat-form-field>
+    <div class="row g-3">
+      <div [class.col-md-6]="questionDraft.type === 'LIKERT_1_5'" [class.col-12]="questionDraft.type !== 'LIKERT_1_5'">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPE' | translate }}</mat-label>
+          <mat-select [ngModel]="questionDraft.type" (ngModelChange)="onQuestionTypeChange($event)">
+            <mat-option *ngFor="let questionType of questionTypes" [value]="questionType.value">
+              {{ getQuestionTypeLabel(questionType.value) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="col-md-6" *ngIf="questionDraft.type === 'LIKERT_1_5'">
+        <mat-form-field
+          appearance="outline"
+          class="w-100 question-values-field"
+          (click)="openQuestionValuesDialog()">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.RESPONSE_VALUES' | translate }}</mat-label>
+          <input
+            matInput
+            readonly
+            [value]="questionOptionsSummary"
+            [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_LIKERT_TEMPLATE' | translate"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="$event.stopPropagation(); openQuestionValuesDialog()"
+            [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_LIKERT_VALUES' | translate">
+            <mat-icon>tune</mat-icon>
+          </button>
+        </mat-form-field>
+      </div>
+    </div>
+    <mat-form-field appearance="outline" class="w-100" *ngIf="questionDraft.type === 'SELECCION_UNICA' || questionDraft.type === 'SELECCION_MULTIPLE'">
+      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.OPTIONS' | translate }}</mat-label>
+      <textarea
+        matInput
+        rows="4"
+        [(ngModel)]="questionDraft.optionsText"
+        [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.OPTIONS_PLACEHOLDER' | translate"
+      ></textarea>
+    </mat-form-field>
+
+    <div class="nested-dialog-actions">
+      <button mat-button type="button" (click)="nestedDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button mat-raised-button color="primary" type="button" (click)="saveQuestionDialog()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #questionValuesDialogTemplate>
+  <div class="question-values-dialog">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.LIKERT_DIALOG_TITLE' | translate }}</h2>
+        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.LIKERT_DIALOG_HELP' | translate }}</p>
+      </div>
+      <button mat-icon-button type="button" (click)="questionValuesDialogRef?.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="question-values-body">
+      <mat-radio-group [(ngModel)]="selectedQuestionLikertPresetKey">
+        <label
+          class="likert-preset-row"
+          [class.is-selected]="selectedQuestionLikertPresetKey === preset.key"
+          *ngFor="let preset of questionLikertPresets; trackBy: trackByPresetKey">
+          <mat-radio-button [value]="preset.key">
+            <strong>{{ preset.title | translate }}</strong>
+          </mat-radio-button>
+          <span>{{ preset.labels.join(' | ') }}</span>
+        </label>
+      </mat-radio-group>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-button type="button" (click)="questionValuesDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        [disabled]="!selectedQuestionLikertPresetKey"
+        (click)="applyQuestionLikertPreset()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.APPLY_TEMPLATE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>

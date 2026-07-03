@@ -662,7 +662,11 @@ export class Dashboard1Component implements OnInit {
     dataLabels: {
       enabled: true,
       formatter: (val: number) => `${val}%`,
-      offsetX: 8,
+      offsetX: -24,
+      style: {
+        colors: ['#000000'],
+        fontWeight: '700',
+      },
     },
     stroke: {
       show: true,
@@ -2675,7 +2679,34 @@ export class Dashboard1Component implements OnInit {
           distribucionJSON: r.DistribucionJSON, // del SP
           pieSeries: this.parseSliderPieSeries(r.DistribucionJSON),
         }));
+
+        if (!this.resultadoParaExcel || typeof this.resultadoParaExcel !== 'object' || Array.isArray(this.resultadoParaExcel)) {
+          this.resultadoParaExcel = {
+            header: {
+              nombre_clima: this.nombreFlujo,
+              nombre_organizacion: this.nombreOrganizacion,
+            },
+            camposDemograficos: this.camposDemograficosParaExcel,
+            calificacionGeneral: data.calificacionGeneral,
+          };
+        }
+
+        this.resultadoParaExcel.preguntasRango = this.sliderRows.map((row: SliderRowView) => ({
+          idGranFactor: row.idGranFactor,
+          etiquetaGranFactor: row.etiquetaGranFactor,
+          idFactor: row.idFactor,
+          factor: row.factor,
+          idPregunta: row.idPregunta,
+          pregunta: row.pregunta,
+          rangoMin: row.rangoMin,
+          rangoMax: row.rangoMax,
+          total_respuestas: row.total_respuestas,
+          promedio: row.promedio,
+          distribucionJSON: row.distribucionJSON,
+        }));
         
+      } else if (this.resultadoParaExcel && typeof this.resultadoParaExcel === 'object') {
+        this.resultadoParaExcel.preguntasRango = [];
       }
 
       //particiación por demográfico

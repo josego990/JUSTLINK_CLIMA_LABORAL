@@ -1,0 +1,786 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="breadcrumbItems"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="des-dashboard-shell">
+      <div class="dashboard-blocking-overlay" *ngIf="isGeneratingAiActionPlan">
+        <div>
+          <mat-spinner diameter="46"></mat-spinner>
+          <strong>Generando análisis IA</strong>
+          <span>Estamos preparando el plan de acción. Esto puede tardar un poco, por favor espera.</span>
+        </div>
+      </div>
+
+      <mat-card class="filter-card">
+        <div class="filter-grid">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
+            <mat-select
+              [ngModel]="selectedOrganizationId"
+              [disabled]="isLoadingOrganizations || isLoadingModels || isLoadingDashboard || isGeneratingAiActionPlan"
+              (ngModelChange)="onOrganizationChange($event)"
+            >
+              <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
+                {{ organization.Nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Modelo</mat-label>
+            <mat-select
+              [ngModel]="selectedModelId"
+              [disabled]="!selectedOrganizationId || isLoadingModels || isGeneratingAiActionPlan"
+              (ngModelChange)="onModelChange($event)"
+            >
+              <mat-option [value]="null" disabled>Selecciona un modelo</mat-option>
+              <mat-option *ngIf="modelSelectOptions.length === 0" [disabled]="true">
+                Sin modelos disponibles
+              </mat-option>
+              <mat-option *ngFor="let model of modelSelectOptions" [value]="model.id">
+                {{ model.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="filter-summary" *ngIf="dashboardData as dashboard">
+            <span>Generado</span>
+            <strong>{{ formatDate(dashboard.fechaGeneracion) }}</strong>
+          </div>
+
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            class="export-button"
+            (click)="exportExcel()"
+            [disabled]="!dashboardData || isLoadingModels || isLoadingDashboard || isGeneratingAiActionPlan"
+            matTooltip="Exportar dashboard a Excel"
+          >
+            <mat-icon>download</mat-icon>
+            Excel
+          </button>
+        </div>
+      </mat-card>
+
+      <div class="dashboard-loading" *ngIf="isLoadingOrganizations || isLoadingModels || (isLoadingDashboard && modelSelectOptions.length === 0)">
+        <mat-spinner diameter="42"></mat-spinner>
+        <span>{{ isLoadingOrganizations ? 'Cargando organizaciones...' : 'Cargando modelos...' }}</span>
+      </div>
+
+      <div
+        class="dashboard-loading dashboard-loading-inline"
+        *ngIf="!isLoadingOrganizations && !isLoadingModels && isLoadingDashboard && modelSelectOptions.length > 0"
+      >
+        <mat-spinner diameter="28"></mat-spinner>
+        <span>Cargando resultados del modelo seleccionado...</span>
+      </div>
+
+      <ng-container *ngIf="!isLoadingOrganizations && !isLoadingModels && !isLoadingDashboard && dashboardData as dashboard">
+        <section class="des-results-dashboard">
+          <header class="results-hero">
+            <div class="hero-left">
+              <span class="results-kicker">Evaluación de desempeño</span>
+
+              <span class="hero-org">{{ selectedOrganizationName }}<ng-container *ngIf="getPrimaryDepartmentLabel()"> · {{ getPrimaryDepartmentLabel() }}</ng-container></span>
+            </div>
+            <div class="hero-right">
+              <span class="hero-model">{{ getModelName(selectedModel) }}</span>
+
+            </div>
+          </header>
+
+          <nav class="results-tabs" aria-label="Secciones del dashboard">
+            <button
+              type="button"
+              *ngFor="let tab of resultTabs"
+              [class.active]="selectedResultsTab === tab.id"
+              [disabled]="isGeneratingAiActionPlan"
+              (click)="selectResultsTab(tab.id)"
+            >
+              <mat-icon>{{ tab.icon }}</mat-icon>
+              <span>{{ tab.label }}</span>
+            </button>
+          </nav>
+
+          <main class="results-tab-content">
+            <section *ngIf="selectedResultsTab === 'summary'" class="results-page">
+              <div class="results-title">
+                <h2>Resumen general</h2>
+                <p>Indicadores clave del proceso · {{ employeeGroupRows.length }} empleados evaluados · {{ formatPercent(getParticipationPercent()) }} de participación</p>
+              </div>
+
+              <div class="results-kpi-grid">
+                <article class="results-kpi" *ngFor="let card of resultSummaryCards" [ngClass]="card.tone">
+                  <span>{{ card.label }}</span>
+                  <strong>{{ card.value }}</strong>
+                  <small>{{ card.help }}</small>
+                  <em>{{ card.badge }}</em>
+                </article>
+              </div>
+
+              <div class="results-two-column">
+                <article class="results-panel">
+                  <h3><span class="dot blue"></span>Dimensiones — promedio general</h3>
+                  <div class="dimension-list">
+                    <div class="dimension-row" *ngFor="let dimension of dimensionGroupRows; trackBy: trackById">
+                      <div>
+                        <strong>{{ getDimensionDisplayName(dimension) }}</strong>
+                        <span>{{ formatScore(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado'])) }}</span>
+                      </div>
+                      <div class="score-bar">
+                        <i [style.width.%]="getScorePercent(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado']))"></i>
+                      </div>
+                      <small>
+                        Nivel exigencia:
+                        {{ formatScore(getNumber(dimension, ['nivelExigenciaPromedio', 'nivelExigencia'])) }}
+                        · Brecha:
+                        {{ formatGap(getNumber(dimension, ['brechaPromedio', 'brecha'])) }}
+                      </small>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="results-panel">
+                  <h3><span class="dot green"></span>Avance del proceso</h3>
+                  <div class="progress-summary">
+                    <div class="donut" [style.--value.%]="getParticipationPercent()">
+                      <strong>{{ formatPercent(getParticipationPercent()) }}</strong>
+                      <span>completado</span>
+                    </div>
+                    <div class="legend-list">
+                      <span><i class="green"></i>Respondidas: {{ formatInteger(getDashboardTotal(['realizadas', 'respondidas', 'totalEncuestasRespondidas'])) }}</span>
+                      <span><i></i>Pendientes: {{ formatInteger(getDashboardTotal(['pendientes'])) }}</span>
+                      <span><i class="blue"></i>Evaluados: {{ formatInteger(getDashboardTotal(['empleadosConResultado', 'totalEmpleadosEvaluados'])) }}</span>
+                      <span><i class="yellow"></i>Con resultado: {{ formatInteger(employeeGroupRows.length) }}</span>
+                    </div>
+                  </div>
+                  <div class="date-strip">
+                    <span>Inicio <strong>{{ formatDate(getSelectedEvaluationDate('inicio')) }}</strong></span>
+                    <span>Cierre <strong>{{ formatDate(getSelectedEvaluationDate('cierre')) }}</strong></span>
+                  </div>
+                </article>
+              </div>
+
+              <article class="results-panel">
+                <div class="position-chart-header">
+                  <h3><span class="dot yellow"></span>Resultados por puesto — comparativa</h3>
+                  <div class="chart-legend" aria-label="Leyenda de la comparativa por puesto">
+                    <span><i class="result"></i>Resultado obtenido</span>
+                    <span><i class="target"></i>Nivel de exigencia</span>
+                  </div>
+                </div>
+                <div class="position-chart">
+                  <div class="chart-scale">
+                    <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span>
+                  </div>
+                  <div class="position-bars">
+                    <div class="position-bar-item" *ngFor="let position of positionGroupRows; trackBy: trackById">
+                      <div class="bar-pair">
+                        <i class="result" [style.height.%]="getScorePercent(getNumber(position, ['calificacionPromedio', 'resultadoPromedio', 'resultado']))"></i>
+                        <i class="target" [style.height.%]="getScorePercent(getNumber(position, ['nivelExigenciaPromedio', 'nivelExigencia']))"></i>
+                      </div>
+                      <span [title]="getPositionName(position)">{{ getPositionName(position) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <section *ngIf="selectedResultsTab === 'employees'" class="results-page">
+              <div class="results-title">
+                <h2>Resultados por empleado</h2>
+                <p>{{ getEvaluationName(selectedEvaluation) }} · {{ selectedOrganizationName }}</p>
+              </div>
+
+              <article class="results-panel">
+                <h3><span class="dot blue"></span>Tabla comparativa de empleados evaluados</h3>
+                <div class="results-table-wrap">
+                  <table class="results-table">
+                    <thead>
+                      <tr>
+                        <th>Empleado</th>
+                        <th>Puesto</th>
+                        <th>Resultado</th>
+                        <th>Niv. exigencia</th>
+                        <th>Brecha</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <ng-container *ngFor="let employee of employeeGroupRows; trackBy: trackById">
+                        <tr
+                          class="employee-summary-row"
+                          [class.is-expanded]="isEmployeeExpanded(employee)"
+                          tabindex="0"
+                          (click)="toggleEmployeeDetail(employee)"
+                          (keydown.enter)="toggleEmployeeDetail(employee)"
+                          (keydown.space)="$event.preventDefault(); toggleEmployeeDetail(employee)">
+                          <td>
+                            <div class="employee-row-main">
+                              <mat-icon>{{ isEmployeeExpanded(employee) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                              <strong>{{ getEmployeeName(employee) }}</strong>
+                            </div>
+                          </td>
+                          <td>{{ getEmployeePosition(employee) }}</td>
+                          <td>
+                            <div class="inline-score">
+                              <span><i [style.width.%]="getScorePercent(getEmployeeScore(employee))"></i></span>
+                              <b>{{ formatScore(getEmployeeScore(employee)) }}</b>
+                            </div>
+                          </td>
+                          <td>{{ formatScore(getEmployeeTarget(employee)) }}</td>
+                          <td><em class="result-pill" [ngClass]="getGapTone(getEmployeeGap(employee))">{{ formatGap(getEmployeeGap(employee)) }}</em></td>
+                          <td><em class="result-pill" [ngClass]="getScoreTone(getEmployeeScore(employee))">{{ getScoreStatus(getEmployeeScore(employee)) }}</em></td>
+                        </tr>
+                        <tr class="employee-detail-row" *ngIf="isEmployeeExpanded(employee)">
+                          <td colspan="6">
+                            <div class="employee-detail-panel">
+                              <div class="employee-detail-legend">
+                                <span class="detail-tone-pill tone-above">Sobre esperado</span>
+                                <span class="detail-tone-pill tone-expected">En esperado</span>
+                                <span class="detail-tone-pill tone-below">No cumple</span>
+                              </div>
+
+                              <p class="employee-detail-empty" *ngIf="!getEmployeeEvaluationDetails(employee).length">
+                                No hay detalle individual de escenarios e ítems para este empleado.
+                              </p>
+
+                              <article
+                                class="employee-detail-survey"
+                                *ngFor="let evaluation of getEmployeeEvaluationDetails(employee); trackBy: trackById">
+                                <div class="employee-detail-survey-header">
+                                  <div>
+                                    <strong>{{ getEvaluationDetailTitle(evaluation) }}</strong>
+                                    <span>
+                                      <em class="detail-scenario-pill">Escenario: {{ getEvaluationDetailScenarioName(evaluation) }}</em>
+                                      Evaluador: {{ getEvaluationEvaluatorName(evaluation) }}
+                                      · Finalizada: {{ formatDate(evaluation?.fechaFinalizacion ?? evaluation?.FechaFinalizacion ?? evaluation?.fechaRespuesta ?? evaluation?.FechaRespuesta) }}
+                                    </span>
+                                  </div>
+                                  <div class="employee-detail-score-set">
+                                    <span>{{ formatScore(getEvaluationDetailScore(evaluation)) }} / {{ formatScore(getEvaluationDetailTarget(evaluation)) }}</span>
+                                    <em
+                                      class="detail-tone-pill"
+                                      [ngClass]="getDetailToneClass(getEvaluationDetailScore(evaluation), getEvaluationDetailTarget(evaluation))">
+                                      {{ getDetailToneLabel(getEvaluationDetailScore(evaluation), getEvaluationDetailTarget(evaluation)) }}
+                                    </em>
+                                  </div>
+                                </div>
+
+                                <div class="employee-detail-dimensions">
+                                  <section
+                                    class="employee-detail-dimension"
+                                    *ngFor="let dimension of getEvaluationDetailDimensions(evaluation); trackBy: trackById">
+                                    <div class="employee-detail-dimension-head">
+                                      <h4>{{ getDimensionDisplayName(dimension) }}</h4>
+                                      <span>
+                                        {{ formatScore(getDimensionDetailScore(dimension)) }} / {{ formatScore(getDimensionDetailTarget(dimension)) }}
+                                      </span>
+                                    </div>
+
+                                    <div
+                                      class="employee-detail-criterion"
+                                      *ngFor="let criterion of getCriterionDetailRows(dimension); trackBy: trackById">
+                                      <div class="employee-detail-criterion-head">
+                                        <strong>{{ getCriterionDetailName(criterion) }}</strong>
+                                        <span>
+                                          Resultado {{ formatScore(getCriterionDetailScore(criterion)) }}
+                                          · Esperado {{ formatScore(getCriterionDetailTarget(criterion)) }}
+                                        </span>
+                                      </div>
+
+                                      <div class="employee-detail-items">
+                                        <p class="employee-detail-empty compact" *ngIf="!getItemDetailRows(criterion).length">
+                                          Este criterio no trae ítems evaluativos detallados.
+                                        </p>
+                                        <div
+                                          class="employee-detail-item"
+                                          *ngFor="let item of getItemDetailRows(criterion); trackBy: trackById">
+                                          <p>{{ getItemDetailText(item) }}</p>
+                                          <div>
+                                            <span>{{ getItemDetailAnswer(item) }}</span>
+                                            <em
+                                              class="detail-tone-pill"
+                                              [ngClass]="getDetailToneClass(getItemDetailScore(item), getItemDetailTarget(item, criterion, dimension))">
+                                              {{ getDetailToneLabel(getItemDetailScore(item), getItemDetailTarget(item, criterion, dimension)) }}
+                                            </em>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </section>
+                                </div>
+                              </article>
+                            </div>
+                          </td>
+                        </tr>
+                      </ng-container>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <div class="employee-card-grid">
+                <article class="results-panel employee-card" *ngFor="let employee of employeeGroupRows; trackBy: trackById">
+                  <h3><span class="dot blue"></span>{{ getEmployeeName(employee) }}</h3>
+                  <p>{{ getEmployeePosition(employee) }} · Score: {{ formatScore(getEmployeeScore(employee)) }}</p>
+                  <div class="employee-scenario-dimension-groups">
+                    <section
+                      class="employee-scenario-group"
+                      *ngFor="let scenarioGroup of getEmployeeDimensionScenarioGroups(employee); trackBy: trackById">
+                      <div class="employee-scenario-title">
+                        <mat-icon>compare_arrows</mat-icon>
+                        <span>{{ scenarioGroup.escenario }}</span>
+                      </div>
+                      <div class="dimension-list compact">
+                        <div class="dimension-row" *ngFor="let dimension of scenarioGroup.dimensiones; trackBy: trackById">
+                          <div>
+                            <strong>{{ getDimensionDisplayName(dimension) }}</strong>
+                            <span>{{ formatScore(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado'])) }}</span>
+                          </div>
+                          <div class="score-bar">
+                            <i [style.width.%]="getScorePercent(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado']))"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                  <p class="insight-line">{{ getEmployeeInsight(employee) }}</p>
+                </article>
+              </div>
+            </section>
+
+            <section *ngIf="selectedResultsTab === 'dimensions'" class="results-page">
+              <div class="results-title">
+                <h2>Análisis por dimensión</h2>
+                <p>Comparativa de dimensiones entre los empleados evaluados.</p>
+              </div>
+
+              <article class="results-panel">
+                <h3><span class="dot blue"></span>Comparativo por dimensión y empleado</h3>
+                <div class="dimension-filter-bar">
+                  <label>
+                    Filtrar empleado
+                    <input
+                      type="search"
+                      [(ngModel)]="dimensionEmployeeFilterText"
+                      placeholder="Buscar por empleado o puesto">
+                  </label>
+                  <button
+                    type="button"
+                    *ngIf="dimensionEmployeeFilterText"
+                    (click)="dimensionEmployeeFilterText = ''">
+                    Limpiar
+                  </button>
+                  <small>{{ dimensionEmployeeRows.length }} de {{ employeeGroupRows.length }} empleados visibles</small>
+                </div>
+
+                <div class="dimension-range-legend">
+                  <span class="matrix-score tone-above">Sobre esperado</span>
+                  <span class="matrix-score tone-expected">Rango medio</span>
+                  <span class="matrix-score tone-below">Bajo esperado</span>
+                </div>
+
+                <p class="employee-detail-empty" *ngIf="!dimensionEmployeeRows.length">
+                  No hay empleados que coincidan con el filtro aplicado.
+                </p>
+
+                <div class="dimension-position-group" *ngFor="let group of dimensionEmployeeGroups; trackBy: trackById">
+                  <div class="dimension-position-title">
+                    <strong>{{ group.puesto }}</strong>
+                    <span>{{ group.employees.length }} empleados</span>
+                  </div>
+
+                  <div class="dimension-matrix">
+                    <div class="matrix-row header">
+                      <span>Dimensión</span>
+                      <span *ngFor="let employee of group.employees; trackBy: trackById">{{ getShortEmployeeName(employee) }}</span>
+                      <span>Promedio puesto</span>
+                    </div>
+                    <div class="matrix-row" *ngFor="let dimension of dimensionGroupRows; trackBy: trackById">
+                      <strong>{{ getDimensionDisplayName(dimension) }}</strong>
+                      <span
+                        class="matrix-score"
+                        *ngFor="let employee of group.employees; trackBy: trackById"
+                        [ngClass]="getEmployeeDimensionToneClass(employee, dimension)">
+                        {{ formatScore(getEmployeeDimensionScore(employee, dimension)) }}
+                      </span>
+                      <b
+                        class="matrix-average"
+                        [ngClass]="getDimensionAverageToneClass(dimension, group.employees)">
+                        {{ formatScore(getDimensionAverageForEmployees(dimension, group.employees)) }}
+                      </b>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <div class="dimension-card-grid">
+                <article class="results-panel" *ngFor="let dimension of dimensionGroupRows; trackBy: trackById">
+                  <h3><span class="dot blue"></span>{{ getDimensionDisplayName(dimension) }}</h3>
+                  <div class="big-score" [ngClass]="getScoreTone(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado']))">
+                    {{ formatScore(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado'])) }}
+                    <small>/5.00</small>
+                  </div>
+                  <div class="dimension-list compact">
+                    <div class="dimension-row" *ngFor="let employee of dimensionEmployeeRows; trackBy: trackById">
+                      <div>
+                        <strong>{{ getShortEmployeeName(employee) }}</strong>
+                        <span
+                          class="dimension-score-value"
+                          [ngClass]="getEmployeeDimensionToneClass(employee, dimension)">
+                          {{ formatScore(getEmployeeDimensionScore(employee, dimension)) }}
+                        </span>
+                      </div>
+                      <div class="score-bar">
+                        <i
+                          [ngClass]="getEmployeeDimensionToneClass(employee, dimension)"
+                          [style.width.%]="getScorePercent(getEmployeeDimensionScore(employee, dimension))"></i>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section *ngIf="selectedResultsTab === 'gaps'" class="results-page">
+              <div class="results-title">
+                <h2>Brechas y criterios críticos</h2>
+                <p>Criterios donde el resultado se aleja del nivel de exigencia.</p>
+              </div>
+
+              <div class="results-kpi-grid small">
+                <article class="results-kpi red">
+                  <span>Criterios bajo exigencia</span>
+                  <strong>{{ negativeCriteriaRows.length }}</strong>
+                  <small>Brechas negativas</small>
+                  <em>Acción requerida</em>
+                </article>
+                <article class="results-kpi yellow">
+                  <span>Criterios en nivel justo</span>
+                  <strong>{{ neutralCriteriaRows.length }}</strong>
+                  <small>Brecha cercana a 0</small>
+                  <em>Monitorear</em>
+                </article>
+                <article class="results-kpi green">
+                  <span>Criterios sobre exigencia</span>
+                  <strong>{{ positiveCriteriaRows.length }}</strong>
+                  <small>Brechas positivas</small>
+                  <em>Fortalezas</em>
+                </article>
+              </div>
+
+              <div class="results-two-column">
+                <article class="results-panel">
+                  <h3><span class="dot red"></span>Criterios con brecha negativa</h3>
+                  <div class="results-table-wrap">
+                    <table class="results-table">
+                      <thead>
+                        <tr><th>Criterio</th><th>Dimensión</th><th>Resultado</th><th>Exigencia</th><th>Brecha</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let item of negativeCriteriaRows.slice(0, 8); trackBy: trackById">
+                          <td><strong>{{ getRankingTitle(item) }}</strong></td>
+                          <td>{{ getText(item, ['dimension', 'dimensionNombre']) }}</td>
+                          <td>{{ formatScore(getNumber(item, ['calificacionPromedio', 'resultadoPromedio', 'resultado'])) }}</td>
+                          <td>{{ formatScore(getNumber(item, ['nivelExigenciaPromedio', 'nivelExigencia'])) }}</td>
+                          <td><em class="result-pill red">{{ formatGap(getNumber(item, ['brechaPromedio', 'brecha'])) }}</em></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+
+                <article class="results-panel">
+                  <h3><span class="dot green"></span>Fortalezas identificadas</h3>
+                  <div class="results-table-wrap">
+                    <table class="results-table">
+                      <thead>
+                        <tr><th>Criterio</th><th>Dimensión</th><th>Promedio</th><th>Brecha</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let item of positiveCriteriaRows.slice(0, 8); trackBy: trackById">
+                          <td><strong>{{ getRankingTitle(item) }}</strong></td>
+                          <td>{{ getText(item, ['dimension', 'dimensionNombre']) }}</td>
+                          <td>{{ formatScore(getNumber(item, ['calificacionPromedio', 'resultadoPromedio', 'resultado'])) }}</td>
+                          <td><em class="result-pill green">{{ formatGap(getNumber(item, ['brechaPromedio', 'brecha'])) }}</em></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section *ngIf="selectedResultsTab === 'findings'" class="results-page">
+              <div class="results-title">
+                <h2>Hallazgos y próximos pasos</h2>
+                <p>Análisis interpretativo con recomendaciones accionables.</p>
+              </div>
+
+              <div class="ai-action-state" *ngIf="isLoadingAiActionPlan">
+                <mat-spinner diameter="26"></mat-spinner>
+                <span>Cargando análisis IA guardado...</span>
+              </div>
+
+	              <div class="ai-action-state warn" *ngIf="!isLoadingAiActionPlan && aiActionPlanError">
+	                <mat-icon>info</mat-icon>
+	                <span>{{ aiActionPlanError }} Se muestran recomendaciones calculadas localmente.</span>
+	                <button
+	                  mat-raised-button
+	                  color="primary"
+	                  type="button"
+	                  (click)="generateAiActionPlan(false)"
+	                  [disabled]="!canGenerateAiActionPlan">
+	                  <mat-icon>auto_awesome</mat-icon>
+	                  Generar análisis IA
+	                </button>
+	              </div>
+
+	              <ng-container *ngIf="hasAiActionPlan; else fallbackFindings">
+	                <article class="results-panel ai-summary-panel" *ngIf="aiExecutiveSummary">
+	                  <div class="panel-title-actions">
+	                    <h3><span class="dot blue"></span>Resumen ejecutivo IA</h3>
+	                    <button
+	                      mat-stroked-button
+	                      color="primary"
+	                      type="button"
+	                      (click)="downloadAiActionPlanPdf()"
+	                      [disabled]="isGeneratingAiActionPlan">
+	                      <mat-icon>picture_as_pdf</mat-icon>
+	                      Descargar PDF
+	                    </button>
+	                  </div>
+	                  <p>{{ aiExecutiveSummary }}</p>
+	                  <small *ngIf="aiActionPlanMeta">{{ aiActionPlanMeta }}</small>
+	                </article>
+
+                <article class="results-panel">
+                  <h3><span class="dot blue"></span>Hallazgos clave</h3>
+                  <div class="ai-finding-grid">
+                    <div class="finding-card" [ngClass]="getAiSeverityClass(item)" *ngFor="let item of aiKeyFindings; trackBy: trackById">
+                      <div class="ai-card-head">
+                        <strong>{{ getText(item, ['titulo', 'Titulo'], 'Hallazgo') }}</strong>
+                        <em>{{ getAiSeverityLabel(item) }}</em>
+                      </div>
+                      <p>{{ getText(item, ['descripcion', 'Descripcion'], '') }}</p>
+                      <div class="ai-chip-row" *ngIf="getAiList(item, ['puestosImpactados', 'PuestosImpactados']).length">
+                        <span *ngFor="let puesto of getAiList(item, ['puestosImpactados', 'PuestosImpactados'])">{{ puesto }}</span>
+                      </div>
+                      <div class="ai-meta-line" *ngIf="getAiList(item, ['dimensiones', 'Dimensiones']).length">
+                        Dimensiones: {{ getAiList(item, ['dimensiones', 'Dimensiones']).join(', ') }}
+                      </div>
+                      <div class="ai-meta-line" *ngIf="getAiList(item, ['criterios', 'Criterios']).length">
+                        Criterios: {{ getAiList(item, ['criterios', 'Criterios']).join(', ') }}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="results-panel">
+                  <h3><span class="dot green"></span>Plan de acción recomendado</h3>
+                  <div class="action-list">
+                    <div class="action-item ai-action-item" [ngClass]="getAiImpactClass(action)" *ngFor="let action of aiRecommendedActions; let index = index">
+                      <b>{{ getAiActionPriority(action, index) }}</b>
+                      <div>
+                        <strong>{{ getAiActionTitle(action) }}</strong>
+                        <p>{{ getAiActionObjective(action) }}</p>
+                        <dl>
+                          <div><dt>Responsable</dt><dd>{{ getAiActionOwner(action) }}</dd></div>
+                          <div><dt>Plazo</dt><dd>{{ getAiActionDeadline(action) }}</dd></div>
+                          <div><dt>Indicador</dt><dd>{{ getAiActionMetric(action) }}</dd></div>
+                        </dl>
+                        <span>Impacto esperado: {{ getAiActionImpact(action) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <div class="results-two-column" *ngIf="aiPositionPlans.length || aiEmployeePlans.length">
+                  <article class="results-panel" *ngIf="aiPositionPlans.length">
+                    <h3><span class="dot orange"></span>Planes por puesto</h3>
+                    <div class="ai-plan-list">
+                      <div class="ai-plan-card" *ngFor="let plan of aiPositionPlans; trackBy: trackById">
+                        <strong>{{ getText(plan, ['puesto', 'Puesto'], 'Puesto') }}</strong>
+                        <ul>
+                          <li *ngFor="let finding of getAiList(plan, ['hallazgos', 'Hallazgos'])">{{ finding }}</li>
+                        </ul>
+                        <div class="ai-mini-action" *ngFor="let action of getCollection(plan, ['acciones', 'Acciones']); let index = index">
+                          <b>{{ getAiActionPriority(action, index) }}</b>
+                          <div>
+                            <span>{{ getAiActionTitle(action) }}</span>
+                            <small>{{ getAiActionDeadline(action) }} · {{ getAiActionImpact(action) }}</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="results-panel" *ngIf="aiEmployeePlans.length">
+                    <h3><span class="dot blue"></span>Planes por empleado</h3>
+                    <div class="ai-plan-list">
+                      <div class="ai-plan-card" *ngFor="let plan of aiEmployeePlans; trackBy: trackById">
+                        <strong>{{ getText(plan, ['empleado', 'Empleado'], 'Empleado') }}</strong>
+                        <p>{{ getText(plan, ['puesto', 'Puesto'], '') }}</p>
+                        <ul>
+                          <li *ngFor="let finding of getAiList(plan, ['hallazgos', 'Hallazgos'])">{{ finding }}</li>
+                        </ul>
+                        <div class="ai-mini-action" *ngFor="let action of getCollection(plan, ['acciones', 'Acciones']); let index = index">
+                          <b>{{ getAiActionPriority(action, index) }}</b>
+                          <div>
+                            <span>{{ getAiActionTitle(action) }}</span>
+                            <small>{{ getAiActionDeadline(action) }} · {{ getAiActionImpact(action) }}</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </ng-container>
+
+              <ng-template #fallbackFindings>
+	                <ng-container *ngIf="!isLoadingAiActionPlan">
+	                  <div class="ai-action-state ai-action-empty" *ngIf="!aiActionPlanError">
+	                    <mat-icon>tips_and_updates</mat-icon>
+	                    <span>No hay análisis IA guardado para este modelo. Se muestran recomendaciones calculadas localmente.</span>
+	                    <button
+	                      mat-raised-button
+	                      color="primary"
+	                      type="button"
+	                      (click)="generateAiActionPlan(false)"
+	                      [disabled]="!canGenerateAiActionPlan">
+	                      <mat-icon>auto_awesome</mat-icon>
+	                      Generar análisis IA
+	                    </button>
+	                  </div>
+
+                  <div class="results-two-column">
+                    <article class="results-panel">
+                      <h3><span class="dot red"></span>Alertas detectadas</h3>
+                      <div class="finding-list">
+                        <div class="finding-card alert" *ngFor="let item of negativeCriteriaRows.slice(0, 3); trackBy: trackById">
+                          <strong>{{ getRankingTitle(item) }}</strong>
+                          <p>{{ getText(item, ['dimension'], 'Dimensión') }} está bajo el nivel requerido con brecha {{ formatGap(getNumber(item, ['brechaPromedio', 'brecha'])) }}.</p>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="results-panel">
+                      <h3><span class="dot green"></span>Fortalezas del equipo</h3>
+                      <div class="finding-list">
+                        <div class="finding-card success" *ngFor="let item of positiveCriteriaRows.slice(0, 3); trackBy: trackById">
+                          <strong>{{ getRankingTitle(item) }}</strong>
+                          <p>{{ getText(item, ['dimension'], 'Dimensión') }} aparece como fortaleza con brecha {{ formatGap(getNumber(item, ['brechaPromedio', 'brecha'])) }}.</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+
+                  <article class="results-panel">
+                    <h3><span class="dot blue"></span>Plan de acción recomendado</h3>
+                    <div class="action-list">
+                      <div class="action-item" *ngFor="let action of recommendedActions; let index = index">
+                        <b>{{ index + 1 }}</b>
+                        <div>
+                          <strong>{{ action.title }}</strong>
+                          <p>{{ action.text }}</p>
+                          <span>{{ action.badge }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </ng-container>
+              </ng-template>
+            </section>
+
+            <section *ngIf="selectedResultsTab === 'models'" class="results-page">
+              <div class="results-title">
+                <h2>Modelos de evaluación</h2>
+                <p>Estado y cobertura de los modelos de evaluación disponibles en la organización.</p>
+              </div>
+
+              <div class="results-kpi-grid small">
+                <article class="results-kpi blue">
+                  <span>Total modelos</span>
+                  <strong>{{ dashboard.modelos.length }}</strong>
+                  <small>Registrados en el sistema</small>
+                  <em>Catálogo</em>
+                </article>
+                <article class="results-kpi green">
+                  <span>Con resultados</span>
+                  <strong>{{ modelsWithResults }}</strong>
+                  <small>Modelos con datos</small>
+                  <em>Activos</em>
+                </article>
+                <article class="results-kpi red">
+                  <span>Sin resultados</span>
+                  <strong>{{ dashboard.modelos.length - modelsWithResults }}</strong>
+                  <small>Sin respuestas visibles</small>
+                  <em>Revisar</em>
+                </article>
+              </div>
+
+              <article class="results-panel">
+                <h3><span class="dot blue"></span>Detalle de modelos</h3>
+                <div class="model-detail-list">
+                  <button
+                    type="button"
+                    *ngFor="let model of dashboard.modelos; trackBy: trackById"
+                    [class.active]="getModelId(model) === selectedModelId"
+                    (click)="onModelChange(getModelId(model))"
+                  >
+                    <span>
+                      <strong>{{ getModelName(model) }}</strong>
+                      <small>{{ getText(model, ['tipo', 'tipoModelo', 'estado'], 'Modelo') }}</small>
+                    </span>
+                    <em>{{ formatPercent(getModelProgress(model)) }}</em>
+                    <b>{{ formatScore(getNumber(model, ['calificacionPromedio', 'resultadoPromedio'])) }}</b>
+                  </button>
+                </div>
+              </article>
+
+              <article class="results-panel coverage-panel">
+                <h3><span class="dot yellow"></span>Cobertura del proceso</h3>
+                <div class="progress-summary">
+                  <div class="donut" [style.--value.%]="getEmployeeCoveragePercent()">
+                    <strong>{{ formatPercent(getEmployeeCoveragePercent()) }}</strong>
+                    <span>cobertura</span>
+                  </div>
+                  <p>
+                    {{ employeeGroupRows.length }} de {{ dashboardEmployees.length || employeeGroupRows.length }} empleados identificados tienen resultados visibles
+                    para el modelo seleccionado.
+                  </p>
+                </div>
+              </article>
+            </section>
+          </main>
+        </section>
+      </ng-container>
+
+      <div
+        class="empty-state"
+        *ngIf="!isLoadingOrganizations && !isLoadingModels && !isLoadingDashboard && selectedOrganizationId && modelSelectOptions.length === 0"
+      >
+        <mat-icon>inventory_2</mat-icon>
+        <h4>Sin modelos con respuestas</h4>
+        <p>La organización seleccionada aún no tiene modelos disponibles para consultar respuestas agrupadas.</p>
+      </div>
+
+      <div
+        class="empty-state"
+        *ngIf="!isLoadingOrganizations && !isLoadingModels && !isLoadingDashboard && !dashboardData && !selectedModelId && (!selectedOrganizationId || modelSelectOptions.length > 0)"
+      >
+        <mat-icon>dashboard_customize</mat-icon>
+        <h4>Sin datos de dashboard</h4>
+        <p>Selecciona una organización y un modelo para consultar la información de desempeño.</p>
+      </div>
+    </div>
+  </div>
+</section>

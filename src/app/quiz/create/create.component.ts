@@ -58,6 +58,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { JoyrideService } from 'ngx-joyride';
 import { JoyrideModule } from 'ngx-joyride';
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 function toArray<T = any>(v: T | T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : (v != null ? [v] : []);
@@ -139,6 +140,7 @@ export class CreateComponent implements OnInit {
     private dialogItemModel: MatDialog, //dialog agregar ítems    
     private fb: UntypedFormBuilder, // private modalService: NgbModal
     private _snackBar: MatSnackBar, private languageService: LanguageService,private translate: TranslateService,
+    private demoLimitsService: DemoLimitsService,
   ) {}
 
    startTour() {
@@ -535,8 +537,33 @@ export class CreateComponent implements OnInit {
 
   }
 
+  private getCurrentClimatesCount(): number {
+    return Array.isArray(this.cardsData) ? this.cardsData.length : 0;
+  }
+
+  private showClimateLimitReachedMessage(): void {
+    const climateLimit = this.demoLimitsService.getLimit('maxClimatesPerOrganization');
+    const currentCount = this.getCurrentClimatesCount();
+
+    Swal.fire({
+      title: 'Limite demo alcanzado',
+      text:
+        `Solo se puede ingresar ${climateLimit} clima en esta demo.` +
+        ` Actualmente existen ${currentCount} registrados.`,
+      icon: 'warning',
+    });
+  }
+
   //DIALOGO NUEVO CLIMA
   openDialog(): void {
+    if (this.demoLimitsService.exceedsLimit(
+      'maxClimatesPerOrganization',
+      this.getCurrentClimatesCount(),
+    )) {
+      this.showClimateLimitReachedMessage();
+      return;
+    }
+
     const dialogRef = this.dialogModel.open(DialogformComponent, {
       width:  '95vw',
       maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto

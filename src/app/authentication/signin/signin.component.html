@@ -1,7 +1,7 @@
 <div class="auth-container">
   <div class="row auth-main">
     <div class="col-sm-6 px-0 d-none d-sm-block">
-      <div class="left-img" style="background-image: url(assets/images/pages/just_link_800x790.png);">
+      <div class="left-img" style="background-image: url(assets/images/pages/justlink-360-logo_background.png);">
       </div>
     </div>
     <div class="col-sm-6 auth-form-section">
@@ -65,15 +65,38 @@
             @if (error) {
             <div class="alert alert-danger mt-3 mb-0">{{error}}</div>
             }
+            <div class="turnstile-wrapper">
+              <div class="turnstile-shell" [class.turnstile-shell--disabled]="!isTurnstileConfigured">
+                <div #turnstileContainer class="turnstile-host" [class.turnstile-host--disabled]="!isTurnstileConfigured"></div>
+              </div>
+
+              @if (!isTurnstileConfigured) {
+              <div class="turnstile-help turnstile-help--warning">
+                {{ 'MENUITEMS.LOGIN.TURNSTILE_CONFIG_REQUIRED' | translate }}
+              </div>
+              }
+
+              @if (turnstileLoadFailed) {
+              <div class="turnstile-help turnstile-help--danger">
+                {{ 'MENUITEMS.LOGIN.TURNSTILE_LOAD_ERROR' | translate }}
+              </div>
+              }
+
+              @if (turnstileTouched && !turnstileToken) {
+              <div class="turnstile-help turnstile-help--danger">
+                {{ 'MENUITEMS.LOGIN.TURNSTILE_REQUIRED' | translate }}
+              </div>
+              }
+            </div>
             <div class="container-auth-form-btn">
               <div style="text-align:center">
-                <button mat-flat-button color="accent" [class.auth-spinner]="loading" [disabled]="loading"
-                  class="auth-form-btn" style="background-color: #002737" [disabled]="!authForm.valid " 
+                <button mat-flat-button color="accent" [class.auth-spinner]="loading"
+                  class="auth-form-btn" style="background-color: #002737" [disabled]="!canSubmit" 
                   type="submit">{{'MENUITEMS.LOGIN.ACCESS' | translate}}</button>
               </div>
             </div>
           </form>
-          <h6 class="social-login-title">v01.03.04</h6>
+          <h6 class="social-login-title">v01.04.01</h6>
 
 
           <footer style="text-align: center; padding: 10px; font-size: 14px; color: #555;">

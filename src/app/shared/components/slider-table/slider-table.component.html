@@ -87,6 +87,50 @@
           </ng-template>
         </div>
       </div>
+
+      <section class="slider-nps-panel" *ngIf="row.npsSummary.show">
+        <div class="slider-nps-head">
+          <div>
+            <p class="slider-question-eyebrow">NPS</p>
+            <h5 class="slider-nps-title">Net Promoter Score</h5>
+          </div>
+
+          <div class="slider-nps-score" [ngStyle]="getNpsScoreStyles(row.npsSummary.nps)">
+            {{ row.npsSummary.nps | number:'1.0-2' }}
+          </div>
+        </div>
+
+        <div class="slider-nps-groups">
+          <div class="slider-nps-group" style="background:#fecaca;">
+            <span style="font-size:13px;font-weight:800;">Detractores</span>
+            <span style="font-size:12px;font-weight:700;color:#475569;">1 a 6</span>
+            <strong style="font-size:22px;line-height:1.1;">{{ row.npsSummary.detractorsPct | number:'1.0-2' }}%</strong>
+            <small style="color:#475569;font-size:12px;font-weight:600;">{{ row.npsSummary.detractorsCount }} respuestas</small>
+          </div>
+
+          <div class="slider-nps-group" style="background:#fde68a;">
+            <span style="font-size:13px;font-weight:800;">Pasivos</span>
+            <span style="font-size:12px;font-weight:700;color:#475569;">7 a 8</span>
+            <strong style="font-size:22px;line-height:1.1;">{{ row.npsSummary.passivesPct | number:'1.0-2' }}%</strong>
+            <small style="color:#475569;font-size:12px;font-weight:600;">{{ row.npsSummary.passivesCount }} respuestas</small>
+          </div>
+
+          <div class="slider-nps-group" style="background:#86efac;">
+            <span style="font-size:13px;font-weight:800;">Promotores</span>
+            <span style="font-size:12px;font-weight:700;color:#475569;">9 a 10</span>
+            <strong style="font-size:22px;line-height:1.1;">{{ row.npsSummary.promotersPct | number:'1.0-2' }}%</strong>
+            <small style="color:#475569;font-size:12px;font-weight:600;">{{ row.npsSummary.promotersCount }} respuestas</small>
+          </div>
+        </div>
+
+        <div class="slider-nps-formula">
+          <span style="font-size:13px;font-weight:700;color:#475569;">NPS = % Promotores - % Detractores</span>
+          <strong>
+            {{ row.npsSummary.promotersPct | number:'1.0-2' }}% - {{ row.npsSummary.detractorsPct | number:'1.0-2' }}% =
+            {{ row.npsSummary.nps | number:'1.0-2' }}
+          </strong>
+        </div>
+      </section>
     </article>
   </div>
 </section>

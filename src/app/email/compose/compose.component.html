@@ -174,6 +174,9 @@
                           [disabled]="isToTargetDisabled(opt.value)"
                         >
                           {{ opt.label }}
+                          <span *ngIf="isDemoTargetBlocked(opt.value)" class="compose-demo-option-note">
+                            (no disponible en demo)
+                          </span>
                         </mat-option>
                       </mat-select>
                     </mat-form-field>
@@ -186,6 +189,9 @@
                       <mat-form-field class="example-full-width" appearance="outline">
                         <mat-label>Correo/s</mat-label>
                         <input matInput [formControl]="emailManualCtrl" placeholder="ej: usuario@dominio.com, otro@dominio.com">
+                        <mat-hint *ngIf="isDemoModeActive()">
+                          Modo demo: máximo {{ getDemoComposeLimit() }} correos separados por coma.
+                        </mat-hint>
                         <mat-error *ngIf="emailManualCtrl.hasError('required')">Ingrese el correo</mat-error>
                         <mat-error *ngIf="emailManualCtrl.hasError('emailList')">Ingrese correos válidos separados por coma</mat-error>
                       </mat-form-field>
@@ -233,7 +239,7 @@
                 <div class="m-l-25 m-b-20">
                   <button style="border-radius: 5px;" mat-flat-button (click)="sendMail()" color="primary" >Enviar</button>
                   <button style="border-radius: 5px; margin-left: 10px;"  mat-flat-button color="primary" (click)="saveTemplate()" [disabled]="!canSaveTemplate()">Guardar Plantilla</button>
-                  <button style="border-radius: 5px; margin-left: 10px;"  mat-raised-button color="warn">Discard</button>
+                  
                 </div>
               </div>
             </div>

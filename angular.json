@@ -44,7 +44,9 @@
               "fast-deep-equal",
               "rfdc",
               "moment",
-              "xlsx"
+              "xlsx",
+              "dagre",
+              "webcola"
             ],
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -79,11 +81,32 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kb",
-                  "maximumError": "6kb"
+                  "maximumWarning": "35kb",
+                  "maximumError": "45kb"
                 }
               ],
               "outputHashing": "all"
+            },
+            "demo": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "4mb",
+                  "maximumError": "6mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "35kb",
+                  "maximumError": "45kb"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
@@ -105,6 +128,9 @@
           "configurations": {
             "production": {
               "buildTarget": "spire:build:production"
+            },
+            "demo": {
+              "buildTarget": "spire:build:demo"
             },
             "development": {
               "buildTarget": "spire:build:development"

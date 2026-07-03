@@ -1,0 +1,118 @@
+<main class="performance-page">
+  <header class="page-toolbar">
+    <div class="brand">
+      <mat-icon>fact_check</mat-icon>
+      <span>Evaluación de desempeño</span>
+    </div>
+    <div class="toolbar-meta">
+      <span>{{ evaluation?.escenario || 'Formulario de evaluación' }}</span>
+      <mat-icon
+        *ngIf="evaluation?.esAnonima"
+        matTooltip="Las respuestas se tratarán de forma anónima">
+        shield
+      </mat-icon>
+    </div>
+  </header>
+
+  <div class="page-content">
+    <section class="page-state" *ngIf="isLoading">
+      <mat-spinner diameter="38"></mat-spinner>
+      <div>
+        <h1>Cargando evaluación</h1>
+        <p>Estamos preparando las dimensiones y los ítems evaluativos.</p>
+      </div>
+    </section>
+
+    <section class="page-state error-state" *ngIf="!isLoading && errorMessage">
+      <mat-icon>error_outline</mat-icon>
+      <div>
+        <h1>No se pudo cargar la evaluación</h1>
+        <p>{{ errorMessage }}</p>
+        <button
+          mat-stroked-button
+          color="primary"
+          type="button"
+          (click)="loadEvaluation()"
+          *ngIf="evaluatorEmployeeId && evaluatedEmployeeId">
+          <mat-icon>refresh</mat-icon>
+          Reintentar
+        </button>
+      </div>
+    </section>
+
+    <ng-container *ngIf="!isLoading && !errorMessage && evaluation as currentEvaluation">
+      <section
+        class="page-state empty-state"
+        *ngIf="blockedMessage">
+        <mat-icon>task_alt</mat-icon>
+        <div>
+          <h1>Evaluación no editable</h1>
+          <p>{{ blockedMessage }}</p>
+        </div>
+      </section>
+
+      <ng-container *ngIf="!blockedMessage">
+        <section class="evaluation-summary">
+          <div class="summary-heading">
+            <span class="eyebrow">{{ currentEvaluation.escenario }}</span>
+            <h1>{{ currentEvaluation.evaluacion }}</h1>
+            <p>
+              Responde cada ítem considerando el desempeño observado de
+              <strong>{{ currentEvaluation.evaluado }}</strong>.
+            </p>
+          </div>
+
+          <dl class="summary-details">
+            <div>
+              <dt>Evaluador</dt>
+              <dd>{{ currentEvaluation.evaluador }}</dd>
+            </div>
+            <div>
+              <dt>Persona evaluada</dt>
+              <dd>{{ currentEvaluation.evaluado }}</dd>
+            </div>
+            <div>
+              <dt>Fecha de cierre</dt>
+              <dd>{{ formattedClosingDate }}</dd>
+            </div>
+            <div>
+              <dt>Contenido</dt>
+              <dd>
+                {{ currentEvaluation.dimensiones.length }} dimensiones ·
+                {{ totalItems }} ítems
+              </dd>
+            </div>
+          </dl>
+
+          <div class="privacy-note" *ngIf="currentEvaluation.esAnonima">
+            <mat-icon>lock</mat-icon>
+            <span>
+              Esta evaluación está configurada como anónima. Responde con objetividad
+              y basa tus valoraciones en conductas observables.
+            </span>
+          </div>
+        </section>
+
+        <section
+          class="page-state empty-state"
+          *ngIf="currentEvaluation.dimensiones.length === 0">
+          <mat-icon>assignment_late</mat-icon>
+          <div>
+            <h1>Evaluación sin contenido</h1>
+            <p>Aún no hay dimensiones ni ítems configurados para esta asignación.</p>
+          </div>
+        </section>
+
+        <app-dynamic-desempeno-form
+          *ngIf="currentEvaluation.dimensiones.length > 0"
+          [evaluation]="currentEvaluation"
+          [disabled]="!!blockedMessage"
+          [isSavingDraft]="isSavingDraft"
+          [isFinalizing]="isFinalizing"
+          (draftSaveRequested)="saveDraft($event)"
+          (finalizeRequested)="finalize($event)">
+        </app-dynamic-desempeno-form>
+      </ng-container>
+    </ng-container>
+  </div>
+</main>

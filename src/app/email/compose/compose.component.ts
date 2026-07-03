@@ -28,6 +28,7 @@ import { Router } from '@angular/router';
 
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { relativeTimeThreshold } from 'moment';
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 type ToTarget = 'correo' | 'pendiente_llenar' | 'encuestas_completadas' | 'todos_activos';
 type OrganizationOption = { Id: number; Nombre: string };
@@ -127,7 +128,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
   constructor(private languageService: LanguageService, private translate: TranslateService,
     public dialog: MatDialog, private authService: AuthService, private router: Router,
-    private organizationService: OrganizacionService,) {
+    private organizationService: OrganizacionService,
+    private demoLimitsService: DemoLimitsService,) {
 
     this.toTargetsCtrl.valueChanges.subscribe((vals) => {
       const hasCorreo = (vals || []).includes('correo');
@@ -152,6 +154,18 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
   isCorreoSelected(): boolean {
     return this.toTargetsCtrl.value.includes('correo');
+  }
+
+  isDemoTargetBlocked(target: ToTarget): boolean {
+    return this.demoLimitsService.isDemoModeActive() && target !== 'correo';
+  }
+
+  isDemoModeActive(): boolean {
+    return this.demoLimitsService.isDemoModeActive();
+  }
+
+  getDemoComposeLimit(): number {
+    return this.demoLimitsService.getLimit('maxComposeEmailsPerSession');
   }
 
   isPendientesSelected(): boolean {
@@ -179,6 +193,10 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   }
 
   isToTargetDisabled(target: ToTarget): boolean {
+    if (this.isDemoTargetBlocked(target)) {
+      return true;
+    }
+
     if (target === 'todos_activos' && !this.hasSelectedOrganization()) {
       return true;
     }
@@ -1353,16 +1371,135 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     //this.getComponentesDinamicosOrg();
   }
 
-  sendMail(): void {
+  private showComposeEmailLimitReachedMessage(requestedCount: number): void {
+    const quota = this.demoLimitsService.canConsumeComposeEmails(requestedCount);
+
+    Swal.fire({
+      title: 'Limite demo alcanzado',
+      text:
+        `Solo se pueden enviar ${quota.limit} correos por sesion en esta demo.` +
+        ` Ya se enviaron ${quota.used} y solo quedan ${quota.remaining} disponibles.` +
+        ` Intentaste enviar ${quota.requested}.`,
+      icon: 'warning',
+    });
+  }
+
+  private ensureComposeEmailCapacity(requestedCount: number): boolean {
+    const quota = this.demoLimitsService.canConsumeComposeEmails(requestedCount);
+
+    if (quota.allowed) {
+      return true;
+    }
+
+    this.showComposeEmailLimitReachedMessage(requestedCount);
+    return false;
+  }
+
+  private isActiveEmployee(value: any): boolean {
+    return value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE';
+  }
+
+  private async getPendingComposeRecipientsCount(): Promise<number> {
+    const response: any = await this.organizationService.getEncuestasFlujo(this.idFlujo);
+    const rows = Array.isArray(response?.data) ? response.data : [];
+
+    return rows.filter(
+      (item: any) => item?.EstadoEncuesta !== 'Contestada' && item?.EstadoEncuesta !== 'Sin encuesta',
+    ).length;
+  }
+
+  private async getCompletedComposeRecipientsCount(): Promise<number> {
+    const response: any = await this.organizationService.getEncuestasFlujo(this.idFlujo);
+    const rows = Array.isArray(response?.data) ? response.data : [];
+
+    return rows.filter((item: any) => item?.EstadoEncuesta === 'Contestada').length;
+  }
+
+  private async getAllActiveComposeRecipientsCount(): Promise<number> {
+    const response: any = await this.organizationService.getEmployees(this.idOrganization);
+    const rows = Array.isArray(response?.data) ? response.data : [];
+
+    return rows.filter(
+      (item: any) => this.isActiveEmployee(item?.estado) && String(item?.Email ?? '').trim().length > 0,
+    ).length;
+  }
+
+  private extractSentEmailCount(response: any, fallbackCount: number): number {
+    const data = response?.data;
+    const arrayCandidates = [data?.data, data?.results, data?.emails, data?.sentEmails];
+
+    for (const candidate of arrayCandidates) {
+      if (Array.isArray(candidate)) {
+        return candidate.length;
+      }
+    }
+
+    const numericCandidates = [
+      data?.total,
+      data?.count,
+      data?.cantidad,
+      data?.sentCount,
+      data?.totalEnviados,
+    ];
+
+    for (const candidate of numericCandidates) {
+      const value = Number(candidate);
+      if (Number.isFinite(value) && value >= 0) {
+        return value;
+      }
+    }
+
+    return Math.max(0, fallbackCount);
+  }
+
+  private registerComposeEmailsSent(response: any, fallbackCount: number): number {
+    const sentCount = this.extractSentEmailCount(response, fallbackCount);
+    this.demoLimitsService.registerComposeEmailsSent(sentCount);
+    return sentCount;
+  }
+
+  private getComposeDemoRemainingMessage(): string {
+    if (!this.demoLimitsService.isDemoModeActive()) {
+      return '';
+    }
+
+    return ` Quedan ${this.demoLimitsService.getComposeEmailsRemainingCount()} disponibles en esta sesión.`;
+  }
+
+  async sendMail(): Promise<void> {
 
     console.log('Sending..');
 
     if(this.isPendientesSelected()) {
       console.log('pendientes de contestar..');
 
+      if (this.idFlujo === 0) {
+        Swal.fire('Error', 'Debe seleccionar una Organización y un Clima para envío grupal.', 'error');
+        return;
+      }
+
+      let requestedEmails = 0;
+
+      try {
+        requestedEmails = await this.getPendingComposeRecipientsCount();
+      } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No fue posible calcular los destinatarios pendientes para este envío.', 'error');
+        return;
+      }
+
+      if (!requestedEmails) {
+        Swal.fire('Sin destinatarios', 'No hay empleados pendientes para este envío.', 'info');
+        return;
+      }
+
+      if (!this.ensureComposeEmailCapacity(requestedEmails)) {
+        return;
+      }
+
       Swal.fire({
         title: 'Enviar correo',
-        html: `Esta acción enviará correos a <strong>todos los empleados de ${this.nombreOrganizacion} que ya tinenen ecuesta creada y aun no han contestado la encuesta.</strong>`,
+        html: `Esta acción enviará <strong>${requestedEmails}</strong> correo(s) a empleados de ${this.nombreOrganizacion} que ya tienen encuesta creada y aún no la han contestado.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: 'green',
@@ -1378,11 +1515,6 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
         //validar que se haya seleccionado clima
       console.log(this.nombreFlujo, this.idFlujo);
-
-      if (this.idFlujo === 0) {
-        Swal.fire('Error', 'Debe seleccionar una Organización y un Clima para envío grupal.', 'error');
-        return;
-      }
 
       if (!this.gjs) {
         this.loading = false;
@@ -1413,7 +1545,12 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
         if(res){
           console.log('res:: ', res.data);
           if(res.data.message === 'success') {
-            Swal.fire('Realizado','Se enviaron ' + res.data.data.length + ' correos.','success');
+            const sentCount = this.registerComposeEmailsSent(res, requestedEmails);
+            Swal.fire(
+              'Realizado',
+              `Se enviaron ${sentCount} correos.${this.getComposeDemoRemainingMessage()}`,
+              'success',
+            );
           }
           else {
             Swal.fire('Algo anda mal','No fue posible enviar los correos. Intente de nuevo mas tarde.','error');
@@ -1424,6 +1561,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
         console.error(err);
 
+      }).finally(() => {
+        this.loading = false;
       });
       
 
@@ -1443,6 +1582,25 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
       if (this.idFlujo === 0) {
         Swal.fire('Error', 'Debe seleccionar una Organización y un Clima para envío grupal.', 'error');
+        return;
+      }
+
+      let requestedEmails = 0;
+
+      try {
+        requestedEmails = await this.getCompletedComposeRecipientsCount();
+      } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No fue posible calcular los destinatarios completados para este envío.', 'error');
+        return;
+      }
+
+      if (!requestedEmails) {
+        Swal.fire('Sin destinatarios', 'No hay correos de encuestas completadas para enviar.', 'info');
+        return;
+      }
+
+      if (!this.ensureComposeEmailCapacity(requestedEmails)) {
         return;
       }
 
@@ -1474,12 +1632,20 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
         if(res){
           console.log('res:: ', res.data);
+          const sentCount = this.registerComposeEmailsSent(res, requestedEmails);
+          Swal.fire(
+            'Realizado',
+            `Se enviaron ${sentCount} correos.${this.getComposeDemoRemainingMessage()}`,
+            'success',
+          );
         }
 
       }).catch((err:any)=>{
 
         console.error(err);
 
+      }).finally(() => {
+        this.loading = false;
       })
 
 
@@ -1493,6 +1659,25 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
       if (this.idFlujo === 0) {
         Swal.fire('Error', 'Debe seleccionar una Organización para el envío.', 'error');
+        return;
+      }
+
+      let requestedEmails = 0;
+
+      try {
+        requestedEmails = await this.getAllActiveComposeRecipientsCount();
+      } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No fue posible calcular los empleados activos para este envío.', 'error');
+        return;
+      }
+
+      if (!requestedEmails) {
+        Swal.fire('Sin destinatarios', 'No hay empleados activos con correo disponible para este envío.', 'info');
+        return;
+      }
+
+      if (!this.ensureComposeEmailCapacity(requestedEmails)) {
         return;
       }
 
@@ -1524,12 +1709,20 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
         if(res){
           console.log('res:: ', res.data);
+          const sentCount = this.registerComposeEmailsSent(res, requestedEmails);
+          Swal.fire(
+            'Realizado',
+            `Se enviaron ${sentCount} correos.${this.getComposeDemoRemainingMessage()}`,
+            'success',
+          );
         }
 
       }).catch((err:any)=>{
 
         console.error(err);
 
+      }).finally(() => {
+        this.loading = false;
       })
 
 
@@ -1542,6 +1735,15 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
       .map((email) => email.trim())
       .filter((email) => !!email);
 
+    if (this.demoLimitsService.isDemoModeActive() && destinatarios.length > this.getDemoComposeLimit()) {
+      Swal.fire({
+        title: 'Límite demo excedido',
+        text: `En el modo demo solo se permiten ${this.getDemoComposeLimit()} correos por envío manual.`,
+        icon: 'warning',
+      });
+      return;
+    }
+
     if (!destinatarios.length || this.emailManualCtrl.invalid) {
       this.emailManualCtrl.markAsTouched();
       this.emailManualCtrl.updateValueAndValidity({ emitEvent: false });
@@ -1551,6 +1753,10 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
         icon: 'error',
       });
       return;
+      }
+
+      if (!this.ensureComposeEmailCapacity(destinatarios.length)) {
+        return;
       }
 
       const DATOS: any = {
@@ -1625,11 +1831,14 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
           const exitosos = resultados.filter((x) => x.ok);
           const fallidos = resultados.filter((x) => !x.ok);
+          this.demoLimitsService.registerComposeEmailsSent(exitosos.length);
 
           if (!fallidos.length) {
             Swal.fire({
               title: 'Enviado',
-              text: `Se enviaron ${exitosos.length} correo(s) con éxito.`,
+              text:
+                `Se enviaron ${exitosos.length} correo(s) con éxito.` +
+                this.getComposeDemoRemainingMessage(),
               icon: 'success',
             });
           } else if (!exitosos.length) {
@@ -1641,7 +1850,12 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
           } else {
             Swal.fire({
               title: 'Envío parcial',
-              html: `Se enviaron ${exitosos.length} de ${destinatarios.length} correos.<br><small>Fallidos: ${fallidos.map((f) => f.destinatario).join(', ')}</small>`,
+              html:
+                `Se enviaron ${exitosos.length} de ${destinatarios.length} correos.` +
+                `<br><small>Fallidos: ${fallidos.map((f) => f.destinatario).join(', ')}</small>` +
+                (this.demoLimitsService.isDemoModeActive()
+                  ? `<br><small>Disponibles en esta sesión: ${this.demoLimitsService.getComposeEmailsRemainingCount()}</small>`
+                  : ''),
               icon: 'warning',
             });
           }

@@ -1,0 +1,584 @@
+<section class="content">
+  <div class="content-block model-shell">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="breadcrumbTitleKey | translate"
+        [items]="['Home']"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="card">
+      <div class="model-toolbar">
+        <div>
+          <h4 class="mb-1">{{ pageTitleKey | translate }}</h4>
+          <div class="model-muted">
+            Constructor local del modelo. Los datos base vienen de organización, empleados, demográficos y escalas.
+          </div>
+        </div>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="saveLocalModel()"
+          matTooltip="De momento este botón solo valida la configuración en pantalla; no llama al backend."
+        >
+          <mat-icon>save</mat-icon>
+          Guardar borrador
+        </button>
+      </div>
+
+      <div class="body">
+        <div class="row">
+          <div class="col-xl-5 col-lg-5 col-md-12 mb-2">
+            <mat-form-field appearance="fill" class="w-100">
+              <mat-label>Organización</mat-label>
+              <mat-select
+                [value]="selectedOrganizationId"
+                [disabled]="isLoadingOrganizations || isLoadingResources"
+                (selectionChange)="onOrganizationChange($event.value)"
+              >
+                <mat-option *ngFor="let organization of organizations" [value]="organization.id">
+                  {{ organization.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="col-xl-5 col-lg-5 col-md-8 mb-2">
+            <mat-form-field appearance="fill" class="w-100">
+              <mat-label>Descripción del modelo</mat-label>
+              <input matInput [(ngModel)]="modelName" />
+            </mat-form-field>
+          </div>
+
+          <div class="col-xl-2 col-lg-2 col-md-4 mb-2">
+            <mat-form-field appearance="fill" class="w-100">
+              <mat-label>Fecha</mat-label>
+              <input matInput type="date" [(ngModel)]="modelDate" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="text-center py-3" *ngIf="isLoadingOrganizations || isLoadingResources">
+          <mat-spinner diameter="42" class="mx-auto"></mat-spinner>
+          <div class="model-muted mt-2">Cargando recursos del modelo...</div>
+        </div>
+
+        <div class="row mb-3" *ngIf="!isLoadingResources">
+          <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+            <div class="model-summary-card">
+              <div class="model-muted">Organización</div>
+              <h5 class="mb-0">{{ selectedOrganizationName }}</h5>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+            <div class="model-summary-card">
+              <div class="model-muted">Empleados cargados</div>
+              <h5 class="mb-0">{{ employees.length }}</h5>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+            <div class="model-summary-card">
+              <div class="model-muted">Puestos detectados</div>
+              <h5 class="mb-0">{{ positions.length }}</h5>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+            <div class="model-summary-card">
+              <div class="model-muted">Escalas disponibles</div>
+              <h5 class="mb-0">{{ scales.length }}</h5>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-stepper mb-4">
+          <button
+            type="button"
+            class="model-step"
+            *ngFor="let step of steps"
+            [class.active]="activeStep === step.id"
+            (click)="setStep(step.id)"
+          >
+            {{ step.label }}
+          </button>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 1">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Grandes factores</h5>
+              <div class="model-muted">
+                Define los bloques principales de evaluación. La ponderación activa debe sumar 100%.
+              </div>
+            </div>
+
+            <span class="model-total" [ngClass]="totalClass(totalBigFactors)">
+              Total: {{ totalBigFactors | number:'1.2-2' }}%
+            </span>
+          </div>
+
+          <div class="model-panel-body">
+            <div class="model-row" *ngFor="let factor of bigFactors; trackBy: trackById">
+              <mat-checkbox [(ngModel)]="factor.enabled" (change)="onBigFactorChanged()">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Elemento</mat-label>
+                  <input matInput [(ngModel)]="factor.name" (ngModelChange)="onBigFactorChanged()" />
+                </mat-form-field>
+              </mat-checkbox>
+
+              <mat-form-field appearance="fill">
+                <mat-label>Ponderación</mat-label>
+                <input matInput type="number" min="0" max="100" [(ngModel)]="factor.weight" (ngModelChange)="onBigFactorChanged()" />
+              </mat-form-field>
+
+              <button
+                mat-icon-button
+                color="warn"
+                type="button"
+                (click)="removeBigFactor(factor)"
+                matTooltip="Quitar gran factor"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+
+            <button mat-stroked-button color="primary" type="button" (click)="addBigFactor()">
+              <mat-icon>add</mat-icon>
+              Agregar gran factor
+            </button>
+          </div>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 2">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Perspectivas y escenarios</h5>
+              <div class="model-muted">
+                Activa las perspectivas disponibles y distribuye la ponderación por escenario.
+              </div>
+            </div>
+
+            <button mat-stroked-button color="primary" type="button" (click)="addScenario()">
+              <mat-icon>add</mat-icon>
+              Agregar escenario
+            </button>
+          </div>
+
+          <div class="model-panel-body">
+            <div class="row">
+              <div class="col-xl-4 col-lg-5 col-md-12 mb-3">
+                <div class="model-card-soft">
+                  <h6 class="mb-3">Perspectivas disponibles</h6>
+                  <div class="d-flex flex-column gap-2">
+                    <mat-checkbox *ngFor="let perspective of perspectives; trackBy: trackById" [(ngModel)]="perspective.selected">
+                      {{ perspective.name }}
+                    </mat-checkbox>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-xl-8 col-lg-7 col-md-12">
+                <div class="model-card-soft mb-3" *ngFor="let scenario of scenarios; trackBy: trackById">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <mat-form-field appearance="fill" class="flex-grow-1 me-2">
+                      <mat-label>Nombre del escenario</mat-label>
+                      <input matInput [(ngModel)]="scenario.name" />
+                    </mat-form-field>
+
+                    <button mat-icon-button color="warn" type="button" (click)="removeScenario(scenario.id)" matTooltip="Eliminar escenario">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+
+                  <div class="model-row" *ngFor="let item of scenario.perspectives">
+                    <mat-checkbox [(ngModel)]="item.selected">
+                      {{ getPerspectiveName(item.perspectiveId) }}
+                    </mat-checkbox>
+
+                    <mat-form-field appearance="fill">
+                      <mat-label>Ponderación</mat-label>
+                      <input matInput type="number" min="0" max="100" [(ngModel)]="item.weight" [disabled]="!item.selected" />
+                    </mat-form-field>
+
+                    <span></span>
+                  </div>
+
+                  <div class="text-end">
+                    <span class="model-total" [ngClass]="totalClass(getScenarioTotal(scenario))">
+                      Total: {{ getScenarioTotal(scenario) | number:'1.2-2' }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 3">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Escala del modelo</h5>
+              <div class="model-muted">
+                Selecciona una escala real y ajusta la ponderación local de cada valor.
+              </div>
+            </div>
+
+            <span class="model-chip">{{ selectedScaleName }}</span>
+          </div>
+
+          <div class="model-panel-body">
+            <div class="row align-items-end mb-3">
+              <div class="col-xl-8 col-lg-8 col-md-12 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Seleccionar escala predefinida</mat-label>
+                  <mat-select [value]="selectedScaleId" (selectionChange)="onScaleChange($event.value)">
+                    <mat-option *ngFor="let scale of scales" [value]="scale.id">
+                      {{ scale.name }} - {{ scale.type }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-4 col-lg-4 col-md-12 mb-2">
+                <span class="model-total" [ngClass]="totalClass(totalScaleWeights)">
+                  Suma ponderaciones: {{ totalScaleWeights | number:'1.2-2' }}%
+                </span>
+              </div>
+            </div>
+
+            <div class="model-row" *ngFor="let value of scaleValues; trackBy: trackById">
+              <mat-form-field appearance="fill">
+                <mat-label>Descripción</mat-label>
+                <input matInput [(ngModel)]="value.description" />
+              </mat-form-field>
+
+              <mat-form-field appearance="fill">
+                <mat-label>Ponderación</mat-label>
+                <input matInput type="number" min="0" max="100" [(ngModel)]="value.weight" />
+              </mat-form-field>
+
+              <span class="model-chip">Valor {{ value.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 4">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Niveles de exigencia</h5>
+              <div class="model-muted">
+                Configura rangos de resultado. El último rango debe llegar a 100%.
+              </div>
+            </div>
+
+            <span class="model-total" [ngClass]="totalClass(exigencyCoverage)">
+              Cobertura: {{ exigencyCoverage | number:'1.2-2' }}%
+            </span>
+          </div>
+
+          <div class="model-panel-body">
+            <div class="model-row" *ngFor="let level of exigencyLevels; trackBy: trackById">
+              <mat-form-field appearance="fill">
+                <mat-label>Nivel</mat-label>
+                <input matInput [(ngModel)]="level.name" />
+              </mat-form-field>
+
+              <div class="d-flex gap-2">
+                <mat-form-field appearance="fill" class="w-50">
+                  <mat-label>De (%)</mat-label>
+                  <input matInput type="number" min="0" max="100" [(ngModel)]="level.from" />
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="w-50">
+                  <mat-label>Hasta (%)</mat-label>
+                  <input matInput type="number" min="0" max="100" [(ngModel)]="level.to" />
+                </mat-form-field>
+              </div>
+
+              <button mat-icon-button color="warn" type="button" (click)="removeLevel(level.id)" matTooltip="Eliminar nivel">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+
+            <button mat-stroked-button color="primary" type="button" (click)="addLevel()">
+              <mat-icon>add</mat-icon>
+              Agregar nivel
+            </button>
+          </div>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 5">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Asignar puestos</h5>
+              <div class="model-muted">
+                Para cada puesto, agrega grandes factores, factores y comportamientos evaluables.
+              </div>
+            </div>
+
+            <mat-form-field appearance="fill" style="min-width: 280px;">
+              <mat-label>Puesto</mat-label>
+              <mat-select [(ngModel)]="selectedPosition">
+                <mat-option *ngFor="let position of positions" [value]="position">
+                  {{ position }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="model-panel-body" *ngIf="getPositionModel(selectedPosition) as positionModel; else noPosition">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <div>
+                <h5 class="mb-0">{{ positionModel.position }}</h5>
+                <div class="model-muted">Configura el peso de los grandes factores para este puesto.</div>
+              </div>
+
+              <span class="model-total" [ngClass]="totalClass(getPositionGreatFactorTotal(positionModel))">
+                Total grandes factores: {{ getPositionGreatFactorTotal(positionModel) | number:'1.2-2' }}%
+              </span>
+            </div>
+
+            <div
+              class="model-factor-box"
+              *ngFor="let greatFactor of positionModel.greatFactors"
+            >
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <mat-checkbox [(ngModel)]="greatFactor.enabled">
+                  <strong>{{ getBigFactorName(greatFactor.bigFactorId) }}</strong>
+                </mat-checkbox>
+
+                <mat-form-field appearance="fill" style="width: 180px;">
+                  <mat-label>Ponderación</mat-label>
+                  <input matInput type="number" min="0" max="100" [(ngModel)]="greatFactor.weight" [disabled]="!greatFactor.enabled" />
+                </mat-form-field>
+              </div>
+
+              <div class="model-muted mb-3">
+                Factores dentro de {{ getBigFactorName(greatFactor.bigFactorId) }}.
+                <span class="model-total ms-2" [ngClass]="totalClass(getFactorTotal(greatFactor))">
+                  Total factores: {{ getFactorTotal(greatFactor) | number:'1.2-2' }}%
+                </span>
+              </div>
+
+              <div class="model-card-soft mb-3" *ngFor="let factor of greatFactor.factors; trackBy: trackById">
+                <div class="row align-items-center">
+                  <div class="col-xl-6 col-lg-6 col-md-12">
+                    <mat-form-field appearance="fill" class="w-100">
+                      <mat-label>Factor</mat-label>
+                      <input matInput [(ngModel)]="factor.name" />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="col-xl-3 col-lg-3 col-md-8">
+                    <mat-form-field appearance="fill" class="w-100">
+                      <mat-label>Ponderación</mat-label>
+                      <input matInput type="number" min="0" max="100" [(ngModel)]="factor.weight" />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="col-xl-3 col-lg-3 col-md-4 text-end">
+                    <button mat-icon-button color="warn" type="button" (click)="removePositionFactor(greatFactor, factor.id)" matTooltip="Quitar factor">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="model-behavior" *ngFor="let behavior of factor.behaviors; trackBy: trackById">
+                  <mat-checkbox [(ngModel)]="behavior.selected"></mat-checkbox>
+                  <mat-form-field appearance="fill" class="flex-grow-1">
+                    <mat-label>Comportamiento</mat-label>
+                    <textarea matInput rows="2" [(ngModel)]="behavior.text"></textarea>
+                  </mat-form-field>
+                  <button mat-icon-button color="warn" type="button" (click)="removeBehavior(factor, behavior.id)" matTooltip="Quitar comportamiento">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+
+                <button mat-button color="primary" type="button" (click)="addBehavior(factor)">
+                  <mat-icon>add</mat-icon>
+                  Agregar comportamiento
+                </button>
+              </div>
+
+              <button mat-stroked-button color="primary" type="button" (click)="addPositionFactor(greatFactor)">
+                <mat-icon>add</mat-icon>
+                Agregar factor
+              </button>
+            </div>
+          </div>
+
+          <ng-template #noPosition>
+            <div class="model-panel-body">
+              <div class="model-empty">No hay puestos disponibles para configurar.</div>
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="model-panel" *ngIf="activeStep === 6">
+          <div class="model-panel-header">
+            <div>
+              <h5 class="mb-1">Evaluados y evaluadores</h5>
+              <div class="model-muted">
+                Asigna quién evalúa a cada colaborador y cuánto pesa cada evaluación.
+              </div>
+            </div>
+          </div>
+
+          <div class="model-panel-body">
+            <div class="row align-items-end mb-3">
+              <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Filtrar por puesto</mat-label>
+                  <mat-select [(ngModel)]="selectedAssignmentPosition">
+                    <mat-option value="">Todos</mat-option>
+                    <mat-option *ngFor="let position of positions" [value]="position">
+                      {{ position }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Campo demográfico</mat-label>
+                  <mat-select [(ngModel)]="selectedAssignmentDemographicKey" (selectionChange)="selectedAssignmentDemographicValue = ''">
+                    <mat-option value="">Sin filtro</mat-option>
+                    <mat-option *ngFor="let field of demographicFilters" [value]="field.key">
+                      {{ field.key }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Valor demográfico</mat-label>
+                  <mat-select [(ngModel)]="selectedAssignmentDemographicValue" [disabled]="!selectedAssignmentDemographicKey">
+                    <mat-option value="">Todos</mat-option>
+                    <mat-option *ngFor="let value of selectedDemographicValues" [value]="value">
+                      {{ value }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-3 col-lg-12 col-md-6 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Seleccionar evaluado</mat-label>
+                  <mat-select [(ngModel)]="selectedEvaluatedId">
+                    <mat-option *ngFor="let employee of filteredEmployeesForAssignments" [value]="employee.id">
+                      {{ employee.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-12 mb-3">
+                <button mat-raised-button color="primary" type="button" (click)="addEvaluatorAssignment()">
+                  <mat-icon>add</mat-icon>
+                  Agregar evaluado
+                </button>
+              </div>
+            </div>
+
+            <div class="model-empty" *ngIf="evaluatorAssignments.length === 0">
+              No hay evaluados configurados todavía.
+            </div>
+
+            <div class="row">
+              <div class="col-xl-6 col-lg-12 mb-3" *ngFor="let assignment of evaluatorAssignments; trackBy: trackById">
+                <div class="model-assignment-card">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <div>
+                      <h5 class="mb-1">{{ getEmployeeName(assignment.evaluatedId) }}</h5>
+                      <div class="model-muted">{{ getEmployeePosition(assignment.evaluatedId) }}</div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="model-total" [ngClass]="totalClass(getAssignmentTotal(assignment))">
+                        {{ getAssignmentTotal(assignment) | number:'1.2-2' }}%
+                      </span>
+                      <button mat-icon-button color="warn" type="button" (click)="removeEvaluatorAssignment(assignment.id)" matTooltip="Quitar evaluado">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="row align-items-end">
+                    <div class="col-xl-5 col-lg-5 col-md-12 mb-2">
+                      <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Evaluador</mat-label>
+                        <mat-select [(ngModel)]="assignment.draftEvaluatorId">
+                          <mat-option *ngFor="let employee of getEvaluatorOptions(assignment.evaluatedId)" [value]="employee.id">
+                            {{ employee.name }}
+                          </mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                    </div>
+
+                    <div class="col-xl-4 col-lg-4 col-md-7 mb-2">
+                      <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Perspectiva</mat-label>
+                        <mat-select [(ngModel)]="assignment.draftPerspectiveId">
+                          <mat-option *ngFor="let perspective of selectedPerspectives" [value]="perspective.id">
+                            {{ perspective.name }}
+                          </mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                    </div>
+
+                    <div class="col-xl-2 col-lg-2 col-md-3 mb-2">
+                      <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Peso</mat-label>
+                        <input matInput type="number" min="0" max="100" [(ngModel)]="assignment.draftWeight" />
+                      </mat-form-field>
+                    </div>
+
+                    <div class="col-xl-1 col-lg-1 col-md-2 mb-2 text-end">
+                      <button mat-icon-button color="primary" type="button" (click)="addEvaluatorEntry(assignment)" matTooltip="Agregar evaluador">
+                        <mat-icon>add_circle</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="model-row" *ngFor="let entry of assignment.entries; trackBy: trackById">
+                    <div>
+                      <strong>{{ getEmployeeName(entry.evaluatorId) }}</strong>
+                      <div class="model-muted">{{ getPerspectiveName(entry.perspectiveId) }}</div>
+                    </div>
+
+                    <mat-form-field appearance="fill">
+                      <mat-label>Ponderación</mat-label>
+                      <input matInput type="number" min="0" max="100" [(ngModel)]="entry.weight" />
+                    </mat-form-field>
+
+                    <button mat-icon-button color="warn" type="button" (click)="removeEvaluatorEntry(assignment, entry.id)" matTooltip="Quitar evaluador">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <button mat-stroked-button type="button" [disabled]="activeStep === 1" (click)="previousStep()">
+            <mat-icon>arrow_back</mat-icon>
+            Anterior
+          </button>
+
+          <button mat-raised-button color="primary" type="button" [disabled]="activeStep === steps.length" (click)="nextStep()">
+            Siguiente
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,348 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="['Home', 'Desempeño']"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body table-responsive">
+            <div class="row mb-3">
+              <div class="col-xl-5 col-lg-6 col-md-8 col-sm-12">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{ 'MENUITEMS.ORGANIZATION.LIST.CREAR' | translate }}</mat-label>
+                  <mat-select
+                    [value]="selectedOrganizationId"
+                    [disabled]="isLoadingOrganizations"
+                    (selectionChange)="onOrganizationChange($event.value)"
+                  >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="table-loader" *ngIf="isLoadingFields">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+
+            <table mat-table [dataSource]="fieldsDataSource" class="table" *ngIf="hasSelectedOrganization && !isLoadingFields && fieldsDataSource.length > 0">
+              <ng-container matColumnDef="IdCampoDemografico">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let element">{{ element.IdCampoDemografico }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.FIELD' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Nombre }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Codigo">
+                <th mat-header-cell *matHeaderCellDef>Clave</th>
+                <td mat-cell *matCellDef="let element">{{ element.Codigo }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="TipoDato">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.DATATYPE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.TipoDato }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="requerido">
+                <th mat-header-cell *matHeaderCellDef>Requerido</th>
+                <td mat-cell *matCellDef="let element">{{ element.requerido ? 'Sí' : 'No' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="permiteMultiples">
+                <th mat-header-cell *matHeaderCellDef>Múltiples</th>
+                <td mat-cell *matCellDef="let element">{{ element.permiteMultiples ? 'Sí' : 'No' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="activo">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <span
+                    class="badge"
+                    [style.background]="element.activo ? '#d4f8e8' : '#ffe5e5'"
+                    [style.color]="element.activo ? '#0d8a53' : '#b42318'"
+                  >
+                    {{ getStatusLabel(element.activo) }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="Acciones">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="startEditField(element)"
+                    matTooltip="Editar campo"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+
+                  <button
+                    mat-icon-button
+                    [color]="element.activo ? 'warn' : 'accent'"
+                    (click)="toggleFieldStatus(element)"
+                    [matTooltip]="element.activo ? 'Desactivar campo' : 'Activar campo'"
+                  >
+                    <mat-icon>{{ element.activo ? 'delete' : 'restore' }}</mat-icon>
+                  </button>
+
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    *ngIf="element.TipoDato === 'LISTA'"
+                    (click)="openOptionsPanel(element)"
+                    matTooltip="Administrar opciones"
+                  >
+                    <mat-icon>format_list_bulleted</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+
+            <div class="text-center py-4" *ngIf="!hasSelectedOrganization && !isLoadingOrganizations">
+              Selecciona una organización para listar sus campos demográficos.
+            </div>
+
+            <div class="text-center py-4" *ngIf="hasSelectedOrganization && !isLoadingFields && fieldsDataSource.length === 0">
+              No hay campos demográficos registrados.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <mat-accordion>
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                {{ isEditingField ? 'Editar campo demográfico' : 'Crear campo demográfico' }}
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ 'MENUITEMS.DEMOGRAPHICS.EXPAND' | translate }}
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <form [formGroup]="campoForm">
+              <div class="row">
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.DEMOGRAPHICS.FIELD' | translate }}</mat-label>
+                    <input matInput formControlName="Nombre" />
+                    <mat-error *ngIf="campoForm.get('Nombre')?.hasError('required')">
+                      El nombre es obligatorio.
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>Clave</mat-label>
+                    <input matInput formControlName="Clave" />
+                    <mat-error *ngIf="campoForm.get('Clave')?.hasError('required')">
+                      La clave es obligatoria.
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.DEMOGRAPHICS.DATATYPE' | translate }}</mat-label>
+                    <mat-select formControlName="TipoDato">
+                      <mat-option *ngFor="let tipo of tipoDatoOptions" [value]="tipo.value">
+                        {{ tipo.label }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-checkbox formControlName="Requerido">
+                    Requerido
+                  </mat-checkbox>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-checkbox formControlName="Activo">
+                    Activo
+                  </mat-checkbox>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-checkbox formControlName="PermiteMultiples" [disabled]="!isListTypeSelected">
+                    Permite múltiples valores
+                  </mat-checkbox>
+                </div>
+              </div>
+
+              <div class="row" *ngIf="isListTypeSelected && !isEditingField">
+                <div class="col-12">
+                  <small class="text-muted">
+                    Guarda primero el campo para luego administrar sus opciones de catálogo.
+                  </small>
+                </div>
+              </div>
+            </form>
+
+            <div class="d-flex gap-2 flex-wrap">
+              <button mat-raised-button color="primary" [disabled]="isSavingField" (click)="onSubmitField()">
+                {{ 'MENUITEMS.DEMOGRAPHICS.SAVE' | translate }}
+              </button>
+
+              <button mat-stroked-button type="button" *ngIf="isEditingField" [disabled]="isSavingField" (click)="resetCampoForm()">
+                Cancelar edición
+              </button>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+    </div>
+
+    <div class="row" *ngIf="selectedOptionsField">
+      <div class="col-12">
+        <div class="card">
+          <div class="body table-responsive">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <div>
+                <h5 class="mb-1">Opciones de catálogo</h5>
+                <div class="text-muted">{{ selectedOptionsField.Nombre }} ({{ selectedOptionsField.Codigo }})</div>
+              </div>
+              <button mat-stroked-button type="button" (click)="closeOptionsPanel()">
+                Cerrar
+              </button>
+            </div>
+
+            <div class="table-loader" *ngIf="isLoadingOptions">
+              <mat-spinner diameter="36"></mat-spinner>
+            </div>
+
+            <table mat-table [dataSource]="optionsDataSource" class="table" *ngIf="!isLoadingOptions && optionsDataSource.length > 0">
+              <ng-container matColumnDef="IdCampoOpcion">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let element">{{ element.IdCampoOpcion }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Valor">
+                <th mat-header-cell *matHeaderCellDef>Valor</th>
+                <td mat-cell *matCellDef="let element">{{ element.Valor }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Orden">
+                <th mat-header-cell *matHeaderCellDef>Orden</th>
+                <td mat-cell *matCellDef="let element">{{ element.Orden }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="activo">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <span
+                    class="badge"
+                    [style.background]="element.activo ? '#d4f8e8' : '#ffe5e5'"
+                    [style.color]="element.activo ? '#0d8a53' : '#b42318'"
+                  >
+                    {{ getStatusLabel(element.activo) }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="Acciones">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="startEditOption(element)"
+                    matTooltip="Editar opción"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+
+                  <button
+                    mat-icon-button
+                    [color]="element.activo ? 'warn' : 'accent'"
+                    (click)="toggleOptionStatus(element)"
+                    [matTooltip]="element.activo ? 'Desactivar opción' : 'Activar opción'"
+                  >
+                    <mat-icon>{{ element.activo ? 'delete' : 'restore' }}</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="optionDisplayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: optionDisplayedColumns;"></tr>
+            </table>
+
+            <div class="text-center py-4" *ngIf="!isLoadingOptions && optionsDataSource.length === 0">
+              No hay opciones registradas para este campo.
+            </div>
+
+            <mat-accordion class="mt-3">
+              <mat-expansion-panel [expanded]="true">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    {{ isEditingOption ? 'Editar opción' : 'Crear opción' }}
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <form [formGroup]="opcionForm">
+                  <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 mb-2">
+                      <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Valor</mat-label>
+                        <input matInput formControlName="Valor" />
+                        <mat-error *ngIf="opcionForm.get('Valor')?.hasError('required')">
+                          El valor es obligatorio.
+                        </mat-error>
+                      </mat-form-field>
+                    </div>
+
+                    <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
+                      <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Orden</mat-label>
+                        <input matInput type="number" formControlName="Orden" />
+                        <mat-error *ngIf="opcionForm.get('Orden')?.hasError('required')">
+                          El orden es obligatorio.
+                        </mat-error>
+                        <mat-error *ngIf="opcionForm.get('Orden')?.hasError('min')">
+                          El orden debe ser mayor que cero.
+                        </mat-error>
+                      </mat-form-field>
+                    </div>
+                  </div>
+                </form>
+
+                <div class="d-flex gap-2 flex-wrap">
+                  <button mat-raised-button color="primary" [disabled]="isSavingOption" (click)="onSubmitOption()">
+                    {{ 'MENUITEMS.DEMOGRAPHICS.SAVE' | translate }}
+                  </button>
+
+                  <button mat-stroked-button type="button" *ngIf="isEditingOption" [disabled]="isSavingOption" (click)="resetOpcionForm()">
+                    Cancelar edición
+                  </button>
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

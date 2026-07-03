@@ -27,11 +27,49 @@
           </mat-form-field>
         </div>
 
+        <div class="col-12 col-md-4">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.POSITION' | translate }}</mat-label>
+            <input matInput formControlName="Cargo" required />
+          </mat-form-field>
+        </div>
+
         <!-- Fila 2 -->
         <div class="col-12 col-md-4">
           <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.PHONECOUNTRY' | translate }}</mat-label>
+            <mat-select formControlName="PhoneCountryIso" (selectionChange)="onPhoneCountryChange()">
+              <mat-option *ngFor="let country of phoneCountries" [value]="country.isoCode">
+                {{ getPhoneCountryLabel(country) }} ({{ country.dialCode }})
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="employeeFormX.get('PhoneCountryIso')?.hasError('phoneCountryRequired')">
+              {{ 'MENUITEMS.EMPLOYEE.PHONECOUNTRYREQUIRED' | translate }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <mat-form-field appearance="fill" class="w-100">
             <mat-label>{{ 'MENUITEMS.EMPLOYEE.PHONE' | translate }}</mat-label>
-            <input matInput formControlName="Celular" />
+            <span matTextPrefix *ngIf="selectedPhoneCountry">{{ selectedPhoneCountry.dialCode }}&nbsp;</span>
+            <input
+              matInput
+              formControlName="Celular"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              [maxlength]="selectedPhoneCountry?.maxDigits || maxPhoneLocalDigits"
+              (input)="onPhoneInput()"
+            />
+            <mat-hint>
+              {{ 'MENUITEMS.EMPLOYEE.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+            </mat-hint>
+            <mat-hint align="end" *ngIf="phonePreview">
+              {{ 'MENUITEMS.EMPLOYEE.PHONEPREVIEW' | translate:{ phone: phonePreview } }}
+            </mat-hint>
+            <mat-error *ngIf="employeeFormX.get('Celular')?.hasError('phoneLength')">
+              {{ 'MENUITEMS.EMPLOYEE.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+            </mat-error>
           </mat-form-field>
         </div>
 
@@ -51,6 +89,31 @@
               <mat-option [value]="2">WhatsApp</mat-option>
               <mat-option [value]="3">Email y WhatsApp</mat-option>
             </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.MANAGER' | translate }}</mat-label>
+            <input
+              matInput
+              class="employee-manager-input"
+              [value]="selectedManagerName"
+              readonly
+              placeholder="Sin jefe"
+              [disabled]="isSaving"
+              (click)="openManagerDialog()"
+            />
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              aria-label="Buscar jefe"
+              [disabled]="isSaving"
+              (click)="openManagerDialog()"
+            >
+              <mat-icon>search</mat-icon>
+            </button>
           </mat-form-field>
         </div>
 

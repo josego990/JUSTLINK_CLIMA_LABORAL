@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import axios from 'axios';
-import { ConfigInfo } from 'app/layout/sidebar/sidebar.metadata';
-import { relativeTimeThreshold } from 'moment';
+import { environment } from '../../../environments/environment';
+import { SKIP_SESSION_VALIDATION } from '../../core/interceptor/session-validation.context';
 
 @Injectable({
   providedIn: 'root',
@@ -13,94 +13,488 @@ export class OrganizacionService {
   private confslist:any = [];
 
   private baseURL = 'https://api.justlink360.net/';
-  private baseURL_DESA = 'http://98.88.117.108:3030/'
+  //private baseURL_DESA = 'http://98.88.117.108:3030/'
   private baseURLLocal = 'http://localhost:3030/';
 
-  //nota de jj: para alternar entre los ambientes del api se debe
-  //hacer un replace de 'this.baseURL' por ejemplo por 'this.baseURLLocal'
 
   constructor(private http: HttpClient) {
     try {
       if(this.configs){
-      this.confslist = JSON.parse(this.configs);
-      const c = this.confslist.find((config:any) => config.Nombre === 'API_BASE_URL');
-      this.baseURL= c.Valor + '/';
-      console.log('baseURL:: ', this.baseURL);
-    }
+        this.confslist = JSON.parse(this.configs);
+        const c = this.confslist.find((config:any) => config.Nombre === 'API_BASE_URL');
+        this.baseURL= c.Valor + '/';
+        console.log('baseURL:: ', this.baseURL);
+      }
     } 
     catch(error){
       console.error(error);
     }
   }
 
+  private isDemoModeActive(): boolean {
+    return !!environment.demo?.enabled;
+  }
+
+  private getApiEndpoint(endpoint: string): string {
+    const normalizedEndpoint = this.isDemoModeActive() && !endpoint.endsWith('_demo')
+      ? `${endpoint}_demo`
+      : endpoint;
+
+    return this.baseURLLocal + normalizedEndpoint;
+  }
+
+  private getRestApiEndpoint(endpoint: string): string {
+    return this.baseURLLocal + endpoint.replace(/^\/+/, '');
+  }
+
+  private getNoCacheConfig(params: Record<string, any> = {}) {
+    const token = this.getCurrentUserToken();
+
+    return {
+      params: {
+        ...params,
+        _ts: Date.now(),
+      },
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+      timeout: 15000,
+    };
+  }
+
+  private getNoCacheHttpOptions(params: Record<string, any> = {}) {
+    return {
+      ...this.getNoCacheConfig(params),
+      context: new HttpContext().set(SKIP_SESSION_VALIDATION, true),
+    };
+  }
+
+  private getAuthorizedHttpOptions(params: Record<string, any> = {}) {
+    const token = this.getCurrentUserToken();
+
+    return {
+      params,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+      context: new HttpContext().set(SKIP_SESSION_VALIDATION, true),
+    };
+  }
+
+  private getCurrentUserToken(): string | null {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      const token = currentUser?.token
+        ?? currentUser?.jwt
+        ?? currentUser?.jwtToken
+        ?? currentUser?.accessToken
+        ?? currentUser?.access_token
+        ?? currentUser?.idToken
+        ?? currentUser?.Token
+        ?? currentUser?.JWT;
+
+      return typeof token === 'string' && token.trim() ? token.trim() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getPublicRequestOptions(params?: Record<string, any>) {
+    return {
+      ...(params ? { params } : {}),
+      context: new HttpContext().set(SKIP_SESSION_VALIDATION, true),
+    };
+  }
+
   saveNewOrganization(organizacion: any) {
     return axios
-      .post(this.baseURLLocal + 'save-new-organization', JSON.stringify(organizacion));
+      .post(this.getApiEndpoint('save-new-organization'), JSON.stringify(organizacion));
+  }
+
+  login(userData: any) {
+    return axios
+      .post(this.getApiEndpoint('logni13'), userData);
   }
 
   updateOrganization(organizacion: any) {
     return axios
-      .post(this.baseURLLocal + 'update-organization', JSON.stringify(organizacion));
+      .post(this.getApiEndpoint('update-organization'), JSON.stringify(organizacion));
   }
 
   getOrganizations() {
     return axios
-      .get(this.baseURLLocal +'get-organizations');
+      .get(this.getApiEndpoint('get-organizations'));
+  }
+
+  getDesempenoOrganizations() {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/organizaciones'),
+        this.getNoCacheConfig()
+      );
+  }
+
+  getDesempenoOrganizationsHttp() {
+    return this.http.get(
+      this.getRestApiEndpoint('api/desempeno/organizaciones'),
+      this.getNoCacheConfig()
+    );
+  }
+
+  getDesempenoEmployees(params?: Record<string, any>) {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/empleados'),
+        this.getNoCacheConfig(params ?? {})
+      );
+  }
+
+  getDesempenoOrganigrama(idOrganizacion: number) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/organizacion/organigrama'), {
+        params: { idOrganizacion },
+      });
+  }
+
+  getDesempenoDashboard(idOrganizacion: number) {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/dashboard'),
+        this.getNoCacheConfig({ idOrganizacion })
+      );
+  }
+
+  getDesempenoDashboardHttp(idOrganizacion: number) {
+    return this.http.get(
+      this.getRestApiEndpoint('api/desempeno/dashboard'),
+      this.getNoCacheConfig({ idOrganizacion })
+    );
+  }
+
+  getDesempenoScales(params?: Record<string, any>) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/escalas'), { params });
+  }
+
+  getDesempenoCatalogs(params?: Record<string, any>) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/catalogos'), { params });
+  }
+
+  getDesempenoModelTypeScenarios(typeCode: string) {
+    return axios
+      .get(
+        this.getRestApiEndpoint(
+          `api/desempeno/catalogos/tipos-modelo/${encodeURIComponent(typeCode)}/escenarios`
+        )
+      );
+  }
+
+  getDesempenoPositions(params?: Record<string, any>) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/puestos'), { params });
+  }
+
+  getDesempenoModels(idOrganizacion: number, params?: Record<string, any>) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/modelos'), {
+        params: {
+          ...params,
+          idOrganizacion,
+        },
+      });
+  }
+
+  getDesempenoModelsHttp(idOrganizacion: number, params?: Record<string, any>) {
+    return this.http.get(
+      this.getRestApiEndpoint('api/desempeno/modelos'),
+      this.getNoCacheHttpOptions({
+        ...params,
+        idOrganizacion,
+      })
+    );
+  }
+
+  getDesempenoModelsSelectHttp(idOrganizacion: number) {
+    return this.http.get(
+      this.getRestApiEndpoint('api/desempeno/modelos/select'),
+      this.getAuthorizedHttpOptions({ idOrganizacion })
+    );
+  }
+
+  getDesempenoGroupedResponsesByModel(id: number, idOrganizacion: number) {
+    return axios
+      .get(
+        this.getRestApiEndpoint(`api/desempeno/modelos/${id}/respuestas-agrupadas`),
+        this.getNoCacheConfig({ idOrganizacion })
+      );
+  }
+
+  getDesempenoAiActionPlans(idOrganizacion: number, modeloId: number) {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/ia/planes-accion'),
+        this.getNoCacheConfig({ idOrganizacion, modeloId })
+      );
+  }
+
+  generateDesempenoAiActionPlan(payload: any) {
+    const config = this.getNoCacheConfig();
+    return axios
+      .post(
+        this.getRestApiEndpoint('api/desempeno/ia/planes-accion'),
+        payload,
+        {
+          ...config,
+          timeout: 180000,
+        }
+      );
+  }
+
+  getDesempenoModelById(id: number, idOrganizacion: number) {
+    return axios
+      .get(this.getRestApiEndpoint(`api/desempeno/modelos/${id}`), {
+        params: { idOrganizacion },
+      });
+  }
+
+  saveDesempenoModel(model: any) {
+    return axios
+      .post(this.getRestApiEndpoint('api/desempeno/modelos'), model);
+  }
+
+  updateDesempenoModel(id: number, model: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/modelos/${id}`), model);
+  }
+
+  createDesempenoIndividualSurveySend(payload: {
+    organizationId: number;
+    IdModelo: number;
+    IdEmpleado: number;
+    Estado: string;
+    IdsEmpleadosEnviar: number[];
+  }) {
+    return axios
+      .post(
+        this.getRestApiEndpoint('api/desempeno/crear-envio-encuesta-individual'),
+        payload
+      );
+  }
+
+  getDesempenoSurveySends(
+    idModelo: number,
+    idEmpleado: number,
+    organizationId: number
+  ) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/envios-encuesta'), {
+        params: { idModelo, idEmpleado, organizationId },
+      });
+  }
+
+  getDesempenoSurveySendById(id: number) {
+    return axios
+      .get(this.getRestApiEndpoint(`api/desempeno/envios-encuesta/${id}`));
+  }
+
+  getDesempenoEvaluationForm(
+    idEmpleado: number,
+    idEmpleadoEvaluado: number
+  ) {
+    return this.http.get(
+      this.getRestApiEndpoint('api/desempeno/formulario-evaluacion'),
+      this.getPublicRequestOptions({
+        idEmpleado,
+        idEmpleadoEvaluado,
+      })
+    );
+  }
+
+  saveDesempenoResponseDraft(token: string, payload: any) {
+    return this.http.put(
+      this.getRestApiEndpoint(
+        `api/desempeno/respuestas/token/${encodeURIComponent(token)}`
+      ),
+      payload,
+      this.getPublicRequestOptions()
+    );
+  }
+
+  finalizeDesempenoResponse(token: string, payload: any) {
+    return this.http.post(
+      this.getRestApiEndpoint(
+        `api/desempeno/respuestas/token/${encodeURIComponent(token)}/finalizar`
+      ),
+      payload,
+      this.getPublicRequestOptions()
+    );
+  }
+
+  sendDesempenoEmail(payload: any) {
+    return axios
+      .post(this.getRestApiEndpoint('send-email-just-link-desempeno'), payload);
+  }
+
+  saveDesempenoScale(scale: any) {
+    return axios
+      .post(this.getRestApiEndpoint('api/desempeno/escalas'), scale);
+  }
+
+  getDesempenoScaleById(id: number) {
+    return axios
+      .get(this.getRestApiEndpoint(`api/desempeno/escalas/${id}`));
+  }
+
+  updateDesempenoScale(id: number, scale: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/escalas/${id}`), scale);
+  }
+
+  updateDesempenoScaleDetail(id: number, payload: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/escalas/${id}/detalle`), payload);
+  }
+
+  getDesempenoEmployeeById(id: number) {
+    return axios
+      .get(this.getRestApiEndpoint(`api/desempeno/empleados/${id}`));
+  }
+
+  saveDesempenoEmployee(employee: any) {
+    return axios
+      .post(this.getRestApiEndpoint('api/desempeno/empleados'), employee);
+  }
+
+  updateDesempenoEmployee(id: number, employee: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/empleados/${id}`), employee);
+  }
+
+  updateDesempenoEmployeeDemographics(id: number, payload: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/empleados/${id}/demograficos`), payload);
+  }
+
+  getDesempenoCamposDemograficos(params?: Record<string, any>) {
+    return axios
+      .get(this.getRestApiEndpoint('api/desempeno/campos-demograficos'), { params });
+  }
+
+  saveDesempenoCampoDemografico(campo: any) {
+    return axios
+      .post(this.getRestApiEndpoint('api/desempeno/campos-demograficos'), campo);
+  }
+
+  updateDesempenoCampoDemografico(id: number, campo: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}`), campo);
+  }
+
+  updateDesempenoCampoDemograficoEstado(id: number, estado: { activo: boolean }) {
+    return axios
+      .patch(this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}/estado`), estado);
+  }
+
+  getDesempenoCampoDemograficoOpciones(id: number) {
+    return axios
+      .get(this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}/opciones`));
+  }
+
+  saveDesempenoCampoDemograficoOpcion(id: number, opcion: any) {
+    return axios
+      .post(this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}/opciones`), opcion);
+  }
+
+  updateDesempenoCampoDemograficoOpcion(id: number, idOpcion: number, opcion: any) {
+    return axios
+      .put(
+        this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}/opciones/${idOpcion}`),
+        opcion
+      );
+  }
+
+  updateDesempenoCampoDemograficoOpcionEstado(
+    id: number,
+    idOpcion: number,
+    estado: { activo: boolean }
+  ) {
+    return axios
+      .patch(
+        this.getRestApiEndpoint(`api/desempeno/campos-demograficos/${id}/opciones/${idOpcion}/estado`),
+        estado
+      );
+  }
+
+  saveDesempenoOrganization(organizacion: any) {
+    return axios
+      .post(this.getRestApiEndpoint('api/desempeno/organizaciones'), organizacion);
+  }
+
+  updateDesempenoOrganization(id: number, organizacion: any) {
+    return axios
+      .put(this.getRestApiEndpoint(`api/desempeno/organizaciones/${id}`), organizacion);
   }
 
 
   getOrganizationIdByFlujoId(IdFlujo:any) {
     return axios
-      .post(this.baseURLLocal +'get-org-by-flujo-id', {IdFlujo:IdFlujo});
+      .post(this.getApiEndpoint('get-org-by-flujo-id'), {IdFlujo:IdFlujo});
   }
 
 
   getOrganizationById(idOrganization: any) {
     return axios
-      .post(this.baseURLLocal +'get-organization-by-id',{idOrganization:idOrganization});
+      .post(this.getApiEndpoint('get-organization-by-id'),{idOrganization:idOrganization});
   }
 
   deleteOrganization(idOrganization:number) {
    //console.log('DR. HOUSE ',idOrganization);
 
-    return axios.post(this.baseURLLocal +'delete-organization', {idOrganization:idOrganization});
+    return axios.post(this.getApiEndpoint('delete-organization'), {idOrganization:idOrganization});
   }
 
   getCountries() {
     return axios
-      .get(this.baseURLLocal +'get-countries');
+      .get(this.getApiEndpoint('get-countries'));
   }
 
   saveNewEmployee(employee: any) {
     return axios
-      .post(this.baseURLLocal +'insert-employeeSecure', employee);
+      .post(this.getApiEndpoint('insert-employeeSecure'), employee);
   }
 
   updateEmployee(employee: any) {
     return axios
-      .post(this.baseURLLocal +'update-employeeSecure', employee);
+      .post(this.getApiEndpoint('update-employeeSecure'), employee);
   }
 
   saveNewEmployeesExcel(employees: any) {
     return axios
-      .post(this.baseURLLocal +'insert-employees-batch', employees);
+      .post(this.getApiEndpoint('insert-employees-batch'), employees);
   }
 
   saveNewPreguntasExcel(preguntas: any) {
     return axios
-      .post(this.baseURLLocal +'insert-preguntas-excel', preguntas);
+      .post(this.getApiEndpoint('insert-preguntas-excel'), preguntas);
   }
 
   getEmployees(idOrganization:number) {
     //console.log('ID ORGANIZACION::', idOrganization);
     return axios
-      .post(this.baseURLLocal +'get-employees', {idOrganization:idOrganization});
+      .post(this.getApiEndpoint('get-employees'), {idOrganization:idOrganization});
   }
 
   deleteEmployee(idEmployee:number) {
     //console.log('DR. idEmployee ',idEmployee);
     const d = {id:idEmployee};
-    return axios.post(this.baseURLLocal +'delete-Employee', {
+    return axios.post(this.getApiEndpoint('delete-Employee'), {
       idEmployee:idEmployee
     });
   }
@@ -108,7 +502,7 @@ export class OrganizacionService {
   activeEmployee(idEmployee:number) {
     //console.log('DR. idEmployee ',idEmployee);
     const d = {id:idEmployee};
-    return axios.post(this.baseURLLocal +'active-Employee', {
+    return axios.post(this.getApiEndpoint('active-Employee'), {
       idEmployee:idEmployee
     });
   }
@@ -116,13 +510,13 @@ export class OrganizacionService {
   getDemograficos(idOrganization:number) {
     //console.log('ID ORGANIZACION::', idOrganization);
     return axios
-      .post(this.baseURLLocal +'get-demograficos', {idOrganization:idOrganization});
+      .post(this.getApiEndpoint('get-demograficos'), {idOrganization:idOrganization});
   }
 
   deleteDemografico(idDemografico:number) {
     //console.log('DR. idEmployee ',idEmployee);
     const d = {id:idDemografico};
-    return axios.post(this.baseURLLocal +'delete-demografico', {
+    return axios.post(this.getApiEndpoint('delete-demografico'), {
       idDemografico:idDemografico
     });
   }
@@ -130,7 +524,7 @@ export class OrganizacionService {
   activeDemografico(idDemografico:number) {
     //console.log('DR. idEmployee ',idEmployee);
     const d = {id:idDemografico};
-    return axios.post(this.baseURLLocal +'active-demografico', {
+    return axios.post(this.getApiEndpoint('active-demografico'), {
       idDemografico:idDemografico
     });
   }
@@ -139,7 +533,7 @@ export class OrganizacionService {
    //console.log('CAMPO: ',campo);
     const data = {idOrganizacion:idOrganizacion,campo:campo.NombreCampo}
    //console.log('data: ',data);
-    return axios.post(this.baseURLLocal +'insert-demographic-field', data);
+    return axios.post(this.getApiEndpoint('insert-demographic-field'), data);
   }
 
   saveNewClima(data_clima: any) {    
@@ -147,14 +541,14 @@ export class OrganizacionService {
     //const data = {idOrganizacion:idOrganizacion,campo:campo.NombreCampo}
     //console.log('data: ',data);
 
-    return axios.post(this.baseURLLocal +'insert-flujo-clima', data_clima);
+    return axios.post(this.getApiEndpoint('insert-flujo-clima'), data_clima);
   }
 
   uploadFileV2(
     formData: FormData,
     onProgress?: (percent: number, event: any) => void
   ) {
-    return axios.post(this.baseURLLocal +'upload-file-v2', formData, {
+    return axios.post(this.getApiEndpoint('upload-file-v2'), formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
         const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
@@ -167,181 +561,181 @@ export class OrganizacionService {
 
   getClimas(idOrganization:number) {    
     return axios
-      .post(this.baseURLLocal +'get-flujos-clima-json', {idOrganizacion:idOrganization});
+      .post(this.getApiEndpoint('get-flujos-clima-json'), {idOrganizacion:idOrganization});
   }
 
   getClimasById(idOrganization:number) {    
     return axios
-      .post(this.baseURLLocal +'get-flujos-clima-by-id-json', {idOrganizacion:idOrganization});
+      .post(this.getApiEndpoint('get-flujos-clima-by-id-json'), {idOrganizacion:idOrganization});
   }
 
   getFactores(idOrganization:number) {    
     return axios
-      .post(this.baseURLLocal +'get-factores-json', {idOrganizacion:idOrganization});
+      .post(this.getApiEndpoint('get-factores-json'), {idOrganizacion:idOrganization});
   }
 
   getGrandesFactores(idFlujo:number) {    
     return axios
-      .post(this.baseURLLocal +'get-grandes-factores', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-grandes-factores'), {IdFlujo:idFlujo});
   }
 
    saveNewGFactor(data_gfactor: any) {    
     //console.log('DATA_GRAN_FACTOR_A_GUARDAR: ', data_gfactor);
 
-    return axios.post(this.baseURLLocal +'insert-gran-factor', data_gfactor);
+    return axios.post(this.getApiEndpoint('insert-gran-factor'), data_gfactor);
   
   }
 
   saveNewFactor(data_factor: any) {    
    //console.log('DATA_FACTOR_A_GUARDAR: ', data_factor);
 
-    return axios.post(this.baseURLLocal +'insert-factor', data_factor);
+    return axios.post(this.getApiEndpoint('insert-factor'), data_factor);
   }
 
   deleteFactor(idFactor:number) {
     //console.log('DR. idEmployee ',idEmployee);
     const d = {idFactor:idFactor};
-    return axios.post(this.baseURLLocal +'delete-factor', d);
+    return axios.post(this.getApiEndpoint('delete-factor'), d);
   }
 
   updateClima(clima_data:any) {    
 
     return axios
-      .post(this.baseURLLocal +'update-clima-status', clima_data);
+      .post(this.getApiEndpoint('update-clima-status'), clima_data);
   }
 
   saveNewPregunta(data_pregunta: any) {    
    //console.log('DATA_PREGUNTA_A_GUARDAR: ', data_pregunta);
 
-    return axios.post(this.baseURLLocal +'insert-pregunta', data_pregunta);
+    return axios.post(this.getApiEndpoint('insert-pregunta'), data_pregunta);
   }
 
   updatePregunta(pregunta_data:any) {    
     return axios
-      .post(this.baseURLLocal +'update-pregunta-estado', pregunta_data);
+      .post(this.getApiEndpoint('update-pregunta-estado'), pregunta_data);
   }
 
   crearEnvioEncuesta(idFlujo:number) {
 
     const d = {IdFlujo:idFlujo};
-    return axios.post(this.baseURLLocal +'crear-envio-encuestas', d);
+    return axios.post(this.getApiEndpoint('crear-envio-encuestas'), d);
   }
 
   crearEnvioEncuestaIndividual(datos:any) {
 
  
-    return axios.post(this.baseURLLocal +'crear-envio-encuesta-individual', datos);
+    return axios.post(this.getApiEndpoint('crear-envio-encuesta-individual'), datos);
   }
 
   getEncuestasFlujo(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-encuestas-flujo', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-encuestas-flujo'), {IdFlujo:idFlujo});
   }
 
   sendEmail(mailBody: any) {
 
     return axios
-      .post(this.baseURLLocal +'send-email-just-link', mailBody);
+      .post(this.getApiEndpoint('send-email-just-link'), mailBody);
   }
 
   updateEncuestaEmpleado(update_data: any) {
 
     return axios
-      .post(this.baseURLLocal +'actualizar-encuesta-empleado', update_data);
+      .post(this.getApiEndpoint('actualizar-encuesta-empleado'), update_data);
   }
 
   updateEncuestaEncabezado(update_data: any) {
 
     return axios
-      .post(this.baseURLLocal +'actualizar-envio-encuesta-encabezado', update_data);
+      .post(this.getApiEndpoint('actualizar-envio-encuesta-encabezado'), update_data);
   }
 
   sendWhatsappMessage(mesaje_data: any) {
 
     return axios
-      .post(this.baseURLLocal +'api/send-whatsapp-template-temp', mesaje_data);
+      .post(this.getApiEndpoint('api/send-whatsapp-template-temp'), mesaje_data);
   }
 
    sendWhatsappMessageProd(mesaje_data: any) {
 
     return axios
-      .post(this.baseURLLocal +'api/s-w-t-j', mesaje_data);
+      .post(this.getApiEndpoint('api/s-w-t-j'), mesaje_data);
   }
 
 
   saveNewTemplate(template_data: any) {    
    //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'insert-plantilla', template_data);
+    return axios.post(this.getApiEndpoint('insert-plantilla'), template_data);
   }
 
   getFlujosPlantilla(idOrganizacion:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-flujos-con-plantilla', {IdOrganizacion:idOrganizacion});
+      .post(this.getApiEndpoint('get-flujos-con-plantilla'), {IdOrganizacion:idOrganizacion});
   }
 
   getFlujoPlantilla(IdFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-clima-plantilla', {IdFlujo:IdFlujo});
+      .post(this.getApiEndpoint('get-clima-plantilla'), {IdFlujo:IdFlujo});
   }
 
   getPreguntasClima(idFlujo:number) {    
     return axios
-      .post(this.baseURLLocal +'get-clima-json', {idFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-clima-json'), {idFlujo:idFlujo});
   }
 
   getPreguntasClimaGF(idFlujo:number,idEmpleado:number) {    
     return axios
-      .post(this.baseURLLocal +'get-clima-json-gf', {idFlujo:idFlujo,idEmpleado:idEmpleado});
+      .post(this.getApiEndpoint('get-clima-json-gf'), {idFlujo:idFlujo,idEmpleado:idEmpleado});
   }
 
   savePreguntas(preguntas_data: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'guardar-encuesta-empleado', preguntas_data);
+    return axios.post(this.getApiEndpoint('guardar-encuesta-empleado'), preguntas_data);
   }
 
   updateClimaEncuesta(clima_data:any) {    
 
     return axios
-      .post(this.baseURLLocal +'update-encuesta-empleado', clima_data);
+      .post(this.getApiEndpoint('update-encuesta-empleado'), clima_data);
   }
 
   getClimaInfo(clima_data:any) {    
     return axios
-      .post(this.baseURLLocal +'get-encuesta-info', clima_data);
+      .post(this.getApiEndpoint('get-encuesta-info'), clima_data);
   }
 
   getEmpleadoInfo(IdEmpleado:any) {    
     return axios
-      .post(this.baseURLLocal +'get-empleado-info', {IdEmpleado:IdEmpleado});
+      .post(this.getApiEndpoint('get-empleado-info'), {IdEmpleado:IdEmpleado});
   }
 
   getFlujosLista(idOrganizacion:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-flujos-list', {IdOrganizacion:idOrganizacion});
+      .post(this.getApiEndpoint('get-flujos-list'), {IdOrganizacion:idOrganizacion});
   }
 
   getMetricaFactores(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-factores', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-factores'), {IdFlujo:idFlujo});
   }
 
   getMetricaFactoresFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-factores-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post(this.getApiEndpoint('get-metrica-factores-filtrado'), {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaFactoresFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string, tipoFiltro:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-factores-filtrado-gf',
+      .post(this.getApiEndpoint('get-metrica-factores-filtrado-gf'),
         {IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
           FiltrosGf: filtrosGf,
@@ -352,13 +746,13 @@ export class OrganizacionService {
   getMetricaComments(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-comments', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-comments'), {IdFlujo:idFlujo});
   }
 
   getMetricaCommentsGF(idFlujo:number, filtrosGf:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-comments-gf', 
+      .post(this.getApiEndpoint('get-metrica-comments-gf'), 
         {
           IdFlujo:idFlujo,
           FiltrosGf: filtrosGf
@@ -369,13 +763,13 @@ export class OrganizacionService {
   getMetricaCommentsia(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-comments-ia', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-comments-ia'), {IdFlujo:idFlujo});
   }
 
   getMetricaCommentsIAGF(idFlujo:number, filtrosGf:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-comments-ia-gf', 
+      .post(this.getApiEndpoint('get-metrica-comments-ia-gf'), 
         {
           IdFlujo:idFlujo,
           FiltrosGf: filtrosGf
@@ -385,18 +779,18 @@ export class OrganizacionService {
  getMetricaConteoPreguntasFactores(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-conteo-factores', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-conteo-factores'), {IdFlujo:idFlujo});
   }
 
  getMetricaConteoPreguntasFactoresFILTRADO(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-conteo-factores-FILTRADO', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post(this.getApiEndpoint('get-metrica-conteo-factores-FILTRADO'), {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaConteoPreguntasFactoresFILTRADOGF(idFlujo:number, filtros:string, filtrosGf:string) {
     return axios
-      .post(this.baseURLLocal +'get-metrica-conteo-factores-FILTRADO-gf',
+      .post(this.getApiEndpoint('get-metrica-conteo-factores-FILTRADO-gf'),
         {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
@@ -407,20 +801,20 @@ export class OrganizacionService {
   getMetricaSatisfaccionPreguntas(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-satisfaccion-preguntas', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-satisfaccion-preguntas'), {IdFlujo:idFlujo});
   }
 
   getMetricaSatisfaccionPreguntasFILTRADO(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-satisfaccion-preguntas-FILTRADO', 
+      .post(this.getApiEndpoint('get-metrica-satisfaccion-preguntas-FILTRADO'), 
         {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaSatisfaccionPreguntasFILTRADOGF(idFlujo:number, filtros:string, filtrosGf:string, tipoFiltro:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-satisfaccion-preguntas-filtrado-gf', 
+      .post(this.getApiEndpoint('get-metrica-satisfaccion-preguntas-filtrado-gf'), 
         {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
@@ -432,20 +826,20 @@ export class OrganizacionService {
   getMetricaCalificacionGeneralClima(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-calificacion-general', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-calificacion-general'), {IdFlujo:idFlujo});
   }
 
   getMetricaCalificacionGeneralClimaFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-calificacion-general-filtrado', {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
+      .post(this.getApiEndpoint('get-metrica-calificacion-general-filtrado'), {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaCalificacionGeneralClimaFiltradoGF(idFlujo:number, filtros:string, 
     filtrosGf:string, tipoFiltro:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-calificacion-general-filtrado-gf', 
+      .post(this.getApiEndpoint('get-metrica-calificacion-general-filtrado-gf'), 
         {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
@@ -458,7 +852,7 @@ export class OrganizacionService {
     filtrosGf:string, tipoFiltro:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-all-dash-metrics', 
+      .post(this.getApiEndpoint('get-all-dash-metrics'), 
         {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
@@ -470,26 +864,26 @@ export class OrganizacionService {
   getMetricaEstadoEnvioClima(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-estado-envio', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-estado-envio'), {IdFlujo:idFlujo});
   }
 
   getMetricaPorcentajeRespuestas(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-respuestas', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-porcentaje-respuestas'), {IdFlujo:idFlujo});
   }
 
   getMetricaPorcentajeRespuestasFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-respuestas-filtrado', 
+      .post(this.getApiEndpoint('get-metrica-porcentaje-respuestas-filtrado'), 
         {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaPorcentajeRespuestasFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-respuestas-filtrado-gf', 
+      .post(this.getApiEndpoint('get-metrica-porcentaje-respuestas-filtrado-gf'), 
         {IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
           FiltrosGf: filtrosGf
@@ -500,20 +894,20 @@ export class OrganizacionService {
   getMetricaPorcentajeSatisfaccionFactor(idFlujo:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-satisfaccion-factor', {IdFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-metrica-porcentaje-satisfaccion-factor'), {IdFlujo:idFlujo});
   }
 
   getMetricaPorcentajeSatisfaccionFactorFiltrado(idFlujo:number, filtros:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-satisfaccion-factor-filtrado', 
+      .post(this.getApiEndpoint('get-metrica-porcentaje-satisfaccion-factor-filtrado'), 
         {IdFlujo:idFlujo,FiltrosDemograficos:filtros});
   }
 
   getMetricaPorcentajeSatisfaccionFactorFiltradoGF(idFlujo:number, filtros:string, filtrosGf:string) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-porcentaje-satisfaccion-factor-filtrado-gf', 
+      .post(this.getApiEndpoint('get-metrica-porcentaje-satisfaccion-factor-filtrado-gf'), 
         {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
@@ -525,7 +919,7 @@ export class OrganizacionService {
   getMetricaDemograficos(idOrg:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-metrica-demograficos', 
+      .post(this.getApiEndpoint('get-metrica-demograficos'), 
         {
           IdOrg:idOrg
           
@@ -535,7 +929,7 @@ export class OrganizacionService {
   getFiltrosDemograficosRestrictivo(idOrg:number, idFlujo:number, minRespuestas: number) {
 
     return axios
-      .post(this.baseURLLocal +'get-factores-demograficos-restrictivo', 
+      .post(this.getApiEndpoint('get-factores-demograficos-restrictivo'), 
         {
           IdOrg: idOrg,
           IdFlujo: idFlujo,
@@ -546,7 +940,7 @@ export class OrganizacionService {
   getFiltrosDemograficosArbol(idOrg:number) {
 
     return axios
-      .post(this.baseURLLocal +'get-factores-demograficos-arbol', 
+      .post(this.getApiEndpoint('get-factores-demograficos-arbol'), 
         {
           IdOrg: idOrg     
         });
@@ -554,96 +948,100 @@ export class OrganizacionService {
 
   logni13(user:any) {
    //console.log('ENTRA EN LOGIN..');
-    return axios
-      .post(this.baseURLLocal +'logni13', user);
+    return this.login(user);
 
   }
 
   getMenuAccess(RoleId:any) {
   
     return axios
-      .post(this.baseURLLocal +'get-access-menu', {RoleId: RoleId});
+      .post(this.getApiEndpoint('get-access-menu'), {RoleId: RoleId});
 
   }
 
   getUsers() {
     return axios
-      .post(this.baseURLLocal +'get-users-json');
+      .get(this.getApiEndpoint('get-users-json'));
+  }
+
+  getUsersByIdOrg(idOrganization:any) {
+    return axios
+      .post(this.getApiEndpoint('get-users-by-id-org-json'),{idOrganization:idOrganization});
   }
   
   getRoles() {
     return axios
-      .get(this.baseURLLocal +'get-roles-json');
+      .get(this.getApiEndpoint('get-roles-json'));
   }
 
   getRolesByIdOrg(idOrganization:any) {
     return axios
-      .post(this.baseURLLocal +'get-roles-by-id-org-json',{idOrganization:idOrganization});
+      .post(this.getApiEndpoint('get-roles-by-id-org-json'),{idOrganization:idOrganization});
   }
 
   saveUser(userData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'insert-user', userData);
+    return axios.post(this.getApiEndpoint('insert-user'), userData);
   }
 
   updateUser(userData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'update-user', userData);
+    return axios.post(this.getApiEndpoint('update-user'), userData);
   }
 
   getRolesAccess() {
   
     return axios
-      .get(this.baseURLLocal +'get-roles-access-json');
+      .get(this.getApiEndpoint('get-roles-access-json'));
 
   }
 
   getRolesAccessByIdOrg(idOrganization:any) {
   
     return axios
-      .post(this.baseURLLocal +'get-roles-access-by-id-org-json', {idOrganization:idOrganization});
+      .post(this.getApiEndpoint('get-roles-access-by-id-org-json'), {idOrganization:idOrganization});
 
   }
 
   saveRole(roleData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'insert-role', roleData);
+    return axios.post(this.getApiEndpoint('insert-role'), roleData);
   }
 
    updateRoleAccess(updRoleData: any) {    
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.baseURLLocal +'update-role-access', updRoleData);
+    return axios.post(this.getApiEndpoint('update-role-access'), updRoleData);
   }
 
   getUserById(userId:any) {
   
     return axios
-      .post(this.baseURLLocal +'get-user-by-id-json', {userId:userId});
+      .post(this.getApiEndpoint('get-user-by-id-json'), {userId:userId});
 
   }
 
    getGFactorsAccessByIdFlujo(idFlujo:any) {
   
     return axios
-      .post(this.baseURLLocal +'get-gfactors-access-by-id-flujo-json', {idFlujo:idFlujo});
+      .post(this.getApiEndpoint('get-gfactors-access-by-id-flujo-json'), {idFlujo:idFlujo});
 
   }
 
   updateGFactorsAccessByIdFlujo(data:any) {
   
     return axios
-      .post(this.baseURLLocal +'update-gf-access', data);
+      .post(this.getApiEndpoint('update-gf-access'), data);
 
   }
 
    getConfigs() {
   
     return axios
-      .get(this.baseURLLocal +'get-conf-json');
+      .get(this.getApiEndpoint('get-conf-json'));
 
   }
 
@@ -651,49 +1049,49 @@ export class OrganizacionService {
   //encuesta orden
    updateGFactorsOrder(data:any) {
     return axios
-      .post(this.baseURLLocal +'update-orden-gran-factores', data);
+      .post(this.getApiEndpoint('update-orden-gran-factores'), data);
   }
 
   updateFactorsOrder(data:any) {
     return axios
-      .post(this.baseURLLocal +'update-orden-factores', data);
+      .post(this.getApiEndpoint('update-orden-factores'), data);
   }
 
   updatePreguntasOrder(data:any) {
     return axios
-      .post(this.baseURLLocal +'update-orden-preguntas', data);
+      .post(this.getApiEndpoint('update-orden-preguntas'), data);
   }
 
   updatePreguntaLabel(data:any) {    
     return axios
-      .post(this.baseURLLocal +'update-pregunta-label', data);
+      .post(this.getApiEndpoint('update-pregunta-label'), data);
   }
 
   insertPreguntaOpcion(data:any) {    
     return axios
-      .post(this.baseURLLocal +'insert-pregunta-option', data);
+      .post(this.getApiEndpoint('insert-pregunta-option'), data);
   }
 
   updatePreguntaRango(data:any) {    
     return axios
-      .post(this.baseURLLocal +'update-pregunta-range', data);
+      .post(this.getApiEndpoint('update-pregunta-range'), data);
   }
 
   updatePreguntaLikertOptions(data:any) {
     return axios
-      .post(this.baseURLLocal +'update-pregunta-likert-options', data);
+      .post(this.getApiEndpoint('update-pregunta-likert-options'), data);
   }
 
   insertEmailTemplate(data:any) {    
     return axios
-      .post(this.baseURLLocal +'upsert-email-template', data);
+      .post(this.getApiEndpoint('upsert-email-template'), data);
   }
 
 
   enviarCorreoIndividual(mailBody: any) {
 
     return axios
-      .post(this.baseURLLocal +'smjl-ind', mailBody);
+      .post(this.getApiEndpoint('smjl-ind'), mailBody);
   }
 
 
@@ -701,26 +1099,26 @@ export class OrganizacionService {
   obtenerPlantillasCorreoOrg(data: any) {
 
     return axios
-      .post(this.baseURLLocal +'get-email-templates-by-org', data);
+      .post(this.getApiEndpoint('get-email-templates-by-org'), data);
   }
 
   obtenerPlantillasCorreoByFlujo(data: any) {
 
     return axios
-      .post(this.baseURLLocal +'get-email-templates-by-flow', data);
+      .post(this.getApiEndpoint('get-email-templates-by-flow'), data);
   }
 
 
    enviarCorreosPendienteClima(idFlujo:any) {
 
     return axios
-      .post(this.baseURLLocal +'send-email-pendientes-just-link', idFlujo);
+      .post(this.getApiEndpoint('send-email-pendientes-just-link'), idFlujo);
   }
 
   enviarCorreosCompletadosClima(idFlujo:any) {
 
     return axios
-      .post(this.baseURLLocal +'send-email-completadas-just-link', idFlujo);
+      .post(this.getApiEndpoint('send-email-completadas-just-link'), idFlujo);
       
   }
 
@@ -728,14 +1126,14 @@ export class OrganizacionService {
   enviarCorreosTodosActivos(idFlujo:any) {
 
     return axios
-      .post(this.baseURLLocal +'send-email-todos-activos-just-link', idFlujo);
+      .post(this.getApiEndpoint('send-email-todos-activos-just-link'), idFlujo);
       
   }
 
   obtenerTotalPreguntasActivasClima(idFlujo:any) {
 
     return axios
-      .post(this.baseURLLocal +'get-total-preguntas-encuesta', idFlujo);
+      .post(this.getApiEndpoint('get-total-preguntas-encuesta'), idFlujo);
       
   }
 

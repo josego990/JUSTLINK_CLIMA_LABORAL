@@ -1,0 +1,206 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="['Home', 'Desempeño']"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body table-responsive">
+            <div class="table-loader" *ngIf="isLoading">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+
+            <table mat-table [dataSource]="dataSourceOrganizations" class="table" *ngIf="!isLoading && dataSourceOrganizations.length > 0">
+              <ng-container matColumnDef="Id">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let element">{{ element.Id }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="IdPais">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.COUNTRY' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ getCountryName(element) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.NAME' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Nombre }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="NIT">
+                <th mat-header-cell *matHeaderCellDef>NIT</th>
+                <td mat-cell *matCellDef="let element">{{ element.NIT }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Telefono">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.PHONE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Telefono || '-' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="CorreoContacto">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.MAIL' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.CorreoContacto || '-' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="FechaCreacion">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.DATECREATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.FechaCreacion ? (element.FechaCreacion | date: 'yyyy-MM-dd HH:mm') : '-' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="estado">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <span
+                    class="badge"
+                    [style.background]="element.estado === 1 ? '#d4f8e8' : '#ffe5e5'"
+                    [style.color]="element.estado === 1 ? '#0d8a53' : '#b42318'"
+                  >
+                    {{ getStatusLabel(element.estado) }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="Acciones">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="startEdit(element)"
+                    matTooltip="Editar"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+
+                  <button
+                    mat-icon-button
+                    [color]="element.estado === 1 ? 'warn' : 'accent'"
+                    (click)="toggleStatus(element)"
+                    [matTooltip]="element.estado === 1 ? 'Desactivar' : 'Activar'"
+                  >
+                    <mat-icon>{{ element.estado === 1 ? 'delete' : 'restore' }}</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+
+            <div class="text-center py-4" *ngIf="!isLoading && dataSourceOrganizations.length === 0">
+              No hay organizaciones de desempeño registradas.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <mat-accordion>
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                {{ isEditing ? ('MENUITEMS.ORGANIZATION.EDITORGANIZATION' | translate) : ('MENUITEMS.ORGANIZATION.CREATEORG' | translate) }}
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ 'MENUITEMS.ORGANIZATION.EXPAND' | translate }}
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <form [formGroup]="orgForm" class="org-form">
+              <div class="row">
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.ORGANIZATION.COUNTRY' | translate }}</mat-label>
+                    <mat-select formControlName="IdPais">
+                      <mat-option [value]="null">Sin país</mat-option>
+                      <mat-option *ngFor="let country of dataSourceCountries" [value]="country.Id">
+                        {{ country.Nombre }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.ORGANIZATION.NAME' | translate }}</mat-label>
+                    <input matInput formControlName="Nombre" />
+                    <mat-error *ngIf="orgForm.get('Nombre')?.hasError('required')">
+                      El nombre es obligatorio.
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>NIT</mat-label>
+                    <input matInput formControlName="NIT" />
+                    <mat-error *ngIf="orgForm.get('NIT')?.hasError('required')">
+                      El NIT es obligatorio.
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-xl-7 col-lg-7 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.ORGANIZATION.ADDRESS' | translate }}</mat-label>
+                    <input matInput formControlName="Direccion" />
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-5 col-lg-5 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.ORGANIZATION.PHONE' | translate }}</mat-label>
+                    <input matInput formControlName="Telefono" />
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-xl-8 col-lg-8 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.ORGANIZATION.MAIL' | translate }}</mat-label>
+                    <input matInput type="email" formControlName="CorreoContacto" />
+                    <mat-error *ngIf="orgForm.get('CorreoContacto')?.hasError('email')">
+                      Ingresa un correo válido.
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
+                  <mat-form-field appearance="fill" class="w-100">
+                    <mat-label>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</mat-label>
+                    <mat-select formControlName="estado">
+                      <mat-option [value]="1">Activo</mat-option>
+                      <mat-option [value]="0">Inactivo</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+            </form>
+
+            <div class="d-flex gap-2 flex-wrap">
+              <button mat-raised-button color="primary" [disabled]="isSaving" (click)="onSubmit()">
+                {{ 'MENUITEMS.ORGANIZATION.SAVE' | translate }}
+              </button>
+
+              <button mat-stroked-button type="button" *ngIf="isEditing" [disabled]="isSaving" (click)="resetForm()">
+                Cancelar edición
+              </button>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,80 @@
+.history-table-wrapper {
+  overflow-x: auto;
+}
+
+.history-table {
+  margin-bottom: 0;
+}
+
+.history-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.history-table tbody td {
+  vertical-align: middle;
+  color: #475569;
+}
+
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-sent {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.history-detail-row td {
+  background: #f8fafc;
+  border-top: 0;
+}
+
+.history-error-message {
+  color: #991b1b;
+  white-space: normal;
+}
+
+.history-error-message.empty {
+  color: #94a3b8;
+}
+
+.history-detail-card {
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.04);
+}
+
+.history-detail-header {
+  padding: 0.85rem 1rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-bottom: 1px solid #dbeafe;
+}
+
+.history-detail-body {
+  padding: 1rem;
+}
+
+.history-empty {
+  padding: 1.25rem;
+  text-align: center;
+  color: #64748b;
+}

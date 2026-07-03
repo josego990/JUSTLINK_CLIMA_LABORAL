@@ -32,6 +32,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { DialogformEditOrganizationComponent } from '../dialogformeditorganization/dialogformeditorganization.component';
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -89,6 +90,7 @@ export class CrearOrganizacionComponent implements OnInit {
     private fb: FormBuilder, private router: Router,
     private organizacionService: OrganizacionService,
     private dialogItemModel: MatDialog, 
+    private demoLimitsService: DemoLimitsService,
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -207,6 +209,22 @@ export class CrearOrganizacionComponent implements OnInit {
   // Enviar datos al servicio:
   onSubmit(): void {
     if (this.orgForm.valid) {
+      const currentOrganizations = Array.isArray(this.dataSourceOrganizations)
+        ? this.dataSourceOrganizations.length
+        : 0;
+      const orgLimit = this.demoLimitsService.getLimit('maxOrganizations');
+
+      if (this.demoLimitsService.exceedsLimit('maxOrganizations', currentOrganizations)) {
+        Swal.fire({
+          title: 'Limite demo alcanzado',
+          text:
+            `Solo se puede ingresar ${orgLimit} organizacion en esta demo.` +
+            ` Actualmente existen ${currentOrganizations} registradas.`,
+          icon: 'warning',
+        });
+        return;
+      }
+
      //console.log('CHORICITO!!', this.orgForm.value);
   
       this.organizacionService.saveNewOrganization(this.orgForm.value)

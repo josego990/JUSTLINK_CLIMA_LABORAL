@@ -8,7 +8,7 @@ import {
   MatSnackBarHorizontalPosition,
   MatSnackBarVerticalPosition,
 } from '@angular/material/snack-bar';
-import { FormBuilder, FormGroup, Validators, FormsModule,
+import { AbstractControl, FormBuilder, FormGroup, Validators, FormsModule,
   ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,UntypedFormBuilder,
  } from '@angular/forms';
  import {
@@ -34,6 +34,28 @@ import { MatCardModule } from '@angular/material/card';
 import { OrganizacionService } from '../services/organizacion.service';
 import { CommonModule, DatePipe } from '@angular/common'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import {
+  buildFullPhoneNumber,
+  DEFAULT_PHONE_COUNTRY_ISO,
+  getPhoneCountryByIso,
+  getPhoneCountryDisplayName,
+  getPhoneDigitsRangeLabel,
+  isPhoneLengthValid,
+  MAX_PHONE_LOCAL_DIGITS,
+  normalizeLocalPhoneNumber,
+  normalizePhoneDigits,
+  PHONE_COUNTRY_OPTIONS,
+  PhoneCountryOption,
+  splitPhoneNumberByCountry,
+} from '@shared/phone-country.utils';
+import {
+  EmployeeManagerSelectDialogComponent,
+  EmployeeManagerSelection,
+  getEmployeeOptionFullName,
+  getEmployeeOptionId,
+  getEmployeeOptionManagerId,
+  normalizeEmployeeManagerId,
+} from '../employees/employee-manager-select-dialog.component';
 @Component({
   selector: 'app-dialogformeditemployee',
   templateUrl: './dialogformeditemployee.component.html',
@@ -68,6 +90,8 @@ export class DialogformEditEmployeeComponent implements OnInit {
   @ViewChild(DatatableComponent, { static: false }) tablex!: DatatableComponent;
 
   public employeeFormX: FormGroup;
+  readonly phoneCountries = PHONE_COUNTRY_OPTIONS;
+  readonly maxPhoneLocalDigits = MAX_PHONE_LOCAL_DIGITS;
   
   NUMBER_DATA  = 0;
   ID_FLUJO = 0;
@@ -100,8 +124,7 @@ export class DialogformEditEmployeeComponent implements OnInit {
   isSaving = false;
   public selectedFieldType = 'text';
   public addSerieForm!: UntypedFormGroup;
-
-  public dataSourceCountries:any = [];
+  public selectedManagerName = '';
  
   public id_card = 0;
   public title_card = '';
@@ -151,17 +174,7 @@ export class DialogformEditEmployeeComponent implements OnInit {
       console.log('dasssss:: ',data);
 
 
-     
-     this.employeeFormX = this.fb.group({
-        IdEmpleado: [{ value: this.data.Id, disabled: true }],
-        Nombres: [this.data.Nombres, Validators.required],
-        Apellidos: [this.data.Apellidos, Validators.required],
-        
-        Celular: [this.data.Celular],
-        Email: [this.data.Email, Validators.email],
-        
-        TipoEnvioEncuesta: [this.data.tipoEnvioEncuesta]
-      });
+     this.employeeFormX = this.createEmployeeForm(this.data);
 
 
   }
@@ -169,19 +182,10 @@ export class DialogformEditEmployeeComponent implements OnInit {
   public ngOnInit(): void {
 
 
-     this.employeeFormX = this.fb.group({
-      
-        IdEmpleado: [{ value: this.data.Id, disabled: true }],
-        Nombres: [this.data.Nombres, Validators.required],
-        Apellidos: [this.data.Apellidos, Validators.required],
-        
-        Celular: [this.data.Celular],
-        Email: [this.data.Email, Validators.email],
-        
-        TipoEnvioEncuesta: [this.data.tipoEnvioEncuesta]
-      });
+	     this.employeeFormX = this.createEmployeeForm(this.data);
 
-       this.buildDemographicControlsFromData(this.data);
+	       this.buildDemographicControlsFromData(this.data);
+       this.syncSelectedManagerName();
 
     this.options_context = [];
 
@@ -195,8 +199,203 @@ export class DialogformEditEmployeeComponent implements OnInit {
       ],            
     });
 
-    this.getCountries();
+  }
 
+  get selectedPhoneCountry(): PhoneCountryOption | undefined {
+    return getPhoneCountryByIso(this.employeeFormX.get('PhoneCountryIso')?.value);
+  }
+
+  get phoneDigitsHint(): string {
+    return this.selectedPhoneCountry
+      ? getPhoneDigitsRangeLabel(this.selectedPhoneCountry)
+      : `${this.maxPhoneLocalDigits}`;
+  }
+
+  get phonePreview(): string {
+    return buildFullPhoneNumber(
+      this.employeeFormX.get('PhoneCountryIso')?.value,
+      this.employeeFormX.get('Celular')?.value,
+    );
+  }
+
+  getPhoneCountryLabel(country: PhoneCountryOption | undefined): string {
+    return getPhoneCountryDisplayName(
+      country,
+      this.translate.currentLang || localStorage.getItem('lang') || 'es',
+    );
+  }
+
+  onPhoneCountryChange(): void {
+    this.normalizePhoneControlValue();
+    this.applyPhoneControlValidation();
+  }
+
+  onPhoneInput(): void {
+    this.normalizePhoneControlValue();
+    this.applyPhoneControlValidation();
+  }
+
+  private createEmployeeForm(data: any): FormGroup {
+    const parsedPhone = splitPhoneNumberByCountry(data?.Celular, DEFAULT_PHONE_COUNTRY_ISO);
+
+    const form = this.fb.group({
+      IdEmpleado: [{ value: data?.Id, disabled: true }],
+      Nombres: [data?.Nombres ?? '', Validators.required],
+      Apellidos: [data?.Apellidos ?? '', Validators.required],
+      Cargo: [
+        data?.Cargo ?? data?.cargo ?? data?.Position ?? data?.position ?? '',
+        Validators.required,
+      ],
+      PhoneCountryIso: [parsedPhone.countryIso],
+      Celular: [parsedPhone.localNumber],
+      Email: [data?.Email ?? '', Validators.email],
+      IdEmpleadoJefe: [getEmployeeOptionManagerId(data)],
+      TipoEnvioEncuesta: [data?.TipoEnvioEncuesta ?? data?.tipoEnvioEncuesta ?? 0],
+    });
+
+    this.applyPhoneControlValidation(form);
+
+    return form;
+  }
+
+  private normalizePhoneControlValue(form: FormGroup = this.employeeFormX): void {
+    const phoneControl = form.get('Celular');
+
+    if (!phoneControl) {
+      return;
+    }
+
+    const country = getPhoneCountryByIso(form.get('PhoneCountryIso')?.value);
+    const normalizedValue = normalizeLocalPhoneNumber(phoneControl.value, country);
+
+    if (normalizedValue !== phoneControl.value) {
+      phoneControl.setValue(normalizedValue, { emitEvent: false });
+    }
+  }
+
+  private setCustomControlError(
+    control: AbstractControl | null,
+    errorKey: string,
+    shouldSet: boolean,
+  ): void {
+    if (!control) {
+      return;
+    }
+
+    const currentErrors = { ...(control.errors ?? {}) };
+
+    if (shouldSet) {
+      currentErrors[errorKey] = true;
+    } else {
+      delete currentErrors[errorKey];
+    }
+
+    control.setErrors(Object.keys(currentErrors).length ? currentErrors : null);
+  }
+
+  private applyPhoneControlValidation(form: FormGroup = this.employeeFormX): boolean {
+    const phoneControl = form.get('Celular');
+    const countryControl = form.get('PhoneCountryIso');
+
+    if (!phoneControl || !countryControl) {
+      return true;
+    }
+
+    const phoneDigits = normalizePhoneDigits(phoneControl.value);
+    const country = getPhoneCountryByIso(countryControl.value);
+    const hasPhoneValue = phoneDigits.length > 0;
+
+    this.setCustomControlError(
+      countryControl,
+      'phoneCountryRequired',
+      hasPhoneValue && !country,
+    );
+
+    this.setCustomControlError(
+      phoneControl,
+      'phoneLength',
+      hasPhoneValue && !!country && !isPhoneLengthValid(phoneDigits, country),
+    );
+
+    return !countryControl.hasError('phoneCountryRequired') && !phoneControl.hasError('phoneLength');
+  }
+
+  get hasManagerOptions(): boolean {
+    return this.getManagerOptions().length > 0;
+  }
+
+  private getManagerOptions(): any[] {
+    if (Array.isArray(this.data?.employeeManagerOptions)) {
+      return this.data.employeeManagerOptions;
+    }
+
+    if (Array.isArray(this.data?.employees)) {
+      return this.data.employees;
+    }
+
+    return [];
+  }
+
+  private getManagerNameById(managerId: number | null): string {
+    if (!managerId) {
+      return '';
+    }
+
+    const manager = this.getManagerOptions().find(
+      (employee: any) => getEmployeeOptionId(employee) === managerId
+    );
+
+    return getEmployeeOptionFullName(manager);
+  }
+
+  private syncSelectedManagerName(): void {
+    const managerId = normalizeEmployeeManagerId(this.employeeFormX.get('IdEmpleadoJefe')?.value);
+    this.selectedManagerName =
+      this.getManagerNameById(managerId) ||
+      String(this.data?.NombreJefe ?? this.data?.nombreJefe ?? '').trim();
+  }
+
+  openManagerDialog(): void {
+    const dialogRef = this.dialog.open<
+      EmployeeManagerSelectDialogComponent,
+      {
+        employees: any[];
+        selectedManagerId: number | null;
+        excludedEmployeeId: number | null;
+      },
+      EmployeeManagerSelection
+    >(EmployeeManagerSelectDialogComponent, {
+      width: '860px',
+      maxWidth: '95vw',
+      autoFocus: false,
+      data: {
+        employees: this.getManagerOptions(),
+        selectedManagerId: normalizeEmployeeManagerId(this.employeeFormX.get('IdEmpleadoJefe')?.value),
+        excludedEmployeeId: getEmployeeOptionId(this.data),
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result === undefined) {
+        return;
+      }
+
+      this.employeeFormX.get('IdEmpleadoJefe')?.setValue(result.id);
+      this.selectedManagerName = result.employee ? getEmployeeOptionFullName(result.employee) : '';
+    });
+  }
+
+  private buildUpdatePayload(): any {
+    const rawValue = this.employeeFormX.getRawValue();
+    const { PhoneCountryIso, IdEmpleadoJefe, ...employeeData } = rawValue;
+
+    return {
+      ...employeeData,
+      IdEmpleado: this.data.Id,
+      IdOrganizacion: this.data.IdOrganizacion,
+      IdEmpleadoJefe: normalizeEmployeeManagerId(IdEmpleadoJefe),
+      Celular: buildFullPhoneNumber(PhoneCountryIso, rawValue.Celular),
+    };
   }
 
   ponderacionRestValidator(control: any) {
@@ -223,17 +422,18 @@ export class DialogformEditEmployeeComponent implements OnInit {
   }
 
   async updateEmpleado(): Promise<void> {
-  if (this.employeeFormX.invalid) return;
+  this.normalizePhoneControlValue();
+  this.applyPhoneControlValidation();
+
+  if (this.employeeFormX.invalid) {
+    this.employeeFormX.markAllAsTouched();
+    return;
+  }
 
   try {
     this.isSaving = true;
 
-    // getRawValue para incluir controles deshabilitados (si los hay)
-    const payload = {
-      ...this.employeeFormX.getRawValue(),
-      IdEmpleado: this.data.Id,
-      IdOrganizacion: this.data.IdOrganizacion,
-    };
+    const payload = this.buildUpdatePayload();
 
     // (opcional) deshabilitar el form mientras guarda
     this.employeeFormX.disable({ emitEvent: false });
@@ -242,8 +442,7 @@ export class DialogformEditEmployeeComponent implements OnInit {
 
     if (updateRes?.data?.message === 'Empleado actualizado exitosamente') {
       this.showNotification('#fefefe', 'Se actualizó el empleado correctamente!');
-      // cerrar dialog si quieres:
-      // this.dialogRef.close(true);
+      this.dialogRef.close(true);
     } else {
       // mensaje genérico
       this.showNotification('#ffdddd', 'No se pudo actualizar el empleado.');
@@ -257,33 +456,6 @@ export class DialogformEditEmployeeComponent implements OnInit {
   }
 }
 
-  onCountryChange(selectedId: number) {
-    //console.log('Se seleccionó el pais con Id:', selectedId);
-
-    const selectedCountry = this.dataSourceCountries.find((pais:any) => pais.Id  === selectedId);
-
-    if(selectedCountry){
-      
-      console.log('pais:: ', selectedCountry);
-
-    }
-    
-  }
-
-  getCountries(): void {
-    this.organizacionService.getCountries()
-        .then((response:any) => {
-         //console.log('Countries:', JSON.stringify(response.data));
-          
-          this.dataSourceCountries = response.data;
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener Countries:', error);
-        });
-  }
-
- 
-
   buildDemographicControlsFromData(data: any) {
     if (!data || !this.employeeFormX) return;
 
@@ -293,12 +465,25 @@ export class DialogformEditEmployeeComponent implements OnInit {
       'IdOrganizacion',
       'Nombres',
       'Apellidos',
+      'Cargo',
+      'cargo',
+      'Position',
+      'position',
       'Celular',
       'Email',
+      'IdEmpleadoJefe',
+      'idEmpleadoJefe',
+      'IdJefe',
+      'idJefe',
+      'NombreJefe',
+      'nombreJefe',
       'TipoEnvioEncuesta',
       'tipoEnvioEncuesta',    // por si llega en minúscula
       'FechaRegistro',        // usualmente no editable
-      'estado'
+      'estado',
+      'camposDemograficos',
+      'camposDemograficosOrganizacion',
+      'employeeManagerOptions',
     ]);
 
     // 2) Limpia controles demográficos anteriores si reusas el mismo form para otro empleado (opcional)
@@ -326,15 +511,23 @@ export class DialogformEditEmployeeComponent implements OnInit {
     });
 
     // 5) Asegura los fijos (por si la fuente trae may/min)
+    const parsedPhone = splitPhoneNumberByCountry(data.Celular, DEFAULT_PHONE_COUNTRY_ISO);
+
     this.employeeFormX.patchValue({
       IdOrganizacion: data.IdOrganizacion ?? this.employeeFormX.getRawValue().IdOrganizacion,
       Nombres: data.Nombres,
       Apellidos: data.Apellidos,
-      Celular: data.Celular,
+      Cargo: data.Cargo ?? data.cargo ?? data.Position ?? data.position ?? '',
+      PhoneCountryIso: parsedPhone.countryIso,
+      Celular: parsedPhone.localNumber,
       Email: data.Email,
+      IdEmpleadoJefe: getEmployeeOptionManagerId(data),
       TipoEnvioEncuesta: data.TipoEnvioEncuesta ?? data.tipoEnvioEncuesta ?? 0,
       estado: data.estado
     }, { emitEvent: false });
+
+    this.syncSelectedManagerName();
+    this.applyPhoneControlValidation();
   }
 
 

@@ -24,6 +24,7 @@ import { AuthService } from '@core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -90,6 +91,7 @@ export class DialogformComponent implements OnInit {
     public dialog: MatDialog,
     public dialogRef: MatDialogRef<DialogformComponent>, 
     private organizacionService: OrganizacionService, private authService: AuthService,
+    private demoLimitsService: DemoLimitsService,
 
     @Inject(MAT_DIALOG_DATA) public data: QuizBank[],
     ) {
@@ -305,10 +307,44 @@ export class DialogformComponent implements OnInit {
     console.log(this.metodoAplicacion);
   }
 
+  private async canCreateClimateInDemo(): Promise<boolean> {
+    const climateLimit = this.demoLimitsService.getLimit('maxClimatesPerOrganization');
+
+    try {
+      const response: any = await this.organizacionService.getClimasById(this.idOrganization);
+      const currentClimates = Array.isArray(response?.data) ? response.data.length : 0;
+
+      if (this.demoLimitsService.exceedsLimit('maxClimatesPerOrganization', currentClimates)) {
+        await Swal.fire({
+          title: 'Limite demo alcanzado',
+          text:
+            `Solo se puede ingresar ${climateLimit} clima en esta demo.` +
+            ` Actualmente existen ${currentClimates} registrados para esta organizacion.`,
+          icon: 'warning',
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error al validar limite demo de climas:', error);
+      await Swal.fire({
+        title: 'Error',
+        text: 'No fue posible validar el limite demo de climas. Intente nuevamente.',
+        icon: 'error',
+      });
+      return false;
+    }
+  }
+
   //nuevo quiz / encuesta
-  onSubmitClick() {
+  async onSubmitClick() {
 
     if(this.addCusForm.valid){
+      if (!(await this.canCreateClimateInDemo())) {
+        return;
+      }
+
      console.log('Form Values', this.addCusForm.value);
       const tipoEvaluacion = Number(this.addCusForm.get('IdProof')?.value ?? 1);
       
@@ -399,9 +435,12 @@ export class DialogformComponent implements OnInit {
 
   }
 
-  onSubmitBankClick() {
+  async onSubmitBankClick() {
 
     if(this.addBankForm.valid) {
+      if (!(await this.canCreateClimateInDemo())) {
+        return;
+      }
 
       const quiz: Quiz = {
         id: 0,

@@ -30,6 +30,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { MatChipsModule } from '@angular/material/chips';
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 @Component({
   selector: 'app-demograficos-organizacion',
@@ -80,6 +81,7 @@ export class CrearDemograficosComponent implements OnInit {
   constructor(
     private fb: FormBuilder,private router: Router,private authService: AuthService,
     private organizacionService: OrganizacionService,private languageService: LanguageService,private translate: TranslateService,
+    private demoLimitsService: DemoLimitsService,
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -267,6 +269,24 @@ export class CrearDemograficosComponent implements OnInit {
   // Enviar datos al servicio:
   onSubmit(): void {
     if (this.demograficosForm.valid) {
+      const currentDemographics = Array.isArray(this.dataSourceDemograficos)
+        ? this.dataSourceDemograficos.length
+        : 0;
+      const demographicLimit = this.demoLimitsService.getLimit('maxDemographicsPerOrganization');
+
+      if (this.demoLimitsService.exceedsLimit(
+        'maxDemographicsPerOrganization',
+        currentDemographics,
+      )) {
+        Swal.fire({
+          title: 'Limite demo alcanzado',
+          text:
+            `Solo se puede ingresar ${demographicLimit} campos demograficos en esta demo.` +
+            ` Actualmente existen ${currentDemographics} registrados.`,
+          icon: 'warning',
+        });
+        return;
+      }
   
       this.organizacionService.saveNewDemografico(this.demograficosForm.value, this.idOrganization)
         .then((response:any) => {

@@ -1,0 +1,26 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <div class="header-content">
+        <div class="breadcrumb-container">
+          <app-breadcrumb
+            [title]="breadcrumbTitleKey | translate"
+            [items]="['Home']"
+            [active_item]="pageTitleKey | translate"
+          ></app-breadcrumb>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body">
+            <h4 class="mb-2">{{ pageTitleKey | translate }}</h4>
+            <p class="mb-0">{{ 'DESEMPENO_MENUITEMS.PLACEHOLDER.TEXT' | translate }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

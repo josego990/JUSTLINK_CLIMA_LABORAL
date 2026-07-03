@@ -1,0 +1,242 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="['Home', 'Desempeño']"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body">
+            <div class="row org-toolbar">
+              <div class="col-xl-4 col-lg-5 col-md-6 col-sm-12">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
+                  <mat-select
+                    [value]="selectedOrganizationId"
+                    [disabled]="isLoadingOrganizations"
+                    (selectionChange)="onOrganizationChange($event.value)"
+                  >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+             
+
+            </div>
+
+        
+
+            <div class="org-filter-panel" *ngIf="availableDemographicFilters.length > 0 && !isLoadingChart">
+              <div class="org-filter-copy">
+                <div class="org-filter-title">Campos para el organigrama</div>
+                <div class="org-filter-help">
+                  Selecciona qué demográficos quieres usar para etiquetar y filtrar la información mostrada.
+                </div>
+              </div>
+
+              <div class="org-filter-list">
+                <div class="org-filter-item" *ngFor="let option of availableDemographicFilters">
+                  <mat-checkbox
+                    [checked]="isDemographicPending(option.key)"
+                    (change)="toggleDemographicKey(option.key, $event.checked)"
+                  >
+                    {{ option.key }}
+                    <span class="org-filter-count">({{ option.distinctCount }} valores)</span>
+                  </mat-checkbox>
+                </div>
+              </div>
+
+              <div class="org-filter-actions">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="pendingDemographicKeys.length === 0 || isLoadingChart"
+                  (click)="generateOrganigram()"
+                >
+                  Generar
+                </button>
+              </div>
+            </div>
+
+            <div class="org-panel" *ngIf="selectedNodeData as selected">
+              <div class="org-panel-title">{{ selected.nombreCompleto }}</div>
+              <div class="org-panel-role">{{ getSelectedNodeSubtitle(selected) }}</div>
+
+              <div class="org-panel-grid">
+                <div class="org-panel-cell">
+                  <div class="org-meta">Empleado</div>
+                  <div>{{ selected.idEmpleado || '-' }}</div>
+                </div>
+
+                <div class="org-panel-cell">
+                  <div class="org-meta">Puesto</div>
+                  <div>{{ selected.cargo || '-' }}</div>
+                </div>
+
+                <div class="org-panel-cell">
+                  <div class="org-meta">Correo</div>
+                  <div>{{ selected.correo || '-' }}</div>
+                </div>
+
+                <div class="org-panel-cell">
+                  <div class="org-meta">Teléfono</div>
+                  <div>{{ selected.telefono || '-' }}</div>
+                </div>
+
+                <div class="org-panel-cell">
+                  <div class="org-meta">Subordinados</div>
+                  <div>{{ getSubordinateCount(selected) }}</div>
+                </div>
+
+                <div class="org-panel-cell">
+                  <div class="org-meta">Subordinados directos</div>
+                  <div>{{ getDirectSubordinateCount(selected) }}</div>
+                </div>
+              </div>
+
+              <div class="org-tag-list" *ngIf="selected.demographicEntries.length > 0">
+                <span class="org-tag" *ngFor="let entry of selected.demographicEntries">
+                  {{ entry.label }}: {{ entry.value }}
+                </span>
+              </div>
+            </div>
+
+            <div class="org-graph-controls" *ngIf="graphNodes.length > 0 && !isLoadingChart">
+              <button
+                mat-icon-button
+                type="button"
+                [class.active]="layoutOrientation === Orientation.LEFT_TO_RIGHT"
+                [disabled]="isLoadingChart"
+                (click)="setOrientation(Orientation.LEFT_TO_RIGHT)"
+                matTooltip="Vista horizontal"
+                aria-label="Vista horizontal"
+              >
+                <mat-icon>swap_horiz</mat-icon>
+              </button>
+
+              <button
+                mat-icon-button
+                type="button"
+                [class.active]="layoutOrientation === Orientation.TOP_TO_BOTTOM"
+                [disabled]="isLoadingChart"
+                (click)="setOrientation(Orientation.TOP_TO_BOTTOM)"
+                matTooltip="Vista vertical"
+                aria-label="Vista vertical"
+              >
+                <mat-icon>swap_vert</mat-icon>
+              </button>
+
+              <button
+                mat-icon-button
+                type="button"
+                [disabled]="!graphNodes.length"
+                (click)="centerGraph()"
+                matTooltip="Centrar"
+                aria-label="Centrar"
+              >
+                <mat-icon>center_focus_strong</mat-icon>
+              </button>
+
+              <button
+                mat-icon-button
+                type="button"
+                [disabled]="!graphNodes.length"
+                (click)="fitGraph()"
+                matTooltip="Ajustar vista"
+                aria-label="Ajustar vista"
+              >
+                <mat-icon>fit_screen</mat-icon>
+              </button>
+            </div>
+
+            <div class="org-graph-shell" #graphViewport>
+              <div class="org-loading" *ngIf="isLoadingOrganizations || isLoadingChart">
+                <mat-spinner diameter="42"></mat-spinner>
+                <span>Preparando el organigrama...</span>
+              </div>
+
+              <div class="org-empty" *ngIf="!isLoadingOrganizations && !isLoadingChart && !hasSelectedOrganization">
+                Selecciona una organización para generar el organigrama.
+              </div>
+
+              <div class="org-empty" *ngIf="hasSelectedOrganization && !isLoadingChart && graphNodes.length === 0">
+                No hay datos disponibles para construir el organigrama de la organización seleccionada.
+              </div>
+
+              <ngx-graph
+                *ngIf="graphNodes.length > 0 && !isLoadingChart"
+                class="org-graph"
+                [view]="graphView"
+                [nodes]="graphNodes"
+                [links]="graphLinks"
+                [layout]="'dagre'"
+                [layoutSettings]="layoutSettings"
+                [nodeWidth]="nodeWidth"
+                [nodeHeight]="nodeHeight"
+                [draggingEnabled]="false"
+                [panningEnabled]="true"
+                [panningAxis]="panningAxis"
+                [enableZoom]="true"
+                [panOnZoom]="true"
+                [autoZoom]="false"
+                [autoCenter]="true"
+                [showMiniMap]="true"
+                [miniMapMaxWidth]="200"
+                [miniMapMaxHeight]="120"
+                [miniMapPosition]="miniMapPosition"
+                [zoomToFit$]="zoomToFitGraph$"
+                [center$]="centerGraph$"
+                [update$]="updateGraph$"
+                [enableTrackpadSupport]="true"
+                [deferDisplayUntilPosition]="true"
+                (select)="onGraphSelect($event)"
+              >
+                <ng-template #defsTemplate>
+                  <svg:marker id="arrowHead" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="4" markerHeight="4" orient="auto">
+                    <svg:path d="M0,-5L10,0L0,5" class="arrow-head"></svg:path>
+                  </svg:marker>
+                </ng-template>
+
+                <ng-template #linkTemplate>
+                  <svg:g class="edge">
+                    <svg:path class="line" stroke-width="2" marker-end="url(#arrowHead)"></svg:path>
+                  </svg:g>
+                </ng-template>
+
+                <ng-template #nodeTemplate let-node>
+                  <svg:g class="node" (click)="onGraphSelect(node)">
+                    <svg:foreignObject [attr.width]="node.dimension?.width || nodeWidth" [attr.height]="node.dimension?.height || nodeHeight">
+                      <div xmlns="http://www.w3.org/1999/xhtml" class="org-node-wrap">
+                        <div
+                          class="org-node-card"
+                          [ngClass]="[getLevelClass(node.data?.nivel || ''), selectedGraphNode?.id === node.id ? 'selected' : '']"
+                        >
+                         <div class="org-node-path">{{ node.data?.pathLabel || 'Sin clasificación demográfica' }}</div>
+                          
+                          <div class="org-node-name">{{ node.data?.nombreCompleto }}</div>
+                          <div class="org-node-role" *ngIf="node.data?.cargo">{{ node.data?.cargo }}</div>
+                          <div class="org-node-meta">Empleado #{{ node.data?.idEmpleado || '-' }}</div>
+                          <div class="org-node-meta">{{ node.data?.correo || 'Sin correo' }}</div>
+                         
+                        </div>
+                      </div>
+                    </svg:foreignObject>
+                  </svg:g>
+                </ng-template>
+              </ngx-graph>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

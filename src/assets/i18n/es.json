@@ -9,10 +9,40 @@
       "POST": "Gerente"
     },
     "MAIN": {
-      "TEXT": "Principal"
+      "TEXT": "CLIMA LABORAL"
     },
+
+
+
+    "MAINDESEMPENIO": {
+      "TEXT": "EVALUACIONES DE DESEMPEÑO"
+    },
+    "DASHBOARDDESEMPENIO": {
+      "TEXT": "DASHBOARD"
+    },
+
+     "DASHBOARDDESEMPENIOTEXT": {
+      "TEXT": "Dashboard Desempeño"
+    },
+
+      "DESEMPENIO": {
+      "TEXT": "DESEMPEÑO",
+      "ORGANIGRAMA": "Organigrama",
+      "ADMINISTRAR": "Administrar"
+    },
+   
+
+
+
+
+
+
+
+
+
+
     "DASHBOARD": {
-      "TEXT": "Dashboard",
+      "TEXT": "DASHBOARD",
       "LIST": {
         "DASHBOARD1": "Dashboard Climas",
         "DASHBOARD2": "Tablero 2",
@@ -69,16 +99,23 @@
       "NAME": "NOMBRE",
       "LNAME": "APELLIDOS",
       "COUNTRY": "PAIS",
+      "PHONECOUNTRY": "PAIS / CODIGO",
       "PHONE": "TELEFONO",
+      "PHONEDIGITS": "Ingresa {{digits}} digitos para {{country}}.",
+      "PHONECOUNTRYREQUIRED": "Selecciona un pais antes de ingresar el telefono.",
+      "PHONEPREVIEW": "Se guardara como {{phone}}.",
       "MAIL": "CORREO CONTACTO",
       "DELETE": "ELIMINAR",
       "EDIT": "EDITAR",
       "CREATE": "Crear Empleado",
+      "ADD": "AGREGAR EMPLEADO",
       
       "EXPAND": "Expandir - Contraer",
 
       "ADDRESS": "DIRECCION",
       "POSITION": "CARGO",
+      "MANAGER": "JEFE INMEDIATO",
+      "HIREDATE": "FECHA INGRESO",
       "REGDATE": "FECHA REGISTRO",
       "STATUS": "ESTADO",
       "SENDTYPE": "TIPO ENVIO",
@@ -90,11 +127,12 @@
       "CANCEL": "CANCELAR",
       "DEMOGRAPHICDATA": "Datos Demográficos",
       "SUCCESS": "REALIZADO",
-      "ADDED": "Se agregó el empleado.",
+      "ADDED": "Se agregó el empleado.", 
 
       "SOMEWRONG": "Algo salió mal",
       "ERRMESSAGE": "Ha ocurrido un error inesperado.",
       "VERIFY": "Verifique los datos",
+      "SELECTORGANIZATION": "Seleccione una organización antes de agregar un empleado.",
       "INVALIDFORM": "El formulario no es válido",
       "EXCELERROR": "Se encontraron errores en el archivo Excel ",
       "UPLOADMESSAGE": "Cargando archivo Excel Empleados...",
@@ -395,7 +433,21 @@
 
 
         "MAILCOMPOSE": "Visualizar módulo de Correos",
-        "MAILCOMPOSEDESC": "Permite la visualización del módulo de Correos"
+        "MAILCOMPOSEDESC": "Permite la visualización del módulo de Correos",
+
+
+
+
+
+
+        "DESDASHBOARD": "Visualizar módulo de Dashboard para Desempeño",
+        "DESDASHBOARDDESC": "Permite la visualización del módulo de Dashboard para evaluaciones de desempeño",
+
+        "DESORGANIGRAMA": "Visualizar el organigrama",
+        "DESORGANIGRAMADESC": "Permite la visualización del organigrama para evaluaciones de desempeño",
+
+        "DESADMIN": "Visualizar administración de Evaluaciones de desempeño",
+        "DESADMINDESC": "Permite la visualización del módulo de administración de Evaluaciones de desempeño"
 
         
       }
@@ -404,6 +456,8 @@
       
      
     },
+
+
     "USERS": {
       "TEXT": "USUARIOS",
       "ACCESS": "ACCESOS"
@@ -427,6 +481,9 @@
       "PASSWORDREQUIRED": "Contraseña es requerido",
       "INVALIDACCESS": "Usuario o contraseña inválido",
       "INVALIDACCESSMSG": "No se ingresaron credenciales válidas",
+      "TURNSTILE_REQUIRED": "Completa la verificación de seguridad antes de ingresar.",
+      "TURNSTILE_CONFIG_REQUIRED": "Configura la site key de Cloudflare Turnstile para habilitar el acceso.",
+      "TURNSTILE_LOAD_ERROR": "No se pudo cargar la verificación de seguridad. Recarga la página e inténtalo de nuevo.",
 
       
 
@@ -537,6 +594,7 @@
       "TEXT": "Email",
       "LIST": {
         "INBOX": "Bandeja de entrada",
+        "HISTORY": "Historial",
         "COMPOSE": "Componer",
         "READ": "Leer el correo electrónico"
       }
@@ -579,5 +637,647 @@
         "NGX-DATATABLE": "NGX-Datatable"
       }
     }
+  },
+
+  "DESEMPENO_MENUITEMS": {
+    "MAIN": {
+      "TEXT": "EVALUACION DE DESEMPEÑOx"
+    },
+    "DASHBOARD": {
+      "TEXT": "Dashboard",
+      "BREADCRUMB_HOME": "Home",
+      "ORGANIZATION": "Organización",
+      "EVALUATION": "Evaluación de desempeño",
+      "EXPORT_EXCEL": "Exportar Excel",
+      "EXPORT_TOOLTIP": "Descargar resumen, dimensiones, evaluadores, demográficos y empleados.",
+      "LOADING": "Cargando datos del dashboard...",
+      "METRIC_EVALUATED": "Evaluados",
+      "METRIC_EVALUATED_HINT": "{{active}} empleados activos disponibles",
+      "METRIC_COMPLETION": "Avance",
+      "METRIC_COMPLETION_HINT": "{{completed}} de {{sent}} envíos completados",
+      "METRIC_SCORE": "Puntaje promedio",
+      "METRIC_SCORE_HINT": "Escala: {{scale}}",
+      "METRIC_RISK": "Riesgo",
+      "METRIC_RISK_HINT": "{{errors}} envíos con error",
+      "CHART_PROGRESS_TITLE": "Embudo de participación",
+      "CHART_PROGRESS_SUBTITLE": "Invitados, enviados, iniciados, completados y errores.",
+      "CHART_STATUS_TITLE": "Estado de respuestas",
+      "RESPONSE_RATE": "tasa de respuesta",
+      "CHART_DIMENSIONS_TITLE": "Resultado por dimensión",
+      "CHART_DIMENSIONS_SUBTITLE": "Comparación entre puntaje actual y meta.",
+      "CHART_DEMOGRAPHIC_TITLE": "Participación por segmento",
+      "CHART_DEMOGRAPHIC_SUBTITLE": "Compara puntaje promedio por el campo seleccionado.",
+      "DEMOGRAPHIC_AXIS": "Campo demográfico",
+      "CHART_SCENARIOS_TITLE": "Evaluadores por perspectiva",
+      "CHART_SCENARIOS_SUBTITLE": "Asignados contra completados por tipo de evaluación.",
+      "SEGMENT_MATRIX_TITLE": "Resultados por campo demográfico",
+      "SEGMENT_MATRIX_SUBTITLE": "Análisis por {{field}} con puntaje, avance y alertas.",
+      "TABLE_DIMENSIONS_TITLE": "Detalle de dimensiones",
+      "TABLE_DIMENSIONS_SUBTITLE": "Ponderación, puntaje y avance por dimensión.",
+      "EMPLOYEE_RESULTS_TITLE": "Resultados individuales",
+      "EMPLOYEE_RESULTS_SUBTITLE": "Busca colaboradores y revisa su avance, puntaje y primeras dimensiones.",
+      "SEARCH_EMPLOYEE": "Buscar empleado",
+      "SEARCH_EMPLOYEE_PLACEHOLDER": "Nombre, puesto, correo, escenario o demográfico",
+      "SHOWING_EMPLOYEES": "Mostrando {{current}} de {{total}} empleados",
+      "NO_EMPLOYEE_RESULTS": "No hay resultados individuales que coincidan con la búsqueda.",
+      "FINDINGS_TITLE": "Lecturas clave",
+      "EMPTY_TITLE": "Sin datos para mostrar",
+      "EMPTY_TEXT": "Selecciona una organización y una evaluación para ver el tablero.",
+      "RECORDS": "Registros",
+      "INVITED": "Invitados",
+      "SENT": "Enviados",
+      "STARTED": "Iniciados",
+      "COMPLETED": "Completados",
+      "ERRORS": "Errores",
+      "IN_PROGRESS": "En proceso",
+      "NOT_STARTED": "Sin iniciar",
+      "COMPLETION": "Cumplimiento",
+      "EVALUATED": "Evaluados",
+      "ASSIGNED": "Asignados",
+      "SCORE": "Puntaje",
+      "TARGET": "Meta",
+      "WEIGHTED_SCORE": "Puntaje ponderado",
+      "LAST_UPDATE": "Última actualización",
+      "RISK_CASES": "Casos en riesgo",
+      "STRONGEST_DIMENSION": "Más fuerte",
+      "WEAKEST_DIMENSION": "A reforzar",
+      "WEIGHT": "ponderación",
+      "DIMENSION": "Dimensión",
+      "SCENARIO": "Escenario",
+      "PERIOD": "Período",
+      "SCALE": "Escala",
+      "STATUS": "Estado",
+      "POSITION": "Puesto",
+      "NO_POSITION": "Sin puesto",
+      "NO_SEGMENT": "Sin clasificar",
+      "EMPLOYEE": "Empleado",
+      "EMAIL": "Correo",
+      "ACTIVE": "Activo",
+      "INACTIVE": "Inactivo",
+      "DEMOGRAPHIC_FIELD": "Campo demográfico",
+      "DEMOGRAPHIC_VALUE": "Valor demográfico",
+      "EXCEL_FIELD": "Campo",
+      "EXCEL_VALUE": "Valor",
+      "STATUSES": {
+        "CONFIGURACION": "Configuración",
+        "EN_CURSO": "En curso",
+        "CERRADA": "Cerrada",
+        "PUBLICADA": "Publicada"
+      },
+      "RESULT_STATUSES": {
+        "COMPLETADO": "Completado",
+        "EN_PROCESO": "En proceso",
+        "PENDIENTE": "Pendiente",
+        "ERROR": "Error"
+      },
+      "SEED": {
+        "EVAL_360_NAME": "Evaluación de Desempeño 2026 - Primer Semestre",
+        "EVAL_COMPETENCIES_NAME": "Evaluación de Competencias 2026 - Mandos Medios",
+        "PERIOD_SEMESTER": "Primer semestre 2026",
+        "PERIOD_Q3": "Tercer trimestre 2026",
+        "SCALE_1_5": "Escala 1 a 5",
+        "DIM_OBJECTIVES": "Objetivos",
+        "DIM_COMPETENCIES": "Competencias",
+        "DIM_VALUES": "Valores",
+        "DIM_LEADERSHIP": "Liderazgo",
+        "DIM_TEAMWORK": "Trabajo en equipo",
+        "SCENARIO_MANAGER": "Jefe a colaborador",
+        "SCENARIO_SELF": "Autoevaluación",
+        "SCENARIO_PEER": "Par",
+        "POSITION_OPERATIONS": "Operaciones",
+        "POSITION_TECH": "Tecnología",
+        "POSITION_SUPPORT": "Soporte",
+        "FINDING_LEADERSHIP": "Liderazgo está ligeramente por debajo de la meta y conviene revisarlo por equipo.",
+        "FINDING_ERRORS": "Hay envíos con error que deberían reenviarse antes del cierre.",
+        "FINDING_SETUP": "La evaluación está en configuración; todavía no hay respuestas ni envíos."
+      },
+      "MESSAGES": {
+        "NO_EVALUATION_TITLE": "Evaluación requerida",
+        "NO_EVALUATION_TEXT": "Selecciona una evaluación antes de exportar.",
+        "LOAD_ORGS_ERROR_TITLE": "Error",
+        "LOAD_ORGS_ERROR_TEXT": "No fue posible cargar las organizaciones de desempeño.",
+        "LOAD_EMPLOYEES_ERROR_TITLE": "Error",
+        "LOAD_EMPLOYEES_ERROR_TEXT": "No fue posible cargar los empleados de la organización."
+      }
+    },
+    "ORGANIZACIONES": {
+      "TEXT": "Organizaciones"
+    },
+    "EMPLEADOS": {
+      "TEXT": "Empleados"
+    },
+    "EVALUACIONES": {
+      "TEXT": "Evaluaciones"
+    },
+    "EVALUACIONES_PAGE": {
+      "BREADCRUMB_HOME": "Home",
+      "ORGANIZATION": "Organización",
+      "COLLABORATORS_LOADED": "colaboradores cargados",
+      "DEMOGRAPHIC_FIELDS_LOADED": "campos demográficos",
+      "NEW": "Nueva evaluación",
+      "LOADING": "Cargando organizaciones, empleados y campos demográficos...",
+      "CARD_ALT": "Evaluación",
+      "STAT_EVALUATED": "Evaluados",
+      "STAT_DIMENSIONS": "Dimensiones",
+      "STAT_ANSWERED": "Contestadas",
+      "STAT_PROGRESS": "Avance",
+      "PERIOD": "Período",
+      "DATES": "Fechas",
+      "TO": "a",
+      "EDIT_SURVEY": "Editar",
+      "SENDS": "Envíos",
+      "MODEL": "Ver diagrama de evaluación",
+      "EMPTY_TITLE": "No hay evaluaciones aún",
+      "EMPTY_TEXT": "Crea la primera evaluación para esta organización usando el catálogo y los ítems evaluativos disponibles.",
+      "EDIT_TITLE": "Editar evaluación",
+      "CREATE_TITLE": "Nueva evaluación",
+      "TAB_MODEL_CATALOG": "1. Catálogo de modelo",
+      "TAB_PARTICIPANTS": "2. Participantes",
+      "TAB_PARTICIPANTS_COMPETENCIES": "3. Participantes, criterios de evaluación e ítems evaluativos",
+      "TAB_COMPETENCIES_QUESTIONS": "3. Criterios de evaluación e ítems evaluativos",
+      "TAB_EVALUATION_SCENARIOS": "2. Participantes y escenarios",
+      "TAB_SAMPLE_JSON": "4. JSON de ejemplo",
+      "EVALUATION_NAME": "Nombre de la evaluación",
+      "MODEL_CATALOG_LABEL": "Catálogo de modelo",
+      "MODEL_CATALOG_PLACEHOLDER": "Escribe un nombre de modelo o busca uno existente",
+      "SEARCH_MODEL_CATALOG": "Buscar modelo",
+      "SEARCH_MODEL_CATALOG_PLACEHOLDER": "Buscar por nombre, tipo o descripción",
+      "MODEL_CATALOG_SEARCH_TITLE": "Buscar modelo existente",
+      "MODEL_CATALOG_SEARCH_HELP": "Simulación local: más adelante esta lista vendrá del backend para cargar el modelo completo.",
+      "NO_MODEL_CATALOG_RESULTS": "No se encontraron modelos con esa búsqueda.",
+      "DESCRIPTION": "Descripción",
+      "TYPE": "Tipo",
+      "MODEL_STATE": "Estado del modelo",
+      "SCALE": "Escala",
+      "USE_WEIGHTING": "Usa ponderación",
+      "USE_WEIGHTING_TOOLTIP": "Activa la validación para que dimensiones y criterios de evaluación sumen 100%.",
+      "USE_ANONYMITY": "Usa anonimato",
+      "USE_ANONYMITY_TOOLTIP": "Deja marcado si las respuestas deben tratarse como anónimas.",
+      "DIMENSIONS": "Dimensiones",
+      "DIMENSIONS_HELP": "Objetivos, valores, liderazgo o cualquier otro eje de evaluación.",
+      "TOTAL": "Total",
+      "ADD_DIMENSION": "Agregar dimensión",
+      "EDIT_DIMENSION": "Editar dimensión",
+      "DELETE_DIMENSION": "Eliminar dimensión",
+      "NO_DESCRIPTION": "Sin descripción",
+      "COMPETENCIES": "Criterios de evaluación",
+      "QUESTIONS": "Ítems evaluativos",
+      "ADD_COMPETENCY": "Agregar criterio de evaluación",
+      "EDIT_COMPETENCY": "Editar criterio de evaluación",
+      "DELETE_COMPETENCY": "Eliminar criterio de evaluación",
+      "DUPLICATE_COMPETENCY": "Duplicar criterio en otros puestos",
+      "ADD_QUESTION": "Agregar ítem evaluativo",
+      "EDIT_QUESTION": "Editar ítem evaluativo",
+      "DELETE_QUESTION": "Eliminar ítem evaluativo",
+      "DUPLICATE_QUESTION": "Duplicar ítem en otros puestos",
+      "QUESTION_REQUIRED_SHORT": "Requerido",
+      "QUESTION_OPTIONAL_SHORT": "Opcional",
+      "RESPONSE_VALUES": "Valores de respuesta",
+      "SELECT_LIKERT_TEMPLATE": "Seleccionar plantilla Likert",
+      "EDIT_LIKERT_VALUES": "Editar valores Likert",
+      "LIKERT_DIALOG_TITLE": "Editar valores Likert (5 niveles)",
+      "LIKERT_DIALOG_HELP": "Selecciona la plantilla de respuestas que se mostrará para este ítem evaluativo.",
+      "APPLY_TEMPLATE": "Aplicar plantilla",
+      "STATEMENT_TYPE_VALUE": "Tipo de enunciado: {{type}}",
+      "LIKERT_PRESETS": {
+        "AGREEMENT": "Acuerdo",
+        "SATISFACTION": "Satisfacción",
+        "FREQUENCY": "Frecuencia",
+        "IMPORTANCE": "Importancia",
+        "QUALITY": "Calidad",
+        "COMPLIANCE": "Cumplimiento",
+        "CUSTOM": "Personalizado"
+      },
+      "QUESTION_COVERAGE": "Cobertura del modelo",
+      "QUESTION_COVERAGE_HELP": "Ítems evaluativos disponibles para cada escenario de evaluación.",
+      "QUESTION_SCENARIOS": "Quién responde este ítem evaluativo",
+      "QUESTION_SCENARIOS_HELP": "Selecciona las relaciones en las que se debe mostrar.",
+      "QUESTION_POSITION_SCOPE": "A qué puestos se evalúa",
+      "QUESTION_POSITION_SCOPE_HELP": "La restricción se aplica al puesto del empleado evaluado.",
+      "ALL_POSITIONS": "Todos los puestos",
+      "SELECTED_POSITIONS_ONLY": "Sólo puestos seleccionados",
+      "POSITIONS_SUMMARY": "{{positions}} y {{count}} más",
+      "POSITION_MODELS_TITLE": "Criterios de evaluación e ítems evaluativos por puesto",
+      "POSITION_MODELS_HELP": "Configura por puesto y escenario los criterios de evaluación y sus ítems evaluativos.",
+      "EVALUATOR_ONLY": "Solo evaluador",
+      "POSITION_MODELS_EMPTY": "Selecciona al menos un puesto para configurar sus dimensiones, criterios de evaluación e ítems evaluativos.",
+      "POSITION_QUESTION_COUNT": "{{count}} ítems evaluativos",
+      "SCENARIO_NOT_APPLICABLE": "No aplica",
+      "NO_POSITION_QUESTIONS": "Este puesto aún no tiene ítems evaluativos en este criterio de evaluación.",
+      "NO_COMPETENCIES": "Esta dimensión aún no tiene criterios de evaluación.",
+      "NO_DIMENSIONS": "Agrega una dimensión para empezar a construir el modelo.",
+      "STATE": "Estado",
+      "START_DATE": "Fecha inicio",
+      "END_DATE": "Fecha cierre",
+      "DATE_REQUIRED": "La fecha es obligatoria.",
+      "SCENARIOS_TITLE": "Escenarios de evaluación",
+      "SCENARIOS_HELP": "Asigna por puesto los escenarios que aplicarán y ajusta sus ponderaciones para que los activos de cada puesto sumen 100%.",
+      "SCENARIOS_BY_POSITION_HELP": "Los escenarios marcados aquí determinan qué relaciones se crearán para este puesto dentro del modelo.",
+      "SCENARIOS_BY_POSITION_EMPTY": "Selecciona al menos un puesto en la sección de participantes para asignar sus escenarios de evaluación.",
+      "SCENARIO": "Escenario",
+      "SCENARIO_ACTIVE": "Activo",
+      "WEIGHT": "Ponderación",
+      "REQUIRED_RATING_LEVEL": "Nivel de exigencia",
+      "REQUIRED_RATING_LEVEL_HINT": "Calificación deseada de 1 a 5",
+      "REQUIRED_RATING_LEVEL_VALUE": "Exigencia: {{level}}/5.00",
+      "ONLY_ACTIVE": "Solo empleados activos",
+      "POSITIONS": "Puestos",
+      "POSITION": "Puesto",
+      "SPECIFIC_EMPLOYEES": "Empleados específicos",
+      "EMPLOYEE": "Empleado",
+      "EMAIL": "Correo",
+      "SELECT_POSITIONS": "Buscar puestos",
+      "SELECT_EMPLOYEES": "Buscar empleados",
+      "SELECTED_COUNT": "{{count}} seleccionados",
+      "NO_POSITIONS_SELECTED": "Sin puestos seleccionados",
+      "NO_EMPLOYEES_SELECTED": "Sin empleados específicos seleccionados",
+      "REMOVE_SELECTION": "Quitar selección",
+      "POSITION_PICKER_TITLE": "Seleccionar puestos",
+      "DUPLICATE_CRITERION_DIALOG_TITLE": "Duplicar criterio de evaluación",
+      "DUPLICATE_ITEM_DIALOG_TITLE": "Duplicar ítem evaluativo",
+      "DUPLICATE_SOURCE_POSITION": "Puesto origen: {{position}}",
+      "DUPLICATE_CRITERION_HELP": "Selecciona los puestos donde se creará una copia independiente del criterio y todos sus ítems.",
+      "DUPLICATE_ITEM_HELP": "Selecciona los puestos donde se copiará el ítem. Si el criterio no existe, se creará automáticamente.",
+      "DESTINATION_POSITION": "Puesto destino",
+      "DUPLICATE_STATUS": "Estado",
+      "DUPLICATE_ALREADY_HAS_CRITERION": "El criterio ya existe",
+      "DUPLICATE_ALREADY_HAS_ITEM": "El ítem ya existe",
+      "DUPLICATE_WILL_CREATE_CRITERION": "Se creará también el criterio",
+      "NO_DUPLICATE_POSITIONS": "No hay otros puestos disponibles para duplicar.",
+      "DUPLICATE_IN_POSITIONS": "Duplicar en puestos",
+      "DUPLICATE_RESULT_TITLE": "Duplicación completada",
+      "DUPLICATE_RESULT_TEXT": "Se realizaron {{copied}} copias. Se omitieron {{skipped}} destinos con contenido existente.",
+      "EMPLOYEE_PICKER_TITLE": "Seleccionar empleados específicos",
+      "SEARCH_POSITIONS": "Buscar puestos",
+      "SEARCH_EMPLOYEES": "Buscar empleados",
+      "SEARCH_POSITIONS_PLACEHOLDER": "Nombre del puesto",
+      "SEARCH_EMPLOYEES_PLACEHOLDER": "Nombre, puesto, correo o demográfico",
+      "CLEAR_SEARCH": "Limpiar búsqueda",
+      "SELECT_VISIBLE": "Seleccionar visibles",
+      "CLEAR_SELECTION": "Limpiar selección",
+      "NO_PICKER_RESULTS": "No hay resultados para mostrar.",
+      "NOTES": "Notas",
+      "NOTES_PLACEHOLDER": "Ejemplo: evaluar a todos los empleados del área Tecnología y a mandos medios activos.",
+      "PREVIEW_TITLE": "Vista previa de evaluados",
+      "PREVIEW_HELP": "Esta vista sí usa la combinación real de organización, empleados y campos demográficos ya cargados.",
+      "PREVIEW_MATCHES": "Coincidencias actuales: {{current}} de {{total}} empleados visibles.",
+      "SAMPLE_JSON_TITLE": "JSON de ejemplo",
+      "SAMPLE_JSON_HELP": "Este JSON corresponde al payload que se enviará al guardar el modelo.",
+      "CLOSE": "Cerrar",
+      "SAVE_EVALUATION": "Guardar evaluación",
+      "SEND_DIALOG_TITLE": "Envíos",
+      "SEND_DIALOG_HELP": "Administra qué colaboradores deben evaluar, a quiénes evaluarán y el estado persistido de cada envío.",
+      "SEND_SUMMARY_EVALUATORS": "Evaluadores",
+      "SEND_SUMMARY_ASSIGNMENTS": "Asignaciones",
+      "SEND_ASSIGNMENTS_TITLE": "Matriz de envíos por evaluador",
+      "SEND_ASSIGNMENTS_HELP": "Mostrando {{count}} evaluadores y el estado registrado de sus envíos.",
+      "SEND_CREATE": "Crear envíos",
+      "SEND_EVALUATOR": "Evaluador",
+      "SEND_EVALUATEES": "Empleados a evaluar",
+      "SEND_EVALUATEE_PLACEHOLDER": "Selecciona evaluados",
+      "SEND_EVALUATEE_PLACEHOLDER_COUNT": "Empleados a evaluar ({{count}})",
+      "SEND_TYPE": "Tipo de envío",
+      "SEND_STATUS": "Estado envío",
+      "SEND_ACTIONS": "Acciones",
+      "SEND_LAST_SENT": "Última actualización",
+      "SEND_ANSWERED_PROGRESS": "{{answered}} de {{total}} contestadas",
+      "SEND_INDIVIDUAL": "Crear envío individual",
+      "SEND_EVALUATION": "Enviar evaluación",
+      "PREVIEW_EMAIL": "Previsualizar correo",
+      "EMAIL_PREVIEW_TITLE": "Vista previa del correo",
+      "EMAIL_PREVIEW_HELP": "Así verá el evaluador el correo con sus evaluaciones de desempeño asignadas.",
+      "SEND_NO_ASSIGNMENTS": "No hay evaluadores asignados para esta evaluación.",
+      "NO_POSITION": "Sin puesto",
+      "NO_SEGMENT": "Sin clasificar",
+      "SEND_TYPES": {
+        "CORREO": "Correo",
+        "WHATSAPP": "Whatsapp",
+        "AMBOS": "Correo y Whatsapp"
+      },
+      "SEND_STATUSES": {
+        "CREADO": "Creado",
+        "ENVIADO": "Enviado",
+        "INICIADO": "Iniciado",
+        "ERROR": "Error",
+        "PENDIENTE": "Pendiente",
+        "RESPONDIDO": "Respondido",
+        "COMPLETADO": "Completado"
+      },
+      "MODEL_DIALOG_TITLE": "Diagrama de evaluación",
+      "MODEL_PLACEHOLDER_TITLE": "Espacio reservado",
+      "MODEL_PLACEHOLDER_HELP": "Este diálogo queda en blanco por ahora para seguir alimentándolo luego con el modelador específico de desempeño.",
+      "MODEL_DIAGRAM_HELP": "Diagrama informativo",
+      "MODEL_DIAGRAM_EVALUATEES": "Evaluados",
+      "MODEL_DIAGRAM_EVALUATED": "Evaluado",
+      "MODEL_DIAGRAM_SELF": "Autoevaluaciones",
+      "MODEL_DIAGRAM_BIDIRECTIONAL": "Relaciones dobles",
+      "MODEL_DIAGRAM_SELF_LABEL": "Autoevaluación",
+      "MODEL_DIAGRAM_EVALUATES_SHORT": "evalúa",
+      "MODEL_DIAGRAM_EVALUATED_BY_SHORT": "lo evalúan",
+      "MODEL_DIAGRAM_SELECTED_EMPLOYEE": "Empleado seleccionado",
+      "MODEL_DIAGRAM_EVALUATES": "Evalúa a",
+      "MODEL_DIAGRAM_EVALUATED_BY": "Lo evalúan",
+      "MODEL_DIAGRAM_LEGEND": "Leyenda",
+      "MODEL_DIAGRAM_DIRECTION": "Evaluador hacia evaluado",
+      "MODEL_DIAGRAM_DOUBLE_DIRECTION": "Evaluación en ambos sentidos",
+      "MODEL_DIAGRAM_RELATIONS": "Relaciones principales",
+      "MODEL_DIAGRAM_EMPTY_TITLE": "Sin relaciones para diagramar",
+      "MODEL_DIAGRAM_EMPTY_HELP": "El modelo no tiene evaluadores o evaluados calculables con la configuración actual.",
+      "DIALOG_DIMENSION_EDIT": "Editar dimensión",
+      "DIALOG_DIMENSION_NEW": "Nueva dimensión",
+      "DIALOG_COMPETENCY_EDIT": "Editar criterio de evaluación",
+      "DIALOG_COMPETENCY_NEW": "Nuevo criterio de evaluación",
+      "DIALOG_QUESTION_EDIT": "Editar ítem evaluativo",
+      "DIALOG_QUESTION_NEW": "Nuevo ítem evaluativo",
+      "NAME": "Nombre",
+      "SAVE": "Guardar",
+      "CANCEL": "Cancelar",
+      "QUESTION": "Ítem evaluativo",
+      "QUESTION_TYPE": "Tipo de ítem evaluativo",
+      "DEFAULT_QUESTION_TYPE": "Tipo de ítem evaluativo por defecto",
+      "OPTIONS": "Opciones",
+      "OPTIONS_PLACEHOLDER": "Escribe una opción por línea",
+      "YES": "Sí",
+      "NO": "No",
+      "NO_ORGANIZATION": "Sin organización",
+      "UNDEFINED_SCALE": "Escala no definida",
+      "SCALES": {
+        "LIKERT_1_5": "Escala 1 a 5",
+        "LIKERT_1_5_LEVELS": {
+          "BELOW_MUCH": "Muy por debajo",
+          "BELOW": "Por debajo",
+          "EXPECTED": "Esperado",
+          "ABOVE": "Por arriba",
+          "EXCEPTIONAL": "Excepcional"
+        },
+        "BEHAVIORAL_0_4": "Escala conductual 0 a 4",
+        "BEHAVIORAL_0_4_LEVELS": {
+          "NOT_OBSERVED": "No observado",
+          "INITIAL": "Inicial",
+          "IN_DEVELOPMENT": "En desarrollo",
+          "EXPECTED": "Esperado",
+          "OUTSTANDING": "Sobresaliente"
+        }
+      },
+      "MODEL_CATALOG": {
+        "MANAGERIAL_360": "Evaluación de Desempeño 360 Gerencial",
+        "OPERATIVE": "Evaluación de Desempeño Operativa",
+        "SELF_OBJECTIVES": "Autoevaluación de Objetivos"
+      },
+      "MODEL_CATALOG_DESCRIPTIONS": {
+        "MANAGERIAL_360": "Modelo base para mandos medios con escenarios de jefe, subordinado, pares y autoevaluación.",
+        "OPERATIVE": "Modelo orientado a puestos operativos con evaluación de jefe y autoevaluación.",
+        "SELF_OBJECTIVES": "Modelo simple para seguimiento individual de objetivos y compromisos del período."
+      },
+      "SURVEY_TYPES": {
+        "360": "360",
+        "180": "180",
+        "90": "90",
+        "AUTOEVALUACION": "Autoevaluación",
+        "MIXTA": "Mixta"
+      },
+      "QUESTION_TYPES": {
+        "LIKERT_1_5": "Likert 1-5",
+        "ABIERTA": "Abierta",
+        "SELECCION_UNICA": "Selección única",
+        "SELECCION_MULTIPLE": "Selección múltiple"
+      },
+      "MODEL_STATES": {
+        "ACTIVO": "Activo",
+        "BORRADOR": "Borrador",
+        "INACTIVO": "Inactivo"
+      },
+      "PERIOD_STATES": {
+        "CONFIGURACION": "Configuración",
+        "EN_CURSO": "En curso",
+        "CERRADA": "Cerrada",
+        "PUBLICADA": "Publicada"
+      },
+      "DEFAULT_NEW_NAME": "Nueva evaluación {{year}}",
+      "DEFAULT_DESCRIPTION": "Nueva evaluación de desempeño basada en el catálogo de modelos e ítems evaluativos reutilizables.",
+      "DEFAULT_MODEL_NAME": "Modelo de desempeño {{year}}",
+      "DEFAULT_NOTES": "Puedes combinar puestos, empleados específicos y campos demográficos dinámicos.",
+      "SCENARIOS": {
+        "BOSS_TO_EMPLOYEE": "Jefe a colaborador",
+        "EMPLOYEE_TO_BOSS": "Colaborador a jefe",
+        "SELF": "Autoevaluación",
+        "PEER": "Par"
+      },
+      "OPEN_QUESTIONS": {
+        "STRENGTHS": "¿Qué fortalezas observa en esta persona?",
+        "IMPROVEMENTS": "¿Qué áreas debería mejorar?"
+      },
+      "DEFAULT_BIG_FACTORS": {
+        "OBJECTIVES": {
+          "NAME": "Objetivos",
+          "DESCRIPTION": "Resultados y metas clave del período."
+        },
+        "COMPETENCIES": {
+          "NAME": "Competencias",
+          "DESCRIPTION": "Habilidades observables y conductuales."
+        },
+        "VALUES": {
+          "NAME": "Valores",
+          "DESCRIPTION": "Alineación con principios y cultura."
+        },
+        "LEADERSHIP": {
+          "NAME": "Liderazgo",
+          "DESCRIPTION": "Capacidad de guiar, influir y desarrollar a otros."
+        },
+        "TEAMWORK": {
+          "NAME": "Trabajo en equipo",
+          "DESCRIPTION": "Colaboración y contribución transversal."
+        }
+      },
+      "SEED": {
+        "EXAMPLE_A": {
+          "NAME": "Evaluación de Desempeño 2026 - Primer Semestre",
+          "DESCRIPTION": "Modelo 360 gerencial con objetivos, criterios de evaluación, valores, liderazgo y trabajo en equipo."
+        },
+        "EXAMPLE_B": {
+          "NAME": "Evaluación de Criterios 2026 - Mandos Medios",
+          "DESCRIPTION": "Versión enfocada en criterios de evaluación, valores y liderazgo para perfiles de coordinación."
+        },
+        "FACTORS": {
+          "GOAL_FULFILLMENT": {
+            "NAME": "Cumplimiento de metas",
+            "DESCRIPTION": "Seguimiento y cumplimiento de objetivos semestrales."
+          },
+          "COMMUNICATION": {
+            "NAME": "Comunicación",
+            "DESCRIPTION": "Capacidad para transmitir ideas y alinear a su equipo."
+          },
+          "COLLABORATION": {
+            "NAME": "Colaboración",
+            "DESCRIPTION": "Promueve cooperación entre áreas."
+          },
+          "INTEGRITY": {
+            "NAME": "Integridad",
+            "DESCRIPTION": "Ética, transparencia y coherencia."
+          }
+        },
+        "QUESTIONS": {
+          "GOALS": "Cumple los objetivos acordados dentro del período.",
+          "COMMUNICATION": "Se comunica de forma clara con su equipo.",
+          "COLLABORATION": "Comparte información útil con otras áreas.",
+          "INTEGRITY": "Actúa con ética y transparencia."
+        }
+      },
+      "SEND_PREVIEW": {
+        "CREATED": "Creado",
+        "SENT": "Enviado",
+        "PENDING": "Pendiente"
+      },
+      "MESSAGES": {
+        "ORG_REQUIRED_TITLE": "Organización requerida",
+        "ORG_REQUIRED_TEXT": "Selecciona una organización antes de crear una evaluación.",
+        "NAME_REQUIRED_TITLE": "Nombre requerido",
+        "NAME_REQUIRED_TEXT": "Ingresa el nombre de la evaluación.",
+        "DATES_REQUIRED_TITLE": "Fechas requeridas",
+        "DATES_REQUIRED_TEXT": "Ingresa la fecha de inicio y la fecha de cierre.",
+        "DATE_RANGE_TITLE": "Rango de fechas inválido",
+        "DATE_RANGE_TEXT": "La fecha de cierre no puede ser anterior a la fecha de inicio.",
+        "DIMENSION_WEIGHT_TITLE": "Ponderación incompleta",
+        "DIMENSION_WEIGHT_TEXT": "La suma de las dimensiones debe ser 100%.",
+        "COMPETENCY_WEIGHT_TITLE": "Ponderación de criterios incompleta",
+        "COMPETENCY_WEIGHT_TEXT": "Los criterios de evaluación de la dimensión \"{{dimension}}\" también deben sumar 100%.",
+        "SCENARIO_WEIGHT_TITLE": "Ponderación de escenarios incompleta",
+        "SCENARIO_WEIGHT_TEXT": "La suma de los escenarios de evaluación debe ser 100%.",
+        "SCENARIO_WEIGHT_TEXT_BY_POSITION": "La suma de los escenarios activos para el puesto \"{{position}}\" debe ser 100%.",
+        "DIMENSION_NAME_TITLE": "Nombre requerido",
+        "DIMENSION_NAME_TEXT": "Ingresa el nombre de la dimensión.",
+        "COMPETENCY_NAME_TITLE": "Nombre requerido",
+        "COMPETENCY_NAME_TEXT": "Ingresa el nombre del criterio de evaluación.",
+        "QUESTION_REQUIRED_TITLE": "Ítem evaluativo requerido",
+        "QUESTION_REQUIRED_TEXT": "Ingresa el texto del ítem evaluativo.",
+        "QUESTION_SCENARIO_REQUIRED_TITLE": "Escenario requerido",
+        "QUESTION_SCENARIO_REQUIRED_TEXT": "Selecciona al menos un escenario para el ítem evaluativo.",
+        "QUESTION_POSITION_REQUIRED_TITLE": "Puesto requerido",
+        "QUESTION_POSITION_REQUIRED_TEXT": "Selecciona al menos un puesto o cambia el alcance a todos los puestos.",
+        "SAVE_TITLE": "Evaluación lista",
+        "SAVE_TEXT": "El modelo de evaluación se guardó correctamente.",
+        "SAVE_ERROR_TITLE": "No se pudo guardar el modelo",
+        "SAVE_ERROR_TEXT": "Ocurrió un error al guardar el modelo de evaluación.",
+        "LOAD_ORGS_ERROR_TITLE": "Error",
+        "LOAD_ORGS_ERROR_TEXT": "No fue posible cargar las organizaciones de desempeño.",
+        "LOAD_EMPLOYEES_ERROR_TITLE": "Error",
+        "LOAD_EMPLOYEES_ERROR_TEXT": "No fue posible cargar los empleados de la organización.",
+        "LOAD_CATALOGS_ERROR_TITLE": "No se pudieron cargar los catálogos",
+        "LOAD_CATALOGS_ERROR_TEXT": "No fue posible cargar los tipos, escalas, escenarios y puestos de desempeño.",
+        "LOAD_MODELS_ERROR_TITLE": "No se pudieron cargar los modelos",
+        "LOAD_MODELS_ERROR_TEXT": "No fue posible obtener los modelos de evaluación de la organización.",
+        "LOAD_MODEL_ERROR_TITLE": "No se pudo abrir el modelo",
+        "LOAD_MODEL_ERROR_TEXT": "No fue posible obtener el detalle del modelo seleccionado.",
+        "SEND_CREATE_SUCCESS_TITLE": "Envíos actualizados",
+        "SEND_CREATE_SUCCESS_TEXT": "Se crearon {{created}} envíos y {{existing}} ya existían.",
+        "SEND_CREATE_PARTIAL_TITLE": "Proceso completado con observaciones",
+        "SEND_CREATE_PARTIAL_TEXT": "Se crearon {{created}} envíos, {{existing}} ya existían y {{failed}} evaluadores presentaron error.",
+        "SEND_CREATE_ERROR_TITLE": "No se pudieron crear los envíos",
+        "SEND_CREATE_ERROR_TEXT": "Ocurrió un error al registrar los envíos de la evaluación.",
+        "SEND_ALREADY_EXISTS_TITLE": "Envíos existentes",
+        "SEND_ALREADY_EXISTS_TEXT": "Todos los envíos de este evaluador ya estaban registrados.",
+        "SEND_EMAIL_MISSING_TITLE": "Correo no disponible",
+        "SEND_EMAIL_MISSING_TEXT": "El evaluador seleccionado no tiene una dirección de correo registrada.",
+        "SEND_EMAIL_SUCCESS_TITLE": "Correo enviado",
+        "SEND_EMAIL_SUCCESS_TEXT": "El correo de evaluaciones de desempeño se envió correctamente.",
+        "SEND_EMAIL_ERROR_TITLE": "No se pudo enviar el correo",
+        "SEND_EMAIL_ERROR_TEXT": "Ocurrió un error al enviar el correo de evaluaciones de desempeño."
+      }
+    },
+    "ORGANIGRAMA": {
+      "TEXT": "Organigrama"
+    },
+    "CAMPOS_DEMOGRAFICOS": {
+      "TEXT": "Campos Demográficos"
+    },
+    "ESCALAS": {
+      "BREADCRUMB_HOME": "Home",
+      "ORGANIZATION": "Organización",
+      "FILTER_STATUS": "Estado listado",
+      "FILTER_ACTIVE": "Activas",
+      "FILTER_INACTIVE": "Inactivas",
+      "NEW": "Nueva escala",
+      "LIST_TITLE": "Listado de escalas",
+      "LIST_NOTE": "Selecciona una escala para ver y editar su información.",
+      "NAME": "Nombre",
+      "TYPE": "Tipo",
+      "TYPE_LABEL": "Tipo de escala",
+      "STATUS": "Estado",
+      "LEVELS": "Niveles",
+      "ACTIONS": "Acciones",
+      "OPEN": "Abrir escala",
+      "EMPTY_LIST": "No hay escalas registradas para el filtro seleccionado.",
+      "EDIT_TITLE": "Editar escala",
+      "CREATE_TITLE": "Nueva escala",
+      "NUMBER": "Escala #{{id}}",
+      "CREATE_NOTE": "Completa el encabezado y luego guarda el detalle si aplica.",
+      "NAME_REQUIRED": "El nombre es obligatorio.",
+      "TYPE_REQUIRED": "El tipo de escala es obligatorio.",
+      "ACTIVE_CHECKBOX": "Escala activa",
+      "ACTIVE_STATUS": "Activo",
+      "INACTIVE_STATUS": "Inactivo",
+      "STATUS_NOTE": "El estado se usa al crear; la edición actualiza nombre, tipo y detalle.",
+      "SAVE_CHANGES": "Guardar cambios",
+      "CREATE_BUTTON": "Crear escala",
+      "CLEAR": "Limpiar",
+      "DETAIL_TITLE": "Detalle de la escala",
+      "DETAIL_NOTE": "Configura los niveles, valores y descripciones que usará la escala.",
+      "ADD_ROW": "Agregar fila",
+      "DETAIL_DRAFT_NOTE": "Puedes capturar el detalle desde ahora; al crear se guardará después de obtener el id.",
+      "ORDER": "Orden",
+      "VALUE": "Valor",
+      "DESCRIPTION": "Descripción",
+      "DELETE_ROW": "Eliminar fila",
+      "REQUIRED": "Requerido.",
+      "DUPLICATE_ORDER": "Orden repetido.",
+      "DUPLICATE_VALUE": "Valor repetido.",
+      "DESCRIPTION_REQUIRED": "La descripción es obligatoria.",
+      "EMPTY_DETAIL": "No hay niveles configurados. Puedes dejar el detalle vacío o agregar niveles si la escala los requiere.",
+      "TYPES": {
+        "GENERAL": "General",
+        "COMPETENCIAS": "Competencias",
+        "VALORES": "Valores",
+        "OBJETIVOS": "Objetivos"
+      },
+      "MESSAGES": {
+        "DETAIL_INVALID_TITLE": "Detalle inválido",
+        "DETAIL_INVALID_REQUIRED": "Completa la información requerida en cada nivel.",
+        "DETAIL_INVALID_DUPLICATE": "No se puede repetir el valor ni el orden en el detalle.",
+        "LOAD_ORGS_ERROR_TITLE": "No se pudieron cargar las organizaciones",
+        "LOAD_LIST_ERROR_TITLE": "No se pudo cargar el listado",
+        "LOAD_SCALE_ERROR_TITLE": "No se pudo cargar la escala",
+        "ORG_REQUIRED_TITLE": "Organización requerida",
+        "ORG_REQUIRED_TEXT": "Selecciona una organización antes de continuar.",
+        "FORM_INVALID_TITLE": "Formulario inválido",
+        "FORM_INVALID_TEXT": "Completa el nombre y el tipo de escala.",
+        "DONE_TITLE": "Realizado",
+        "UPDATED_SUCCESS": "La escala se actualizó correctamente.",
+        "CREATED_SUCCESS": "La escala se creó correctamente.",
+        "SAVE_ERROR_TITLE": "No se pudo guardar la escala",
+        "UNEXPECTED_ERROR": "Ocurrió un error inesperado."
+      }
+    },
+    "BIBLIOTECA": {
+      "TEXT": "Biblioteca",
+      "LIST": {
+        "ESCALAS": "Escalas",
+        "MODELOS": "Modelos"
+      }
+    },
+    "ENVIOS": {
+      "TEXT": "Envíos",
+      "LIST": {
+        "CORREOS": "Correos",
+        "WHATSAPP": "Whatsapp"
+      }
+    },
+    "PLACEHOLDER": {
+      "TEXT": "Módulo base listo para implementar."
+    }
   }
+
+
+
+
+
 }

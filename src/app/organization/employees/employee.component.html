@@ -6,14 +6,13 @@
     </div>
     <div class="row">
       <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
-        <div style="margin-left: -40px;"  class="card">
+        <div class="card employee-card">
           
           <div class="body">
           
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <!-- Columna 1: selector de organización -->
-              <div class="col-6">
-                <mat-form-field appearance="outline" class="w-75">
+            <div class="employee-toolbar">
+              <div class="employee-organization-control">
+                <mat-form-field appearance="outline" class="organization-select">
                   <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
                   <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
                     <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
@@ -23,9 +22,20 @@
                 </mat-form-field>
               </div>
 
-              <!-- Columna 2: botón de settings alineado a la derecha -->
-              <div class="col-6 d-flex justify-content-end align-items-center" >
-                <button mat-icon-button [matMenuTriggerFor]="menu" style="margin-right: 20px;">
+              <div class="employee-toolbar-actions">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="button"
+                  class="employee-add-button"
+                  [disabled]="isButtonDisabled"
+                  (click)="openEmployeeDialog(newEmployeeDialog)"
+                >
+                  <mat-icon>person_add</mat-icon>
+                  {{ 'MENUITEMS.EMPLOYEE.ADD' | translate }}
+                </button>
+
+                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Employee settings">
                   <mat-icon>settings</mat-icon>
                 </button>
 
@@ -81,6 +91,12 @@
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.LNAME' | translate}} </th>
                   <td mat-cell *matCellDef="let element"> {{ element.Apellidos }} </td>
                 </ng-container>
+
+                <!-- Cargo -->
+                <ng-container matColumnDef="Cargo">
+                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.POSITION' | translate}} </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.Cargo || element.cargo || '-' }} </td>
+                </ng-container>
               
               
                 <!-- Celular -->
@@ -112,7 +128,20 @@
               
                 <ng-container matColumnDef="estado">
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.STATUS' | translate}}</th>
-                  <td mat-cell *matCellDef="let element"> {{ element.estado == 1 ? 'Activo' : 'Inactivo' }} </td>
+                  <td mat-cell *matCellDef="let element">
+                    <span
+                      class="employee-status-chip"
+                      [class.employee-status-chip--active]="isEmployeeActive(element)"
+                      [class.employee-status-chip--inactive]="!isEmployeeActive(element)"
+                    >
+                      {{ getEmployeeStatusLabel(element) }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="NombreJefe">
+                  <th mat-header-cell *matHeaderCellDef> NOMBRE JEFE</th>
+                  <td mat-cell *matCellDef="let element"> {{ getEmployeeManagerDisplay(element) }} </td>
                 </ng-container>
 
                 <ng-container *ngFor="let campo of camposDinamicos" [matColumnDef]="campo">
@@ -126,7 +155,7 @@
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.EDIT' | translate}} </th>
                   <td mat-cell *matCellDef="let element">
                     <button mat-icon-button 
-                            [color]="element.estado === 1 ? 'warn' : 'accent'" 
+                            [color]="isEmployeeActive(element) ? 'warn' : 'accent'"
                             (click)="editItem(element)">
                       <mat-icon>
                         edit
@@ -139,10 +168,10 @@
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.DELETE' | translate}} </th>
                   <td mat-cell *matCellDef="let element">
                     <button mat-icon-button 
-                            [color]="element.estado === 1 ? 'warn' : 'accent'" 
+                            [color]="isEmployeeActive(element) ? 'warn' : 'accent'"
                             (click)="deleteItem(element)">
                       <mat-icon>
-                        {{ element.estado === 1 ? 'delete' : 'loop' }}
+                        {{ isEmployeeActive(element) ? 'delete' : 'loop' }}
                       </mat-icon>
                     </button>
                   </td>
@@ -158,127 +187,137 @@
               </table>
               
             </div>
-            
-             
-
-              <mat-accordion>
-                <mat-expansion-panel [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      {{'MENUITEMS.EMPLOYEE.CREATENEW' | translate}}
-                    </mat-panel-title>
-                    <mat-panel-description>
-                      {{'MENUITEMS.EMPLOYEE.EXPAND' | translate}}
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
-
-
-                  <!-- Nuestro formulario con [formGroup]="employeeForm" -->
-                  <form [formGroup]="employeeForm" >
-                 
-                   
-                    
-                    <div class="row">
-                   
-                      <div class="col-xl-2 col-lg-3 col-md-2 col-sm-3 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>ID Org.</mat-label>
-                          <input matInput formControlName="IdOrganizacion"/>
-                        </mat-form-field>
-                      </div>
-                
-                      <div class="col-xl-5 col-lg-6 col-md-8 col-sm-12 mb-2">
-                        <div class="text-inside">
-                          <mat-form-field appearance="fill" class="w-100">
-                            <mat-label>{{'MENUITEMS.EMPLOYEE.NAME' | translate}}</mat-label>
-                            <input matInput formControlName="Nombres" required />
-                          </mat-form-field>
-                        </div>
-                      </div>
-                      
-                       <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.EMPLOYEE.LNAME' | translate}}</mat-label>
-                          <input matInput formControlName="Apellidos" required />
-                        </mat-form-field>
-                      </div>
-
-                    </div>
-                
-                    <div class="row">
-            
-
-                      <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.EMPLOYEE.PHONE' | translate}}</mat-label>
-                          <input matInput formControlName="Celular" />
-                        </mat-form-field>
-                      </div>
-
-                      <div class="col-xl-4 col-lg-6 col-md-8 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.EMPLOYEE.MAIL' | translate}}</mat-label>
-                          <input matInput formControlName="Email" type="email" />
-                        </mat-form-field>
-                      </div>
-
-                    <div class="col-xl-3 col-lg-6 col-md-8 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}}</mat-label>
-                          <mat-select formControlName="TipoEnvioEncuesta">
-                            <mat-option [value]="0">{{'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate}}</mat-option>
-                            <mat-option [value]="1">Email</mat-option>
-                            <mat-option [value]="2">WhatsApp</mat-option>
-                            <mat-option [value]="3">Email y WhatsApp</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                      </div>
-
-                    </div>
-
-                
-                    
-
-               
-                      <div class="row" >
-                        <div class="col-xl-5 col-lg-5 col-md-10 col-sm-10 mb-2" 
-                          *ngFor="let field of camposDemograficosOrganizacion">
-                          <mat-form-field appearance="fill" class="w-100">
-                            <mat-label>{{ field.NombreCampo }}</mat-label>
-                            <input matInput [formControlName]="field.NombreCampo" />
-                          </mat-form-field>
-                        </div>
-                      </div>
-                 
-                  
-                     
-         
-                  </form>
-                  
-                  
-                  
-                  
-                  
-                  
-                  <!-- FIN formulario -->
-
-                  <mat-dialog-actions>
-                   
-                    <button [disabled]="isButtonDisabled" mat-raised-button color="primary" (click)="onSubmit()">
-                      {{'MENUITEMS.EMPLOYEE.SAVE' | translate}}
-                    </button>
-                  </mat-dialog-actions>
-
-
-                </mat-expansion-panel>
-              </mat-accordion>
-            
-
-            
-
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<ng-template #newEmployeeDialog>
+  <h2 mat-dialog-title>{{ 'MENUITEMS.EMPLOYEE.CREATENEW' | translate }}</h2>
+
+  <mat-dialog-content class="employee-dialog-content">
+    <form [formGroup]="employeeForm" class="employee-dialog-form">
+      <div class="employee-form-grid">
+        <mat-form-field appearance="fill" class="employee-form-field employee-form-field--small">
+          <mat-label>ID Org.</mat-label>
+          <input matInput formControlName="IdOrganizacion" />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.NAME' | translate}}</mat-label>
+          <input matInput formControlName="Nombres" required />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.LNAME' | translate}}</mat-label>
+          <input matInput formControlName="Apellidos" required />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.POSITION' | translate}}</mat-label>
+          <input matInput formControlName="Cargo" required />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.PHONECOUNTRY' | translate}}</mat-label>
+          <mat-select formControlName="PhoneCountryIso" (selectionChange)="onPhoneCountryChange()">
+            <mat-option *ngFor="let country of phoneCountries" [value]="country.isoCode">
+              {{ getPhoneCountryLabel(country) }} ({{ country.dialCode }})
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="employeeForm.get('PhoneCountryIso')?.hasError('phoneCountryRequired')">
+            {{ 'MENUITEMS.EMPLOYEE.PHONECOUNTRYREQUIRED' | translate }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.PHONE' | translate}}</mat-label>
+          <span matTextPrefix *ngIf="selectedPhoneCountry">{{ selectedPhoneCountry.dialCode }}&nbsp;</span>
+          <input
+            matInput
+            formControlName="Celular"
+            inputmode="numeric"
+            autocomplete="tel-national"
+            [maxlength]="selectedPhoneCountry?.maxDigits || maxPhoneLocalDigits"
+            (input)="onPhoneInput()"
+          />
+          <mat-hint>
+            {{ 'MENUITEMS.EMPLOYEE.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+          </mat-hint>
+          <mat-hint align="end" *ngIf="phonePreview">
+            {{ 'MENUITEMS.EMPLOYEE.PHONEPREVIEW' | translate:{ phone: phonePreview } }}
+          </mat-hint>
+          <mat-error *ngIf="employeeForm.get('Celular')?.hasError('phoneLength')">
+            {{ 'MENUITEMS.EMPLOYEE.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field employee-form-field--wide">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.MAIL' | translate}}</mat-label>
+          <input matInput formControlName="Email" type="email" />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field employee-form-field--wide">
+          <mat-label>{{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}}</mat-label>
+          <mat-select formControlName="TipoEnvioEncuesta">
+            <mat-option [value]="0">{{'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate}}</mat-option>
+            <mat-option [value]="1">Email</mat-option>
+            <mat-option [value]="2">WhatsApp</mat-option>
+            <mat-option [value]="3">Email y WhatsApp</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="employee-form-field employee-form-field--wide">
+          <mat-label>{{ 'MENUITEMS.EMPLOYEE.MANAGER' | translate }}</mat-label>
+          <input
+            matInput
+            class="employee-manager-input"
+            [value]="selectedManagerName"
+            readonly
+            placeholder="Sin jefe"
+            [disabled]="!dataSourceEmployees.length"
+            (click)="openManagerDialog()"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            aria-label="Buscar jefe"
+            [disabled]="!dataSourceEmployees.length"
+            (click)="openManagerDialog()"
+          >
+            <mat-icon>search</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <div class="employee-demographic-section" *ngIf="camposDemograficosOrganizacion.length">
+          <div class="employee-demographic-title">
+            {{ 'MENUITEMS.EMPLOYEE.DEMOGRAPHICDATA' | translate }}
+          </div>
+
+          <div class="employee-demographic-grid">
+            <mat-form-field
+              appearance="fill"
+              class="employee-form-field employee-form-field--full"
+              *ngFor="let field of camposDemograficosOrganizacion"
+            >
+              <mat-label>{{ field.NombreCampo }}</mat-label>
+              <input matInput [formControlName]="field.NombreCampo" />
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="employee-dialog-actions">
+    <button mat-button type="button" mat-dialog-close>
+      {{'MENUITEMS.EMPLOYEE.CANCEL' | translate}}
+    </button>
+    <button [disabled]="isButtonDisabled" mat-raised-button color="primary" type="button" (click)="onSubmit()">
+      {{'MENUITEMS.EMPLOYEE.SAVE' | translate}}
+    </button>
+  </mat-dialog-actions>
+</ng-template>

@@ -115,8 +115,9 @@
           "submenu": []
         }
       ]
-    },
     
+    },
+
      {
       "path": "",
       "title": "MENUITEMS.EMAIL.TEXT",
@@ -128,8 +129,8 @@
       "badgeClass": "",
       "submenu": [
         {
-          "path": "/email/inbox",
-          "title": "MENUITEMS.EMAIL.LIST.INBOX",
+          "path": "/email/history",
+          "title": "MENUITEMS.EMAIL.LIST.HISTORY",
           "iconType": "",
           "icon": "",
           "class": "ml-menu",
@@ -199,7 +200,157 @@
         
        
       ]
+    },
+
+    {
+      "path": "",
+      "title": "DESEMPENO_MENUITEMS.MAIN.TEXT",
+      "iconType": "",
+      "icon": "",
+      "class": "",
+      "groupTitle": true,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/dashboard",
+      "title": "DESEMPENO_MENUITEMS.DASHBOARD.TEXT",
+      "iconType": "feather",
+      "icon": "bar-chart-2",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/organizaciones",
+      "title": "DESEMPENO_MENUITEMS.ORGANIZACIONES.TEXT",
+      "iconType": "feather",
+      "icon": "home",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/campos-demograficos",
+      "title": "DESEMPENO_MENUITEMS.CAMPOS_DEMOGRAFICOS.TEXT",
+      "iconType": "feather",
+      "icon": "list",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/empleados",
+      "title": "DESEMPENO_MENUITEMS.EMPLEADOS.TEXT",
+      "iconType": "feather",
+      "icon": "users",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/organigrama",
+      "title": "DESEMPENO_MENUITEMS.ORGANIGRAMA.TEXT",
+      "iconType": "feather",
+      "icon": "git-branch",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "/desempeno/evaluaciones",
+      "title": "DESEMPENO_MENUITEMS.EVALUACIONES.TEXT",
+      "iconType": "feather",
+      "icon": "check-square",
+      "class": "",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": []
+    },
+    {
+      "path": "",
+      "title": "DESEMPENO_MENUITEMS.BIBLIOTECA.TEXT",
+      "iconType": "feather",
+      "icon": "book-open",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "/desempeno/escalas",
+          "title": "DESEMPENO_MENUITEMS.BIBLIOTECA.LIST.ESCALAS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/desempeno/modelos",
+          "title": "DESEMPENO_MENUITEMS.BIBLIOTECA.LIST.MODELOS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
+    },
+    {
+      "path": "",
+      "title": "DESEMPENO_MENUITEMS.ENVIOS.TEXT",
+      "iconType": "feather",
+      "icon": "send",
+      "class": "menu-toggle",
+      "groupTitle": false,
+      "badge": "",
+      "badgeClass": "",
+      "submenu": [
+        {
+          "path": "/desempeno/correos",
+          "title": "DESEMPENO_MENUITEMS.ENVIOS.LIST.CORREOS",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        },
+        {
+          "path": "/desempeno/whatsapp",
+          "title": "DESEMPENO_MENUITEMS.ENVIOS.LIST.WHATSAPP",
+          "iconType": "",
+          "icon": "",
+          "class": "ml-menu",
+          "groupTitle": false,
+          "badge": "",
+          "badgeClass": "",
+          "submenu": []
+        }
+      ]
     }
+    
+    
+
+    
 
   
 

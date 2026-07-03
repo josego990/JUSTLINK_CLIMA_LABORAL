@@ -4,8 +4,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:demo": "ng serve --configuration demo",
     "dev": "ng serve --open",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
+    "build:demo": "ng build --configuration demo",
     "test": "ng test",
     "lint": "ng lint"
   },
@@ -37,6 +40,7 @@
     "@popperjs/core": "^2.11.8",
     "@swimlane/ngx-charts": "^22.0.0",
     "@swimlane/ngx-datatable": "^20.1.0",
+    "@swimlane/ngx-graph": "^11.0.0",
     "@tiptap/extension-table": "^2.12.0",
     "@tiptap/extension-table-cell": "^2.12.0",
     "@tiptap/extension-table-header": "^2.12.0",

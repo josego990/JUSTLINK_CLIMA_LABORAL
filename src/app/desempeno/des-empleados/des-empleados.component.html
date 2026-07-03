@@ -1,0 +1,363 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="['Home', 'Desempeño']"
+        [active_item]="pageTitleKey | translate"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="body table-responsive">
+            <div class="row align-items-end mb-3">
+              <div class="col-xl-4 col-lg-5 col-md-6 col-sm-12 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
+                  <mat-select
+                    [value]="selectedOrganizationId"
+                    [disabled]="isLoadingOrganizations"
+                    (selectionChange)="onOrganizationChange($event.value)"
+                  >
+                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
+                      {{ organization.Nombre }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+                <mat-form-field appearance="fill" class="w-100">
+                  <mat-label>Buscar empleado</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="searchTerm"
+                    [disabled]="!hasSelectedOrganization || isLoadingEmployees"
+                    (keyup.enter)="refreshEmployees()"
+                    placeholder="Nombre o correo"
+                  />
+                </mat-form-field>
+              </div>
+
+              <div class="col-xl-4 col-lg-3 col-md-12 col-sm-12 mb-2 d-flex justify-content-end align-items-center gap-2">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!hasSelectedOrganization || isLoadingFields || isLoadingEmployees"
+                  (click)="openCreateDialog()"
+                >
+                  {{ 'MENUITEMS.EMPLOYEE.CREATENEW' | translate }}
+                </button>
+
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="!hasSelectedOrganization || isLoadingEmployees"
+                  (click)="refreshEmployees()"
+                >
+                  Buscar
+                </button>
+
+                <button
+                  mat-icon-button
+                  [matMenuTriggerFor]="menu"
+                  [disabled]="!hasSelectedOrganization || isUploadingExcel"
+                  matTooltip="Acciones del módulo"
+                >
+                  <mat-icon>settings</mat-icon>
+                </button>
+
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="fileInput.click()" [disabled]="isUploadingExcel">
+                    <mat-icon style="color:#217346;">table_view</mat-icon>
+                    <span style="color:#217346;">{{ 'MENUITEMS.EMPLOYEE.UPLOADEXCELEMPLOYEE' | translate }}</span>
+                  </button>
+                </mat-menu>
+
+                <input
+                  #fileInput
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style="display:none"
+                  (change)="onFileSelected($event)"
+                />
+              </div>
+            </div>
+
+            <div class="table-loader" *ngIf="isLoadingEmployees || isLoadingFields || isUploadingExcel">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+
+            <table
+              mat-table
+              [dataSource]="dataSourceEmployees"
+              class="table"
+              *ngIf="hasSelectedOrganization && !isLoadingEmployees && !isLoadingFields && dataSourceEmployees.length > 0"
+            >
+              <ng-container matColumnDef="IdEmpleado">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let element">{{ element.IdEmpleado }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Nombres">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.NAME' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Nombres }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Apellidos">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.LNAME' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Apellidos }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Cargo">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.POSITION' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Cargo || '-' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Telefono">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.PHONE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Telefono || '-' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="Email">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.MAIL' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ element.Email || '-' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="NombreJefe">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.MANAGER' | translate }}</th>
+                <td mat-cell *matCellDef="let element">{{ getManagerName(element) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="FechaIngreso">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.EMPLOYEE.HIREDATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.FechaIngreso ? (element.FechaIngreso | date: 'yyyy-MM-dd') : '-' }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="activo">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <span
+                    class="badge"
+                    [style.background]="element.activo ? '#d4f8e8' : '#ffe5e5'"
+                    [style.color]="element.activo ? '#0d8a53' : '#b42318'"
+                  >
+                    {{ getStatusLabel(element.activo) }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container
+                *ngFor="let field of demographicFields; trackBy: trackByFieldId"
+                [matColumnDef]="getFieldColumnKey(field)"
+              >
+                <th mat-header-cell *matHeaderCellDef>{{ field.Nombre }}</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ getEmployeeDemographicValue(element, field) }}
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="Acciones">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate }}</th>
+                <td mat-cell *matCellDef="let element">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="startEdit(element)"
+                    matTooltip="Editar empleado"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+
+            <div class="text-center py-4" *ngIf="!hasSelectedOrganization && !isLoadingOrganizations">
+              Selecciona una organización para listar sus empleados.
+            </div>
+
+            <div
+              class="text-center py-4"
+              *ngIf="hasSelectedOrganization && !isLoadingEmployees && !isLoadingFields && dataSourceEmployees.length === 0"
+            >
+              No hay empleados registrados para la organización seleccionada.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<ng-template #employeeDialogTemplate>
+  <h2 mat-dialog-title>
+    {{ isEditing ? ('MENUITEMS.EMPLOYEE.EDITEMPLOYEE' | translate) : ('MENUITEMS.EMPLOYEE.CREATENEW' | translate) }}
+  </h2>
+
+  <mat-dialog-content>
+    <form [formGroup]="employeeForm" class="pt-2">
+      <div class="row">
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.NAME' | translate }}</mat-label>
+            <input matInput formControlName="Nombres" />
+            <mat-error *ngIf="employeeForm.get('Nombres')?.hasError('required')">
+              Los nombres son obligatorios.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.LNAME' | translate }}</mat-label>
+            <input matInput formControlName="Apellidos" />
+            <mat-error *ngIf="employeeForm.get('Apellidos')?.hasError('required')">
+              Los apellidos son obligatorios.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.POSITION' | translate }}</mat-label>
+            <input matInput formControlName="Cargo" />
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.PHONE' | translate }}</mat-label>
+            <input matInput formControlName="Telefono" />
+          </mat-form-field>
+        </div>
+
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.MAIL' | translate }}</mat-label>
+            <input matInput type="email" formControlName="Email" />
+            <mat-error *ngIf="employeeForm.get('Email')?.hasError('required')">
+              El correo es obligatorio.
+            </mat-error>
+            <mat-error *ngIf="employeeForm.get('Email')?.hasError('email')">
+              Ingresa un correo válido.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.HIREDATE' | translate }}</mat-label>
+            <input matInput type="date" formControlName="FechaIngreso" />
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12 mb-2">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>{{ 'MENUITEMS.EMPLOYEE.MANAGER' | translate }}</mat-label>
+            <mat-select formControlName="IdEmpleadoJefe" multiple [compareWith]="compareByNumber">
+              <mat-option *ngFor="let manager of availableManagers" [value]="manager.IdEmpleado">
+                {{ manager.IdEmpleado }} - {{ manager.Nombres }} {{ manager.Apellidos }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>Deja vacío si no tiene jefe.</mat-hint>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row" *ngIf="demographicFields.length > 0">
+        <div
+          class="col-xl-4 col-lg-6 col-md-6 col-sm-12 mb-2"
+          *ngFor="let field of demographicFields; trackBy: trackByFieldId"
+        >
+          <ng-container [ngSwitch]="field.TipoDato">
+            <mat-form-field *ngSwitchCase="'LISTA'" appearance="fill" class="w-100">
+              <mat-label>{{ field.Nombre }}</mat-label>
+              <mat-select
+                [formControlName]="getFieldControlName(field)"
+                [multiple]="field.permiteMultiples"
+              >
+                <mat-option *ngIf="!field.requerido && !field.permiteMultiples" [value]="''">
+                  Sin selección
+                </mat-option>
+                <mat-option *ngFor="let option of getFieldOptions(field)" [value]="option.Valor">
+                  {{ option.Etiqueta || option.Valor }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="employeeForm.get(getFieldControlName(field))?.hasError('required')">
+                Este campo es obligatorio.
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field *ngSwitchCase="'NUMERO'" appearance="fill" class="w-100">
+              <mat-label>{{ field.Nombre }}</mat-label>
+              <input matInput type="number" [formControlName]="getFieldControlName(field)" />
+              <mat-error *ngIf="employeeForm.get(getFieldControlName(field))?.hasError('required')">
+                Este campo es obligatorio.
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field *ngSwitchCase="'FECHA'" appearance="fill" class="w-100">
+              <mat-label>{{ field.Nombre }}</mat-label>
+              <input matInput type="date" [formControlName]="getFieldControlName(field)" />
+              <mat-error *ngIf="employeeForm.get(getFieldControlName(field))?.hasError('required')">
+                Este campo es obligatorio.
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field *ngSwitchCase="'BOOLEANO'" appearance="fill" class="w-100">
+              <mat-label>{{ field.Nombre }}</mat-label>
+              <mat-select [formControlName]="getFieldControlName(field)">
+                <mat-option *ngIf="!field.requerido" [value]="null">Sin selección</mat-option>
+                <mat-option [value]="true">Sí</mat-option>
+                <mat-option [value]="false">No</mat-option>
+              </mat-select>
+              <mat-error *ngIf="employeeForm.get(getFieldControlName(field))?.hasError('required')">
+                Este campo es obligatorio.
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field *ngSwitchDefault appearance="fill" class="w-100">
+              <mat-label>{{ field.Nombre }}</mat-label>
+              <input matInput [formControlName]="getFieldControlName(field)" />
+              <mat-error *ngIf="employeeForm.get(getFieldControlName(field))?.hasError('required')">
+                Este campo es obligatorio.
+              </mat-error>
+            </mat-form-field>
+          </ng-container>
+        </div>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      [disabled]="isSaving"
+      (click)="closeEmployeeDialog()"
+    >
+      {{ 'MENUITEMS.EMPLOYEE.CANCEL' | translate }}
+    </button>
+
+    <button
+      mat-raised-button
+      color="primary"
+      [disabled]="isSaving || !hasSelectedOrganization"
+      (click)="onSubmit()"
+    >
+      {{ 'MENUITEMS.EMPLOYEE.SAVE' | translate }}
+    </button>
+  </mat-dialog-actions>
+</ng-template>

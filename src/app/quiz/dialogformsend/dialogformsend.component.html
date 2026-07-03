@@ -20,9 +20,10 @@
     </strong>
   </h2>
 
-  <div mat-dialog-content style="margin-top: 20px;">
+  <div mat-dialog-content class="dialog-content">
 
 
+    <div class="dialogformsend-actions">
     <ng-container [ngSwitch]="currentCard.estadoEnvio">
       <!-- No procesado o creado -->
       <ng-container >
@@ -53,16 +54,99 @@
       -->
       
     </ng-container>
+    </div>
 
-    <div style="margin-top: 15px;">
+    <div class="survey-status-summary" *ngIf="tableDataSource.length">
+      <div
+        *ngFor="let card of estadoSummaryCards"
+        class="summary-card"
+        [ngClass]="getEstadoBadgeClass(card.key)">
+        <span class="summary-card__label">{{ card.label }}</span>
+        <strong class="summary-card__value">{{ getEstadoTotal(card.key) }}</strong>
+      </div>
+    </div>
+
+    <div class="results-panel">
 
 
-    <strong>
-      Resultados por empleado
-    </strong>
+    <div class="table-toolbar">
+      <div>
+        <strong>
+          Resultados por empleado
+        </strong>
+        <div class="table-toolbar__meta" *ngIf="tableDataSource.length">
+          Mostrando {{ filteredTableDataSource.length }} de {{ tableDataSource.length }} registros
+        </div>
+      </div>
+      <div class="table-toolbar__actions" *ngIf="tableDataSource.length">
+        <button mat-raised-button color="primary" type="button" (click)="descargarExcel()" [disabled]="!filteredTableDataSource.length">
+          <mat-icon>download</mat-icon>
+          Descargar Excel
+        </button>
+    
+      </div>
+      
+    </div>
+
+    <div class="table-filters" *ngIf="tableDataSource.length">
+      <div class="filter-group">
+        <span class="filter-group__label">Tipo de envío</span>
+        <div class="filter-group__actions">
+          <button
+            mat-stroked-button
+            type="button"
+            class="filter-chip"
+            [class.filter-chip--active]="selectedTipoEnvioFilter === 'ALL'"
+            (click)="setTipoEnvioFilter('ALL')">
+            Todos ({{ tableDataSource.length }})
+          </button>
+          <button
+            *ngFor="let option of tipoEnvioFilterOptions"
+            mat-stroked-button
+            type="button"
+            class="filter-chip"
+            [class.filter-chip--active]="selectedTipoEnvioFilter === option.value"
+            (click)="setTipoEnvioFilter(option.value)">
+            {{ option.label }} ({{ getTipoEnvioTotal(option.value) }})
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group__label">Estado</span>
+        <div class="filter-group__actions">
+          <button
+            mat-stroked-button
+            type="button"
+            class="filter-chip"
+            [class.filter-chip--active]="selectedEstadoFilter === 'ALL'"
+            (click)="setEstadoFilter('ALL')">
+            Todos ({{ tableDataSource.length }})
+          </button>
+          <button
+            *ngFor="let estado of estadoFilterOptions"
+            mat-stroked-button
+            type="button"
+            class="filter-chip"
+            [class.filter-chip--active]="selectedEstadoFilter === estado"
+            (click)="setEstadoFilter(estado)">
+            {{ estado }} ({{ getEstadoTotal(estado) }})
+          </button>
+        </div>
+      </div>
+    </div>
 
 
-    <table  mat-table [dataSource]="tableDataSource" class="w-100">
+    <div class="table-toolbar__actions" *ngIf="dynamicDemographicColumns.length">
+        <button mat-stroked-button type="button" class="filter-chip" (click)="toggleDynamicDemographicColumns()">
+          <mat-icon>{{ showDynamicDemographicColumns ? 'view_week' : 'view_column' }}</mat-icon>
+          {{ showDynamicDemographicColumns ? 'Ocultar demográficos' : 'Mostrar demográficos' }}
+          ({{ dynamicDemographicColumns.length }})
+        </button>
+      </div>
+    <div class="table-wrapper">
+      
+    <table  mat-table [dataSource]="filteredTableDataSource" class="w-100">
 
       
       <ng-container matColumnDef="IdEmpleado">
@@ -72,7 +156,7 @@
 
 
       <ng-container matColumnDef="Empleado">
-        <th mat-header-cell *matHeaderCellDef> EPLEADO </th>
+        <th mat-header-cell *matHeaderCellDef> EMPLEADO </th>
         <td mat-cell *matCellDef="let element">
           {{element.Empleado}}
         </td>
@@ -92,14 +176,20 @@
       <ng-container matColumnDef="TipoEnvioEncuesta">
         <th mat-header-cell *matHeaderCellDef>TIPO ENVIO</th>
         <td mat-cell *matCellDef="let element">
-          {{ getTipoEnvioTexto(element.TipoEnvioEncuesta) }}
+          <span class="type-badge">
+            {{ getTipoEnvioTexto(element.TipoEnvioEncuesta) }}
+          </span>
         </td>
         
       </ng-container>
 
       <ng-container matColumnDef="EstadoEncuesta">
         <th mat-header-cell *matHeaderCellDef>ESTADO ENCUESTA</th>
-        <td mat-cell *matCellDef="let element"> {{element.EstadoEncuesta}} </td>
+        <td mat-cell *matCellDef="let element">
+          <span class="status-badge" [ngClass]="getEstadoBadgeClass(element.EstadoEncuesta)">
+            {{ normalizeEstadoEncuesta(element.EstadoEncuesta) }}
+          </span>
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="FechaEnvio">
@@ -155,13 +245,18 @@
           </a>
         </td>
       </ng-container>
+
+      <ng-container *ngFor="let column of dynamicDemographicColumns" [matColumnDef]="column">
+        <th mat-header-cell *matHeaderCellDef class="dynamic-demographic-header">{{ column }}</th>
+        <td mat-cell *matCellDef="let element" class="dynamic-demographic-cell">{{ formatDynamicColumnValue(element[column]) }}</td>
+      </ng-container>
       
       <ng-container matColumnDef="Reenvio">
         <th mat-header-cell *matHeaderCellDef>Crear/Enviar</th>
         <td mat-cell *matCellDef="let element">
       
         
-          <button *ngIf="element.EstadoEncuesta === 'Sin encuesta'"
+          <button *ngIf="normalizeEstadoEncuesta(element.EstadoEncuesta) === 'Sin encuesta'"
                   mat-icon-button color="primary"
                   (click)="swalCrearEncuesta(element)"
                   matTooltip="Crear encuesta para este empleado"
@@ -172,7 +267,7 @@
             <mat-icon>add_circle</mat-icon>
           </button>
       
-          <button *ngIf="element.EstadoEncuesta !== 'Sin encuesta'"
+          <button *ngIf="normalizeEstadoEncuesta(element.EstadoEncuesta) !== 'Sin encuesta'"
                   mat-icon-button color="warn"
                   (click)="swalConfirmaEnvio(element)"
                   matTooltip="Enviar encuesta para este empleado"
@@ -188,6 +283,11 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
+    </div>
+
+    <div class="empty-state" *ngIf="tableDataSource.length && !filteredTableDataSource.length">
+      No hay resultados con los filtros seleccionados.
+    </div>
 
     <div *ngIf="loading" class="loading-overlay">
       <mat-progress-spinner

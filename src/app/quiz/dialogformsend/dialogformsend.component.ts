@@ -7,6 +7,7 @@ import { Inject } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog'; 
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
+import { ExcelXlsxService } from '../../dashboard/dashboard1/excel-xlsx.service';
 import { CommonModule, DatePipe } from '@angular/common'; 
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
@@ -75,6 +76,44 @@ function renderizarPlantilla(
 // Aquí se crea el nuevo quiz
 export class DialogformSendComponent implements OnInit {
 
+  readonly baseDisplayedColumns = [
+    'IdEmpleado',
+    'Empleado',
+    'Email',
+    'Celular',
+    'TipoEnvioEncuesta',
+    'EstadoEncuesta',
+    'FechaEnvio',
+    'FechaInicio',
+    'FechaFinalizacion',
+    'RespuestaEnvio',
+    'CodigoEncuestaEmpleado'
+  ];
+
+  readonly trailingDisplayedColumns = ['Reenvio'];
+
+  readonly estadoSummaryCards = [
+    { key: 'Contestada', label: 'Contestadas' },
+    { key: 'Enviado', label: 'Enviadas' },
+    { key: 'Iniciada', label: 'Iniciadas' },
+    { key: 'Creado', label: 'Creadas' }
+  ];
+
+  readonly tipoEnvioFilterOptions = [
+    { value: 1, label: 'Correo' },
+    { value: 2, label: 'Whatsapp' },
+    { value: 3, label: 'Correo & Whatsapp' }
+  ];
+
+  readonly baseEstadoFilterOptions = [
+    'Contestada',
+    'Enviado',
+    'Iniciada',
+    'Creado',
+    'No enviado',
+    'Sin encuesta'
+  ];
+
   public idOrganization =  0;
   public organizationName = '';
   public dataSourceOrganizations:any = [];
@@ -98,22 +137,14 @@ export class DialogformSendComponent implements OnInit {
 
   public selectedFieldType = '1'
   public loading = false;
-  public tableDataSource = [] as any;
-  displayedColumns: string[] = [
-   
-    "IdEmpleado",
-    "Empleado",
-    "Email",
-    "Celular",
-    "TipoEnvioEncuesta",
-    "EstadoEncuesta",
-    "FechaEnvio",
-    "FechaInicio",
-    "FechaFinalizacion",
-    "RespuestaEnvio",
-    "CodigoEncuestaEmpleado",
-    "Reenvio"
-  ];
+  public tableDataSource = [] as any[];
+  public filteredTableDataSource = [] as any[];
+  public dynamicDemographicColumns = [] as string[];
+  public showDynamicDemographicColumns = true;
+  public selectedTipoEnvioFilter: number | 'ALL' = 'ALL';
+  public selectedEstadoFilter = 'ALL';
+  public estadoFilterOptions = [...this.baseEstadoFilterOptions];
+  displayedColumns: string[] = [...this.baseDisplayedColumns, ...this.trailingDisplayedColumns];
 
  
 
@@ -122,6 +153,7 @@ export class DialogformSendComponent implements OnInit {
     public dialog: MatDialog,
     public dialogRef: MatDialogRef<DialogformSendComponent>,
     private organizacionService: OrganizacionService,
+    private excelXlsxService: ExcelXlsxService,
     @Inject(MAT_DIALOG_DATA) public dataRecibida: Quiz,
     ) {
      console.log('dataRecibeDialog::', dataRecibida );
@@ -855,7 +887,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
                   //console.log('htmlFinal:: ', htmlFinal);
 
-                  } else{
+                  } else {
                   //console.log('creo que entó a undefined!'); //plantilla genérica
                     plantilla_con_variables = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>Equipo de Gestión de Talento Humano El Tejar</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
                     
@@ -899,6 +931,9 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                 
                       this.organizacionService.updateEncuestaEmpleado(updateData).then((resultenx)=>{
                         item.RespuestaEnvio = 'Correcto';
+                        item.EstadoEncuesta = 'Enviado';
+                        item.FechaEnvio = updateData.FechaEnvio;
+                        this.refreshFilteredTable();
           
                         Swal.fire({
                           title: 'Realizado',
@@ -996,6 +1031,9 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
                     this.organizacionService.updateEncuestaEmpleado(updateData);
                     item.RespuestaEnvio = 'Correcto';
+                    item.EstadoEncuesta = 'Enviado';
+                    item.FechaEnvio = updateData.FechaEnvio;
+                    this.refreshFilteredTable();
                     this.loading = false;
 
                     Swal.fire({
@@ -1150,6 +1188,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                 await this.organizacionService.updateEncuestaEmpleado(updateData);
                 item.RespuestaEnvio = respuestaEnvio;
                 item.EstadoEncuesta = updateData.Estado;
+                item.FechaEnvio = updateData.FechaEnvio;
+                this.refreshFilteredTable();
 
                 // =========================
                 // 5) FEEDBACK UI
@@ -1241,12 +1281,18 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
     this.organizacionService.getEncuestasFlujo(this.dataRecibida.id).then((resultix)=>{
      console.log('resultix encuestas empleados:: ', resultix);
-      if(resultix.data){
-        this.tableDataSource = resultix.data;
-        this.loading = false;
-      }
+      this.tableDataSource = Array.isArray(resultix.data) ? resultix.data : [];
+      this.dynamicDemographicColumns = this.getDynamicDemographicColumns(this.tableDataSource);
+      this.updateDisplayedColumns();
+      this.updateEstadoFilterOptions();
+      this.refreshFilteredTable();
+      this.loading = false;
     }).catch((err)=>{
       console.error(err);
+      this.tableDataSource = [];
+      this.filteredTableDataSource = [];
+      this.dynamicDemographicColumns = [];
+      this.updateDisplayedColumns();
       this.loading = false;
     });
   }
@@ -1280,6 +1326,201 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       default:
         return 'Desconocido';
     }
+  }
+
+  setTipoEnvioFilter(tipo: number | 'ALL'): void {
+    this.selectedTipoEnvioFilter = tipo;
+    this.refreshFilteredTable();
+  }
+
+  setEstadoFilter(estado: string): void {
+    this.selectedEstadoFilter = estado;
+    this.refreshFilteredTable();
+  }
+
+  descargarExcel(): void {
+    if (!this.filteredTableDataSource.length) {
+      Swal.fire({
+        title: 'Sin datos para exportar',
+        text: 'No hay registros visibles en la tabla para descargar.',
+        icon: 'info',
+      });
+      return;
+    }
+
+    const exportColumns = [
+      { key: 'IdEmpleado', header: 'ID', width: 12 },
+      { key: 'Empleado', header: 'Empleado', width: 28 },
+      { key: 'Email', header: 'Correo', width: 30 },
+      { key: 'Celular', header: 'Celular', width: 16 },
+      { key: 'TipoEnvioEncuesta', header: 'Tipo envio', width: 20 },
+      { key: 'EstadoEncuesta', header: 'Estado encuesta', width: 18 },
+      { key: 'FechaEnvio', header: 'Fecha enviado', width: 20 },
+      { key: 'FechaInicio', header: 'Fecha inicio', width: 20 },
+      { key: 'FechaFinalizacion', header: 'Fecha finalizado', width: 20 },
+      { key: 'RespuestaEnvio', header: 'Respuesta envio', width: 20 },
+      { key: 'CodigoEncuestaEmpleado', header: 'Codigo encuesta', width: 22 },
+      ...this.dynamicDemographicColumns.map((column) => ({
+        key: column,
+        header: column,
+        width: 22,
+        dynamic: true,
+      })),
+    ];
+
+    const rows = this.filteredTableDataSource.map((item) => {
+      const row: Record<string, unknown> = {
+        IdEmpleado: item.IdEmpleado ?? '-',
+        Empleado: this.formatDynamicColumnValue(item.Empleado),
+        Email: this.formatDynamicColumnValue(item.Email),
+        Celular: this.formatDynamicColumnValue(item.Celular),
+        TipoEnvioEncuesta: this.getTipoEnvioTexto(Number(item.TipoEnvioEncuesta)),
+        EstadoEncuesta: this.normalizeEstadoEncuesta(item.EstadoEncuesta),
+        FechaEnvio: item.FechaEnvio ? this.convertirFecha(item.FechaEnvio) : '-',
+        FechaInicio: item.FechaInicio ? this.convertirFecha(item.FechaInicio) : '-',
+        FechaFinalizacion: item.FechaFinalizacion ? this.convertirFecha(item.FechaFinalizacion) : '-',
+        RespuestaEnvio: this.formatDynamicColumnValue(item.RespuestaEnvio),
+        CodigoEncuestaEmpleado: this.formatDynamicColumnValue(item.CodigoEncuestaEmpleado),
+      };
+
+      for (const column of this.dynamicDemographicColumns) {
+        row[column] = this.formatDynamicColumnValue(item[column]);
+      }
+
+      return row;
+    });
+
+    const filtroTipo = this.selectedTipoEnvioFilter === 'ALL'
+      ? 'Todos'
+      : this.getTipoEnvioTexto(Number(this.selectedTipoEnvioFilter));
+
+    const filtroEstado = this.selectedEstadoFilter === 'ALL'
+      ? 'Todos'
+      : this.selectedEstadoFilter;
+
+    const fileSafeTitle = (this.currentCard?.title || 'Envio_Encuestas')
+      .replace(/[^a-zA-Z0-9-_]+/g, '_')
+      .replace(/_+/g, '_');
+
+    this.excelXlsxService.exportarEncuestasEnvio({
+      title: `Envio de encuestas - ${this.currentCard?.title || 'Sin nombre'}`,
+      subtitle: `Organizacion: ${this.dataRecibida?.subtitle || 'Sin nombre'} | Registros exportados: ${rows.length}`,
+      filters: [
+        `Filtro tipo envio: ${filtroTipo}`,
+        `Filtro estado: ${filtroEstado}`,
+      ],
+      columns: exportColumns,
+      rows,
+      fileName: `${fileSafeTitle}_EnvioEncuestas.xlsx`,
+      sheetName: 'Envio encuestas',
+    });
+  }
+
+  toggleDynamicDemographicColumns(): void {
+    this.showDynamicDemographicColumns = !this.showDynamicDemographicColumns;
+    this.updateDisplayedColumns();
+  }
+
+  getEstadoTotal(estado: string): number {
+    return this.tableDataSource.filter((item) => this.matchesEstadoFilter(item, estado)).length;
+  }
+
+  getTipoEnvioTotal(tipo: number): number {
+    return this.tableDataSource.filter((item) => Number(item?.TipoEnvioEncuesta) === tipo).length;
+  }
+
+  getEstadoBadgeClass(estado: string | null | undefined): string {
+    switch (this.normalizeEstadoEncuesta(estado)) {
+      case 'Contestada':
+        return 'status-badge--contestada';
+      case 'Enviado':
+        return 'status-badge--enviado';
+      case 'Iniciada':
+        return 'status-badge--iniciada';
+      case 'Creado':
+        return 'status-badge--creado';
+      case 'No enviado':
+        return 'status-badge--no-enviado';
+      case 'Sin encuesta':
+        return 'status-badge--sin-encuesta';
+      default:
+        return 'status-badge--neutral';
+    }
+  }
+
+  normalizeEstadoEncuesta(estado: string | null | undefined): string {
+    const normalized = (estado ?? '').toString().trim();
+    return normalized || 'Sin encuesta';
+  }
+
+  formatDynamicColumnValue(value: unknown): string {
+    const normalized = value == null ? '' : String(value).trim();
+    return normalized || '-';
+  }
+
+  private refreshFilteredTable(): void {
+    this.filteredTableDataSource = this.tableDataSource.filter((item) => {
+      const matchesTipo = this.selectedTipoEnvioFilter === 'ALL'
+        ? true
+        : Number(item?.TipoEnvioEncuesta) === this.selectedTipoEnvioFilter;
+      const matchesEstado = this.selectedEstadoFilter === 'ALL'
+        ? true
+        : this.matchesEstadoFilter(item, this.selectedEstadoFilter);
+
+      return matchesTipo && matchesEstado;
+    });
+  }
+
+  private matchesEstadoFilter(item: any, estado: string): boolean {
+    if (estado === 'No enviado') {
+      return this.isRespuestaEnvioEmpty(item);
+    }
+
+    return this.normalizeEstadoEncuesta(item?.EstadoEncuesta) === estado;
+  }
+
+  private isRespuestaEnvioEmpty(item: any): boolean {
+    return !String(item?.RespuestaEnvio ?? '').trim();
+  }
+
+  private updateEstadoFilterOptions(): void {
+    const dynamicStates = this.tableDataSource
+      .map((item) => this.normalizeEstadoEncuesta(item?.EstadoEncuesta))
+      .filter((estado, index, arr) => estado && arr.indexOf(estado) === index);
+
+    this.estadoFilterOptions = [
+      ...this.baseEstadoFilterOptions.filter((estado, index, arr) => arr.indexOf(estado) === index),
+      ...dynamicStates.filter((estado) => !this.baseEstadoFilterOptions.includes(estado))
+    ];
+
+    if (this.selectedEstadoFilter !== 'ALL' && !this.estadoFilterOptions.includes(this.selectedEstadoFilter)) {
+      this.selectedEstadoFilter = 'ALL';
+    }
+  }
+
+  private updateDisplayedColumns(): void {
+    this.displayedColumns = [
+      ...this.baseDisplayedColumns,
+      ...(this.showDynamicDemographicColumns ? this.dynamicDemographicColumns : []),
+      ...this.trailingDisplayedColumns
+    ];
+  }
+
+  private getDynamicDemographicColumns(rows: any[]): string[] {
+    const dynamicColumns: string[] = [];
+    const knownColumns = new Set(this.baseDisplayedColumns);
+
+    for (const row of rows) {
+      for (const key of Object.keys(row ?? {})) {
+        if (knownColumns.has(key) || dynamicColumns.includes(key)) {
+          continue;
+        }
+
+        dynamicColumns.push(key);
+      }
+    }
+
+    return dynamicColumns;
   }
   
   

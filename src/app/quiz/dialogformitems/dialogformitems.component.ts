@@ -59,6 +59,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { number } from 'echarts/core';
+import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 export interface PreguntaField {
   Id: number;
@@ -295,6 +296,7 @@ export class DialogformItemsComponent implements OnInit {
     public dialogRef: MatDialogRef<DialogformItemsComponent>,
     private fb: UntypedFormBuilder,private languageService: LanguageService,private translate: TranslateService,
     private fbx: FormBuilder,
+    private demoLimitsService: DemoLimitsService,
     public dialog: MatDialog,
     public gfactordialog: MatDialog,
     public seriedialog: MatDialog,
@@ -1210,6 +1212,15 @@ export class DialogformItemsComponent implements OnInit {
             this.convertExcelToJSONPreguntas().then((jsonReturned) => {
              //console.log('AQUI DEBERIA DE ENVIAR LA DATA...');
              console.log('jsonReturned:: ', jsonReturned);
+
+              const incomingQuestions = Array.isArray(jsonReturned?.preguntas)
+                ? jsonReturned.preguntas.filter((item: any) => item?.tipo === 'pregunta').length
+                : 0;
+
+              if (!this.canAddQuestions(incomingQuestions)) {
+                Swal.close();
+                return;
+              }
            
               /* */
               this.organizacionService.saveNewPreguntasExcel(jsonReturned).then((result:any) => {
@@ -1773,6 +1784,45 @@ export class DialogformItemsComponent implements OnInit {
     return max + 1;
   }
 
+  private getCurrentQuestionsCount(): number {
+    return (this.granFactores || []).reduce((granFactorTotal: number, granFactor: any) => {
+      const factorQuestions = (granFactor?.series || []).reduce((factorTotal: number, factor: any) => {
+        const questionCount = Array.isArray(factor?.fields) ? factor.fields.length : 0;
+        return factorTotal + questionCount;
+      }, 0);
+
+      return granFactorTotal + factorQuestions;
+    }, 0);
+  }
+
+  private canAddQuestions(incomingCount = 1): boolean {
+    const currentCount = this.getCurrentQuestionsCount();
+
+    if (!this.demoLimitsService.exceedsLimit(
+      'maxQuestionsPerClimate',
+      currentCount,
+      incomingCount,
+    )) {
+      return true;
+    }
+
+    const limit = this.demoLimitsService.getLimit('maxQuestionsPerClimate');
+    const remaining = this.demoLimitsService.getRemaining('maxQuestionsPerClimate', currentCount);
+    const requestedText =
+      incomingCount > 1 ? ` Intentaste agregar ${incomingCount} preguntas.` : '';
+
+    Swal.fire({
+      title: 'Limite demo alcanzado',
+      text:
+        `Solo se puede ingresar ${limit} preguntas en este clima demo.` +
+        requestedText +
+        ` Actualmente existen ${currentCount} registradas y solo quedan ${remaining} espacio(s) disponibles.`,
+      icon: 'warning',
+    });
+
+    return false;
+  }
+
   onFormTextSubmitClick() {
    //console.log('Form Values', this.addTextForm.value);
 
@@ -1780,6 +1830,10 @@ export class DialogformItemsComponent implements OnInit {
       alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addTextForm.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         //console.log('valid');
 
         //validar si existe nombre del campo
@@ -1927,6 +1981,10 @@ export class DialogformItemsComponent implements OnInit {
       alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addTextFormIA.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         //console.log('valid');
 
         //validar si existe nombre del campo
@@ -2308,6 +2366,10 @@ export class DialogformItemsComponent implements OnInit {
       alert(this.translate.instant('MENUITEMS.QUIZ.MESSAGES.MUSTSELECTFACTOR'));
     } else {
       if (this.addRadioForm.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         this.loading = true;
         //console.log('valid');
         //validar si existe nombre del campo
@@ -2534,6 +2596,10 @@ export class DialogformItemsComponent implements OnInit {
     } 
     else {
       if (this.addSliderForm.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         this.loading = true;
         //console.log('valid');
         //validar si existe nombre del campo
@@ -2650,6 +2716,10 @@ export class DialogformItemsComponent implements OnInit {
       alert('Debe seleccionar un Factor para la pregunta');
     } else {
       if (this.addSelectForm.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         //console.log('valid');
         //validar si existe nombre del campo
         if (
@@ -2772,6 +2842,10 @@ export class DialogformItemsComponent implements OnInit {
       alert('Debe seleccionar un Factor para la pregunta');
     } else {
       if (this.addSelectDemForm.valid) {
+        if (!this.canAddQuestions()) {
+          return;
+        }
+
         //console.log('valid');
         //validar si existe nombre del campo
         if (
