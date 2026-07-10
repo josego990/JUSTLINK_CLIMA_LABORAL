@@ -66,7 +66,7 @@ interface DashboardModelOption {
 }
 
 type DrilldownMode = 'puesto' | 'escenario';
-type DashboardResultsTab = 'summary' | 'employees' | 'dimensions' | 'gaps' | 'findings' | 'models';
+type DashboardResultsTab = 'summary' | 'employees' | 'dimensions' | 'gaps' | 'findings' | 'nine-box' | 'models';
 type DetailResultTone = 'above' | 'expected' | 'below' | 'neutral';
 
 interface DashboardResultsTabOption {
@@ -176,7 +176,7 @@ export class DesDashboardComponent implements OnInit {
     { id: 'dimensions', label: 'Dimensiones', icon: 'donut_large' },
     { id: 'gaps', label: 'Brechas & criterios', icon: 'rule' },
     { id: 'findings', label: 'Hallazgos & pasos', icon: 'tips_and_updates' },
-  
+    { id: 'nine-box', label: 'Nine Box', icon: 'grid_view' },
   ];
   public dashboardData: DesDashboardData | null = null;
   public groupedDashboardSource: any | null = null;
@@ -390,6 +390,195 @@ export class DesDashboardComponent implements OnInit {
     const rows = summaryRows.length ? summaryRows : groupedRows;
     return this.sortEmployeesByHierarchy(this.filterRowsByPosition(rows));
   }
+
+  // ─── Nine Box ────────────────────────────────────────────────────────────────
+
+  static readonly NINE_BOX_CELL_LABELS: string[][] = [
+    ['Bajo rendimiento',      'Desempeño inconsistente', 'Experto consistente'],
+    ['Equipo sólido',         'Profesional clave',       'Alto rendimiento'],
+    ['Talento por desarrollar','Alto potencial',          'Estrella / Líder futuro'],
+  ];
+
+  static readonly NINE_BOX_CELL_TONES: string[][] = [
+    ['nb-red',    'nb-orange', 'nb-blue'],
+    ['nb-neutral','nb-teal',   'nb-green'],
+    ['nb-purple', 'nb-indigo', 'nb-gold'],
+  ];
+
+  get nineBoxEmployees(): Array<{
+    employee: any;
+    name: string;
+    position: string;
+    score: number;
+    gap: number;
+    performanceScore: number;
+    potentialScore: number;
+    perfLevel: number;
+    potLevel: number;
+  }> {
+    const employees = this.employeeGroupRows;
+    if (!employees.length) return [];
+
+    return employees
+      .map((emp) => {
+        const metrics = this.getEmployeeNineBoxMetrics(emp);
+
+        if (metrics.performanceScore === null || metrics.potentialScore === null) {
+          return null;
+        }
+
+        const score = metrics.overallScore ?? metrics.performanceScore;
+        const gap = metrics.gap ?? this.calculateGap(score, this.getEmployeeTarget(emp)) ?? 0;
+
+        return {
+          employee: emp,
+          name: this.getShortEmployeeName(emp),
+          position: this.getEmployeePosition(emp),
+          score,
+          gap,
+          performanceScore: metrics.performanceScore,
+          potentialScore: metrics.potentialScore,
+          perfLevel: this.getNineBoxLevel(metrics.performanceScore),
+          potLevel: this.getNineBoxLevel(metrics.potentialScore),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }
+
+  get nineBoxMatrix(): Array<Array<{
+    perfLevel: number;
+    potLevel: number;
+    label: string;
+    tone: string;
+    employees: Array<{ name: string; position: string; score: number; gap: number; performanceScore: number; potentialScore: number }>;
+  }>> {
+    const empBoxes = this.nineBoxEmployees;
+    const matrix = [];
+    for (let potLevel = 2; potLevel >= 0; potLevel--) {
+      const row = [];
+      for (let perfLevel = 0; perfLevel < 3; perfLevel++) {
+        row.push({
+          perfLevel,
+          potLevel,
+          label: DesDashboardComponent.NINE_BOX_CELL_LABELS[potLevel][perfLevel],
+          tone: DesDashboardComponent.NINE_BOX_CELL_TONES[potLevel][perfLevel],
+          employees: empBoxes
+            .filter((e) => e.perfLevel === perfLevel && e.potLevel === potLevel)
+            .map((e) => ({
+              name: e.name,
+              position: e.position,
+              score: e.score,
+              gap: e.gap,
+              performanceScore: e.performanceScore,
+              potentialScore: e.potentialScore,
+            })),
+        });
+      }
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  get nineBoxSummary(): { total: number; stars: number; highPotential: number; lowPerformance: number } {
+    const emp = this.nineBoxEmployees;
+    return {
+      total: emp.length,
+      stars:          emp.filter((e) => e.perfLevel === 2 && e.potLevel === 2).length,
+      highPotential:  emp.filter((e) => e.potLevel === 2).length,
+      lowPerformance: emp.filter((e) => e.perfLevel === 0 && e.potLevel === 0).length,
+    };
+  }
+
+  private getEmployeeNineBoxMetrics(employee: any): {
+    overallScore: number | null;
+    gap: number | null;
+    performanceScore: number | null;
+    potentialScore: number | null;
+  } {
+    const allDimensions = this.getEmployeeNineBoxDimensions(employee, false);
+    const externalDimensions = this.getEmployeeNineBoxDimensions(employee, true);
+    const sourceDimensions = externalDimensions.length ? externalDimensions : allDimensions;
+    const overallScore =
+      this.weightedAverageFromRows(sourceDimensions, ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado'], ['ponderacion']) ??
+      this.getEmployeeScore(employee);
+    const performanceDimensions = sourceDimensions.filter((dimension) => this.isNineBoxPerformanceDimension(dimension));
+    const potentialDimensions = sourceDimensions.filter((dimension) => this.isNineBoxPotentialDimension(dimension));
+    const performanceScore =
+      this.weightedAverageFromRows(performanceDimensions, ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado'], ['ponderacion']) ??
+      overallScore;
+    const potentialScore =
+      this.weightedAverageFromRows(potentialDimensions, ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado'], ['ponderacion']) ??
+      overallScore;
+
+    return {
+      overallScore,
+      gap: this.getEmployeeGap(employee),
+      performanceScore,
+      potentialScore,
+    };
+  }
+
+  private getEmployeeNineBoxDimensions(employee: any, externalOnly: boolean): any[] {
+    const surveys = this.getGroupedEmployeeEvaluations(employee);
+    const selectedSurveys = externalOnly
+      ? surveys.filter((survey) => !this.isSelfScenario(survey))
+      : surveys;
+    const dimensions = selectedSurveys.flatMap((survey) =>
+      this.getSurveyDimensionsForDisplay(survey, employee)
+    );
+
+    return dimensions.length ? dimensions : externalOnly ? [] : this.getEmployeeDimensionRows(employee);
+  }
+
+  private isNineBoxPerformanceDimension(dimension: any): boolean {
+    const key = this.getNineBoxDimensionKey(dimension);
+    return [
+      'OBJET',
+      'RESULT',
+      'ENTREG',
+      'CUMPL',
+      'PRODUCT',
+      'CALIDAD',
+      'TRABAJO',
+    ].some((token) => key.includes(token));
+  }
+
+  private isNineBoxPotentialDimension(dimension: any): boolean {
+    const key = this.getNineBoxDimensionKey(dimension);
+    return [
+      'COMPET',
+      'VALOR',
+      'LIDER',
+      'DESAR',
+      'APREND',
+      'AUTONOM',
+      'COMUNIC',
+      'COLAB',
+      'ADAPT',
+      'INICIAT',
+    ].some((token) => key.includes(token));
+  }
+
+  private getNineBoxDimensionKey(dimension: any): string {
+    return this.normalizeKey([
+      this.getText(dimension, ['dimensionCodigo', 'codigo'], ''),
+      this.getDimensionDisplayName(dimension),
+    ].filter(Boolean).join(' '));
+  }
+
+  private isSelfScenario(survey: any): boolean {
+    const key = this.normalizeKey(this.getAssignmentScenarioKey(survey));
+    const name = this.normalizeKey(this.getAssignmentScenarioName(survey));
+    return key === 'SELF' || name.includes('AUTOEVALU');
+  }
+
+  private getNineBoxLevel(value: number): number {
+    if (value < 3) return 0;
+    if (value < 4) return 1;
+    return 2;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   get dimensionEmployeeRows(): any[] {
     const filter = this.normalizeKey(this.dimensionEmployeeFilterText || '');

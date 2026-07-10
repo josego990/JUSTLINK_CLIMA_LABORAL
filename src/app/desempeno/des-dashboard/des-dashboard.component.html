@@ -760,6 +760,120 @@
                 </div>
               </article>
             </section>
+
+            <!-- ─── Nine Box ─────────────────────────────────────────────── -->
+            <section *ngIf="selectedResultsTab === 'nine-box'" class="results-page">
+              <div class="results-title">
+                <h2>Nine Box — Matriz de Talento</h2>
+                <p>
+                  Clasifica a cada evaluado según su <strong>desempeño actual</strong> (Objetivos / Resultados) y
+                  su <strong>potencial</strong> (Competencias / Valores / Liderazgo).
+                  Útil para planificación de sucesión y desarrollo de talento.
+                </p>
+              </div>
+
+              <!-- Resumen rápido -->
+              <div class="nb-summary-strip">
+                <div class="nb-summary-tile nb-gold">
+                  <span>Estrellas</span>
+                  <strong>{{ nineBoxSummary.stars }}</strong>
+                  <small>Alto perf. + Alto pot.</small>
+                </div>
+                <div class="nb-summary-tile nb-indigo">
+                  <span>Alto potencial</span>
+                  <strong>{{ nineBoxSummary.highPotential }}</strong>
+                  <small>Competencias altas</small>
+                </div>
+                <div class="nb-summary-tile nb-red">
+                  <span>Bajo rendimiento</span>
+                  <strong>{{ nineBoxSummary.lowPerformance }}</strong>
+                  <small>Bajo perf. + Bajo pot.</small>
+                </div>
+                <div class="nb-summary-tile nb-neutral">
+                  <span>Total evaluados</span>
+                  <strong>{{ nineBoxSummary.total }}</strong>
+                  <small>En la matriz</small>
+                </div>
+              </div>
+
+              <!-- Matriz 3×3 -->
+              <div class="nb-matrix-wrap">
+                <!-- Etiqueta eje Y -->
+                <div class="nb-y-axis">
+                  <span class="nb-axis-label">Potencial ↑</span>
+                  <span class="nb-axis-tick">Alto</span>
+                  <span class="nb-axis-tick">Medio</span>
+                  <span class="nb-axis-tick">Bajo</span>
+                </div>
+
+                <div class="nb-grid">
+                  <ng-container *ngFor="let row of nineBoxMatrix; let rowIndex = index">
+                    <div
+                      *ngFor="let cell of row; let colIndex = index"
+                      class="nb-cell"
+                      [ngClass]="cell.tone"
+                    >
+                      <div class="nb-cell-header">
+                        <span class="nb-cell-label">{{ cell.label }}</span>
+                        <span class="nb-cell-count">{{ cell.employees.length }}</span>
+                      </div>
+                      <div class="nb-cell-employees">
+                        <div
+                          *ngFor="let emp of cell.employees"
+                          class="nb-employee-chip"
+                          [title]="emp.position + ' · Desempeño: ' + formatScore(emp.performanceScore) + ' · Potencial: ' + formatScore(emp.potentialScore) + ' · Resultado global: ' + formatScore(emp.score)"
+                        >
+                          <span class="nb-emp-avatar">{{ emp.name.charAt(0) }}</span>
+                          <span class="nb-emp-name">{{ emp.name }}</span>
+                        </div>
+                        <div *ngIf="cell.employees.length === 0" class="nb-empty-cell">
+                          —
+                        </div>
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+
+                <!-- Etiqueta eje X -->
+                <div class="nb-x-axis">
+                  <span></span>
+                  <span class="nb-axis-tick">Bajo</span>
+                  <span class="nb-axis-tick">Medio</span>
+                  <span class="nb-axis-tick">Alto</span>
+                  <span class="nb-axis-label">→ Desempeño</span>
+                </div>
+              </div>
+
+              <!-- Leyenda -->
+              <div class="nb-legend-wrap">
+                <h3>Perfiles de la matriz</h3>
+                <div class="nb-legend-grid">
+                  <div *ngFor="let row of nineBoxMatrix">
+                    <div *ngFor="let cell of row" class="nb-legend-item" [ngClass]="cell.tone">
+                      <span class="nb-legend-dot"></span>
+                      <div>
+                        <strong>{{ cell.label }}</strong>
+                        <small>Perf: {{ cell.perfLevel === 0 ? 'Bajo' : cell.perfLevel === 1 ? 'Medio' : 'Alto' }} · Pot: {{ cell.potLevel === 0 ? 'Bajo' : cell.potLevel === 1 ? 'Medio' : 'Alto' }} · {{ cell.employees.length }} personas</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nota metodológica -->
+              <p class="nb-note">
+                <mat-icon>info</mat-icon>
+                <span>
+                  <strong>Desempeño</strong> se calcula desde dimensiones de Objetivos, Resultados o Cumplimiento.
+                  <strong>Potencial</strong> se calcula desde dimensiones de Competencias, Valores o Liderazgo.
+                  Se priorizan evaluaciones externas sobre autoevaluación cuando existen. Rangos: bajo &lt; 3,
+                  medio de 3 a &lt; 4, alto ≥ 4.
+                  Esta matriz es orientativa y complementa — no reemplaza — la evaluación directa del evaluador.
+                </span>
+              </p>
+            </section>
+            <!-- ────────────────────────────────────────────────────────── -->
+
           </main>
         </section>
       </ng-container>

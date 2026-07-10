@@ -82,6 +82,7 @@ export interface ConfigModel {
 })
 export class ConfigsComponent implements OnInit, OnDestroy {
   langStoreValue?: string;
+  readonly configDisclaimer = 'Advertencia: cambiar estas variables o valores puede hacer que el sistema falle o deje de funcionar correctamente.';
 
   // Definición de columnas (show/hide + tipos)
   columnDefinitions = [
@@ -246,15 +247,20 @@ export class ConfigsComponent implements OnInit, OnDestroy {
         const idx = this.dataSource.data.findIndex((r:any) => r.IdConfig === result.IdConfig);
         if (idx !== -1) this.dataSource.data[idx] = result;
       }
+
       this.dataSource._updateChangeSubscription();
+
       this.showNotification(
         action === 'add' ? 'snackbar-success' : 'black',
         action === 'add' ? 'Configuración creada' : 'Configuración actualizada',
         'bottom',
         'center'
       );
+
       this.refresh();
+
     });
+    
   }
 
   // Export

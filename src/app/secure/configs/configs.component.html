@@ -109,6 +109,11 @@
             </div>
           </div>
 
+          <div class="config-disclaimer" role="alert">
+            <mat-icon>warning</mat-icon>
+            <span>{{ configDisclaimer }}</span>
+          </div>
+
           <!-- Body -->
           <div class="body overflow-auto">
             <div class="responsive_table">
@@ -209,7 +214,7 @@
                 <!-- Actions -->
                 <ng-container matColumnDef="actions">
                   <mat-header-cell class="pr-0" *matHeaderCellDef  style="width:10%;max-width:10%">
-                    Actions
+                    Acciones
                 </mat-header-cell >
                   <mat-cell *matCellDef="let row" class="pr-0"  style="width:10%;max-width:10%">
                     <button mat-icon-button color="accent" (click)="$event.stopPropagation(); editCall(row)" class="tbl-action-btn">

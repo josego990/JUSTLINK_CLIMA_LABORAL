@@ -187,6 +187,9 @@ export class CrearEmpleadosComponent implements OnInit {
 
   
   private configs:any = sessionStorage.getItem('configs');
+
+ 
+
   private confslist:any = [];
 
   public jsonData: any = {
@@ -238,6 +241,8 @@ export class CrearEmpleadosComponent implements OnInit {
     private demoLimitsService: DemoLimitsService,
     
   ) {
+
+     console.log('configs: ', this.configs);
     // Inicializamos el formulario y definimos validaciones:
     this.employeeForm = this.fb.group({
       IdOrganizacion: [{ value: this.idOrganization, disabled: true }],
@@ -1618,9 +1623,13 @@ export class CrearEmpleadosComponent implements OnInit {
   }
 
   downloadExcelEmployeeTemplate(): void {
+
+    const template_es = this.confslist.find((config:any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_SPANISH');
+    const template_en = this.confslist.find((config:any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_ENG');
+
     const url = this.langStoreValue === 'en'
-      ? this.s3objectsServer + 'Template_EMPLOYEE_FORMAT_ENGLISH.xlsx'
-      : this.s3objectsServer + 'Plantilla_EMPLEADO_FORMATO_ESPANOL.xlsx';
+      ? this.s3objectsServer + template_en.Valor
+      : this.s3objectsServer + template_es.Valor;
 
     const filename = this.langStoreValue === 'en'
       ? 'EmployeeTemplate_EN.xlsx'
@@ -1637,3 +1646,4 @@ export class CrearEmpleadosComponent implements OnInit {
   
  
 }
+

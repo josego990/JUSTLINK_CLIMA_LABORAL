@@ -1,0 +1,18 @@
+.config-disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 16px;
+  padding: 12px 14px;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  background: #fff7ed;
+  color: #92400e;
+  font-size: 14px;
+  line-height: 1.4;
+
+  mat-icon {
+    flex: 0 0 auto;
+    color: #d97706;
+  }
+}
