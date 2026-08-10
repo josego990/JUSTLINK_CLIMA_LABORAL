@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilderService } from '../form-builder.service';
 import Swal from 'sweetalert2';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -246,6 +246,10 @@ import { TranslateModule } from '@ngx-translate/core';
           </div>
         </section>
 
+        <div class="security-verification" *ngIf="requireTurnstile">
+          <ng-content select="[security-verification]"></ng-content>
+        </div>
+
         <!-- Barra fija de envío -->
         <div class="submit-bar">
           <div class="submit-bar__progress">
@@ -258,8 +262,9 @@ import { TranslateModule } from '@ngx-translate/core';
           </div>
 
           <button type="submit" mat-raised-button color="primary"
-                  [disabled]="form.invalid || btnIsDisabled" (click)="onSubmit()">
-            <mat-icon>send</mat-icon>
+                  [disabled]="form.invalid || btnIsDisabled || isSubmitting || (requireTurnstile && !turnstileToken)"
+                  (click)="onSubmit()">
+            <mat-icon>{{ isSubmitting ? 'sync' : 'send' }}</mat-icon>
             {{ 'MENUITEMS.ALONE.SEND' | translate }}
           </button>
         </div>
@@ -353,6 +358,8 @@ import { TranslateModule } from '@ngx-translate/core';
     .q-range-value { margin-top:6px; font-weight:600; color:#334155; }
     .q-range { pointer-events: auto; z-index: 1; }
 
+    .security-verification { margin: 0 auto 10px; }
+
     /* Barra fija inferior */
     .submit-bar { position:fixed; left:0; right:0; bottom:0; z-index:999; display:flex; gap:16px; align-items:center; justify-content:center;
                   padding:10px 14px; background:#ffffff; border-top:1px solid #e7eaf0; box-shadow:0 -4px 10px rgba(16,24,40,.05); }
@@ -385,11 +392,15 @@ export class DynamicFormComponent implements OnInit {
   @Input() idEmpleado!: number;
   @Input() idEncuestaEmpleado!: number;
   @Input() lang!: string;
+  @Input() requireTurnstile = false;
+  @Input() turnstileToken = '';
+  @Output() turnstileResetRequested = new EventEmitter<void>();
 
   form!: FormGroup;
   idFlujo = 0;
   langStoreValue?: any;
   btnIsDisabled = false;
+  isSubmitting = false;
 
   selectDemFields: any[] = [];
 
@@ -488,6 +499,19 @@ export class DynamicFormComponent implements OnInit {
       return;
     }
 
+    if (this.requireTurnstile && !this.turnstileToken) {
+      Swal.fire({
+        icon: 'warning',
+        title: this.translate.instant('MENUITEMS.TURNSTILE.TITLE'),
+        text: this.translate.instant('MENUITEMS.TURNSTILE.REQUIRED'),
+      });
+      return;
+    }
+
+    if (this.isSubmitting) {
+      return;
+    }
+
     const respuestas = this.form.value;
     
     console.log('respuestas:: ', respuestas);
@@ -539,7 +563,8 @@ export class DynamicFormComponent implements OnInit {
         };
     this.updateClimaEncuesta(datasUpdate);
 */
-    this.organizacionService.savePreguntas(g_d).then((resilxis) => {
+    this.isSubmitting = true;
+    this.organizacionService.savePreguntas(g_d, this.turnstileToken).then((resilxis) => {
       if (resilxis.data.message === 'Respuestas guardadas y encuesta actualizada correctamente') {
         
         Swal.fire({
@@ -554,13 +579,16 @@ export class DynamicFormComponent implements OnInit {
         this.form.disable();
       }
     }).catch((err) => {
+      this.turnstileResetRequested.emit();
       Swal.fire({
         icon: 'error',
         title: this.translate.instant('MENUITEMS.DYNAMIC.SURVEYERROR'),
-        text: err,
+        text: err?.response?.data?.message || err?.message || String(err),
         timer: 3000,
         showConfirmButton: false
       });
+    }).finally(() => {
+      this.isSubmitting = false;
     });
   }
 

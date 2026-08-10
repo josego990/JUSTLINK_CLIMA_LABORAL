@@ -1,0 +1,96 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.turnstile-card {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 22px;
+  padding: 14px 16px;
+  border: 1px solid #dbe4e8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(23, 42, 54, 0.04);
+}
+
+.turnstile-card--error {
+  border-color: #e7c4c4;
+}
+
+.turnstile-copy {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.turnstile-copy strong,
+.turnstile-copy small {
+  display: block;
+}
+
+.turnstile-copy strong {
+  color: #1f2d38;
+  font-size: 0.94rem;
+}
+
+.turnstile-copy small {
+  margin-top: 3px;
+  color: #64727d;
+  line-height: 1.35;
+}
+
+.turnstile-icon {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 6px;
+  background: #e7f2f5;
+  color: #176477;
+}
+
+.turnstile-icon mat-icon {
+  width: 21px;
+  height: 21px;
+  font-size: 21px;
+}
+
+.turnstile-widget {
+  flex: 0 0 auto;
+}
+
+.turnstile-host {
+  min-width: 300px;
+  min-height: 65px;
+}
+
+.turnstile-status {
+  display: block;
+  max-width: 300px;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+.turnstile-status--warning {
+  color: #8a5a00;
+}
+
+.turnstile-status--error {
+  color: #b42318;
+}
+
+@media (max-width: 680px) {
+  .turnstile-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .turnstile-widget {
+    overflow-x: auto;
+  }
+}

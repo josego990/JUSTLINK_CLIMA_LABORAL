@@ -16,21 +16,6 @@
           <div class="row" style="margin-left: 4px; margin-top: 20px;">
             <div class="col-md-4">
               <mat-form-field appearance="fill" class="w-100">
-                <mat-label>Organización</mat-label>
-                <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
-                  <mat-option
-                    
-                    *ngFor="let organization of dataSourceOrganizations"
-                    [value]="organization.Id"
-                  >
-                    {{ organization.Nombre }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-
-            </div>
-            <div class="col-md-4">
-              <mat-form-field appearance="fill" class="w-100">
                 <mat-label>Climas {{nombreOrganizacion}}</mat-label>
                 <mat-select (selectionChange)="onClimaChange($event.value)">
                   <mat-option

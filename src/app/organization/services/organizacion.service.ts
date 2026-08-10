@@ -1,8 +1,16 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
+import { BehaviorSubject } from 'rxjs';
 import axios from 'axios';
 import { environment } from '../../../environments/environment';
 import { SKIP_SESSION_VALIDATION } from '../../core/interceptor/session-validation.context';
+
+export interface SelectedOrganization {
+  Id: number;
+  Nombre: string;
+}
+
+const SELECTED_ORGANIZATION_STORAGE_KEY = 'justlink.selectedOrganization';
 
 @Injectable({
   providedIn: 'root',
@@ -16,6 +24,11 @@ export class OrganizacionService {
   //private baseURL_DESA = 'http://98.88.117.108:3030/'
   private baseURLLocal = 'http://localhost:3030/';
 
+  private selectedOrganizationSubject = new BehaviorSubject<SelectedOrganization | null>(
+    this.readStoredSelectedOrganization()
+  );
+  public selectedOrganization$ = this.selectedOrganizationSubject.asObservable();
+
 
   constructor(private http: HttpClient) {
     try {
@@ -28,6 +41,99 @@ export class OrganizacionService {
     } 
     catch(error){
       console.error(error);
+    }
+  }
+
+  get selectedOrganizationSnapshot(): SelectedOrganization | null {
+    return this.selectedOrganizationSubject.value;
+  }
+
+  normalizeOrganizationOption(value: any): SelectedOrganization | null {
+    const id = Number(
+      value?.Id ??
+      value?.id ??
+      value?.IdOrganizacion ??
+      value?.idOrganizacion ??
+      value?.organizacionId ??
+      value?.organizationId ??
+      value
+    );
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return null;
+    }
+
+    const name = String(
+      value?.Nombre ??
+      value?.nombre ??
+      value?.NombreOrganizacion ??
+      value?.nombreOrganizacion ??
+      value?.organizacion ??
+      value?.organization ??
+      value?.name ??
+      ''
+    ).trim();
+
+    return {
+      Id: id,
+      Nombre: name || `Organización ${id}`,
+    };
+  }
+
+  setSelectedOrganization(organization: any | null): void {
+    const normalized = this.normalizeOrganizationOption(organization);
+
+    if (!normalized) {
+      this.clearSelectedOrganization();
+      return;
+    }
+
+    this.selectedOrganizationSubject.next(normalized);
+    this.persistSelectedOrganization(normalized);
+  }
+
+  selectOrganizationById(idOrganization: any, organizations: any[]): SelectedOrganization | null {
+    const id = Number(idOrganization);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return null;
+    }
+
+    const selected = (organizations ?? [])
+      .map((item) => this.normalizeOrganizationOption(item))
+      .find((item): item is SelectedOrganization => !!item && item.Id === id) ?? null;
+
+    if (selected) {
+      this.setSelectedOrganization(selected);
+    }
+
+    return selected;
+  }
+
+  clearSelectedOrganization(): void {
+    this.selectedOrganizationSubject.next(null);
+
+    try {
+      localStorage.removeItem(SELECTED_ORGANIZATION_STORAGE_KEY);
+    } catch {
+      // localStorage may be unavailable in some execution contexts.
+    }
+  }
+
+  private readStoredSelectedOrganization(): SelectedOrganization | null {
+    try {
+      const raw = localStorage.getItem(SELECTED_ORGANIZATION_STORAGE_KEY);
+      return raw ? this.normalizeOrganizationOption(JSON.parse(raw)) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private persistSelectedOrganization(organization: SelectedOrganization): void {
+    try {
+      localStorage.setItem(SELECTED_ORGANIZATION_STORAGE_KEY, JSON.stringify(organization));
+    } catch {
+      // Ignore persistence errors; the in-memory selection remains available.
     }
   }
 
@@ -105,9 +211,13 @@ export class OrganizacionService {
     }
   }
 
-  private getPublicRequestOptions(params?: Record<string, any>) {
+  private getPublicRequestOptions(
+    params?: Record<string, any>,
+    headers?: Record<string, string>
+  ) {
     return {
       ...(params ? { params } : {}),
+      ...(headers ? { headers } : {}),
       context: new HttpContext().set(SKIP_SESSION_VALIDATION, true),
     };
   }
@@ -244,6 +354,38 @@ export class OrganizacionService {
       );
   }
 
+  getDesempenoActionPlans(idOrganizacion: number, modeloId: number, params?: Record<string, any>) {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/planes-accion'),
+        this.getNoCacheConfig({
+          soloActivos: true,
+          ...params,
+          idOrganizacion,
+          modeloId,
+        })
+      );
+  }
+
+  saveDesempenoActionPlan(payload: any, planId?: number | null) {
+    const config = this.getNoCacheConfig();
+    const url = planId && planId > 0
+      ? this.getRestApiEndpoint(`api/desempeno/planes-accion/${planId}`)
+      : this.getRestApiEndpoint('api/desempeno/planes-accion');
+
+    return planId && planId > 0
+      ? axios.put(url, payload, config)
+      : axios.post(url, payload, config);
+  }
+
+  deleteDesempenoActionPlan(planId: number, idOrganizacion: number, descartarOportunidad = false) {
+    return axios
+      .delete(
+        this.getRestApiEndpoint(`api/desempeno/planes-accion/${planId}`),
+        this.getNoCacheConfig({ idOrganizacion, descartarOportunidad })
+      );
+  }
+
   generateDesempenoAiActionPlan(payload: any) {
     const config = this.getNoCacheConfig();
     return axios
@@ -272,6 +414,16 @@ export class OrganizacionService {
   updateDesempenoModel(id: number, model: any) {
     return axios
       .put(this.getRestApiEndpoint(`api/desempeno/modelos/${id}`), model);
+  }
+
+  duplicateDesempenoModel(id: number, payload: {
+    organizacionId: number;
+    codigo: string;
+    nombre: string;
+    version: number;
+  }) {
+    return axios
+      .post(this.getRestApiEndpoint(`api/desempeno/modelos/${id}/duplicar`), payload);
   }
 
   createDesempenoIndividualSurveySend(payload: {
@@ -327,13 +479,19 @@ export class OrganizacionService {
     );
   }
 
-  finalizeDesempenoResponse(token: string, payload: any) {
+  finalizeDesempenoResponse(
+    token: string,
+    payload: any,
+    turnstileToken: string
+  ) {
     return this.http.post(
       this.getRestApiEndpoint(
         `api/desempeno/respuestas/token/${encodeURIComponent(token)}/finalizar`
       ),
       payload,
-      this.getPublicRequestOptions()
+      this.getPublicRequestOptions(undefined, {
+        'Turnstile-Token': turnstileToken,
+      })
     );
   }
 
@@ -692,10 +850,18 @@ export class OrganizacionService {
       .post(this.getApiEndpoint('get-clima-json-gf'), {idFlujo:idFlujo,idEmpleado:idEmpleado});
   }
 
-  savePreguntas(preguntas_data: any) {    
+  savePreguntas(preguntas_data: any, turnstileToken = '') {
     //console.log('DATA_PLANTILLA_A_GUARDAR: ', template_data);
 
-    return axios.post(this.getApiEndpoint('guardar-encuesta-empleado'), preguntas_data);
+    return axios.post(
+      this.getApiEndpoint('guardar-encuesta-empleado'),
+      preguntas_data,
+      {
+        headers: {
+          'Turnstile-Token': turnstileToken,
+        },
+      }
+    );
   }
 
   updateClimaEncuesta(clima_data:any) {    
@@ -859,6 +1025,24 @@ export class OrganizacionService {
           FiltrosGf: filtrosGf,
           TipoFiltro: tipoFiltro         
         });
+  }
+
+  generateClimaCorporateAiAnalysis(payload: {
+    IdFlujo: number;
+    FiltrosDemograficos: string;
+    FiltrosGf: string;
+    TipoFiltro: string;
+  }) {
+    const config = this.getNoCacheConfig();
+
+    return axios.post(
+      this.getRestApiEndpoint('api/clima/ia/analisis-corporativo'),
+      payload,
+      {
+        ...config,
+        timeout: 180000,
+      }
+    );
   }
 
   getMetricaEstadoEnvioClima(idFlujo:number) {

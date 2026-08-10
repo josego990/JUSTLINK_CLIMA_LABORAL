@@ -1,0 +1,25 @@
+<section class="turnstile-card" [class.turnstile-card--error]="loadFailed || !isConfigured">
+  <div class="turnstile-copy">
+    <span class="turnstile-icon" aria-hidden="true">
+      <mat-icon>verified_user</mat-icon>
+    </span>
+    <div>
+      <strong>{{ 'MENUITEMS.TURNSTILE.TITLE' | translate }}</strong>
+      <small>{{ 'MENUITEMS.TURNSTILE.DESCRIPTION' | translate }}</small>
+    </div>
+  </div>
+
+  <div class="turnstile-widget">
+    <div #turnstileContainer class="turnstile-host"></div>
+
+    <small class="turnstile-status turnstile-status--warning" *ngIf="!isConfigured">
+      {{ 'MENUITEMS.TURNSTILE.CONFIG_REQUIRED' | translate }}
+    </small>
+    <small class="turnstile-status turnstile-status--error" *ngIf="loadFailed && isConfigured">
+      {{ 'MENUITEMS.TURNSTILE.LOAD_ERROR' | translate }}
+    </small>
+    <small class="turnstile-status turnstile-status--error" *ngIf="expired && !loadFailed">
+      {{ 'MENUITEMS.TURNSTILE.EXPIRED' | translate }}
+    </small>
+  </div>
+</section>

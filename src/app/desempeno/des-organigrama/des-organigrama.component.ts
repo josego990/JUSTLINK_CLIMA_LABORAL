@@ -17,7 +17,7 @@ import {
   Orientation,
   PanningAxis,
 } from '@swimlane/ngx-graph';
-import { Subject } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -371,11 +371,12 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   public readonly zoomToFitGraph$ = new Subject<NgxGraphZoomOptions>();
   private resizeObserver: ResizeObserver | null = null;
   private graphRefreshTimer: number | null = null;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(private organizacionService: OrganizacionService) {}
 
   ngOnInit(): void {
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
   }
 
   ngAfterViewInit(): void {
@@ -384,6 +385,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
     this.resizeObserver?.disconnect();
 
     if (this.graphRefreshTimer !== null) {
@@ -393,6 +395,24 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     this.updateGraph$.complete();
     this.centerGraph$.complete();
     this.zoomToFitGraph$.complete();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
   }
 
   get hasSelectedOrganization(): boolean {

@@ -31,29 +31,14 @@
 
       <div class="body">
         <div class="row">
-          <div class="col-xl-5 col-lg-5 col-md-12 mb-2">
-            <mat-form-field appearance="fill" class="w-100">
-              <mat-label>Organización</mat-label>
-              <mat-select
-                [value]="selectedOrganizationId"
-                [disabled]="isLoadingOrganizations || isLoadingResources"
-                (selectionChange)="onOrganizationChange($event.value)"
-              >
-                <mat-option *ngFor="let organization of organizations" [value]="organization.id">
-                  {{ organization.name }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-
-          <div class="col-xl-5 col-lg-5 col-md-8 mb-2">
+          <div class="col-xl-8 col-lg-8 col-md-8 mb-2">
             <mat-form-field appearance="fill" class="w-100">
               <mat-label>Descripción del modelo</mat-label>
               <input matInput [(ngModel)]="modelName" />
             </mat-form-field>
           </div>
 
-          <div class="col-xl-2 col-lg-2 col-md-4 mb-2">
+          <div class="col-xl-4 col-lg-4 col-md-4 mb-2">
             <mat-form-field appearance="fill" class="w-100">
               <mat-label>Fecha</mat-label>
               <input matInput type="date" [(ngModel)]="modelDate" />

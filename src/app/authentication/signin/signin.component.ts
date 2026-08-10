@@ -63,6 +63,7 @@ export class SigninComponent
   turnstileToken = '';
   turnstileTouched = false;
   turnstileLoadFailed = false;
+  readonly isDemoMode = environment.demo?.enabled ?? false;
   readonly turnstileSiteKey = environment.turnstileSiteKey?.trim() ?? '';
   private turnstileWidgetId: string | null = null;
   private readonly turnstileScriptId = 'cloudflare-turnstile-script';

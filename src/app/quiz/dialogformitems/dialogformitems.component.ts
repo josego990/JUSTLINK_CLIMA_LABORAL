@@ -60,6 +60,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { number } from 'echarts/core';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
+import { JoyrideModule, JoyrideService } from 'ngx-joyride';
 
 export interface PreguntaField {
   Id: number;
@@ -116,7 +117,8 @@ export interface GranFactor {
     MatProgressSpinnerModule,
     TranslateModule,
     MatInputModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    JoyrideModule
 ],
 
 })
@@ -292,6 +294,7 @@ export class DialogformItemsComponent implements OnInit {
   trackById = (_: number, item: any) => item?.Id;
 
   constructor(
+    private joyrideService: JoyrideService,
     private organizacionService: OrganizacionService, private authService: AuthService,
     public dialogRef: MatDialogRef<DialogformItemsComponent>,
     private fb: UntypedFormBuilder,private languageService: LanguageService,private translate: TranslateService,
@@ -534,6 +537,20 @@ export class DialogformItemsComponent implements OnInit {
     return (gf?.series || []).reduce((acc: number, s: any) => acc + (s?.fields?.length || 0), 0);
   }
 
+  getTotalFactorCount(): number {
+    return (this.granFactores || []).reduce(
+      (total: number, gf: any) => total + (Array.isArray(gf?.series) ? gf.series.length : 0),
+      0,
+    );
+  }
+
+  getTotalQuestionCount(): number {
+    return (this.granFactores || []).reduce(
+      (total: number, gf: any) => total + this.countQuestions(gf),
+      0,
+    );
+  }
+
   dropGranFactor(event: CdkDragDrop<any[]>) {
     if (!event?.container?.data) return;
 
@@ -603,6 +620,27 @@ export class DialogformItemsComponent implements OnInit {
       console.log('resp:: ', resp);
     });
 
+  }
+
+  startEditTour(): void {
+    setTimeout(() => {
+      this.joyrideService.startTour({
+        steps: [
+          'editClimateOverview',
+          'editClimateSettings',
+          'editClimateFactors',
+          'editClimateQuestionBuilder',
+          'editClimateQuestionList'
+        ],
+        showPrevButton: true,
+        customTexts: {
+          prev: this.translate.instant('MENUITEMS.TOUR.NAV.PREV'),
+          next: this.translate.instant('MENUITEMS.TOUR.NAV.NEXT'),
+          done: this.translate.instant('MENUITEMS.TOUR.NAV.DONE'),
+          close: this.translate.instant('MENUITEMS.TOUR.NAV.CLOSE')
+        }
+      }).subscribe();
+    }, 100);
   }
 
   public ngOnInit(): void {

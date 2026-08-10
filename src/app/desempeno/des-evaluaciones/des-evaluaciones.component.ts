@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,9 +25,20 @@ import {
   Orientation,
   PanningAxis,
 } from '@swimlane/ngx-graph';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
+import { DemoLimitsService } from '../../config/demo-limits.service';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  DES_EVALUATION_EXCEL_HEADERS,
+  DesEvaluationExcelImport,
+  DesEvaluationExcelRow,
+  DesEvaluationExcelScenarioKey,
+  DesEvaluationExcelValidationError,
+  parseDesEvaluationExcelWorkbook,
+} from './des-evaluaciones-excel';
 
 interface DesEvaluationOrganization {
   Id: number;
@@ -44,11 +55,14 @@ interface DesEvaluationDemographicField {
 interface DesEvaluationEmployee {
   id: number;
   organizationId: number | null;
+  positionId: number | null;
   managerId: number | null;
   managerIds: number[];
   fullName: string;
   cargo: string | null;
   email: string | null;
+  phone: string | null;
+  preferredSendType: DesEvaluationSendType | null;
   activo: boolean;
   demographicValues: Record<string, string>;
 }
@@ -263,7 +277,7 @@ interface DesEvaluationDuplicateContext {
   scenarioKey: DesEvaluationScenarioKey;
 }
 
-type DesEvaluationSendType = 'CORREO' | 'WHATSAPP' | 'AMBOS';
+type DesEvaluationSendType = 'NINGUNO' | 'CORREO' | 'WHATSAPP' | 'AMBOS';
 type DesEvaluationSendStatus =
   | 'CREADO'
   | 'ENVIADO'
@@ -341,6 +355,42 @@ interface DesEvaluationDiagramSummary {
   bidirectionalRelations: number;
 }
 
+interface DesEvaluationExcelImportSummary {
+  positions: number;
+  scenarios: number;
+  omittedScenarios: number;
+  dimensions: number;
+  criteria: number;
+  items: number;
+  skipped: number;
+  fileName: string;
+}
+
+interface DesEvaluationExcelMergeStats {
+  positionsAdded: number;
+  scenariosAdded: number;
+  dimensionsAdded: number;
+  criteriaAdded: number;
+  itemsAdded: number;
+  positionsSkipped: number;
+  scenariosSkipped: number;
+  dimensionsSkipped: number;
+  criteriaSkipped: number;
+  itemsSkipped: number;
+}
+
+interface DesEvaluationExcelMergeResult {
+  evaluation: DesEvaluationCard;
+  stats: DesEvaluationExcelMergeStats;
+}
+
+interface DesEvaluationExcelApplicabilityResult {
+  imported: DesEvaluationExcelImport;
+  warnings: string[];
+  omittedScenarios: number;
+  recalculatedWeights: boolean;
+}
+
 @Component({
   selector: 'app-des-evaluaciones',
   standalone: true,
@@ -368,12 +418,13 @@ interface DesEvaluationDiagramSummary {
   templateUrl: './des-evaluaciones.component.html',
   styleUrls: ['./des-evaluaciones.component.scss'],
 })
-export class DesEvaluacionesComponent implements OnInit {
+export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   @ViewChild('editorDialogTemplate') editorDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('sendDialogTemplate') sendDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('performanceEmailPreviewDialogTemplate')
   performanceEmailPreviewDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('modelDialogTemplate') modelDialogTemplate?: TemplateRef<unknown>;
+  @ViewChild('duplicateModelDialogTemplate') duplicateModelDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('modelCatalogSearchDialogTemplate') modelCatalogSearchDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('participantPositionsDialogTemplate') participantPositionsDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('bigFactorDialogTemplate') bigFactorDialogTemplate?: TemplateRef<unknown>;
@@ -492,6 +543,7 @@ export class DesEvaluacionesComponent implements OnInit {
   ];
   public modelStates = ['ACTIVO', 'BORRADOR', 'INACTIVO'];
   readonly sendTypeOptions: Array<{ value: DesEvaluationSendType; icon: string }> = [
+    { value: 'NINGUNO', icon: 'block' },
     { value: 'CORREO', icon: 'mail' },
     { value: 'WHATSAPP', icon: 'chat' },
     { value: 'AMBOS', icon: 'send' },
@@ -520,11 +572,16 @@ export class DesEvaluacionesComponent implements OnInit {
   public isLoadingModelDiagram = false;
   public isCreatingSendAssignments = false;
   public isSavingModel = false;
+  public isImportingModelExcel = false;
+  public modelExcelImportSummary: DesEvaluationExcelImportSummary | null = null;
   public editingEvaluation: DesEvaluationCard | null = null;
   public sendPreviewEvaluation: DesEvaluationCard | null = null;
   public sendAssignments: DesEvaluationSendAssignment[] = [];
   public performanceEmailHtml: SafeHtml | null = null;
   public modelPreviewEvaluation: DesEvaluationCard | null = null;
+  public duplicateModelSource: DesEvaluationCard | null = null;
+  public duplicateModelName = '';
+  public isDuplicatingModel = false;
   public modelDiagramAssignments: DesEvaluationSendAssignment[] = [];
   public modelDiagramNodes: Node[] = [];
   public modelDiagramLinks: Edge[] = [];
@@ -579,6 +636,7 @@ export class DesEvaluacionesComponent implements OnInit {
   private editorDialogRef: MatDialogRef<unknown> | null = null;
   public questionValuesDialogRef: MatDialogRef<unknown> | null = null;
   public modelCatalogDialogRef: MatDialogRef<unknown> | null = null;
+  public duplicateModelDialogRef: MatDialogRef<unknown> | null = null;
   public duplicatePositionsDialogRef: MatDialogRef<unknown> | null = null;
   public nestedDialogRef: MatDialogRef<unknown> | null = null;
   public editBigFactorIndex: number | null = null;
@@ -598,16 +656,40 @@ export class DesEvaluacionesComponent implements OnInit {
   private localIdSequence = 1000;
   private organizationLoadSequence = 0;
   private modelLoadSequence = 0;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(
     private dialog: MatDialog,
     private organizacionService: OrganizacionService,
     private translate: TranslateService,
     private sanitizer: DomSanitizer,
+    private demoLimitsService: DemoLimitsService,
   ) {}
 
   ngOnInit(): void {
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.organizations = [];
+        void this.onOrganizationChange(null);
+        return;
+      }
+
+      this.organizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      void this.onOrganizationChange(organization.Id);
+    });
   }
 
   @HostListener('window:resize')
@@ -617,6 +699,65 @@ export class DesEvaluacionesComponent implements OnInit {
 
   get hasSelectedOrganization(): boolean {
     return this.selectedOrganizationId !== null;
+  }
+
+  get isDemoPerformanceModelLimitReached(): boolean {
+    return this.demoLimitsService.isDemoModeActive() &&
+      this.demoLimitsService.getRemaining(
+        'maxPerformanceModelsPerOrganization',
+        this.visibleEvaluations.length
+      ) === 0;
+  }
+
+  get demoPerformanceModelLimit(): number {
+    return this.demoLimitsService.getLimit('maxPerformanceModelsPerOrganization');
+  }
+
+  get isDemoPerformanceDimensionLimitReached(): boolean {
+    return !!this.draftEvaluation &&
+      this.demoLimitsService.isDemoModeActive() &&
+      this.demoLimitsService.getRemaining(
+        'maxPerformanceDimensionsPerModel',
+        this.draftEvaluation.bigFactors.length
+      ) === 0;
+  }
+
+  isDemoPerformanceCriteriaLimitReached(
+    dimension: DesEvaluationBigFactor,
+    position: string | null,
+    scenarioKey: DesEvaluationScenarioKey | null
+  ): boolean {
+    if (!this.demoLimitsService.isDemoModeActive()) {
+      return false;
+    }
+
+    const currentCount = position && scenarioKey
+      ? this.getFactorsForPositionAndScenario(dimension, position, scenarioKey).length
+      : this.getDistinctFactorSummaries(dimension).length;
+
+    return this.demoLimitsService.exceedsLimit(
+      'maxPerformanceCriteriaPerDimension',
+      currentCount
+    );
+  }
+
+  isDemoPerformanceItemLimitReached(
+    criterion: DesEvaluationFactor,
+    position: string | null,
+    scenarioKey: DesEvaluationScenarioKey | null
+  ): boolean {
+    if (!this.demoLimitsService.isDemoModeActive()) {
+      return false;
+    }
+
+    const currentCount = position && scenarioKey
+      ? this.getQuestionsForPositionAndScenario(criterion, position, scenarioKey).length
+      : criterion.questions.length;
+
+    return this.demoLimitsService.exceedsLimit(
+      'maxPerformanceItemsPerCriterion',
+      currentCount
+    );
   }
 
   get breadcrumbItems(): string[] {
@@ -705,10 +846,19 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
+    if (this.isDemoPerformanceModelLimitReached) {
+      await this.showDemoLimitMessage(
+        'DEMO_MODEL_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceModelsPerOrganization')
+      );
+      return;
+    }
+
     this.editingEvaluation = null;
     this.activeEditorTabIndex = 0;
     this.selectedModelCatalogId = null;
     this.modelCatalogSearchTerm = '';
+    this.modelExcelImportSummary = null;
     this.draftEvaluation = this.createBlankEvaluation(this.selectedOrganizationId);
     this.refreshQuestionScenarioState();
     this.openEditorDialog();
@@ -732,6 +882,7 @@ export class DesEvaluacionesComponent implements OnInit {
 
       this.editingEvaluation = normalizedCard;
       this.activeEditorTabIndex = 0;
+      this.modelExcelImportSummary = null;
       this.draftEvaluation = this.cloneEvaluation(this.ensureDraftFilters(normalizedCard));
       this.draftEvaluation.scenarios = this.buildScenariosForType(
         this.draftEvaluation.modelType,
@@ -859,6 +1010,100 @@ export class DesEvaluacionesComponent implements OnInit {
     }
   }
 
+  async openDuplicateModelDialog(card: DesEvaluationCard): Promise<void> {
+    if (!this.duplicateModelDialogTemplate || !this.selectedOrganizationId) {
+      return;
+    }
+
+    if (this.isDemoPerformanceModelLimitReached) {
+      await this.showDemoLimitMessage(
+        'DEMO_MODEL_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceModelsPerOrganization')
+      );
+      return;
+    }
+
+    this.duplicateModelSource = card;
+    this.duplicateModelName = this.getSuggestedDuplicateModelName(card.name);
+    this.duplicateModelDialogRef?.close();
+    this.duplicateModelDialogRef = this.dialog.open(this.duplicateModelDialogTemplate, {
+      width: '560px',
+      maxWidth: '94vw',
+      autoFocus: false,
+      panelClass: 'des-evaluaciones-dialog-panel',
+    });
+
+    this.duplicateModelDialogRef.afterClosed().subscribe(() => {
+      if (!this.isDuplicatingModel) {
+        this.resetDuplicateModelDialog();
+      }
+    });
+  }
+
+  get duplicateModelNameErrorKey(): string | null {
+    const name = this.duplicateModelName.trim();
+    if (!name) {
+      return 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_NAME_REQUIRED';
+    }
+    if (name.length > 200) {
+      return 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_NAME_TOO_LONG';
+    }
+    if (this.modelNameExists(name)) {
+      return 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_NAME_EXISTS';
+    }
+    return null;
+  }
+
+  async duplicateSelectedModel(): Promise<void> {
+    const source = this.duplicateModelSource;
+    const organizationId = this.selectedOrganizationId;
+    const name = this.duplicateModelName.trim();
+    if (
+      !source ||
+      !organizationId ||
+      this.isDuplicatingModel ||
+      this.duplicateModelNameErrorKey
+    ) {
+      return;
+    }
+
+    this.isDuplicatingModel = true;
+
+    try {
+      await this.organizacionService.duplicateDesempenoModel(source.id, {
+        organizacionId: organizationId,
+        codigo: this.buildDuplicateModelCode(name),
+        nombre: name,
+        version: Math.max(1, Number(source.modelVersion) || 1),
+      });
+
+      this.duplicateModelDialogRef?.close();
+      this.resetDuplicateModelDialog();
+
+      if (this.selectedOrganizationId === organizationId) {
+        await this.loadModels(organizationId, false);
+      }
+
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_SUCCESS_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_SUCCESS_TEXT', { name }),
+        'success'
+      );
+    } catch (error) {
+      console.error('Error al duplicar el modelo de desempeño:', error);
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_ERROR_TITLE'),
+        this.getApiErrorMessage(
+          error,
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_ERROR_TEXT')
+        ),
+        'error'
+      );
+    } finally {
+      this.isDuplicatingModel = false;
+    }
+  }
+
   closeEditorDialog(): void {
     this.editorDialogRef?.close();
   }
@@ -872,10 +1117,32 @@ export class DesEvaluacionesComponent implements OnInit {
     this.draftEvaluation.useAnonymity = true;
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
 
-    if (!this.draftEvaluation.name.trim()) {
+    if (!this.editingEvaluation && this.isDemoPerformanceModelLimitReached) {
+      await this.showDemoLimitMessage(
+        'DEMO_MODEL_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceModelsPerOrganization')
+      );
+      return;
+    }
+
+    const demoLimitViolation = this.findDemoPerformanceLimitViolation(this.draftEvaluation);
+    if (demoLimitViolation) {
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_LIMIT_TITLE'),
+        this.t(
+          `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.${demoLimitViolation.textKey}`,
+          demoLimitViolation.params
+        ),
+        'warning'
+      );
+      this.activeEditorTabIndex = demoLimitViolation.tabIndex;
+      return;
+    }
+
+    if (!this.hasRequiredModelGeneralData(this.draftEvaluation)) {
       Swal.fire(
-        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.NAME_REQUIRED_TITLE'),
-        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.NAME_REQUIRED_TEXT'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.GENERAL_DATA_REQUIRED_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.GENERAL_DATA_REQUIRED_TEXT'),
         'warning'
       );
       this.activeEditorTabIndex = 0;
@@ -895,6 +1162,27 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
+    let unresolvedPosition = this.draftEvaluation.participants.positions.find(
+      (position) => this.getPositionId(position) <= 0
+    );
+    if (unresolvedPosition) {
+      await this.refreshPositionOptions(this.selectedOrganizationId);
+      unresolvedPosition = this.draftEvaluation.participants.positions.find(
+        (position) => this.getPositionId(position) <= 0
+      );
+    }
+    if (unresolvedPosition) {
+      Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.POSITION_CATALOG_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.POSITION_CATALOG_TEXT', {
+          position: unresolvedPosition,
+        }),
+        'warning'
+      );
+      this.activeEditorTabIndex = 1;
+      return;
+    }
+
     if (
       this.draftEvaluation.period.endDate <
       this.draftEvaluation.period.startDate
@@ -908,7 +1196,11 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
-    if (this.draftEvaluation.useWeighting && this.bigFactorWeightTotal !== 100) {
+    if (
+      this.draftEvaluation.useWeighting &&
+      this.draftEvaluation.bigFactors.length > 0 &&
+      !this.isWeightTotalComplete(this.bigFactorWeightTotal)
+    ) {
       Swal.fire(
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DIMENSION_WEIGHT_TITLE'),
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DIMENSION_WEIGHT_TEXT'),
@@ -931,7 +1223,9 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
-    const invalidScenarioPosition = this.findInvalidPositionScenarioWeightGroup(this.draftEvaluation);
+    const invalidScenarioPosition = this.findInvalidPositionScenarioWeightGroup(
+      this.draftEvaluation
+    );
     if (invalidScenarioPosition) {
       Swal.fire(
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.SCENARIO_WEIGHT_TITLE'),
@@ -978,6 +1272,795 @@ export class DesEvaluacionesComponent implements OnInit {
     } finally {
       this.isSavingModel = false;
     }
+  }
+
+  downloadModelExcelTemplate(): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const scenarioDefinition = this.getScenarioDefinitions(this.draftEvaluation.modelType)[0];
+    const scenarioKey = scenarioDefinition?.key ?? 'BOSS_TO_EMPLOYEE';
+    const scenarioName = this.getQuestionScenarioLabel(scenarioKey);
+    const scale = this.getScaleById(this.draftEvaluation.scaleId) ?? this.getDefaultScale();
+    const scaleName = scale ? this.getScaleLabel(scale.id) : 'Predeterminada';
+    const scaleOptions = scale?.levels.map((level) => this.getScaleLevelLabel(level)) ?? [];
+    const position = this.getModelExcelTemplatePosition();
+    const headers = Object.values(DES_EVALUATION_EXCEL_HEADERS);
+    const rows = this.buildModelExcelTemplateRows(
+      position,
+      scenarioName,
+      scaleName,
+      scaleOptions
+    );
+    const instructions = [
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TITLE')],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SHEET')],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_POSITION')],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TYPES')],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_WEIGHTS')],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ATOMIC')],
+      [],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCENARIOS')],
+      ...this.getScenarioDefinitions(this.draftEvaluation.modelType).map((scenario) => [
+        `${scenario.key}: ${this.getQuestionScenarioLabel(scenario.key)}`,
+      ]),
+      [],
+      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCALES')],
+      ...this.scaleOptions.map((item) => [`${item.code ?? item.id}: ${this.getScaleLabel(item.id)}`]),
+    ];
+    const readmeSheet = XLSX.utils.aoa_to_sheet(instructions);
+    readmeSheet['!cols'] = [{ wch: 110 }];
+    XLSX.utils.book_append_sheet(workbook, readmeSheet, 'LEEME');
+
+    const dataSheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+    dataSheet['!cols'] = headers.map((header) => ({
+      wch: Math.min(54, Math.max(18, header.length + 2)),
+    }));
+    dataSheet['!autofilter'] = { ref: dataSheet['!ref'] ?? `A1:P${rows.length + 1}` };
+    XLSX.utils.book_append_sheet(
+      workbook,
+      dataSheet,
+      this.getModelExcelWorksheetName(position)
+    );
+
+    XLSX.writeFile(workbook, 'Plantilla_Evaluacion_Desempeno.xlsx');
+  }
+
+  async onModelExcelSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file || !this.draftEvaluation || this.isImportingModelExcel) {
+      return;
+    }
+
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      await this.showModelExcelErrors([
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_VALIDATIONS.INVALID_FILE'),
+      ]);
+      input.value = '';
+      return;
+    }
+
+    this.isImportingModelExcel = true;
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const imported = parseDesEvaluationExcelWorkbook(
+        workbook,
+        this.buildModelExcelContext()
+      );
+      const applicabilityCandidate = this.buildDraftEvaluationFromExcel(imported).evaluation;
+      const applicability = this.filterInapplicableModelExcelScenarios(
+        imported,
+        applicabilityCandidate
+      );
+      const applicableImport = applicability.imported;
+      const mergeResult = this.buildDraftEvaluationFromExcel(applicableImport);
+      const candidate = mergeResult.evaluation;
+
+      const combinedDemoViolation = this.findDemoPerformanceLimitViolation(candidate);
+      if (combinedDemoViolation) {
+        throw new DesEvaluationExcelValidationError([
+          this.t(
+            `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.${combinedDemoViolation.textKey}`,
+            combinedDemoViolation.params
+          ),
+        ]);
+      }
+
+      this.draftEvaluation = candidate;
+      const skipped =
+        mergeResult.stats.positionsSkipped +
+        mergeResult.stats.scenariosSkipped +
+        mergeResult.stats.dimensionsSkipped +
+        mergeResult.stats.criteriaSkipped +
+        mergeResult.stats.itemsSkipped;
+      this.modelExcelImportSummary = {
+        positions: imported.positions.length,
+        scenarios: applicableImport.scenarioCount,
+        omittedScenarios: applicability.omittedScenarios,
+        dimensions: mergeResult.stats.dimensionsAdded,
+        criteria: mergeResult.stats.criteriaAdded,
+        items: mergeResult.stats.itemsAdded,
+        skipped,
+        fileName: file.name,
+      };
+      this.activeEditorTabIndex = 1;
+      this.refreshQuestionScenarioState();
+      this.syncParticipantEmployeeSelectionWithCriteria();
+
+      const successText = this.t(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUCCESS_TEXT',
+        {
+          positions: imported.positions.length,
+          dimensions: mergeResult.stats.dimensionsAdded,
+          criteria: mergeResult.stats.criteriaAdded,
+          items: mergeResult.stats.itemsAdded,
+          skipped,
+        }
+      );
+
+      if (applicability.warnings.length > 0) {
+        const warningItems = applicability.warnings
+          .map((warning) => `<li>${this.escapeHtml(warning)}</li>`)
+          .join('');
+        const weightsMessage = applicability.recalculatedWeights
+          ? `<p>${this.escapeHtml(this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.WEIGHTS_RECALCULATED'
+            ))}</p>`
+          : '';
+
+        await Swal.fire({
+          title: this.t(
+            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUCCESS_WITH_WARNINGS_TITLE'
+          ),
+          html: `
+            <p>${this.escapeHtml(successText)}</p>
+            <p>${this.escapeHtml(this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.OMITTED_SCENARIOS_WARNING'
+            ))}</p>
+            <div class="excel-import-error-list"><ol>${warningItems}</ol></div>
+            ${weightsMessage}
+          `,
+          icon: 'warning',
+          width: 820,
+        });
+      } else {
+        await Swal.fire(
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUCCESS_TITLE'),
+          successText,
+          mergeResult.stats.itemsAdded > 0 ||
+            mergeResult.stats.criteriaAdded > 0 ||
+            mergeResult.stats.dimensionsAdded > 0
+            ? 'success'
+            : 'info'
+        );
+      }
+    } catch (error) {
+      const errors = error instanceof DesEvaluationExcelValidationError
+        ? error.errors
+        : [this.getApiErrorMessage(
+            error,
+            this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.UNEXPECTED_ERROR')
+          )];
+      await this.showModelExcelErrors(errors);
+    } finally {
+      this.isImportingModelExcel = false;
+      input.value = '';
+    }
+  }
+
+  private buildModelExcelContext() {
+    const scenarioAliases: Record<DesEvaluationExcelScenarioKey, string[]> = {
+      BOSS_TO_EMPLOYEE: [
+        'Jefe a colaborador',
+        'Jefe a empleado',
+        'Descendente',
+        'Manager to employee',
+      ],
+      EMPLOYEE_TO_BOSS: [
+        'Colaborador a jefe',
+        'Empleado a jefe',
+        'Ascendente',
+        'Employee to manager',
+      ],
+      SELF: ['Autoevaluación', 'Autoevaluacion', 'Self assessment'],
+      PEER: ['Pares', 'Entre pares', 'Peer assessment'],
+    };
+    const allowedScenarioKeys = new Set(
+      this.getScenarioDefinitions(this.draftEvaluation?.modelType ?? '360')
+        .map((scenario) => scenario.key)
+    );
+    const demoLimits = this.demoLimitsService.isDemoModeActive()
+      ? {
+          dimensions: this.demoLimitsService.getLimit('maxPerformanceDimensionsPerModel'),
+          criteriaPerDimension: this.demoLimitsService.getLimit('maxPerformanceCriteriaPerDimension'),
+          itemsPerCriterion: this.demoLimitsService.getLimit('maxPerformanceItemsPerCriterion'),
+        }
+      : undefined;
+
+    return {
+      positions: this.getExcelImportPositionNames(),
+      scenarios: Array.from(allowedScenarioKeys).map((key) => {
+        const catalog = this.scenarioCatalogOptions.find(
+          (scenario) => this.toScenarioKey(scenario.code) === key
+        );
+        return {
+          key,
+          names: [
+            key,
+            catalog?.code ?? '',
+            catalog?.name ?? '',
+            this.getQuestionScenarioLabel(key),
+            ...scenarioAliases[key],
+          ].filter((name) => !!name),
+        };
+      }),
+      scales: this.scaleOptions.map((scale) => ({
+        id: scale.id,
+        code: scale.code,
+        name: this.getScaleLabel(scale.id),
+        levels: scale.levels.map((level) => this.getScaleLevelLabel(level)),
+      })),
+      defaultScaleId: this.draftEvaluation?.scaleId ?? 0,
+      demoLimits,
+      translate: (key: string, params?: Record<string, unknown>) => this.t(
+        `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_VALIDATIONS.${key}`,
+        params
+      ),
+    };
+  }
+
+  private buildDraftEvaluationFromExcel(
+    imported: DesEvaluationExcelImport
+  ): DesEvaluationExcelMergeResult {
+    const candidate = this.cloneEvaluation(this.draftEvaluation!);
+    const stats: DesEvaluationExcelMergeStats = {
+      positionsAdded: 0,
+      scenariosAdded: 0,
+      dimensionsAdded: 0,
+      criteriaAdded: 0,
+      itemsAdded: 0,
+      positionsSkipped: 0,
+      scenariosSkipped: 0,
+      dimensionsSkipped: 0,
+      criteriaSkipped: 0,
+      itemsSkipped: 0,
+    };
+    const previousMatchedEmployeeIds = this.getMatchedEmployees(candidate)
+      .map((employee) => employee.id);
+    const positionsByKey = new Map(
+      candidate.participants.positions.map((position) => [
+        this.normalizeSearchText(position),
+        position,
+      ])
+    );
+    const addedPositionKeys = new Set<string>();
+
+    imported.positions.forEach((position) => {
+      const positionKey = this.normalizeSearchText(position);
+      if (positionsByKey.has(positionKey)) {
+        stats.positionsSkipped++;
+        return;
+      }
+
+      positionsByKey.set(positionKey, position);
+      addedPositionKeys.add(positionKey);
+      stats.positionsAdded++;
+    });
+    candidate.participants.positions = Array.from(positionsByKey.values());
+
+    const selectedEmployeeIds = new Set([
+      ...previousMatchedEmployeeIds,
+      ...candidate.participants.employeeIds,
+    ]);
+    this.employees
+      .filter((employee) =>
+        (!candidate.participants.onlyActive || employee.activo) &&
+        !!employee.cargo &&
+        addedPositionKeys.has(this.normalizeSearchText(employee.cargo))
+      )
+      .forEach((employee) => selectedEmployeeIds.add(employee.id));
+    candidate.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
+
+    const dimensions = new Map<string, DesEvaluationBigFactor>();
+    const criteria = new Map<string, DesEvaluationFactor>();
+    const processedDimensions = new Set<string>();
+    const processedCriteria = new Set<string>();
+
+    imported.rows.forEach((row) => {
+      const importedItemType = this.toFrontendItemTypeCode(row.itemType);
+      const dimensionKey = this.getExcelEntityKey(row.dimensionCode, row.dimensionName);
+      let dimension = dimensions.get(dimensionKey);
+      if (!dimension) {
+        dimension = this.findExcelDimension(candidate, row);
+        if (!dimension) {
+          dimension = {
+            id: this.generateId(),
+            code: row.dimensionCode ?? undefined,
+            name: row.dimensionName,
+            description: row.dimensionDescription,
+            weight: row.dimensionWeight,
+            factors: [],
+          };
+          candidate.bigFactors.push(dimension);
+          stats.dimensionsAdded++;
+        } else if (!processedDimensions.has(dimensionKey)) {
+          stats.dimensionsSkipped++;
+        }
+        dimensions.set(dimensionKey, dimension);
+        processedDimensions.add(dimensionKey);
+      }
+
+      const criterionKey = [
+        this.normalizeSearchText(row.position),
+        row.scenarioKey,
+        dimensionKey,
+        this.getExcelEntityKey(row.criterionCode, row.criterionName),
+      ].join('|');
+      let criterion = criteria.get(criterionKey);
+      if (!criterion) {
+        criterion = this.findExcelCriterion(dimension, row);
+        if (!criterion) {
+          criterion = {
+            id: this.generateId(),
+            code: row.criterionCode ?? undefined,
+            name: row.criterionName,
+            description: row.criterionDescription,
+            weight: row.criterionWeight,
+            requiredRatingLevel: row.requiredRatingLevel,
+            defaultQuestionType: importedItemType,
+            questions: [],
+            scenarioKeys: [row.scenarioKey],
+            positionScope: 'SELECTED',
+            positions: [row.position],
+          };
+          dimension.factors.push(criterion);
+          stats.criteriaAdded++;
+        } else if (!processedCriteria.has(criterionKey)) {
+          stats.criteriaSkipped++;
+        }
+        criteria.set(criterionKey, criterion);
+        processedCriteria.add(criterionKey);
+      }
+
+      if (this.hasExcelQuestion(criterion, row)) {
+        stats.itemsSkipped++;
+        return;
+      }
+
+      criterion.questions.push({
+        id: this.generateId(),
+        code: row.itemCode ?? undefined,
+        label: row.itemText,
+        type: importedItemType,
+        required: true,
+        options: importedItemType === 'ABIERTA' ? [] : [...row.options],
+        scaleId: importedItemType === 'ABIERTA' ? null : row.scaleId,
+        scenarioKeys: [row.scenarioKey],
+        positionScope: 'SELECTED',
+        positions: [row.position],
+      });
+      stats.itemsAdded++;
+    });
+
+    const baseScenarios = this.buildScenariosForType(
+      candidate.modelType,
+      candidate.scenarios
+    );
+    const importedScenarios = new Map<string, DesEvaluationExcelRow>();
+    imported.rows.forEach((row) => {
+      importedScenarios.set(
+        `${this.normalizeSearchText(row.position)}|${row.scenarioKey}`,
+        row
+      );
+    });
+
+    const currentPositionConfigs = new Map(
+      candidate.positionScenarios.map((positionConfig) => [
+        this.normalizeSearchText(positionConfig.position),
+        positionConfig,
+      ])
+    );
+    importedScenarios.forEach((row, scenarioKey) => {
+      const [positionKey] = scenarioKey.split('|');
+      const currentScenario = currentPositionConfigs
+        .get(positionKey)
+        ?.scenarios.find((scenario) => scenario.key === row.scenarioKey);
+
+      if (currentScenario && currentScenario.active !== false) {
+        stats.scenariosSkipped++;
+      } else {
+        stats.scenariosAdded++;
+      }
+    });
+
+    candidate.scenarios = baseScenarios;
+    candidate.positionScenarios = candidate.participants.positions.map((position) => ({
+      position,
+      scenarios: baseScenarios.map((scenario) => {
+        const currentScenario = currentPositionConfigs
+          .get(this.normalizeSearchText(position))
+          ?.scenarios.find((item) => item.key === scenario.key);
+        const importedScenario = scenario.key
+          ? importedScenarios.get(
+              `${this.normalizeSearchText(position)}|${scenario.key}`
+            )
+          : null;
+        const preserveCurrent = !!currentScenario && currentScenario.active !== false;
+
+        return {
+          ...scenario,
+          id: currentScenario?.id ?? this.generateId(),
+          backendId: currentScenario?.backendId,
+          name: currentScenario?.name || scenario.name,
+          weight: preserveCurrent
+            ? Number(currentScenario?.weight) || 0
+            : importedScenario?.scenarioWeight ?? Number(currentScenario?.weight) ?? 0,
+          active: preserveCurrent || !!importedScenario,
+        };
+      }),
+    }));
+    this.ensurePositionScenarioConfigs(candidate);
+    this.syncGlobalScenariosFromPositionConfigs(candidate);
+    candidate.stats = this.buildStats(candidate, {
+      total_enviadas: 0,
+      total_iniciadas: 0,
+      total_contestadas: 0,
+      total_error: 0,
+    });
+
+    return { evaluation: candidate, stats };
+  }
+
+  private getExcelEntityKey(code: string | null, name: string): string {
+    return this.normalizeSearchText(code || name);
+  }
+
+  private excelEntityMatches(
+    existingCode: string | undefined,
+    existingName: string,
+    importedCode: string | null,
+    importedName: string
+  ): boolean {
+    const existingCodeKey = this.normalizeSearchText(existingCode ?? '');
+    const importedCodeKey = this.normalizeSearchText(importedCode ?? '');
+
+    return (
+      !!existingCodeKey &&
+      !!importedCodeKey &&
+      existingCodeKey === importedCodeKey
+    ) || this.normalizeSearchText(existingName) === this.normalizeSearchText(importedName);
+  }
+
+  private findExcelDimension(
+    evaluation: DesEvaluationCard,
+    row: DesEvaluationExcelRow
+  ): DesEvaluationBigFactor | undefined {
+    return evaluation.bigFactors.find((dimension) =>
+      this.excelEntityMatches(
+        dimension.code,
+        dimension.name,
+        row.dimensionCode,
+        row.dimensionName
+      )
+    );
+  }
+
+  private findExcelCriterion(
+    dimension: DesEvaluationBigFactor,
+    row: DesEvaluationExcelRow
+  ): DesEvaluationFactor | undefined {
+    return this.getFactorsForPositionAndScenario(
+      dimension,
+      row.position,
+      row.scenarioKey
+    )
+      .map(({ factor }) => factor)
+      .find((factor) =>
+        this.excelEntityMatches(
+          factor.code,
+          factor.name,
+          row.criterionCode,
+          row.criterionName
+        )
+      );
+  }
+
+  private hasExcelQuestion(
+    criterion: DesEvaluationFactor,
+    row: DesEvaluationExcelRow
+  ): boolean {
+    const importedCode = this.normalizeSearchText(row.itemCode ?? '');
+    const importedText = this.normalizeSearchText(row.itemText);
+
+    return this.getQuestionsForPositionAndScenario(
+      criterion,
+      row.position,
+      row.scenarioKey
+    ).some(({ question }) => {
+      const existingCode = this.normalizeSearchText(question.code ?? '');
+      const sameCode = !!importedCode && !!existingCode && importedCode === existingCode;
+      const sameTextAndType =
+        this.normalizeSearchText(question.label) === importedText &&
+        this.toFrontendItemTypeCode(question.type) ===
+          this.toFrontendItemTypeCode(row.itemType);
+
+      return sameCode || sameTextAndType;
+    });
+  }
+
+  private filterInapplicableModelExcelScenarios(
+    imported: DesEvaluationExcelImport,
+    candidate: DesEvaluationCard
+  ): DesEvaluationExcelApplicabilityResult {
+    const warnings: string[] = [];
+    const checked = new Set<string>();
+    const omittedScenarioKeys = new Set<string>();
+    const affectedPositions = new Set<string>();
+
+    imported.rows.forEach((row) => {
+      const positionKey = this.normalizeSearchText(row.position);
+      const key = `${positionKey}|${row.scenarioKey}`;
+      if (checked.has(key)) {
+        return;
+      }
+      checked.add(key);
+
+      if (!this.isPositionScenarioStructurallyApplicable(
+        row.position,
+        row.scenarioKey,
+        candidate
+      )) {
+        omittedScenarioKeys.add(key);
+        affectedPositions.add(positionKey);
+        warnings.push(this.t(
+          'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_VALIDATIONS.SCENARIO_NOT_APPLICABLE',
+          {
+            sheet: row.sheetName,
+            position: row.position,
+            scenario: this.getQuestionScenarioLabel(row.scenarioKey),
+          }
+        ));
+      }
+    });
+
+    if (omittedScenarioKeys.size === 0) {
+      return {
+        imported,
+        warnings,
+        omittedScenarios: 0,
+        recalculatedWeights: false,
+      };
+    }
+
+    const applicableRows = imported.rows.filter((row) => !omittedScenarioKeys.has(
+      `${this.normalizeSearchText(row.position)}|${row.scenarioKey}`
+    ));
+    const normalizedRows = this.normalizeApplicableExcelScenarioWeights(
+      applicableRows,
+      affectedPositions
+    );
+
+    return {
+      imported: this.buildModelExcelImportSummary(normalizedRows, imported.positions),
+      warnings,
+      omittedScenarios: omittedScenarioKeys.size,
+      recalculatedWeights: normalizedRows.some((row) =>
+        affectedPositions.has(this.normalizeSearchText(row.position))
+      ),
+    };
+  }
+
+  private normalizeApplicableExcelScenarioWeights(
+    rows: DesEvaluationExcelRow[],
+    affectedPositions: Set<string>
+  ): DesEvaluationExcelRow[] {
+    const weightsByScenario = new Map<string, number>();
+    const scenarioKeysByPosition = new Map<string, string[]>();
+
+    rows.forEach((row) => {
+      const positionKey = this.normalizeSearchText(row.position);
+      if (!affectedPositions.has(positionKey)) {
+        return;
+      }
+
+      const scenarioKey = `${positionKey}|${row.scenarioKey}`;
+      weightsByScenario.set(scenarioKey, row.scenarioWeight);
+      const scenarioKeys = scenarioKeysByPosition.get(positionKey) ?? [];
+      if (!scenarioKeys.includes(scenarioKey)) {
+        scenarioKeys.push(scenarioKey);
+        scenarioKeysByPosition.set(positionKey, scenarioKeys);
+      }
+    });
+
+    const normalizedWeights = new Map<string, number>();
+    scenarioKeysByPosition.forEach((scenarioKeys) => {
+      const total = scenarioKeys.reduce(
+        (sum, scenarioKey) => sum + (weightsByScenario.get(scenarioKey) ?? 0),
+        0
+      );
+      let assigned = 0;
+
+      scenarioKeys.forEach((scenarioKey, index) => {
+        const isLast = index === scenarioKeys.length - 1;
+        const rawWeight = total > 0
+          ? ((weightsByScenario.get(scenarioKey) ?? 0) / total) * 100
+          : 100 / scenarioKeys.length;
+        const weight = isLast
+          ? Number((100 - assigned).toFixed(2))
+          : Number(rawWeight.toFixed(2));
+        normalizedWeights.set(scenarioKey, weight);
+        assigned += weight;
+      });
+    });
+
+    return rows.map((row) => {
+      const scenarioKey = `${this.normalizeSearchText(row.position)}|${row.scenarioKey}`;
+      const scenarioWeight = normalizedWeights.get(scenarioKey);
+      return scenarioWeight === undefined ? row : { ...row, scenarioWeight };
+    });
+  }
+
+  private buildModelExcelImportSummary(
+    rows: DesEvaluationExcelRow[],
+    importedPositions?: string[]
+  ): DesEvaluationExcelImport {
+    const positions = Array.from(new Set(
+      importedPositions ?? rows.map((row) => row.position)
+    ));
+    const scenarios = new Set(rows.map((row) =>
+      `${this.normalizeSearchText(row.position)}|${row.scenarioKey}`
+    ));
+    const dimensions = new Set(rows.map((row) =>
+      this.normalizeSearchText(row.dimensionCode || row.dimensionName)
+    ));
+    const criteria = new Set(rows.map((row) => [
+      this.normalizeSearchText(row.position),
+      row.scenarioKey,
+      this.normalizeSearchText(row.dimensionCode || row.dimensionName),
+      this.normalizeSearchText(row.criterionCode || row.criterionName),
+    ].join('|')));
+
+    return {
+      rows,
+      positions,
+      scenarioCount: scenarios.size,
+      dimensionCount: dimensions.size,
+      criterionCount: criteria.size,
+      itemCount: rows.length,
+    };
+  }
+
+  private buildModelExcelTemplateRows(
+    position: string,
+    scenario: string,
+    scale: string,
+    scaleOptions: string[]
+  ): Array<Record<string, string | number>> {
+    const definitions = [
+      {
+        dimensionCode: 'OBJETIVOS',
+        dimensionName: 'Objetivos',
+        dimensionDescription: 'Cumplimiento de metas y entregables acordados.',
+        dimensionWeight: 45,
+        criterionCode: 'CUMPLIMIENTO_ENTREGAS',
+        criterionName: 'Cumplimiento y tiempos de entrega',
+        criterionDescription: 'Evalúa oportunidad, calidad y cumplimiento de compromisos.',
+        items: [
+          ['OBJ_ENTREGA_TIEMPO', 'Entrega su trabajo a tiempo o antes de lo planificado', 'Likert de 5 niveles'],
+          ['OBJ_MEJORA', '¿Qué podría mejorar para alcanzar sus objetivos?', 'Pregunta abierta'],
+        ],
+      },
+      {
+        dimensionCode: 'COMPETENCIAS',
+        dimensionName: 'Competencias',
+        dimensionDescription: 'Habilidades observables para desempeñar el puesto.',
+        dimensionWeight: 35,
+        criterionCode: 'COMUNICACION_COLABORACION',
+        criterionName: 'Comunicación y colaboración',
+        criterionDescription: 'Evalúa comunicación efectiva y trabajo con otras personas.',
+        items: [
+          ['COM_COMUNICA_CLARO', 'Comunica sus ideas de forma clara y oportuna', 'Likert de 5 niveles'],
+          ['COM_APOYA_EQUIPO', 'Colabora activamente con su equipo para resolver problemas', 'Likert de 5 niveles'],
+        ],
+      },
+      {
+        dimensionCode: 'VALORES',
+        dimensionName: 'Valores',
+        dimensionDescription: 'Conductas alineadas con los valores de la organización.',
+        dimensionWeight: 20,
+        criterionCode: 'INTEGRIDAD_RESPONSABILIDAD',
+        criterionName: 'Integridad y responsabilidad',
+        criterionDescription: 'Evalúa conducta ética y responsabilidad sobre los resultados.',
+        items: [
+          ['VAL_ASUME_RESPONSABILIDAD', 'Asume responsabilidad por sus decisiones y resultados', 'Likert de 5 niveles'],
+          ['VAL_CONDUCTA', 'Describa una conducta destacable observada', 'Pregunta abierta'],
+        ],
+      },
+    ];
+
+    return definitions.flatMap((definition) =>
+      definition.items.map(([itemCode, itemText, itemType]) => ({
+        [DES_EVALUATION_EXCEL_HEADERS.position]: position,
+        [DES_EVALUATION_EXCEL_HEADERS.scenario]: scenario,
+        [DES_EVALUATION_EXCEL_HEADERS.scenarioWeight]: 100,
+        [DES_EVALUATION_EXCEL_HEADERS.dimensionCode]: definition.dimensionCode,
+        [DES_EVALUATION_EXCEL_HEADERS.dimensionName]: definition.dimensionName,
+        [DES_EVALUATION_EXCEL_HEADERS.dimensionDescription]: definition.dimensionDescription,
+        [DES_EVALUATION_EXCEL_HEADERS.dimensionWeight]: definition.dimensionWeight,
+        [DES_EVALUATION_EXCEL_HEADERS.criterionCode]: definition.criterionCode,
+        [DES_EVALUATION_EXCEL_HEADERS.criterionName]: definition.criterionName,
+        [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: definition.criterionDescription,
+        [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
+        [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 4,
+        [DES_EVALUATION_EXCEL_HEADERS.itemCode]: itemCode,
+        [DES_EVALUATION_EXCEL_HEADERS.itemText]: itemText,
+        [DES_EVALUATION_EXCEL_HEADERS.itemType]: itemType,
+        [DES_EVALUATION_EXCEL_HEADERS.scale]: itemType === 'Likert de 5 niveles' ? scale : '',
+        [DES_EVALUATION_EXCEL_HEADERS.options]: itemType === 'Likert de 5 niveles'
+          ? scaleOptions.join(' | ')
+          : '',
+      }))
+    );
+  }
+
+  private getModelExcelTemplatePosition(): string {
+    const selectedPositions = this.draftEvaluation?.participants.positions ?? [];
+    const candidates = [
+      ...selectedPositions,
+      ...this.positionOptions.filter((position) => position.active).map((position) => position.name),
+    ];
+    const validPosition = candidates.find((position) => !!position);
+
+    return validPosition ?? 'NOMBRE_PUESTO_EXISTENTE';
+  }
+
+  private getExcelImportPositionNames(): string[] {
+    const names = [
+      ...this.positionOptions
+        .filter((position) => position.active)
+        .map((position) => position.name),
+      ...(this.draftEvaluation?.participants.positions ?? []),
+      ...this.availablePositions,
+      ...this.employees.map((employee) => employee.cargo).filter(
+        (position): position is string => !!position
+      ),
+    ];
+    const unique = new Map<string, string>();
+
+    names.forEach((position) => {
+      const normalized = this.normalizeSearchText(position);
+      if (normalized && !unique.has(normalized)) {
+        unique.set(normalized, position.trim());
+      }
+    });
+
+    return Array.from(unique.values());
+  }
+
+  private getModelExcelWorksheetName(position: string): string {
+    const sanitized = position
+      .replace(/[\\/?*\[\]:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return (sanitized || 'PUESTO').slice(0, 31);
+  }
+
+  private async showModelExcelErrors(errors: string[]): Promise<void> {
+    const safeErrors = errors
+      .map((error) => `<li>${this.escapeHtml(error)}</li>`)
+      .join('');
+    await Swal.fire({
+      title: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.ERROR_TITLE'),
+      html: `<div class="excel-import-error-list"><ol>${safeErrors}</ol></div>`,
+      icon: 'error',
+      width: 820,
+    });
   }
 
   onModelCatalogNameChange(value: string): void {
@@ -1092,6 +2175,14 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
+    if (typeof index !== 'number' && this.isDemoPerformanceDimensionLimitReached) {
+      void this.showDemoLimitMessage(
+        'DEMO_DIMENSION_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceDimensionsPerModel')
+      );
+      return;
+    }
+
     const bigFactor = typeof index === 'number' ? this.draftEvaluation.bigFactors[index] : null;
     this.editBigFactorIndex = typeof index === 'number' ? index : null;
     this.bigFactorDraft = bigFactor
@@ -1112,6 +2203,14 @@ export class DesEvaluacionesComponent implements OnInit {
 
   saveBigFactorDialog(): void {
     if (!this.draftEvaluation) {
+      return;
+    }
+
+    if (this.editBigFactorIndex === null && this.isDemoPerformanceDimensionLimitReached) {
+      void this.showDemoLimitMessage(
+        'DEMO_DIMENSION_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceDimensionsPerModel')
+      );
       return;
     }
 
@@ -1173,6 +2272,24 @@ export class DesEvaluacionesComponent implements OnInit {
       (currentFactor ? this.normalizeFactorScenarioKeys(currentFactor, this.draftEvaluation.modelType)[0] : null) ??
       null;
 
+    const bigFactor = this.draftEvaluation.bigFactors[bigFactorIndex];
+    if (
+      typeof factorIndex !== 'number' &&
+      bigFactor &&
+      this.isDemoPerformanceCriteriaLimitReached(
+        bigFactor,
+        contextPosition,
+        contextScenarioKey
+      )
+    ) {
+      void this.showDemoLimitMessage(
+        'DEMO_CRITERIA_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceCriteriaPerDimension'),
+        { dimension: bigFactor.name }
+      );
+      return;
+    }
+
     this.editFactorContext = {
       bigFactorIndex,
       factorIndex: typeof factorIndex === 'number' ? factorIndex : null,
@@ -1229,6 +2346,22 @@ export class DesEvaluacionesComponent implements OnInit {
         : null;
     const contextPosition = this.editFactorContext.position;
     const contextScenarioKey = this.editFactorContext.scenarioKey;
+
+    if (
+      this.editFactorContext.factorIndex === null &&
+      this.isDemoPerformanceCriteriaLimitReached(
+        bigFactor,
+        contextPosition,
+        contextScenarioKey
+      )
+    ) {
+      void this.showDemoLimitMessage(
+        'DEMO_CRITERIA_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceCriteriaPerDimension'),
+        { dimension: bigFactor.name }
+      );
+      return;
+    }
 
     const factor: DesEvaluationFactor = {
       id:
@@ -1314,6 +2447,20 @@ export class DesEvaluacionesComponent implements OnInit {
         : null) ??
       null;
 
+    const factor = this.draftEvaluation.bigFactors[bigFactorIndex]?.factors[factorIndex];
+    if (
+      typeof questionIndex !== 'number' &&
+      factor &&
+      this.isDemoPerformanceItemLimitReached(factor, contextPosition, contextScenarioKey)
+    ) {
+      void this.showDemoLimitMessage(
+        'DEMO_ITEM_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceItemsPerCriterion'),
+        { criterion: factor.name }
+      );
+      return;
+    }
+
     this.editQuestionContext = {
       bigFactorIndex,
       factorIndex,
@@ -1364,6 +2511,22 @@ export class DesEvaluacionesComponent implements OnInit {
     const factor = this.draftEvaluation.bigFactors[this.editQuestionContext.bigFactorIndex]
       ?.factors[this.editQuestionContext.factorIndex];
     if (!factor) {
+      return;
+    }
+
+    if (
+      this.editQuestionContext.questionIndex === null &&
+      this.isDemoPerformanceItemLimitReached(
+        factor,
+        this.editQuestionContext.position,
+        this.editQuestionContext.scenarioKey
+      )
+    ) {
+      void this.showDemoLimitMessage(
+        'DEMO_ITEM_LIMIT_TEXT',
+        this.demoLimitsService.getLimit('maxPerformanceItemsPerCriterion'),
+        { criterion: factor.name }
+      );
       return;
     }
 
@@ -1591,6 +2754,15 @@ export class DesEvaluacionesComponent implements OnInit {
           return;
         }
 
+        if (this.isDemoPerformanceCriteriaLimitReached(
+          dimension,
+          targetPosition,
+          duplicateContext.scenarioKey
+        )) {
+          skippedCount++;
+          return;
+        }
+
         dimension.factors.push(
           this.cloneFactorFromSourcePosition(
             sourceFactor,
@@ -1619,6 +2791,15 @@ export class DesEvaluacionesComponent implements OnInit {
       );
 
       if (!targetFactor) {
+        if (this.isDemoPerformanceCriteriaLimitReached(
+          dimension,
+          targetPosition,
+          duplicateContext.scenarioKey
+        )) {
+          skippedCount++;
+          return;
+        }
+
         targetFactor = this.cloneFactorShellForPosition(
           sourceFactor,
           targetPosition,
@@ -1628,6 +2809,15 @@ export class DesEvaluacionesComponent implements OnInit {
       }
 
       if (this.hasEquivalentQuestionForPosition(targetFactor, sourceQuestion, targetPosition)) {
+        skippedCount++;
+        return;
+      }
+
+      if (this.isDemoPerformanceItemLimitReached(
+        targetFactor,
+        targetPosition,
+        duplicateContext.scenarioKey
+      )) {
         skippedCount++;
         return;
       }
@@ -1943,25 +3133,41 @@ export class DesEvaluacionesComponent implements OnInit {
     scenarioKey: DesEvaluationScenarioKey | undefined,
     evaluation: DesEvaluationCard | null = this.draftEvaluation
   ): boolean {
-    if (!scenarioKey) {
-      return false;
-    }
-
-    if (scenarioKey !== 'EMPLOYEE_TO_BOSS') {
-      return !!evaluation && !this.isPositionEvaluatorOnly(position, evaluation);
-    }
-
-    if (!evaluation || this.isPositionEvaluatorOnly(position, evaluation)) {
+    if (!scenarioKey || !evaluation || this.isPositionEvaluatorOnly(position, evaluation)) {
       return false;
     }
 
     const population = this.getMatchedEmployees(evaluation);
-    const positionEmployees = population.filter((employee) =>
-      !!employee.cargo && this.normalizeSearchText(employee.cargo) === this.normalizeSearchText(position)
-    );
+    const positionEmployees = this.getPositionParticipants(position, population);
+
+    if (scenarioKey === 'BOSS_TO_EMPLOYEE') {
+      return positionEmployees.some((employee) =>
+        this.getDirectManagers(employee, population).length > 0
+      );
+    }
+
+    if (scenarioKey !== 'EMPLOYEE_TO_BOSS') {
+      return true;
+    }
 
     return positionEmployees.some((employee) =>
       this.getDirectReports(employee, population).length > 0
+    );
+  }
+
+  isPositionAutomaticallyEvaluatorOnly(
+    position: string,
+    evaluation: DesEvaluationCard | null = this.draftEvaluation
+  ): boolean {
+    if (!evaluation || this.normalizeKey(evaluation.modelType) !== '90') {
+      return false;
+    }
+
+    const population = this.getMatchedEmployees(evaluation);
+    const positionEmployees = this.getPositionParticipants(position, population);
+
+    return positionEmployees.length > 0 && !positionEmployees.some((employee) =>
+      this.getDirectManagers(employee, population).length > 0
     );
   }
 
@@ -1969,7 +3175,8 @@ export class DesEvaluacionesComponent implements OnInit {
     position: string,
     evaluation: DesEvaluationCard | null = this.draftEvaluation
   ): boolean {
-    return evaluation?.participants.evaluatorOnlyPositions?.includes(position) ?? false;
+    return (evaluation?.participants.evaluatorOnlyPositions?.includes(position) ?? false) ||
+      this.isPositionAutomaticallyEvaluatorOnly(position, evaluation);
   }
 
   setPositionEvaluatorOnly(
@@ -1978,6 +3185,10 @@ export class DesEvaluacionesComponent implements OnInit {
     panel?: MatExpansionPanel
   ): void {
     if (!this.draftEvaluation) {
+      return;
+    }
+
+    if (!evaluatorOnly && this.isPositionAutomaticallyEvaluatorOnly(position)) {
       return;
     }
 
@@ -2033,6 +3244,28 @@ export class DesEvaluacionesComponent implements OnInit {
     return option
       ? option.label ?? this.translateKeyOrFallback(option.labelKey ?? '', type)
       : type;
+  }
+
+  getFactorQuestionTypeSummary(
+    factor: DesEvaluationFactor,
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey | undefined
+  ): string {
+    if (!scenarioKey) {
+      return this.getQuestionTypeLabel(
+        this.toFrontendItemTypeCode(factor.defaultQuestionType)
+      );
+    }
+
+    const questionTypes = Array.from(new Set(
+      this.getQuestionsForPositionAndScenario(factor, position, scenarioKey)
+        .map(({ question }) => this.toFrontendItemTypeCode(question.type))
+    ));
+    const effectiveTypes = questionTypes.length > 0
+      ? questionTypes
+      : [this.toFrontendItemTypeCode(factor.defaultQuestionType)];
+
+    return effectiveTypes.map((type) => this.getQuestionTypeLabel(type)).join(' · ');
   }
 
   onQuestionTypeChange(type: string): void {
@@ -2296,6 +3529,78 @@ export class DesEvaluacionesComponent implements OnInit {
     return factors.reduce((total, factor) => total + (Number(factor.weight) || 0), 0);
   }
 
+  isWeightTotalComplete(total: number): boolean {
+    return Math.abs((Number(total) || 0) - 100) <= 0.01;
+  }
+
+  isPositionWeightIncomplete(position: string): boolean {
+    const evaluation = this.draftEvaluation;
+    if (!evaluation || this.isPositionEvaluatorOnly(position, evaluation)) {
+      return false;
+    }
+
+    const activeScenarios = this.getActivePositionScenarios(position, evaluation);
+    if (
+      activeScenarios.length === 0 ||
+      !this.isWeightTotalComplete(this.getPositionScenarioWeightTotal(position, evaluation))
+    ) {
+      return true;
+    }
+
+    if (
+      evaluation.bigFactors.length > 0 &&
+      !this.isWeightTotalComplete(this.getBigFactorWeightTotal(evaluation))
+    ) {
+      return true;
+    }
+
+    return activeScenarios.some((scenario) =>
+      !!scenario.key && this.hasIncompleteFactorWeights(position, scenario.key, evaluation)
+    );
+  }
+
+  isScenarioWeightIncomplete(
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey | undefined
+  ): boolean {
+    const evaluation = this.draftEvaluation;
+    if (
+      !evaluation ||
+      !scenarioKey ||
+      !this.isPositionScenarioApplicable(position, scenarioKey, evaluation)
+    ) {
+      return false;
+    }
+
+    return !this.isWeightTotalComplete(
+      this.getPositionScenarioWeightTotal(position, evaluation)
+    ) || (
+      evaluation.bigFactors.length > 0 &&
+      !this.isWeightTotalComplete(this.getBigFactorWeightTotal(evaluation))
+    ) || this.hasIncompleteFactorWeights(position, scenarioKey, evaluation);
+  }
+
+  private hasIncompleteFactorWeights(
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey,
+    evaluation: DesEvaluationCard
+  ): boolean {
+    return evaluation.bigFactors.some((bigFactor) => {
+      const factors = this.getFactorsForPositionAndScenario(
+        bigFactor,
+        position,
+        scenarioKey
+      );
+
+      return factors.length > 0 &&
+        !this.isWeightTotalComplete(this.getFactorWeightTotal(
+          bigFactor,
+          position,
+          scenarioKey
+        ));
+    });
+  }
+
   private getSuggestedFactorWeight(
     bigFactorIndex: number,
     position: string | null,
@@ -2437,6 +3742,7 @@ export class DesEvaluacionesComponent implements OnInit {
     selected ? selectedEmployeeIds.add(employeeId) : selectedEmployeeIds.delete(employeeId);
 
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
   selectAllFilteredParticipantEmployees(): void {
@@ -2450,6 +3756,7 @@ export class DesEvaluacionesComponent implements OnInit {
     ]);
 
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
   clearParticipantEmployees(): void {
@@ -2458,6 +3765,7 @@ export class DesEvaluacionesComponent implements OnInit {
     }
 
     this.draftEvaluation.participants.employeeIds = [];
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
   syncParticipantEmployeeSelectionWithCriteria(): void {
@@ -2469,6 +3777,7 @@ export class DesEvaluacionesComponent implements OnInit {
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(
       this.draftEvaluation.participants.employeeIds.filter((employeeId) => candidateIds.has(employeeId))
     );
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
   private selectParticipantEmployeesFromSelectedPositions(): void {
@@ -2483,6 +3792,7 @@ export class DesEvaluacionesComponent implements OnInit {
 
     this.draftEvaluation.participants.employeeIds = this.getParticipantCandidateEmployees(this.draftEvaluation)
       .map((employee) => employee.id);
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
   trackByPosition(_index: number, position: string): string {
@@ -2499,6 +3809,22 @@ export class DesEvaluacionesComponent implements OnInit {
 
   getSendSummaryAssigned(): number {
     return this.sendAssignments.reduce((total, item) => total + item.evaluateeIds.length, 0);
+  }
+
+  isDemoPerformanceResendBlocked(assignment: DesEvaluationSendAssignment): boolean {
+    if (!this.demoLimitsService.isDemoModeActive()) {
+      return false;
+    }
+
+    const sentStatuses: DesEvaluationSendStatus[] = [
+      'ENVIADO',
+      'INICIADO',
+      'RESPONDIDO',
+      'COMPLETADO',
+    ];
+
+    return sentStatuses.includes(assignment.sendStatus) ||
+      assignment.surveySends.some((record) => sentStatuses.includes(record.status));
   }
 
   get selectedModelDiagramNodeData(): DesEvaluationDiagramNodeData | null {
@@ -2585,20 +3911,6 @@ export class DesEvaluacionesComponent implements OnInit {
     item: DesEvaluationDiagramRelationData
   ): string {
     return item.id;
-  }
-
-  getSendDialogDemographicFields(): string[] {
-    const fields = new Set<string>();
-
-    this.sendAssignments.forEach((assignment) => {
-      Object.keys(assignment.evaluator.demographicValues).forEach((field) => fields.add(field));
-    });
-
-    const orderedFields = this.demographicFields
-      .map((field) => field.name)
-      .filter((field) => fields.delete(field));
-
-    return [...orderedFields, ...Array.from(fields)];
   }
 
   getSendAssignmentEvaluateeOptions(assignment: DesEvaluationSendAssignment): DesEvaluationEmployee[] {
@@ -2844,6 +4156,15 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
+    if (this.isDemoPerformanceResendBlocked(assignment)) {
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TEXT'),
+        'info'
+      );
+      return;
+    }
+
     if (!assignment.evaluator.email) {
       await Swal.fire(
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.SEND_EMAIL_MISSING_TITLE'),
@@ -2857,6 +4178,15 @@ export class DesEvaluacionesComponent implements OnInit {
 
     try {
       await this.refreshAssignmentSendState(assignment, evaluation.id, true);
+      if (this.isDemoPerformanceResendBlocked(assignment)) {
+        await Swal.fire(
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TITLE'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TEXT'),
+          'info'
+        );
+        return;
+      }
+
       const payload = this.buildPerformanceEmailPayload(
         evaluation,
         assignment,
@@ -3016,6 +4346,10 @@ export class DesEvaluacionesComponent implements OnInit {
         .map((item) => this.normalizeEmployee(item))
         .filter((item) => item.id > 0);
 
+      this.positionOptions = this.mergePositionOptions(
+        this.positionOptions,
+        this.getEmployeePositionOptions(organizationId)
+      );
       this.rebuildAvailablePositions();
       this.rebuildDemographicValueOptions();
     } catch (error) {
@@ -3069,15 +4403,35 @@ export class DesEvaluacionesComponent implements OnInit {
       });
       const catalogs = this.extractPayload(response) ?? {};
 
-      this.modelTypeOptions = this.normalizeCatalogOptions(catalogs.tiposModelo);
-      this.modelStateOptions = this.normalizeCatalogOptions(catalogs.estadosModelo);
-      this.evaluationStateOptions = this.normalizeCatalogOptions(catalogs.estadosEvaluacion);
-      this.itemTypeOptions = this.normalizeCatalogOptions(catalogs.tiposItem);
-      this.scenarioCatalogOptions = this.normalizeCatalogOptions(catalogs.escenarios);
-      this.calculationMethodOptions = this.normalizeCatalogOptions(catalogs.metodosCalculo);
-      this.positionOptions = this.normalizePositionOptions(catalogs.puestos, organizationId);
+      this.modelTypeOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'tiposModelo')
+      );
+      this.modelStateOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'estadosModelo')
+      );
+      this.evaluationStateOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'estadosEvaluacion')
+      );
+      this.itemTypeOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'tiposItem')
+      );
+      this.scenarioCatalogOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'escenarios')
+      );
+      this.calculationMethodOptions = this.normalizeCatalogOptions(
+        this.getPayloadProperty(catalogs, 'metodosCalculo')
+      );
+      this.positionOptions = this.mergePositionOptions(
+        this.normalizePositionOptions(
+          this.getPayloadProperty(catalogs, 'puestos'),
+          organizationId
+        ),
+        this.getEmployeePositionOptions(organizationId)
+      );
 
-      const apiScales = this.normalizeScaleOptions(catalogs.escalas);
+      const apiScales = this.normalizeScaleOptions(
+        this.getPayloadProperty(catalogs, 'escalas')
+      );
       if (apiScales.length > 0) {
         this.scaleOptions = apiScales;
       }
@@ -3097,7 +4451,7 @@ export class DesEvaluacionesComponent implements OnInit {
         }));
       }
 
-      this.rebuildAvailablePositions();
+      await this.refreshPositionOptions(organizationId);
     } catch (error) {
       console.error('Error al cargar catálogos de desempeño:', error);
       await Swal.fire(
@@ -3266,6 +4620,74 @@ export class DesEvaluacionesComponent implements OnInit {
       .sort((left, right) => left.name.localeCompare(right.name));
   }
 
+  private async refreshPositionOptions(organizationId: number): Promise<void> {
+    try {
+      const response = await this.organizacionService.getDesempenoPositions({
+        idOrganizacion: organizationId,
+        soloActivos: true,
+      });
+      const endpointPositions = this.normalizePositionOptions(
+        this.extractCollection(response),
+        organizationId
+      );
+
+      this.positionOptions = this.mergePositionOptions(
+        this.positionOptions,
+        endpointPositions,
+        this.getEmployeePositionOptions(organizationId)
+      );
+      this.rebuildAvailablePositions();
+    } catch (error) {
+      console.warn('No se pudo refrescar el catálogo de puestos de desempeño:', error);
+      this.positionOptions = this.mergePositionOptions(
+        this.positionOptions,
+        this.getEmployeePositionOptions(organizationId)
+      );
+      this.rebuildAvailablePositions();
+    }
+  }
+
+  private mergePositionOptions(
+    ...collections: DesEvaluationPositionOption[][]
+  ): DesEvaluationPositionOption[] {
+    const positionsByName = new Map<string, DesEvaluationPositionOption>();
+
+    collections.flat().forEach((position) => {
+      const key = this.normalizeSearchText(position.name);
+      if (!key || position.id <= 0) {
+        return;
+      }
+
+      const current = positionsByName.get(key);
+      positionsByName.set(key, current
+        ? {
+            ...current,
+            ...position,
+            code: position.code ?? current.code,
+            totalEmployees: Math.max(current.totalEmployees, position.totalEmployees),
+          }
+        : position);
+    });
+
+    return Array.from(positionsByName.values())
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  private getEmployeePositionOptions(
+    organizationId: number
+  ): DesEvaluationPositionOption[] {
+    return this.employees
+      .filter((employee) => employee.positionId && employee.cargo)
+      .map((employee) => ({
+        id: employee.positionId as number,
+        organizationId: employee.organizationId ?? organizationId,
+        code: null,
+        name: employee.cargo as string,
+        active: employee.activo,
+        totalEmployees: 1,
+      }));
+  }
+
   private normalizeScaleOptions(value: any): ScaleOption[] {
     if (!Array.isArray(value)) {
       return [];
@@ -3347,6 +4769,19 @@ export class DesEvaluacionesComponent implements OnInit {
     return payload;
   }
 
+  private getPayloadProperty(source: any, propertyName: string): any {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) {
+      return undefined;
+    }
+
+    const expected = propertyName.toLocaleLowerCase();
+    const key = Object.keys(source).find(
+      (candidate) => candidate.toLocaleLowerCase() === expected
+    );
+
+    return key ? source[key] : undefined;
+  }
+
   private normalizeArrayValue(value: any): any[] {
     if (Array.isArray(value)) {
       return value;
@@ -3386,14 +4821,55 @@ export class DesEvaluacionesComponent implements OnInit {
     return {
       id: Number(item?.IdEmpleado ?? item?.idEmpleado ?? item?.Id ?? item?.id ?? 0),
       organizationId: this.toPositiveInteger(item?.IdOrganizacion ?? item?.idOrganizacion),
+      positionId: this.toPositiveInteger(
+        item?.IdPuesto ?? item?.idPuesto ?? item?.PuestoId ?? item?.puestoId
+      ),
       managerId: managerIds[0] ?? null,
       managerIds,
       fullName: `${names} ${lastNames}`.trim(),
       cargo: this.toOptionalText(item?.Cargo ?? item?.cargo ?? item?.Puesto ?? item?.puesto ?? item?.Posicion ?? item?.posicion),
       email: this.toOptionalText(item?.Email ?? item?.email),
+      phone: this.toOptionalText(
+        item?.Celular ?? item?.celular ?? item?.Telefono ?? item?.telefono
+      ),
+      preferredSendType: this.normalizeEmployeeSendType(
+        item?.TipoEnvioEncuesta ??
+        item?.tipoEnvioEncuesta ??
+        item?.TIPO_ENVIO_ENCUESTA ??
+        item?.SendSurveyType ??
+        item?.sendSurveyType
+      ),
       activo: this.normalizeBoolean(item?.activo ?? item?.Activo ?? item?.estado ?? item?.Estado),
       demographicValues: this.extractEmployeeDemographicValues(item),
     };
+  }
+
+  private normalizeEmployeeSendType(value: unknown): DesEvaluationSendType | null {
+    const numericValue = Number(value);
+    if (numericValue === 0 && value !== null && value !== undefined && value !== '') {
+      return 'NINGUNO';
+    }
+    if (numericValue === 1) return 'CORREO';
+    if (numericValue === 2) return 'WHATSAPP';
+    if (numericValue === 3) return 'AMBOS';
+
+    const normalizedValue = this.normalizeKey(String(value ?? ''));
+    if (['NINGUNO', 'NOTHING', 'NONE'].includes(normalizedValue)) return 'NINGUNO';
+    if (['CORREO', 'EMAIL'].includes(normalizedValue)) return 'CORREO';
+    if (normalizedValue === 'WHATSAPP') return 'WHATSAPP';
+    if (
+      [
+        'AMBOS',
+        'CORREO_Y_WHATSAPP',
+        'CORREO_WHATSAPP',
+        'EMAIL_AND_WHATSAPP',
+        'EMAIL_WHATSAPP',
+      ].includes(normalizedValue)
+    ) {
+      return 'AMBOS';
+    }
+
+    return null;
   }
 
   private normalizeEmployeeManagerIds(item: any): number[] {
@@ -3694,12 +5170,16 @@ export class DesEvaluacionesComponent implements OnInit {
                 requiredRatingLevel: this.normalizeRequiredRatingLevel(
                   criterion?.nivelExigencia ?? criterion?.NivelExigencia
                 ),
-                defaultQuestionType: this.toFrontendItemTypeCode(
+                defaultQuestionType: this.resolveFrontendItemTypeCode(
                   criterion?.tipoItemPredeterminado?.codigo ??
                   criterion?.TipoItemPredeterminado?.Codigo ??
                   criterion?.tipoItemPredeterminadoCodigo ??
-                  criterion?.TipoItemPredeterminadoCodigo ??
-                  'LIKERT_1_5'
+                  criterion?.TipoItemPredeterminadoCodigo,
+                  criterion?.tipoItemPredeterminado?.id ??
+                  criterion?.TipoItemPredeterminado?.Id ??
+                  criterion?.tipoItemPredeterminadoId ??
+                  criterion?.TipoItemPredeterminadoId ??
+                  criterion?.IdTipoItemPredeterminado
                 ),
                 questions: Array.isArray(items)
                   ? items.map((item: any, itemIndex: number) =>
@@ -3898,10 +5378,12 @@ export class DesEvaluacionesComponent implements OnInit {
       requiredRatingLevel: this.normalizeRequiredRatingLevel(
         criterion?.nivelExigencia ?? criterion?.NivelExigencia
       ),
-      defaultQuestionType: this.toFrontendItemTypeCode(
+      defaultQuestionType: this.resolveFrontendItemTypeCode(
         criterion?.tipoItemPredeterminadoCodigo ??
-        criterion?.TipoItemPredeterminadoCodigo ??
-        'LIKERT_1_5'
+        criterion?.TipoItemPredeterminadoCodigo,
+        criterion?.tipoItemPredeterminadoId ??
+        criterion?.TipoItemPredeterminadoId ??
+        criterion?.IdTipoItemPredeterminado
       ),
       questions: items.map((item, itemIndex) => ({
         id: Number(
@@ -3917,12 +5399,14 @@ export class DesEvaluacionesComponent implements OnInit {
           item?.label ??
           `Ítem ${itemIndex + 1}`
         ).trim(),
-        type: this.toFrontendItemTypeCode(
+        type: this.resolveFrontendItemTypeCode(
           item?.tipoItemCodigo ??
           item?.TipoItemCodigo ??
           item?.tipo ??
-          item?.Tipo ??
-          'LIKERT_1_5'
+          item?.Tipo,
+          item?.tipoItemId ??
+          item?.TipoItemId ??
+          item?.IdTipoItem
         ),
         required: true,
         options: [],
@@ -4071,6 +5555,19 @@ export class DesEvaluacionesComponent implements OnInit {
     const backendId = this.toPositiveInteger(
       item?.id ?? item?.Id ?? item?.idItemEvaluativo ?? item?.IdItemEvaluativo
     );
+    const questionType = this.resolveFrontendItemTypeCode(
+      item?.tipoItem?.codigo ??
+      item?.TipoItem?.Codigo ??
+      item?.tipoItemCodigo ??
+      item?.TipoItemCodigo ??
+      item?.tipo ??
+      item?.Tipo,
+      item?.tipoItem?.id ??
+      item?.TipoItem?.Id ??
+      item?.tipoItemId ??
+      item?.TipoItemId ??
+      item?.IdTipoItem
+    );
     const scaleId = this.toPositiveInteger(
       item?.escalaId ??
       item?.IdEscala ??
@@ -4094,7 +5591,9 @@ export class DesEvaluacionesComponent implements OnInit {
           .filter((option: string) => !!option)
       : [];
 
-    if (options.length === 0 && scaleId) {
+    if (questionType === 'ABIERTA') {
+      options = [];
+    } else if (options.length === 0 && scaleId) {
       options = this.getScaleById(scaleId)?.levels
         .map((level) => level.label ?? this.translateKeyOrFallback(level.labelKey ?? '', ''))
         .filter((label) => !!label) ?? [];
@@ -4105,18 +5604,10 @@ export class DesEvaluacionesComponent implements OnInit {
       backendId: backendId ?? undefined,
       code: this.toOptionalText(item?.codigo ?? item?.Codigo) ?? undefined,
       label: String(item?.texto ?? item?.Texto ?? item?.label ?? `Ítem ${index + 1}`).trim(),
-      type: this.toFrontendItemTypeCode(
-        item?.tipoItem?.codigo ??
-        item?.TipoItem?.Codigo ??
-        item?.tipoItemCodigo ??
-        item?.TipoItemCodigo ??
-        item?.tipo ??
-        item?.Tipo ??
-        'LIKERT_1_5'
-      ),
+      type: questionType,
       required: true,
       options,
-      scaleId,
+      scaleId: questionType === 'ABIERTA' ? null : scaleId,
       scenarioKeys: [scenarioKey],
       positionScope: 'SELECTED',
       positions: [positionName],
@@ -4358,9 +5849,7 @@ export class DesEvaluacionesComponent implements OnInit {
       description: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEFAULT_DESCRIPTION'),
       avatarSrc: 'assets/images/user/user1.jpg',
       status: 'CONFIGURACION',
-      modelName: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEFAULT_MODEL_NAME', {
-        year: new Date().getFullYear(),
-      }),
+      modelName: name,
       modelType: defaultType,
       modelState: defaultState?.code ?? 'BORRADOR',
       scaleId: defaultScale?.id ?? this.scaleOptions[0]?.id ?? 0,
@@ -4945,7 +6434,14 @@ export class DesEvaluacionesComponent implements OnInit {
     employee: DesEvaluationEmployee,
     evaluation: DesEvaluationCard
   ): boolean {
-    return !!employee.cargo && evaluation.participants.positions.includes(employee.cargo);
+    if (!employee.cargo) {
+      return false;
+    }
+
+    const employeePosition = this.normalizeSearchText(employee.cargo);
+    return evaluation.participants.positions.some(
+      (position) => this.normalizeSearchText(position) === employeePosition
+    );
   }
 
   private ensureDraftFilters(card: DesEvaluationCard): DesEvaluationCard {
@@ -5020,6 +6516,11 @@ export class DesEvaluacionesComponent implements OnInit {
           )
         ) {
           scenario.active = false;
+        } else if (
+          this.normalizeKey(evaluation.modelType) === '90' &&
+          scenario.key === 'BOSS_TO_EMPLOYEE'
+        ) {
+          scenario.active = true;
         }
       });
     });
@@ -5032,13 +6533,15 @@ export class DesEvaluacionesComponent implements OnInit {
       return;
     }
 
-    const activeByKey = new Map<DesEvaluationScenarioKey, DesEvaluationScenario>();
+    const weightByKey = new Map<DesEvaluationScenarioKey, number>();
+    let contributingPositions = 0;
 
     evaluation.positionScenarios.forEach((positionConfig) => {
       if (this.isPositionEvaluatorOnly(positionConfig.position, evaluation)) {
         return;
       }
 
+      let positionHasActiveScenarios = false;
       positionConfig.scenarios.forEach((scenario) => {
         if (
           scenario.key &&
@@ -5047,28 +6550,48 @@ export class DesEvaluacionesComponent implements OnInit {
             positionConfig.position,
             scenario.key,
             evaluation
-          ) &&
-          !activeByKey.has(scenario.key)
+          )
         ) {
-          activeByKey.set(scenario.key, scenario);
+          positionHasActiveScenarios = true;
+          weightByKey.set(
+            scenario.key,
+            (weightByKey.get(scenario.key) ?? 0) + (Number(scenario.weight) || 0)
+          );
         }
       });
+
+      if (positionHasActiveScenarios) {
+        contributingPositions++;
+      }
     });
 
-    evaluation.scenarios = this.buildScenariosForType(
+    const globalScenarios = this.buildScenariosForType(
       evaluation.modelType,
       evaluation.scenarios
     ).map((scenario) => {
-      const activePositionScenario = scenario.key
-        ? activeByKey.get(scenario.key)
-        : null;
+      const totalWeight = scenario.key ? weightByKey.get(scenario.key) : undefined;
+      const active = totalWeight !== undefined && contributingPositions > 0;
 
       return {
         ...scenario,
-        weight: Number(activePositionScenario?.weight ?? scenario.weight) || 0,
-        active: !!activePositionScenario,
+        weight: active
+          ? Math.round(((totalWeight ?? 0) / contributingPositions) * 100) / 100
+          : 0,
+        active,
       };
     });
+
+    const activeScenarios = globalScenarios.filter((scenario) => scenario.active);
+    const roundedTotal = activeScenarios.reduce(
+      (total, scenario) => total + scenario.weight,
+      0
+    );
+    const lastScenario = activeScenarios[activeScenarios.length - 1];
+    if (lastScenario && Math.abs(roundedTotal - 100) <= 0.05) {
+      lastScenario.weight = Math.round((lastScenario.weight + 100 - roundedTotal) * 100) / 100;
+    }
+
+    evaluation.scenarios = globalScenarios;
   }
 
   private prepareEvaluationSnapshot(evaluation: DesEvaluationCard): DesEvaluationCard {
@@ -5137,7 +6660,7 @@ export class DesEvaluacionesComponent implements OnInit {
       codigo: evaluation.modelCode ?? this.buildEntityCode('MOD', evaluation.name),
       version: evaluation.modelVersion ?? 1,
       nombre: evaluation.name.trim(),
-      catalogoModeloNombre: evaluation.modelName.trim() || null,
+      catalogoModeloNombre: evaluation.name.trim(),
       descripcion: evaluation.description.trim() || null,
       fechaInicio: evaluation.period.startDate,
       fechaCierre: evaluation.period.endDate,
@@ -5338,7 +6861,9 @@ export class DesEvaluacionesComponent implements OnInit {
       participantes: {
         soloActivos: evaluation.participants.onlyActive,
         puestos: evaluation.participants.positions,
-        puestosSoloEvaluadores: evaluation.participants.evaluatorOnlyPositions ?? [],
+        puestosSoloEvaluadores: evaluation.participants.positions.filter((position) =>
+          this.isPositionEvaluatorOnly(position, evaluation)
+        ),
         empleados: this.employees
           .filter((employee) => evaluation.participants.employeeIds.includes(employee.id))
           .map((employee) => ({
@@ -5921,7 +7446,8 @@ export class DesEvaluacionesComponent implements OnInit {
         evaluator: assignment.evaluator,
         evaluateeIds: assignment.evaluatees.map((employee) => employee.id),
         hierarchyLevel: hierarchyLevels.get(assignment.evaluator.id) ?? 0,
-        sendType: assignment.evaluator.email ? 'CORREO' : 'WHATSAPP',
+        sendType: assignment.evaluator.preferredSendType ??
+          (assignment.evaluator.email ? 'CORREO' : 'WHATSAPP'),
         sendStatus: 'PENDIENTE',
         lastSent: null,
         persistedEvaluateeIds: [],
@@ -6391,9 +7917,26 @@ export class DesEvaluacionesComponent implements OnInit {
 
   private getDirectManagers(employee: DesEvaluationEmployee, population: DesEvaluationEmployee[]): DesEvaluationEmployee[] {
     const populationById = new Map(population.map((item) => [item.id, item]));
-    const directManager = employee.managerId ? populationById.get(employee.managerId) : null;
+    const managerIds = employee.managerIds.length > 0
+      ? employee.managerIds
+      : employee.managerId
+        ? [employee.managerId]
+        : [];
 
-    return directManager && directManager.id !== employee.id ? [directManager] : [];
+    return managerIds
+      .map((managerId) => populationById.get(managerId))
+      .filter((manager): manager is DesEvaluationEmployee => !!manager && manager.id !== employee.id);
+  }
+
+  private getPositionParticipants(
+    position: string,
+    population: DesEvaluationEmployee[]
+  ): DesEvaluationEmployee[] {
+    const normalizedPosition = this.normalizeSearchText(position);
+
+    return population.filter((employee) =>
+      !!employee.cargo && this.normalizeSearchText(employee.cargo) === normalizedPosition
+    );
   }
 
   private getPeerEmployees(employee: DesEvaluationEmployee, population: DesEvaluationEmployee[]): DesEvaluationEmployee[] {
@@ -6420,12 +7963,134 @@ export class DesEvaluacionesComponent implements OnInit {
       }
 
       const activeScenarios = this.getActivePositionScenarios(position, evaluation);
-      if (activeScenarios.length === 0 || this.getPositionScenarioWeightTotal(position, evaluation) !== 100) {
+      if (
+        activeScenarios.length === 0 ||
+        !this.isWeightTotalComplete(this.getPositionScenarioWeightTotal(position, evaluation))
+      ) {
         return position;
       }
     }
 
     return null;
+  }
+
+  private findDemoPerformanceLimitViolation(
+    evaluation: DesEvaluationCard
+  ): { textKey: string; params: Record<string, unknown>; tabIndex: number } | null {
+    if (!this.demoLimitsService.isDemoModeActive()) {
+      return null;
+    }
+
+    const dimensionLimit = this.demoLimitsService.getLimit(
+      'maxPerformanceDimensionsPerModel'
+    );
+    if (evaluation.bigFactors.length > dimensionLimit) {
+      return {
+        textKey: 'DEMO_DIMENSION_LIMIT_TEXT',
+        params: { limit: dimensionLimit },
+        tabIndex: 0,
+      };
+    }
+
+    const criterionLimit = this.demoLimitsService.getLimit(
+      'maxPerformanceCriteriaPerDimension'
+    );
+    const itemLimit = this.demoLimitsService.getLimit(
+      'maxPerformanceItemsPerCriterion'
+    );
+    const positions = evaluation.participants.positions.filter(
+      (position) => !this.isPositionEvaluatorOnly(position, evaluation)
+    );
+
+    if (positions.length === 0) {
+      for (const dimension of evaluation.bigFactors) {
+        if (this.getDistinctFactorSummaries(dimension).length > criterionLimit) {
+          return {
+            textKey: 'DEMO_CRITERIA_LIMIT_TEXT',
+            params: { limit: criterionLimit, dimension: dimension.name },
+            tabIndex: 2,
+          };
+        }
+
+        const invalidCriterion = dimension.factors.find(
+          (criterion) => criterion.questions.length > itemLimit
+        );
+        if (invalidCriterion) {
+          return {
+            textKey: 'DEMO_ITEM_LIMIT_TEXT',
+            params: { limit: itemLimit, criterion: invalidCriterion.name },
+            tabIndex: 2,
+          };
+        }
+      }
+
+      return null;
+    }
+
+    for (const position of positions) {
+      for (const scenario of this.getEvaluationScenarioOptions(evaluation)) {
+        if (!this.isPositionScenarioApplicable(position, scenario.key, evaluation)) {
+          continue;
+        }
+
+        for (const dimension of evaluation.bigFactors) {
+          const criteria = this.getFactorsForPositionAndScenario(
+            dimension,
+            position,
+            scenario.key
+          );
+          if (criteria.length > criterionLimit) {
+            return {
+              textKey: 'DEMO_CRITERIA_LIMIT_TEXT',
+              params: { limit: criterionLimit, dimension: dimension.name },
+              tabIndex: 2,
+            };
+          }
+
+          for (const { factor: criterion } of criteria) {
+            const itemCount = this.getQuestionsForPositionAndScenario(
+              criterion,
+              position,
+              scenario.key
+            ).length;
+            if (itemCount > itemLimit) {
+              return {
+                textKey: 'DEMO_ITEM_LIMIT_TEXT',
+                params: { limit: itemLimit, criterion: criterion.name },
+                tabIndex: 2,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private async showDemoLimitMessage(
+    textKey: string,
+    limit: number,
+    params: Record<string, unknown> = {}
+  ): Promise<void> {
+    await Swal.fire(
+      this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_LIMIT_TITLE'),
+      this.t(
+        `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.${textKey}`,
+        { ...params, limit }
+      ),
+      'warning'
+    );
+  }
+
+  private hasRequiredModelGeneralData(evaluation: DesEvaluationCard): boolean {
+    return !!(
+      evaluation.name.trim() &&
+      evaluation.description.trim() &&
+      evaluation.modelType &&
+      evaluation.modelState &&
+      Number(evaluation.scaleId) > 0
+    );
   }
 
   private findInvalidFactorWeightGroup(evaluation: DesEvaluationCard): string | null {
@@ -6451,7 +8116,9 @@ export class DesEvaluacionesComponent implements OnInit {
               continue;
             }
 
-            if (this.getFactorWeightTotal(bigFactor, position, scenario.key) !== 100) {
+            if (!this.isWeightTotalComplete(
+              this.getFactorWeightTotal(bigFactor, position, scenario.key)
+            )) {
               return `${bigFactor.name} (${position} - ${scenario.name})`;
             }
           }
@@ -6466,7 +8133,7 @@ export class DesEvaluacionesComponent implements OnInit {
         continue;
       }
 
-      if (this.getFactorWeightTotal(bigFactor) !== 100) {
+      if (!this.isWeightTotalComplete(this.getFactorWeightTotal(bigFactor))) {
         return bigFactor.name;
       }
     }
@@ -6489,13 +8156,43 @@ export class DesEvaluacionesComponent implements OnInit {
 
   private toFrontendItemTypeCode(value: any): string {
     const code = this.normalizeKey(String(value ?? 'LIKERT_1_5'));
+    if (
+      ['ABIERTA', 'PREGUNTA_ABIERTA', 'RESPUESTA_ABIERTA', 'TEXTO_ABIERTO', 'OPEN', 'OPEN_QUESTION']
+        .includes(code)
+    ) {
+      return 'ABIERTA';
+    }
     if (code === 'OPCION_UNICA') return 'SELECCION_UNICA';
     if (code === 'OPCION_MULTIPLE') return 'SELECCION_MULTIPLE';
     return code;
   }
 
+  private resolveFrontendItemTypeCode(
+    codeValue: unknown,
+    idValue: unknown,
+    fallback = 'LIKERT_1_5'
+  ): string {
+    const rawCode = this.toOptionalText(codeValue);
+    const numericCodeId = rawCode && /^\d+$/.test(rawCode)
+      ? this.toPositiveInteger(rawCode)
+      : null;
+    const itemTypeId = this.toPositiveInteger(idValue) ?? numericCodeId;
+
+    if (itemTypeId) {
+      const catalogItem = this.itemTypeOptions.find((item) => item.id === itemTypeId);
+      if (catalogItem?.code) {
+        return this.toFrontendItemTypeCode(catalogItem.code);
+      }
+    }
+
+    return rawCode && !numericCodeId
+      ? this.toFrontendItemTypeCode(rawCode)
+      : this.toFrontendItemTypeCode(fallback);
+  }
+
   private toBackendItemTypeCode(value: any): string {
-    const code = this.normalizeKey(String(value ?? 'LIKERT_1_5'));
+    const code = this.toFrontendItemTypeCode(value);
+    if (code === 'ABIERTA') return 'ABIERTA';
     if (code === 'SELECCION_UNICA') return 'OPCION_UNICA';
     if (code === 'SELECCION_MULTIPLE') return 'OPCION_MULTIPLE';
     return code;
@@ -6503,7 +8200,20 @@ export class DesEvaluacionesComponent implements OnInit {
 
   private getItemTypeId(type: string): number {
     const backendCode = this.toBackendItemTypeCode(type);
-    return this.itemTypeOptions.find((item) => item.code === backendCode)?.id ?? 0;
+    const exactMatch = this.itemTypeOptions.find((item) => item.code === backendCode);
+    if (exactMatch) {
+      return exactMatch.id;
+    }
+
+    const capabilityMatch = this.itemTypeOptions.find((item) => {
+      const usesScale = this.normalizeBoolean(item['usaEscala'] ?? item['UsaEscala']);
+      const allowsText = this.normalizeBoolean(item['permiteTexto'] ?? item['PermiteTexto']);
+      return backendCode === 'ABIERTA'
+        ? allowsText && !usesScale
+        : backendCode === 'LIKERT_1_5' && usesScale;
+    });
+
+    return capabilityMatch?.id ?? 0;
   }
 
   private getScenarioCatalogId(scenario: DesEvaluationScenario): number {
@@ -6515,9 +8225,17 @@ export class DesEvaluacionesComponent implements OnInit {
 
   private getPositionId(positionName: string): number {
     const normalizedName = this.normalizeKey(positionName);
-    return this.positionOptions.find(
+    const catalogPositionId = this.positionOptions.find(
       (position) => this.normalizeKey(position.name) === normalizedName
-    )?.id ?? 0;
+    )?.id;
+
+    if (catalogPositionId) {
+      return catalogPositionId;
+    }
+
+    return this.employees.find(
+      (employee) => employee.positionId && this.normalizeKey(employee.cargo ?? '') === normalizedName
+    )?.positionId ?? 0;
   }
 
   private resolveFactorScaleId(
@@ -6540,6 +8258,10 @@ export class DesEvaluacionesComponent implements OnInit {
     factorScaleId: number | null,
     fallbackScaleId: number
   ): number | null {
+    if (this.toBackendItemTypeCode(question.type) === 'ABIERTA') {
+      return null;
+    }
+
     const typeOption = this.itemTypeOptions.find(
       (item) => item.code === this.toBackendItemTypeCode(question.type)
     );
@@ -6570,6 +8292,43 @@ export class DesEvaluacionesComponent implements OnInit {
     const normalizedPrefix = this.normalizeKey(prefix).slice(0, 8) || 'DES';
     const normalizedValue = this.normalizeKey(value).slice(0, 50 - normalizedPrefix.length - 1);
     return `${normalizedPrefix}_${normalizedValue || 'ITEM'}`.slice(0, 50);
+  }
+
+  private getSuggestedDuplicateModelName(sourceName: string): string {
+    const copySuffix = this.t(
+      'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_COPY_SUFFIX'
+    );
+    let copyNumber = 1;
+
+    while (true) {
+      const suffix = copyNumber === 1
+        ? ` - ${copySuffix}`
+        : ` - ${copySuffix} ${copyNumber}`;
+      const candidate = `${sourceName.slice(0, Math.max(1, 200 - suffix.length))}${suffix}`;
+      if (!this.modelNameExists(candidate)) {
+        return candidate;
+      }
+      copyNumber++;
+    }
+  }
+
+  private modelNameExists(name: string): boolean {
+    const normalizedName = this.normalizeSearchText(name);
+    return this.visibleEvaluations.some(
+      (evaluation) => this.normalizeSearchText(evaluation.name) === normalizedName
+    );
+  }
+
+  private buildDuplicateModelCode(name: string): string {
+    const uniqueSuffix = `_C${Date.now().toString(36).toUpperCase()}`;
+    const baseCode = this.buildEntityCode('MOD', name);
+    return `${baseCode.slice(0, 50 - uniqueSuffix.length)}${uniqueSuffix}`;
+  }
+
+  private resetDuplicateModelDialog(): void {
+    this.duplicateModelDialogRef = null;
+    this.duplicateModelSource = null;
+    this.duplicateModelName = '';
   }
 
   private getApiErrorMessage(error: any, fallback: string): string {

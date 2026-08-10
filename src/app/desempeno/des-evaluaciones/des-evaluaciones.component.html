@@ -13,19 +13,6 @@
         <div class="evaluaciones-shell">
           <div class="evaluaciones-toolbar">
             <div class="evaluaciones-toolbar-left">
-              <mat-form-field appearance="outline" class="org-selector">
-                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ORGANIZATION' | translate }}</mat-label>
-                <mat-select
-                  [ngModel]="selectedOrganizationId"
-                  (ngModelChange)="onOrganizationChange($event)"
-                  [disabled]="isLoadingOrganizations"
-                >
-                  <mat-option *ngFor="let organization of organizations; trackBy: trackByAnyId" [value]="organization.Id">
-                    {{ organization.Nombre }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-
               <div class="toolbar-summary">
                 <span class="summary-pill">
                   <mat-icon>groups</mat-icon>
@@ -48,8 +35,14 @@
                   isLoadingEmployees ||
                   isLoadingDemographics ||
                   isLoadingCatalogs ||
-                  isLoadingModels
+                  isLoadingModels ||
+                  isDemoPerformanceModelLimitReached
                 "
+                [matTooltip]="isDemoPerformanceModelLimitReached
+                  ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_MODEL_LIMIT_TEXT' | translate: {
+                      limit: demoPerformanceModelLimit
+                    })
+                  : ''"
               >
                 <mat-icon>add</mat-icon>
                 {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NEW' | translate }}
@@ -175,6 +168,18 @@
                   <mat-icon>{{ isLoadingModelDiagram ? 'sync' : 'account_tree' }}</mat-icon>
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL' | translate }}
                 </button>
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  (click)="openDuplicateModelDialog(card)"
+                  [disabled]="isDuplicatingModel || isDemoPerformanceModelLimitReached"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_HELP' | translate">
+                  <mat-icon>
+                    {{ isDuplicatingModel && duplicateModelSource?.id === card.id ? 'sync' : 'content_copy' }}
+                  </mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL' | translate }}
+                </button>
               </mat-card-actions>
             </mat-card>
           </div>
@@ -221,39 +226,20 @@
             <div class="col-lg-6 col-md-12">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATION_NAME' | translate }}</mat-label>
-                <input matInput [(ngModel)]="draftEvaluation.name" />
+                <input matInput required [(ngModel)]="draftEvaluation.name" />
               </mat-form-field>
             </div>
             <div class="col-lg-6 col-md-12">
               <mat-form-field appearance="outline" class="w-100">
-                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_LABEL' | translate }}</mat-label>
-                <input
-                  matInput
-                  [ngModel]="draftEvaluation.modelName"
-                  (ngModelChange)="onModelCatalogNameChange($event)"
-                  autocomplete="off"
-                  [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_CATALOG_PLACEHOLDER' | translate"
-                />
-                <button
-                  mat-icon-button
-                  matSuffix
-                  type="button"
-                  (click)="openModelCatalogSearchDialog()"
-                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_MODEL_CATALOG' | translate">
-                  <mat-icon>search</mat-icon>
-                </button>
-              </mat-form-field>
-            </div>
-            <div class="col-lg-12">
-              <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DESCRIPTION' | translate }}</mat-label>
-                <textarea matInput rows="3" [(ngModel)]="draftEvaluation.description"></textarea>
+                <input matInput required [(ngModel)]="draftEvaluation.description" />
               </mat-form-field>
             </div>
             <div class="col-lg-4 col-md-6">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TYPE' | translate }}</mat-label>
                 <mat-select
+                  required
                   [ngModel]="draftEvaluation.modelType"
                   (ngModelChange)="onSurveyTypeChange($event)"
                 >
@@ -264,7 +250,7 @@
             <div class="col-lg-4 col-md-6">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_STATE' | translate }}</mat-label>
-                <mat-select [(ngModel)]="draftEvaluation.modelState">
+                <mat-select required [(ngModel)]="draftEvaluation.modelState">
                   <mat-option *ngFor="let state of modelStates" [value]="state">{{ getModelStateLabel(state) }}</mat-option>
                 </mat-select>
               </mat-form-field>
@@ -272,7 +258,7 @@
             <div class="col-lg-4 col-md-12">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCALE' | translate }}</mat-label>
-                <mat-select [(ngModel)]="draftEvaluation.scaleId" (ngModelChange)="draftEvaluation.scaleLabel = getScaleLabel($event)">
+                <mat-select required [(ngModel)]="draftEvaluation.scaleId" (ngModelChange)="draftEvaluation.scaleLabel = getScaleLabel($event)">
                   <mat-option *ngFor="let scale of scaleOptions; trackBy: trackByAnyId" [value]="scale.id">
                     {{ getScaleLabel(scale.id) }}
                   </mat-option>
@@ -317,6 +303,56 @@
             </div>
           </div>
 
+          <div class="model-excel-import-bar">
+            <div class="model-excel-import-title">
+              <span class="model-excel-import-icon"><mat-icon>table_view</mat-icon></span>
+              <div>
+                <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.TITLE' | translate }}</strong>
+                <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUBTITLE' | translate }}</small>
+              </div>
+            </div>
+
+            <div class="model-excel-import-summary" *ngIf="modelExcelImportSummary as summary">
+              <span><strong>{{ summary.positions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.POSITIONS' | translate }}</span>
+              <span><strong>{{ summary.dimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_DIMENSIONS' | translate }}</span>
+              <span><strong>{{ summary.criteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_CRITERIA' | translate }}</span>
+              <span><strong>{{ summary.items }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_ITEMS' | translate }}</span>
+              <span *ngIf="summary.skipped > 0"><strong>{{ summary.skipped }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_SKIPPED' | translate }}</span>
+              <span *ngIf="summary.omittedScenarios > 0"><strong>{{ summary.omittedScenarios }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.OMITTED_SCENARIOS' | translate }}</span>
+            </div>
+
+            <div class="model-excel-import-actions">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="downloadModelExcelTemplate()"
+                [disabled]="isImportingModelExcel || isSavingModel">
+                <mat-icon>download</mat-icon>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE' | translate }}
+              </button>
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="modelExcelInput.click()"
+                [disabled]="isImportingModelExcel || isSavingModel">
+                <mat-progress-spinner
+                  *ngIf="isImportingModelExcel; else uploadExcelIcon"
+                  diameter="18"
+                  mode="indeterminate">
+                </mat-progress-spinner>
+                <ng-template #uploadExcelIcon><mat-icon>upload_file</mat-icon></ng-template>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.UPLOAD' | translate }}
+              </button>
+              <input
+                #modelExcelInput
+                hidden
+                type="file"
+                accept=".xlsx,.xls"
+                (change)="onModelExcelSelected($event)" />
+            </div>
+          </div>
+
           <div class="editor-section catalog-dimensions-section">
             <div class="section-title">
               <div>
@@ -324,10 +360,15 @@
                 <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS_HELP' | translate }}</p>
               </div>
               <div class="section-actions">
-                <span class="weight-total" [class.ok]="bigFactorWeightTotal === 100">
+                <span class="weight-total" [class.ok]="isWeightTotalComplete(bigFactorWeightTotal)">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}: {{ bigFactorWeightTotal }}%
                 </span>
-                <button mat-stroked-button color="primary" type="button" (click)="openBigFactorDialog()">
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  (click)="openBigFactorDialog()"
+                  [disabled]="isDemoPerformanceDimensionLimitReached">
                   <mat-icon>add</mat-icon>
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_DIMENSION' | translate }}
                 </button>
@@ -533,16 +574,13 @@
                     {{ position }}
                   </mat-panel-title>
                   <mat-panel-description>
-                    <ng-container *ngIf="isPositionEvaluatorOnly(position); else positionScenarioTotal">
+                    <ng-container *ngIf="isPositionEvaluatorOnly(position); else activePositionScenarios">
                       {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
                     </ng-container>
-                    <ng-template #positionScenarioTotal>
-                      <span
-                        class="weight-total"
-                        [class.ok]="getPositionScenarioWeightTotal(position) === 100">
-                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}:
-                        {{ getPositionScenarioWeightTotal(position) }}%
-                      </span>
+                    <ng-template #activePositionScenarios>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ACTIVE_SCENARIOS_COUNT' | translate: {
+                        count: getActivePositionScenarios(position).length
+                      } }}
                     </ng-template>
                   </mat-panel-description>
                 </mat-expansion-panel-header>
@@ -550,9 +588,22 @@
                 <mat-checkbox
                   class="position-evaluator-only-toggle"
                   [ngModel]="isPositionEvaluatorOnly(position)"
+                  [disabled]="isPositionAutomaticallyEvaluatorOnly(position)"
+                  [matTooltip]="isPositionAutomaticallyEvaluatorOnly(position)
+                    ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate)
+                    : ''"
                   (ngModelChange)="setPositionEvaluatorOnly(position, $event)">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
                 </mat-checkbox>
+
+                <div
+                  class="position-auto-evaluator-note"
+                  *ngIf="isPositionAutomaticallyEvaluatorOnly(position)">
+                  <mat-icon>info</mat-icon>
+                  <span>
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate }}
+                  </span>
+                </div>
 
                 <div class="position-scenario-help">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_HELP' | translate }}
@@ -640,6 +691,13 @@
                     {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
                   </ng-container>
                   <ng-template #positionQuestionCount>
+                    <span
+                      class="weight-status-indicator"
+                      *ngIf="isPositionWeightIncomplete(position)"
+                      [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_WEIGHT_WARNING' | translate">
+                      <mat-icon>error_outline</mat-icon>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT_INCOMPLETE' | translate }}
+                    </span>
                     {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
                       count: getPositionQuestionCount(position)
                     } }}
@@ -661,7 +719,13 @@
                     </mat-panel-title>
                     <mat-panel-description>
                       <ng-container *ngIf="isPositionScenarioApplicable(position, scenario.key); else positionScenarioNotApplicable">
-                        <span>{{ getPositionScenarioWeight(position, scenario.key) }}%</span>
+                        <span
+                          class="weight-status-indicator"
+                          *ngIf="isScenarioWeightIncomplete(position, scenario.key)"
+                          [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_WEIGHT_WARNING' | translate">
+                          <mat-icon>error_outline</mat-icon>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT_INCOMPLETE' | translate }}
+                        </span>
                         <span>
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
                             count: getPositionScenarioQuestionCount(position, scenario.key)
@@ -690,7 +754,6 @@
                           </div>
                         </mat-panel-title>
                         <mat-panel-description>
-                          <span>{{ bigFactor.weight }}%</span>
                           <span>
                             {{ getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length }}
                             {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.COMPETENCIES' | translate }}
@@ -701,7 +764,7 @@
                       <div class="position-dimension-toolbar">
                         <span
                           class="weight-total"
-                          [class.ok]="getFactorWeightTotal(bigFactor, position, scenario.key) === 100 || getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length === 0">
+                          [class.ok]="isWeightTotalComplete(getFactorWeightTotal(bigFactor, position, scenario.key)) || getFactorsForPositionAndScenario(bigFactor, position, scenario.key).length === 0">
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}:
                           {{ getFactorWeightTotal(bigFactor, position, scenario.key) }}%
                         </span>
@@ -709,7 +772,8 @@
                           mat-stroked-button
                           color="primary"
                           type="button"
-                          (click)="openFactorDialog(bigFactorIndex, null, position, scenario.key)">
+                          (click)="openFactorDialog(bigFactorIndex, null, position, scenario.key)"
+                          [disabled]="isDemoPerformanceCriteriaLimitReached(bigFactor, position, scenario.key)">
                           <mat-icon>playlist_add</mat-icon>
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_COMPETENCY' | translate }}
                         </button>
@@ -758,12 +822,15 @@
                           </div>
 
                           <div class="question-toolbar">
-                            <span class="mini-pill">{{ getQuestionTypeLabel(factorItem.factor.defaultQuestionType) }}</span>
+                            <span class="mini-pill">
+                              {{ getFactorQuestionTypeSummary(factorItem.factor, position, scenario.key) }}
+                            </span>
                             <button
                               mat-raised-button
                               color="primary"
                               type="button"
-                              (click)="openQuestionDialog(bigFactorIndex, factorItem.index, null, position, scenario.key)">
+                              (click)="openQuestionDialog(bigFactorIndex, factorItem.index, null, position, scenario.key)"
+                              [disabled]="isDemoPerformanceItemLimitReached(factorItem.factor, position, scenario.key)">
                               <mat-icon>add</mat-icon>
                               {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_QUESTION' | translate }}
                             </button>
@@ -855,7 +922,7 @@
     </mat-tab-group>
 
     <div class="editor-footer">
-      <button mat-button type="button" (click)="closeEditorDialog()" [disabled]="isSavingModel">
+      <button mat-button type="button" (click)="closeEditorDialog()" [disabled]="isSavingModel || isImportingModelExcel">
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
       </button>
       <button
@@ -863,7 +930,7 @@
         color="primary"
         type="button"
         (click)="saveDraftEvaluation()"
-        [disabled]="isSavingModel">
+        [disabled]="isSavingModel || isImportingModelExcel">
         <mat-icon>save</mat-icon>
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE_EVALUATION' | translate }}
       </button>
@@ -922,6 +989,71 @@
     <div class="simple-dialog-footer">
       <button mat-button type="button" (click)="modelCatalogDialogRef?.close()">
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #duplicateModelDialogTemplate>
+  <div class="simple-dialog duplicate-model-dialog" *ngIf="duplicateModelSource as source">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_DIALOG_TITLE' | translate }}</h2>
+        <p>{{ source.name }}</p>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        (click)="duplicateModelDialogRef?.close()"
+        [disabled]="isDuplicatingModel">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body duplicate-model-body">
+      <div class="duplicate-model-warning">
+        <mat-icon>info</mat-icon>
+        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_WARNING' | translate }}</p>
+      </div>
+
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_NEW_NAME' | translate }}</mat-label>
+        <input
+          matInput
+          required
+          maxlength="200"
+          [(ngModel)]="duplicateModelName"
+          (keyup.enter)="duplicateSelectedModel()"
+          [disabled]="isDuplicatingModel"
+          autocomplete="off" />
+        <mat-hint align="end">{{ duplicateModelName.length }}/200</mat-hint>
+        <mat-error *ngIf="duplicateModelNameErrorKey as nameErrorKey">
+          {{ nameErrorKey | translate }}
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button
+        mat-button
+        type="button"
+        (click)="duplicateModelDialogRef?.close()"
+        [disabled]="isDuplicatingModel">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="duplicateSelectedModel()"
+        [disabled]="isDuplicatingModel || !!duplicateModelNameErrorKey">
+        <mat-progress-spinner
+          *ngIf="isDuplicatingModel; else duplicateModelIcon"
+          diameter="18"
+          mode="indeterminate">
+        </mat-progress-spinner>
+        <ng-template #duplicateModelIcon><mat-icon>content_copy</mat-icon></ng-template>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_CONFIRM' | translate }}
       </button>
     </div>
   </div>
@@ -1127,32 +1259,27 @@
   <div
     class="simple-dialog send-dialog"
     *ngIf="sendPreviewEvaluation">
-    <div class="simple-dialog-header">
-      <div>
-        <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DIALOG_TITLE' | translate }}</h2>
-        <p>{{ sendPreviewEvaluation.name }}</p>
+    <div class="simple-dialog-header send-dialog-header">
+      <div class="send-dialog-title">
+        <span class="send-dialog-title-icon" aria-hidden="true">
+          <mat-icon>outgoing_mail</mat-icon>
+        </span>
+        <div>
+          <h2>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DIALOG_TITLE' | translate }}</h2>
+          <p>{{ sendPreviewEvaluation.name }}</p>
+        </div>
       </div>
-      <button mat-icon-button mat-dialog-close>
+      <button
+        mat-icon-button
+        mat-dialog-close
+        [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate">
         <mat-icon>close</mat-icon>
       </button>
     </div>
 
     <div class="simple-dialog-body send-dialog-body">
-      <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DIALOG_HELP' | translate }}</p>
-
-      <div class="send-summary-grid">
-        <div class="send-summary-card">
-          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_EVALUATORS' | translate }}</span>
-          <strong>{{ getSendSummaryTotal() }}</strong>
-        </div>
-        <div class="send-summary-card">
-          <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_ASSIGNMENTS' | translate }}</span>
-          <strong>{{ getSendSummaryAssigned() }}</strong>
-        </div>
-      </div>
-
       <div class="send-actions-bar">
-        <div>
+        <div class="send-actions-copy">
           <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ASSIGNMENTS_TITLE' | translate }}</h4>
           <p>
             {{
@@ -1161,7 +1288,21 @@
             }}
           </p>
         </div>
-        <div class="section-actions">
+
+        <div class="send-actions-tools">
+          <div class="send-summary-grid">
+            <div class="send-summary-card">
+              <mat-icon aria-hidden="true">groups</mat-icon>
+              <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_EVALUATORS' | translate }}</span>
+              <strong>{{ getSendSummaryTotal() }}</strong>
+            </div>
+            <div class="send-summary-card">
+              <mat-icon aria-hidden="true">assignment_turned_in</mat-icon>
+              <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_ASSIGNMENTS' | translate }}</span>
+              <strong>{{ getSendSummaryAssigned() }}</strong>
+            </div>
+          </div>
+
           <button
             mat-raised-button
             color="primary"
@@ -1182,9 +1323,9 @@
             <tr>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATOR' | translate }}</th>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION' | translate }}</th>
-              <th *ngFor="let field of getSendDialogDemographicFields()">{{ field }}</th>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATEES' | translate }}</th>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_TYPE' | translate }}</th>
+              <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_DATE' | translate }}</th>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_STATUS' | translate }}</th>
               <th>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ACTIONS' | translate }}</th>
             </tr>
@@ -1193,13 +1334,19 @@
             <tr *ngFor="let assignment of sendAssignments; trackBy: trackByAnyId">
               <td class="send-evaluator-cell" [style.padding-left.px]="12 + assignment.hierarchyLevel * 18">
                 <strong>{{ assignment.evaluator.fullName }}</strong>
-                <small>{{ assignment.evaluator.email || '-' }}</small>
+                <div class="send-evaluator-contact">
+                  <span>
+                    <mat-icon aria-hidden="true">mail_outline</mat-icon>
+                    {{ assignment.evaluator.email || '-' }}
+                  </span>
+                  <span>
+                    <mat-icon aria-hidden="true">phone</mat-icon>
+                    {{ assignment.evaluator.phone || '-' }}
+                  </span>
+                </div>
               </td>
               <td class="send-position-cell">
                 {{ assignment.evaluator.cargo || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITION' | translate) }}
-              </td>
-              <td *ngFor="let field of getSendDialogDemographicFields()">
-                {{ assignment.evaluator.demographicValues[field] || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_SEGMENT' | translate) }}
               </td>
               <td class="send-select-cell">
                 <mat-form-field appearance="outline">
@@ -1227,8 +1374,11 @@
                     </mat-option>
                   </mat-select>
                 </mat-form-field>
-	              </td>
-	              <td>
+              </td>
+              <td class="send-date-cell">
+                {{ assignment.lastSent || '-' }}
+              </td>
+              <td>
 	                <div class="send-status-stack">
 	                  <span class="send-status-pill" [ngClass]="getSendStatusClass(assignment.sendStatus)">
 	                    {{ getSendStatusLabel(assignment.sendStatus) }}
@@ -1254,10 +1404,6 @@
 	                    <progress max="100" [value]="progress.percent"></progress>
 	                  </div>
 	                </ng-container>
-	                <small class="send-last-date" *ngIf="assignment.lastSent">
-	                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_LAST_SENT' | translate }}:
-	                  {{ assignment.lastSent }}
-	                </small>
 	              </td>
               <td class="send-actions-cell">
                 <button
@@ -1284,7 +1430,7 @@
                   color="accent"
                   type="button"
                   (click)="sendPerformanceEmail(assignment)"
-                  [disabled]="assignment.isSending"
+                  [disabled]="assignment.isSending || isDemoPerformanceResendBlocked(assignment)"
                   [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATION' | translate">
                   <mat-icon>{{ assignment.isSending ? 'sync' : 'send' }}</mat-icon>
                 </button>

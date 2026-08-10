@@ -1,0 +1,510 @@
+<section class="content clima-action-page">
+  <div class="content-block">
+    <div class="page-hero">
+      <div>
+        <span class="eyebrow">Clima laboral</span>
+        <h1>Planes de acción y cierre de brechas</h1>
+        <p>
+          Convierte los resultados del clima en compromisos, responsables, evidencias y seguimiento real.
+        </p>
+      </div>
+
+      <div class="hero-score" *ngIf="hasMetrics">
+        <span>Resultado general</span>
+        <strong [ngClass]="getScoreClass(generalScore)">{{ formatPercent(generalScore) }}</strong>
+        <small>Meta sugerida {{ targetScore }}%</small>
+      </div>
+    </div>
+
+    <mat-card class="selector-card">
+      <div class="selector-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Clima a visualizar</mat-label>
+          <mat-select
+            [ngModel]="selectedClimaId"
+            (ngModelChange)="onClimaChange($event)"
+            [disabled]="!selectedOrganizationId || loadingClimas"
+          >
+            <mat-option *ngFor="let clima of climas; trackBy: trackById" [value]="clima.Id">
+              {{ clima.Nombre }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix>poll</mat-icon>
+        </mat-form-field>
+
+        <div class="selector-actions">
+          <button
+            mat-stroked-button
+            color="primary"
+            type="button"
+            (click)="openFilters()"
+            [disabled]="!selectedClimaId || loadingFilters"
+          >
+            <mat-icon>tune</mat-icon>
+            Filtros demográficos
+          </button>
+
+          <button
+            mat-button
+            type="button"
+            (click)="clearFilters()"
+            [disabled]="!filterChips.length || loadingMetrics"
+          >
+            <mat-icon>filter_alt_off</mat-icon>
+            Limpiar
+          </button>
+
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="exportPlans()"
+            [disabled]="!hasMetrics || loadingMetrics"
+          >
+            <mat-icon>download</mat-icon>
+            Exportar
+          </button>
+        </div>
+      </div>
+
+      <mat-progress-bar *ngIf="loadingOrganizations || loadingClimas || loadingMetrics" mode="indeterminate"></mat-progress-bar>
+
+      <div class="filter-strip" *ngIf="filterChips.length">
+        <span>Filtros activos:</span>
+        <mat-chip-listbox>
+          <mat-chip *ngFor="let chip of filterChips">
+            {{ chip.label }}: {{ chip.value }}
+          </mat-chip>
+        </mat-chip-listbox>
+      </div>
+    </mat-card>
+
+    <div class="empty-state" *ngIf="!selectedClimaId && !loadingOrganizations">
+      <mat-icon>route</mat-icon>
+      <h2>Selecciona un clima</h2>
+      <p>La empresa activa se toma del header para calcular brechas, prioridades y planes sugeridos.</p>
+    </div>
+
+    <div class="loading-state" *ngIf="loadingMetrics">
+      <mat-spinner diameter="44"></mat-spinner>
+      <span>Calculando hallazgos y oportunidades de seguimiento...</span>
+    </div>
+
+    <ng-container *ngIf="hasMetrics && !loadingMetrics">
+      <div class="context-line">
+        <div>
+          <strong>{{ selectedClimaName }}</strong>
+          <span *ngIf="selectedOrganizationName"> · {{ selectedOrganizationName }}</span>
+        </div>
+        <small *ngIf="selectedClimaObjective">{{ selectedClimaObjective }}</small>
+      </div>
+
+      <nav class="action-tabs" aria-label="Secciones del módulo">
+        <button
+          type="button"
+          *ngFor="let tab of tabs"
+          [class.active]="selectedTab === tab.id"
+          (click)="selectTab(tab.id)"
+        >
+          <mat-icon>{{ tab.icon }}</mat-icon>
+          <span>{{ tab.label }}</span>
+        </button>
+      </nav>
+
+      <section class="tab-panel" *ngIf="selectedTab === 'resumen'">
+        <div class="kpi-grid">
+          <mat-card class="kpi-card">
+            <span>Satisfacción</span>
+            <strong [ngClass]="getScoreClass(generalScore)">{{ formatPercent(generalScore) }}</strong>
+            <small>{{ totalResponses || 0 }} respuestas procesadas</small>
+          </mat-card>
+
+          <mat-card class="kpi-card">
+            <span>Desfavorable</span>
+            <strong [ngClass]="getScoreClass(100 - (generalUnfavorable || 0))">{{ formatPercent(generalUnfavorable) }}</strong>
+            <small>Se priorizan brechas sobre 25%</small>
+          </mat-card>
+
+          <mat-card class="kpi-card">
+            <span>NSAT</span>
+            <strong [ngClass]="getScoreClass(generalNsat)">{{ formatNumber(generalNsat) }}</strong>
+            <small>Lectura neta del clima</small>
+          </mat-card>
+
+          <mat-card class="kpi-card">
+            <span>Planes activos</span>
+            <strong>{{ planSummary.total }}</strong>
+            <small>{{ planSummary.progress }}% de avance promedio</small>
+          </mat-card>
+        </div>
+
+        <div class="overview-grid">
+          <mat-card class="panel-card">
+            <div class="card-title">
+              <div>
+                <span class="dot"></span>
+                <h2>Áreas de mejora priorizadas</h2>
+              </div>
+              <small>{{ opportunities.length }} oportunidades detectadas</small>
+            </div>
+
+            <div class="opportunity-list compact" *ngIf="opportunities.length; else noGaps">
+              <article
+                class="opportunity-row"
+                *ngFor="let opportunity of opportunities.slice(0, 7); trackBy: trackById"
+                [ngClass]="getPriorityClass(opportunity.priority)"
+              >
+                <div>
+                  <strong>{{ opportunity.factor }}</strong>
+                  <span class="reason-text" [innerHTML]="formatHighlightedReason(opportunity.reason)"></span>
+                </div>
+                <div class="metric-pill" [ngClass]="getScoreClass(opportunity.score)">
+                  {{ formatPercent(opportunity.score) }}
+                </div>
+              </article>
+            </div>
+          </mat-card>
+
+          <mat-card class="panel-card">
+            <div class="card-title">
+              <div>
+                <span class="dot blue"></span>
+                <h2>Estado de seguimiento</h2>
+              </div>
+            </div>
+
+            <div class="status-grid">
+              <div>
+                <span>Completados</span>
+                <strong>{{ planSummary.completed }}</strong>
+              </div>
+              <div>
+                <span>En riesgo</span>
+                <strong>{{ planSummary.atRisk }}</strong>
+              </div>
+              <div>
+                <span>Alta prioridad</span>
+                <strong>{{ planSummary.high }}</strong>
+              </div>
+            </div>
+
+            <div class="progress-box">
+              <div>
+                <span>Avance general</span>
+                <strong>{{ planSummary.progress }}%</strong>
+              </div>
+              <mat-progress-bar mode="determinate" [value]="planSummary.progress"></mat-progress-bar>
+            </div>
+
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="createPlanFromOpportunity()"
+              [disabled]="!selectedOpportunity"
+            >
+              <mat-icon>add_task</mat-icon>
+              Crear plan sugerido
+            </button>
+          </mat-card>
+        </div>
+      </section>
+
+      <section class="tab-panel" *ngIf="selectedTab === 'brechas'">
+        <mat-card class="panel-card">
+          <div class="card-title">
+            <div>
+              <span class="dot danger"></span>
+              <h2>Brechas priorizadas por gran factor</h2>
+            </div>
+            <small>Meta de referencia: {{ targetScore }}% favorable</small>
+          </div>
+
+          <div class="gap-groups" *ngIf="groupedOpportunities.length; else noGaps">
+            <section class="gap-group" *ngFor="let group of groupedOpportunities; trackBy: trackById">
+              <h3>{{ group.label }}</h3>
+              <div class="gap-cards">
+                <article
+                  class="gap-card"
+                  *ngFor="let opportunity of group.items; trackBy: trackById"
+                  [ngClass]="getPriorityClass(opportunity.priority)"
+                >
+                  <div class="gap-head">
+                    <div>
+                      <strong>{{ opportunity.factor }}</strong>
+                      <span>{{ opportunity.area }}</span>
+                    </div>
+                    <span class="priority-badge" [ngClass]="getPriorityClass(opportunity.priority)">
+                      {{ getPriorityLabel(opportunity.priority) }}
+                    </span>
+                  </div>
+
+                  <p>{{ opportunity.reason }}</p>
+
+                  <div class="gap-metrics">
+                    <div>
+                      <span>Resultado</span>
+                      <strong [ngClass]="getScoreClass(opportunity.score)">{{ formatPercent(opportunity.score) }}</strong>
+                    </div>
+                    <div>
+                      <span>Desfavorable</span>
+                      <strong>{{ formatPercent(opportunity.unfavorable) }}</strong>
+                    </div>
+                    <div>
+                      <span>Brecha</span>
+                      <strong>{{ opportunity.gap }} pts</strong>
+                    </div>
+                  </div>
+
+                  <button mat-stroked-button color="primary" type="button" (click)="createPlanFromOpportunity(opportunity)">
+                    <mat-icon>playlist_add_check</mat-icon>
+                    Crear plan
+                  </button>
+                </article>
+              </div>
+            </section>
+          </div>
+        </mat-card>
+      </section>
+
+      <section class="tab-panel" *ngIf="selectedTab === 'planes'">
+        <div class="plans-toolbar">
+          <mat-form-field appearance="outline">
+            <mat-label>Crear desde brecha</mat-label>
+            <mat-select [(ngModel)]="selectedOpportunityId">
+              <mat-option *ngFor="let opportunity of openOpportunities; trackBy: trackById" [value]="opportunity.id">
+                {{ opportunity.factor }} · {{ getPriorityLabel(opportunity.priority) }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <button mat-flat-button color="primary" type="button" (click)="createPlanFromOpportunity()">
+            <mat-icon>add</mat-icon>
+            Agregar plan
+          </button>
+        </div>
+
+        <div class="empty-state slim" *ngIf="!actionPlans.length">
+          <mat-icon>assignment</mat-icon>
+          <h2>Aún no hay planes creados</h2>
+          <p>Elige una brecha priorizada para generar un plan editable.</p>
+        </div>
+
+        <div class="plan-list" *ngIf="actionPlans.length">
+          <mat-card class="plan-card" *ngFor="let plan of actionPlans; trackBy: trackById">
+            <div class="plan-header">
+              <div>
+                <span class="priority-badge" [ngClass]="getPriorityClass(plan.priority)">
+                  {{ getPriorityLabel(plan.priority) }}
+                </span>
+                <h2>{{ plan.factor }}</h2>
+                <p>{{ plan.reason }}</p>
+              </div>
+
+              <div class="plan-progress">
+                <strong>{{ getPlanProgress(plan) }}%</strong>
+                <span class="status-badge" [ngClass]="getStatusClass(getEffectivePlanStatus(plan))">
+                  {{ getStatusLabel(getEffectivePlanStatus(plan)) }}
+                </span>
+              </div>
+            </div>
+
+            <mat-progress-bar mode="determinate" [value]="getPlanProgress(plan)"></mat-progress-bar>
+
+            <div class="plan-form-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Sponsor</mat-label>
+                <input matInput [(ngModel)]="plan.sponsor" (ngModelChange)="onPlanChanged()" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Responsable</mat-label>
+                <input matInput [(ngModel)]="plan.owner" (ngModelChange)="onPlanChanged()" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Fecha límite</mat-label>
+                <input matInput type="date" [(ngModel)]="plan.dueDate" (ngModelChange)="onPlanChanged()" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Periodicidad</mat-label>
+                <mat-select [(ngModel)]="plan.followUpFrequency" (ngModelChange)="onPlanChanged()">
+                  <mat-option value="Semanal">Semanal</mat-option>
+                  <mat-option value="Quincenal">Quincenal</mat-option>
+                  <mat-option value="Mensual">Mensual</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Qué se hará</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="plan.action" (ngModelChange)="onPlanChanged()"></textarea>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Cómo / recursos necesarios</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="plan.resources" (ngModelChange)="onPlanChanged()"></textarea>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>KPI / meta</mat-label>
+                <textarea matInput rows="2" [(ngModel)]="plan.kpi" (ngModelChange)="onPlanChanged()"></textarea>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Bitácora de avances</mat-label>
+                <textarea matInput rows="2" [(ngModel)]="plan.log" (ngModelChange)="onPlanChanged()"></textarea>
+              </mat-form-field>
+            </div>
+
+            <div class="tasks-head">
+              <h3>Tareas y evidencias</h3>
+              <button mat-button color="primary" type="button" (click)="addTask(plan)">
+                <mat-icon>add_circle</mat-icon>
+                Agregar tarea
+              </button>
+            </div>
+
+            <div class="task-list">
+              <article class="task-row" *ngFor="let task of plan.tasks; trackBy: trackById">
+                <mat-checkbox [(ngModel)]="task.done" (ngModelChange)="onPlanChanged()"></mat-checkbox>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Tarea</mat-label>
+                  <input matInput [(ngModel)]="task.title" (ngModelChange)="onPlanChanged()" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Responsable</mat-label>
+                  <input matInput [(ngModel)]="task.responsible" (ngModelChange)="onPlanChanged()" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Fecha</mat-label>
+                  <input matInput type="date" [(ngModel)]="task.dueDate" (ngModelChange)="onPlanChanged()" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Evidencia</mat-label>
+                  <input matInput [(ngModel)]="task.evidence" (ngModelChange)="onPlanChanged()" />
+                </mat-form-field>
+
+                <button mat-icon-button color="warn" type="button" (click)="removeTask(plan, task)" matTooltip="Quitar tarea">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </article>
+            </div>
+
+            <div class="plan-actions">
+              <button mat-button color="warn" type="button" (click)="removePlan(plan)">
+                <mat-icon>delete_outline</mat-icon>
+                Quitar plan
+              </button>
+            </div>
+          </mat-card>
+        </div>
+      </section>
+
+      <section class="tab-panel" *ngIf="selectedTab === 'seguimiento'">
+        <mat-card class="panel-card">
+          <div class="card-title">
+            <div>
+              <span class="dot blue"></span>
+              <h2>Gantt de progreso</h2>
+            </div>
+            <small>Seguimiento operativo de tareas y evidencia</small>
+          </div>
+
+          <div class="tracking-table" *ngIf="actionPlans.length; else noPlans">
+            <div class="tracking-header">
+              <span>Plan</span>
+              <span>Responsable</span>
+              <span>Fecha límite</span>
+              <span>Avance</span>
+              <span>Estado</span>
+            </div>
+
+            <div class="tracking-row" *ngFor="let plan of actionPlans; trackBy: trackById">
+              <div>
+                <strong>{{ plan.factor }}</strong>
+                <small>{{ plan.kpi }}</small>
+              </div>
+              <span>{{ plan.owner }}</span>
+              <span>{{ formatDate(plan.dueDate) }}</span>
+              <div class="tracking-progress">
+                <mat-progress-bar mode="determinate" [value]="getPlanProgress(plan)"></mat-progress-bar>
+                <small>{{ getPlanProgress(plan) }}%</small>
+              </div>
+              <span class="status-badge" [ngClass]="getStatusClass(getEffectivePlanStatus(plan))">
+                {{ getStatusLabel(getEffectivePlanStatus(plan)) }}
+              </span>
+
+              <div class="tracking-tasks">
+                <span *ngFor="let task of plan.tasks; trackBy: trackById" [class.done]="task.done">
+                  {{ task.title }} · {{ formatDate(task.dueDate) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card>
+      </section>
+
+      <section class="tab-panel" *ngIf="selectedTab === 'plantilla'">
+        <mat-card class="panel-card">
+          <div class="card-title">
+            <div>
+              <span class="dot green"></span>
+              <h2>Plantilla base de planes de cierre</h2>
+            </div>
+            <small>Inspirada en el formato Excel del proyecto</small>
+          </div>
+
+          <div class="template-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Factor / Área</th>
+                  <th>Por qué</th>
+                  <th>Aplica a</th>
+                  <th>Qué</th>
+                  <th>Cómo</th>
+                  <th>KPI / Meta</th>
+                  <th>Responsable</th>
+                  <th>Plazo</th>
+                  <th>Validación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of templateRows">
+                  <td>{{ row.factorArea }}</td>
+                  <td>{{ row.reason }}</td>
+                  <td>{{ row.appliesTo }}</td>
+                  <td>{{ row.actions }}</td>
+                  <td>{{ row.resources }}</td>
+                  <td>{{ row.kpi }}</td>
+                  <td>{{ row.owner }}</td>
+                  <td>{{ row.term }}</td>
+                  <td>{{ row.validation }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </mat-card>
+      </section>
+    </ng-container>
+  </div>
+</section>
+
+<ng-template #noGaps>
+  <div class="empty-inline">
+    <mat-icon>verified</mat-icon>
+    <span>No se detectan brechas críticas con los criterios actuales.</span>
+  </div>
+</ng-template>
+
+<ng-template #noPlans>
+  <div class="empty-inline">
+    <mat-icon>pending_actions</mat-icon>
+    <span>Aún no hay planes para dar seguimiento.</span>
+  </div>
+</ng-template>

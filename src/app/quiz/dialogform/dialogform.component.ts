@@ -1,5 +1,5 @@
 import { Serie } from './../models/quiz-models';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import {Validators, FormsModule,
@@ -25,6 +25,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { DemoLimitsService } from 'app/config/demo-limits.service';
+import { Subscription } from 'rxjs';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -52,7 +53,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     ],
 })
 // Aquí se crea el nuevo quiz
-export class DialogformComponent implements OnInit {
+export class DialogformComponent implements OnDestroy, OnInit {
 
   public idOrganization =  1;
   public organizationName = '';
@@ -77,6 +78,7 @@ export class DialogformComponent implements OnInit {
   langStoreValue?: string;
 
   loadingOrganizations = false;
+  private selectedOrganizationSubscription?: Subscription;
 
   url: string | null = null;
     fileName = '';
@@ -155,14 +157,30 @@ export class DialogformComponent implements OnInit {
       units: [0, [Validators.required]],
     });
 
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      this.getOrganizations();
-    }
-    else {
-      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-    }
+    this.setupSelectedOrganizationListener();
 
     
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.idOrganization = 0;
+        this.organizationName = '';
+        this.dataSourceOrganizations = [];
+        this.addCusForm.patchValue({ IdOrganization: null });
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+      this.idOrganization = organization.Id;
+      this.organizationName = organization.Nombre;
+      this.addCusForm.patchValue({ IdOrganization: organization.Id });
+    });
   }
 
   onSelectFile(event: Event): void {

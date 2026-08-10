@@ -34,6 +34,11 @@ export interface SubjectProgress {
 })
 export class ProgressTableFactorComponent {
   @Input() showNeutral = true;
+  readonly colorLightBlue = '#29b6f6';
+  readonly colorGreen = '#92d050';
+  readonly colorGray = '#7c7d7c';
+  readonly colorOrange = '#ffc000';
+  readonly colorRed = '#ff0000';
 
   get displayedColumns(): string[] {
     return this.showNeutral
@@ -101,16 +106,15 @@ export class ProgressTableFactorComponent {
   }
 
   getColor(p: number): string {
-  return p >= 91 ? '#8bc34a'   // verde - Fortaleza
-       : p >= 80 ? '#f1c40f'   // amarillo - Adecuado
-       : p >= 60 ? '#f39c12'   // naranja - Cautela
-                 : '#e74c3c';  // rojo - Oportunidad
-}
+    return p >= 91 ? this.colorLightBlue
+         : p >= 80 ? this.colorGreen
+         : p >= 60 ? this.colorOrange
+                   : this.colorRed;
+  }
 
-getBlueColor(): string {
-  return '#558AE6'   
-       
-}
+  getInverseColor(p: number): string {
+    return this.getColor(100 - p);
+  }
 
   getPct(count: number, total: number): number {
     if (!total || total <= 0) return 0;

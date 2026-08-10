@@ -22,8 +22,8 @@
         <button
           style="border-radius: 8px;"
           joyrideStep="step1"
-          [title]= "'MENUITEMS.TOUR.BTNADDQUIZ' | translate"
-          text="Agrega un nuevo clima para luego agregar preguntas a la encuesta."
+          [title]="'MENUITEMS.TOUR.CLIMATE_LIST.ADD_TITLE' | translate"
+          [text]="'MENUITEMS.TOUR.CLIMATE_LIST.ADD_TEXT' | translate"
           [disabled]="!accessToCreate  || loading"
           mat-raised-button
           color="primary"
@@ -36,7 +36,7 @@
         <button
           mat-icon-button
           (click)="startTour()"
-          matTooltip="Guía del sistema"
+          [matTooltip]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate"
           class="help-button"
         >
           <span class="material-icons">help_outline</span>
@@ -53,20 +53,30 @@
             style="margin: auto; display: block;">
           </mat-progress-spinner>
 
-          <div style="overflow-y: auto; max-height: 800px; margin-top: 15px;" class="body">
-            <div class="row">
-              <div *ngFor="let card of cardsData" class="col-xs-12 col-sm-12 col-md-6 col-lg-6 col-xl-4 col-xxl-4">
-                
-                <mat-card style="border: 1px solid #ccc; border-radius: 8px;" 
-                  joyrideStep="step4" title="Visualiza" 
-                  text="Aquí verás la información del clima">
+          <div class="body climate-cards-container">
+            <div class="climate-cards-grid">
+              <div *ngFor="let card of cardsData" class="climate-card-item">
+                <mat-card class="climate-card"
+                  joyrideStep="step4"
+                  [title]="'MENUITEMS.TOUR.CLIMATE_LIST.CARD_TITLE' | translate"
+                  [text]="'MENUITEMS.TOUR.CLIMATE_LIST.CARD_TEXT' | translate">
                   
-                  <mat-card-header >
+                  <mat-card-header class="climate-card__header">
                     <img mat-card-avatar [src]="'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/' +  card.avatarSrc" />
                     <mat-card-title>{{ card.title }}</mat-card-title>
-                    <mat-card-subtitle style="color: #91a1a4">
+                    <mat-card-subtitle class="climate-card__subtitle">
                       {{ card.subtitle }}
                     </mat-card-subtitle>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="climate-refresh-button"
+                      [disabled]="loading"
+                      [matTooltip]="'MENUITEMS.QUIZ.REFRESH' | translate"
+                      [attr.aria-label]="'MENUITEMS.QUIZ.REFRESH' | translate"
+                      (click)="refreshClimas($event)">
+                      <mat-icon [class.climate-refresh-button__icon--spinning]="loading">refresh</mat-icon>
+                    </button>
                   </mat-card-header>
 
                   <mat-card-content style="margin-bottom: 10px;">
@@ -74,118 +84,128 @@
                   </mat-card-content>
                 
                   <!-- Reemplazo de la imagen por un dashboard resumen -->
-                  <div joyrideStep="step5" title="Seguimiento" 
-                    text="Este es el estado en tiempo real de las encuestas del clima." 
-                    style="padding: 16px;">
-                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-
-                      <div style="flex: 1 1 45%; display: flex; align-items: center;">
-                        <span
-                          class="material-icons"
-                          [ngStyle]="{
-                            color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
-                                  (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red'),
-                            'font-size': '18px',
-                            'margin-right': '8px'
-                          }"
-                        >
+                  <div class="climate-summary"
+                    joyrideStep="step5"
+                    [title]="'MENUITEMS.TOUR.CLIMATE_LIST.STATUS_TITLE' | translate"
+                    [text]="'MENUITEMS.TOUR.CLIMATE_LIST.STATUS_TEXT' | translate">
+                    <div class="climate-summary__header">
+                      <div class="climate-status"
+                        [class.climate-status--created]="card.estadoEnvio === 'Creado'"
+                        [class.climate-status--sent]="card.estadoEnvio === 'Enviado'"
+                        [class.climate-status--other]="card.estadoEnvio !== 'Creado' && card.estadoEnvio !== 'Enviado'">
+                        <span class="material-icons climate-status__icon" aria-hidden="true">
                           {{ card.estadoEnvio === 'Creado' ? 'access_time' :
                             card.estadoEnvio === 'Enviado' ? 'check' : 'hourglass_empty' }}
                         </span>
-                        <strong
-                          [ngStyle]="{
-                            color: card.estadoEnvio === 'Creado' ? '#72dcf9' :
-                                  (card.estadoEnvio === 'Enviado' ? '#13db4a' : 'red')}">
+                        <strong>
                           {{ ('MENUITEMS.QUIZ.ESTADOS.' + card.estadoEnvio.toUpperCase().replace(' ', '_')) | translate }}
                         </strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">group</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.EMPLOYEES' | translate }}</strong> {{ card.estadisticasEnvio.total_empleados_activos }}
+                      <div class="climate-progress">
+                        <span>{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETEDPERCENT' | translate }}</span>
+                        <strong>{{ card.estadisticasEnvio.porcentaje }}%</strong>
+                      </div>
+                    </div>
+
+                    <div class="climate-metrics">
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">group</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.EMPLOYEES' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total_empleados_activos }}</strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">assignment</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.QUIZES' | translate }}</strong> {{ card.estadisticasEnvio.total }}
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">assignment</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.QUIZES' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total }}</strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">send</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.SENDS' | translate }}</strong> {{ card.estadisticasEnvio.total_enviadas }}
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">send</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.SENDS' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total_enviadas }}</strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">bar_chart</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.INITILIZES' | translate }}</strong> {{ card.estadisticasEnvio.total_iniciadas }}
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">bar_chart</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.INITILIZES' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total_iniciadas }}</strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">check</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETED' | translate }}</strong> {{ card.estadisticasEnvio.total_contestadas }}
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">check_circle_outline</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETED' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total_contestadas }}</strong>
                       </div>
 
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">playlist_add_check</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.PENDING' | translate }}</strong> {{ card.estadisticasEnvio.total - card.estadisticasEnvio.total_contestadas }}
+                      <div class="climate-metric">
+                        <span class="material-icons climate-metric__icon" aria-hidden="true">pending_actions</span>
+                        <span class="climate-metric__label">{{ 'MENUITEMS.QUIZ.ESTADOS.PENDING' | translate }}</span>
+                        <strong class="climate-metric__value">{{ card.estadisticasEnvio.total - card.estadisticasEnvio.total_contestadas }}</strong>
                       </div>
-
-                      <div style="flex: 1 1 40%;">
-                        <span class="material-icons" style="vertical-align: middle; margin-right: 4px;">bar_chart</span>
-                        <strong>{{ 'MENUITEMS.QUIZ.ESTADOS.COMPLETEDPERCENT' | translate }}</strong> {{ card.estadisticasEnvio.porcentaje }} %
-                      </div>
-
-                      
-                      
-                      
-                      
-
                     </div>
                   </div>
                 
                   
 
-                   <!-- Chips de factores (series) -->
-                  <mat-card-content >
-                      <div *ngFor="let cardx of card.granFactores" 
-                          style=" border-radius:5px; margin-bottom:5px; box-shadow:0 1px 4px
-                           rgba(105, 96, 96, 0.067); border-style:groove ; padding:18px 24px;">
-                        <div style="font-weight:600; font-size:1.1em; margin-bottom:4px;">
-                          {{ cardx.label }}
-                        </div>
-                        <div style="color:#778; font-size:0.96em; margin-bottom:8px;">
-                          {{ cardx.desc }}
-                        </div>
-                            <mat-chip *ngFor="let factor of cardx.series"
-                                style="margin-top: 5px; margin-right: 5px;"
-                                color="primary"
-                                selected
-                                [matTooltip]="getTooltipText(factor)"
-                                [matTooltipClass]="'tooltip-html'"
-                                matTooltipPosition="above"
-                                removable="true"
-                                (removed)="deleteFactor(factor)">
-                                {{ factor.label }} ({{factor.fields.length}})
-                                <button [disabled]="!accessToDeleteFactor" matChipRemove>
-                                  <mat-icon>cancel</mat-icon>
-                                </button>
-                            </mat-chip>
+                  <!-- Resumen de grandes factores y preguntas -->
+                  <mat-card-content class="climate-structure" *ngIf="card.granFactores?.length">
+                    <div class="climate-structure__header">
+                      <div class="climate-structure__title">
+                        <span class="material-icons" aria-hidden="true">account_tree</span>
+                        <span>{{ 'MENUITEMS.QUIZ.STRUCTURE.TITLE' | translate }}</span>
                       </div>
+
+                      <div class="climate-structure__totals">
+                        <span>{{ card.granFactores.length }} {{ 'MENUITEMS.QUIZ.STRUCTURE.GRAND_FACTORS' | translate }}</span>
+                        <span>{{ getClimateFactorCount(card) }} {{ 'MENUITEMS.QUIZ.STRUCTURE.FACTORS' | translate }}</span>
+                        <span>{{ getClimateQuestionCount(card) }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</span>
+                      </div>
+                    </div>
+
+                    <div class="grand-factor" *ngFor="let cardx of card.granFactores">
+                      <div class="grand-factor__header">
+                        <div class="grand-factor__copy">
+                          <h3>{{ cardx.label }}</h3>
+                          <p *ngIf="cardx.desc">{{ cardx.desc }}</p>
+                        </div>
+
+                        <span class="grand-factor__count">
+                          {{ cardx.series.length || 0 }} {{ 'MENUITEMS.QUIZ.STRUCTURE.FACTORS' | translate }}
+                        </span>
+                      </div>
+
+                      <mat-chip-set class="factor-chip-set" [attr.aria-label]="cardx.label">
+                        <mat-chip *ngFor="let factor of cardx.series"
+                          class="factor-chip"
+                          [matTooltip]="getTooltipText(factor)"
+                          matTooltipClass="factor-questions-tooltip"
+                          matTooltipPosition="above"
+                          [matTooltipShowDelay]="180">
+                          <mat-icon matChipAvatar aria-hidden="true">quiz</mat-icon>
+                          <span class="factor-chip__label">{{ factor.label }}</span>
+                          <span class="factor-chip__count">{{ factor.fields.length || 0 }}</span>
+                        </mat-chip>
+                      </mat-chip-set>
+                    </div>
                   </mat-card-content>
                                   
                   <mat-divider style="margin-top: 5px;"></mat-divider>
                 
                   <mat-card-actions>
 
-                      <button joyrideStep="step2" title="Edita" 
-                        text="Aquí podrás editar la encuesta del clima como agregar factores y preguntas."  
+                      <button joyrideStep="step2"
+                        [title]="'MENUITEMS.TOUR.CLIMATE_LIST.EDIT_TITLE' | translate"
+                        [text]="'MENUITEMS.TOUR.CLIMATE_LIST.EDIT_TEXT' | translate"
                         [disabled]="!accessToEdit || loading" style="margin-left: auto; border-radius: 5px;" 
                         mat-raised-button color="primary" (click)="editarQuiz(card)">
                         {{'MENUITEMS.QUIZ.EDIT' | translate}}
                       </button>
                     
-                      <button joyrideStep="step3" title="Envía"
-                            text="Con este botón podras administrar el envío de las encuestas."
+                      <button joyrideStep="step3"
+                            [title]="'MENUITEMS.TOUR.CLIMATE_LIST.SEND_TITLE' | translate"
+                            [text]="'MENUITEMS.TOUR.CLIMATE_LIST.SEND_TEXT' | translate"
                             [disabled]="!accessToSend || loading"
                             style="margin-left: 20px; border-radius: 5px;"
                             mat-raised-button color="primary"

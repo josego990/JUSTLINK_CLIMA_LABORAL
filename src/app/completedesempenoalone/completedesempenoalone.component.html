@@ -109,8 +109,15 @@
           [disabled]="!!blockedMessage"
           [isSavingDraft]="isSavingDraft"
           [isFinalizing]="isFinalizing"
+          [canFinalize]="!!turnstileToken"
           (draftSaveRequested)="saveDraft($event)"
           (finalizeRequested)="finalize($event)">
+          <app-turnstile
+            security-verification
+            action="desempeno-survey"
+            language="es"
+            (tokenChange)="onTurnstileTokenChange($event)">
+          </app-turnstile>
         </app-dynamic-desempeno-form>
       </ng-container>
     </ng-container>

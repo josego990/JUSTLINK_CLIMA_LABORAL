@@ -1,7 +1,39 @@
 
 :host {
+  .navbar .container-fluid {
+    min-width: 0;
+  }
+
   .header-right-collapse {
     margin-right: 50px;
+  }
+
+  .org-context-selector {
+    display: inline-flex;
+    align-items: center;
+    min-width: 220px;
+    max-width: 320px;
+    margin: 0 6px;
+  }
+
+  .org-context-field {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  ::ng-deep .org-context-field .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+
+  ::ng-deep .org-context-field .mat-mdc-text-field-wrapper {
+    min-height: 40px;
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  ::ng-deep .org-context-field .mat-mdc-form-field-infix {
+    min-height: 40px;
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   .user_profile {
@@ -61,38 +93,176 @@
 
 @media (max-width: 767px) {
   :host {
+    .navbar {
+      height: 116px !important;
+      overflow: visible;
+    }
+
+    .navbar .container-fluid {
+      display: grid !important;
+      grid-template-columns: 52px minmax(0, 1fr);
+      grid-template-rows: 56px 60px;
+      gap: 0;
+      height: 116px !important;
+      min-width: 0;
+      padding: 0 10px;
+    }
+
+    .navbar .container-fluid > .navbar-collapse {
+      display: flex !important;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    .navbar .container-fluid > .navbar-collapse:first-child {
+      grid-column: 1;
+      grid-row: 1;
+      height: 56px;
+      z-index: 1;
+    }
+
     .header-right-collapse {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      height: 116px;
       margin-right: 0;
     }
 
-    .navbar .nav > li.user_profile {
-      display: inline-flex !important;
-      max-width: 58vw;
+    .collapse-menu-icon {
+      display: flex !important;
+      align-items: center;
+      height: 56px;
+      top: 0;
+      margin: 0;
+    }
+
+    .navbar-left,
+    .btnAppList,
+    .lang-dropdown,
+    .header-right-collapse > .navbar-right > li.nav-item:not(.org-context-selector):not(.user_profile) {
+      display: none !important;
+    }
+
+    .navbar .nav.navbar-nav,
+    .navbar-right {
+      display: grid !important;
+      grid-template-columns: 52px minmax(0, 1fr) 44px minmax(88px, 148px);
+      grid-template-rows: 56px 60px;
+      align-items: center;
+      width: 100%;
+      height: 116px;
       min-width: 0;
+      margin: 0;
+      float: none !important;
+    }
+
+    .navbar .nav > li {
+      display: flex !important;
+      align-items: center;
+      min-width: 0;
+      top: 0 !important;
+    }
+
+    .org-context-selector {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      height: 60px;
+      margin: 0;
+    }
+
+    .org-context-field {
+      margin-top: 0;
+    }
+
+    ::ng-deep .org-context-field .mat-mdc-text-field-wrapper {
+      height: 42px;
+      min-height: 42px;
+    }
+
+    ::ng-deep .org-context-field .mat-mdc-form-field-flex {
+      height: 42px;
+      align-items: center;
+    }
+
+    ::ng-deep .org-context-field .mat-mdc-form-field-infix {
+      width: auto;
+      min-height: 38px;
+      padding-top: 8px;
+      padding-bottom: 6px;
+    }
+
+    ::ng-deep .org-context-field .mat-mdc-select-value {
+      max-width: 100%;
+    }
+
+    .fullscreen {
+      display: flex !important;
+      grid-column: 3;
+      grid-row: 1;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 56px;
+      margin: 0 !important;
+    }
+
+    .navbar .nav > li.user_profile {
+      display: flex !important;
+      grid-column: 4;
+      grid-row: 1;
+      width: 100%;
+      max-width: 148px;
+      min-width: 0;
+      margin: 0;
+    }
+
+    .user_profile > button[mat-button] {
+      width: 100%;
+      min-width: 0;
+      height: 48px;
+      padding: 0 2px;
     }
 
     .user_profile .chip {
-      max-width: 58vw;
+      width: 100%;
+      max-width: 148px;
+      gap: 5px;
+      justify-content: flex-start;
     }
 
     .user_profile .user-text {
-      max-width: calc(58vw - 34px);
+      display: flex;
+      max-width: calc(100% - 39px);
+    }
+
+    .user_profile .chip .user_img {
+      width: 34px !important;
+      height: 34px !important;
     }
   }
 }
 
 @media (max-width: 480px) {
   :host {
-    .navbar .nav > li.user_profile {
-      max-width: 50vw;
+    .navbar .nav.navbar-nav,
+    .navbar-right {
+      grid-template-columns: 52px minmax(0, 1fr) 44px minmax(88px, 132px);
     }
 
+    .navbar .nav > li.user_profile,
     .user_profile .chip {
-      max-width: 50vw;
+      max-width: 132px;
     }
 
-    .user_profile .user-text {
-      max-width: calc(50vw - 34px);
+    .user_profile .user-fullname {
+      display: none;
     }
   }
 }

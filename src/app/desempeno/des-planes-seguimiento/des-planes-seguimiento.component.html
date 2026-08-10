@@ -1,0 +1,230 @@
+<section class="content">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        title="Planes de Acción"
+        [items]="['Home', 'Desempeño']"
+        active_item="Planes de Acción"
+      ></app-breadcrumb>
+    </div>
+
+    <div class="follow-shell">
+      <mat-card class="follow-filter-card">
+        <div class="follow-filter-grid">
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Modelo de desempeño</mat-label>
+            <mat-select
+              [ngModel]="selectedModelId"
+              [disabled]="!selectedOrganizationId || isLoadingModels || isLoadingResults"
+              (ngModelChange)="onModelChange($event)"
+            >
+              <mat-option [value]="null" disabled>Selecciona un modelo</mat-option>
+              <mat-option *ngIf="!models.length" disabled>Sin modelos disponibles</mat-option>
+              <mat-option *ngFor="let model of models; trackBy: trackByKey" [value]="model.id">
+                {{ model.nombre }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Buscar empleado o puesto</mat-label>
+            <input matInput [(ngModel)]="searchText" [disabled]="!groupedData" placeholder="Ej. Analista, Juan..." />
+            <button *ngIf="searchText" matSuffix mat-icon-button type="button" (click)="searchText = ''">
+              <mat-icon>close</mat-icon>
+            </button>
+          </mat-form-field>
+
+          <div class="filter-meta" *ngIf="groupedData">
+            <span>Generado</span>
+            <strong>{{ formatDate(groupedData.fechaGeneracion) }}</strong>
+          </div>
+        </div>
+
+        <mat-progress-bar
+          mode="indeterminate"
+          *ngIf="isLoadingOrganizations || isLoadingModels || isLoadingResults"
+        ></mat-progress-bar>
+      </mat-card>
+
+      <div class="follow-loading" *ngIf="isLoadingOrganizations || isLoadingModels || isLoadingResults">
+        <mat-spinner diameter="42"></mat-spinner>
+        <span>
+          {{
+            isLoadingOrganizations
+              ? 'Cargando organizaciones...'
+              : isLoadingModels
+                ? 'Cargando modelos...'
+                : 'Cargando resultados del modelo...'
+          }}
+        </span>
+      </div>
+
+      <div class="follow-empty" *ngIf="!isLoadingOrganizations && !isLoadingModels && !isLoadingResults && !groupedData">
+        <mat-icon>fact_check</mat-icon>
+        <h2>Selecciona un modelo</h2>
+        <p>La empresa activa se toma del header y al seleccionar el modelo se cargarán los resultados agrupados.</p>
+      </div>
+
+      <ng-container *ngIf="!isLoadingResults && groupedData as data">
+        <header class="follow-hero">
+          <div>
+            <span>Planes de Acción</span>
+            <h1>{{ data.modelo }}</h1>
+            <p>{{ selectedOrganizationName }} · {{ data.modeloCodigo || 'Sin código' }}</p>
+          </div>
+          <div class="hero-pill">
+            <strong>{{ data.employees.length }}</strong>
+            <span>empleados con resultados</span>
+          </div>
+        </header>
+
+        <div class="summary-grid">
+          <mat-card class="summary-card" *ngFor="let card of summaryCards">
+            <mat-icon [ngClass]="card.tone">{{ card.icon }}</mat-icon>
+            <div>
+              <span>{{ card.label }}</span>
+              <strong [ngClass]="card.tone">{{ card.value }}</strong>
+              <small>{{ card.hint }}</small>
+            </div>
+          </mat-card>
+        </div>
+
+        <mat-card class="employee-panel">
+          <div class="panel-title">
+            <div>
+              <span class="dot blue"></span>
+              <h2>Empleados evaluados y seguimiento</h2>
+            </div>
+            <small>{{ filteredEmployees.length }} visibles</small>
+          </div>
+
+          <div class="table-wrap">
+            <table class="follow-table">
+              <thead>
+                <tr>
+                  <th class="col-employee">Empleado</th>
+                  <th class="col-position">Puesto</th>
+                  <th class="col-score">Resultado</th>
+                  <th class="col-target">Niv. exigencia</th>
+                  <th class="col-gap">Brecha</th>
+                  <th class="col-status">Estado</th>
+                  <th class="col-count">Oportunidades</th>
+                  <th class="col-count">Planes</th>
+                  <th class="col-actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let employee of filteredEmployees; trackBy: trackByKey">
+                  <tr>
+                    <td class="col-employee">
+                      <button class="expand-btn" type="button" (click)="toggleEmployee(employee)">
+                        <mat-icon>{{ isEmployeeExpanded(employee) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+                      </button>
+                      <strong>{{ employee.name }}</strong>
+                      <small>{{ employee.email || 'Sin correo' }}</small>
+                    </td>
+                    <td class="col-position">{{ employee.position }}</td>
+                    <td class="col-score">
+                      <div class="inline-score">
+                        <span><i [style.width.%]="getScorePercent(employee.score)"></i></span>
+                        <b>{{ formatScore(employee.score) }}</b>
+                      </div>
+                    </td>
+                    <td class="col-target">{{ formatScore(employee.target) }}</td>
+                    <td class="col-gap">
+                      <em class="result-pill" [ngClass]="getGapTone(employee.gap)">
+                        {{ formatGap(employee.gap) }}
+                      </em>
+                    </td>
+                    <td class="col-status">
+                      <em class="result-pill" [ngClass]="getScoreTone(employee.score)">
+                        {{ getEmployeeStatus(employee) }}
+                      </em>
+                    </td>
+                    <td class="col-count">
+                      <span class="opportunity-count" [class.has-items]="employee.opportunities.length > 0">
+                        {{ employee.opportunities.length }}
+                      </span>
+                    </td>
+                    <td class="col-count">
+                      <span class="plan-count" [class.has-items]="getEmployeePlans(employee).length > 0">
+                        {{ getEmployeePlans(employee).length }}
+                      </span>
+                    </td>
+                    <td class="row-actions col-actions">
+                      <div class="row-actions-inner">
+                        <button mat-stroked-button color="primary" type="button" (click)="openEmployeeDetail(employee)">
+                          <mat-icon>dashboard</mat-icon>
+                          Detalle
+                        </button>
+                        <button mat-flat-button color="primary" type="button" (click)="openEmployeePlans(employee)">
+                          <mat-icon>assignment</mat-icon>
+                          Planes de acción
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr class="employee-detail-row" *ngIf="isEmployeeExpanded(employee)">
+                    <td colspan="9">
+                      <div class="employee-inline-detail">
+                        <div class="detail-legend">
+                          <span class="tone-above">Sobre esperado</span>
+                          <span class="tone-expected">En esperado</span>
+                          <span class="tone-below">Oportunidad</span>
+                        </div>
+
+                        <section class="scenario-strip">
+                          <article *ngFor="let evaluation of employee.evaluations; trackBy: trackByKey">
+                            <div>
+                              <strong>{{ evaluation.escenario }}</strong>
+                              <span>{{ evaluation.evaluador }} · {{ formatDate(evaluation.fechaFinalizacion) }}</span>
+                            </div>
+                            <em [ngClass]="getToneClass(evaluation.tone)">
+                              {{ formatScore(evaluation.score) }} / {{ formatScore(evaluation.target) }}
+                            </em>
+                          </article>
+                        </section>
+
+                        <section class="opportunity-preview" *ngIf="employee.opportunities.length; else noEmployeeOpportunities">
+                          <h3>Principales oportunidades</h3>
+                          <article *ngFor="let opportunity of getTopOpportunities(employee); trackBy: trackByKey">
+                            <span class="priority-chip" [ngClass]="getPriorityClass(opportunity.priority)">
+                              {{ opportunity.priority }}
+                            </span>
+                            <div>
+                              <strong>{{ opportunity.dimension }} · {{ opportunity.criterion }}</strong>
+                              <p>{{ opportunity.item }}</p>
+                              <small>
+                                {{ opportunity.scenario }} · Resultado {{ formatScore(opportunity.score) }}
+                                / Esperado {{ formatScore(opportunity.target) }}
+                                · Brecha {{ formatGap(opportunity.gap) }}
+                              </small>
+                            </div>
+                          </article>
+                        </section>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="follow-empty compact" *ngIf="!filteredEmployees.length">
+            <mat-icon>search_off</mat-icon>
+            <h2>Sin empleados visibles</h2>
+            <p>No hay empleados que coincidan con el filtro actual.</p>
+          </div>
+        </mat-card>
+      </ng-container>
+    </div>
+  </div>
+</section>
+
+<ng-template #noEmployeeOpportunities>
+  <div class="no-opportunity">
+    <mat-icon>verified</mat-icon>
+    No se detectaron ítems por debajo del nivel esperado.
+  </div>
+</ng-template>

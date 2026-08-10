@@ -12,8 +12,8 @@ export interface ItemTransformado {
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
-  pctFav: number;      // %Favorable (Top-2)
-  pctDesf: number;     // %Desfavorable (Bottom-2)
+  pctFav: number;      // % Satisfacción (Top-2)
+  pctDesf: number;     // % Insatisfacción (Bottom-2)
   // (opcionales por si los traes en el transformData)
   nsat?: number;
   mean?: number;
@@ -26,8 +26,8 @@ export interface ResumenFactor {
   pct_opt3: number;
   pct_opt4: number;
   // NUEVO esquema:
-  pctFav: number;      // %Favorable (Top-2)
-  pctDesf: number;     // %Desfavorable (Bottom-2)
+  pctFav: number;      // % Satisfacción (Top-2)
+  pctDesf: number;     // % Insatisfacción (Bottom-2)
   // (opcionales)
   nsat?: number;
   mean?: number;
@@ -230,12 +230,15 @@ export class ExcelXlsxService {
     workbook.creator = 'Tu App';
     workbook.created = new Date();
 
-     const colorPorPct = (pct: number): { argb: string } => {
-      if (pct >= 91) return { argb: 'FF92D050' }; // Verde
-      if (pct >= 80) return { argb: 'FFFFFF00' }; // Amarillo
+    const colorPorPct = (pct: number): { argb: string } => {
+      if (pct >= 91) return { argb: 'FF29B6F6' }; // Azul claro
+      if (pct >= 80) return { argb: 'FF92D050' }; // Verde
       if (pct >= 60) return { argb: 'FFFFC000' }; // Naranja
       return { argb: 'FFFF0000' };                // Rojo
     };
+
+    const colorPorPctInverso = (pct: number): { argb: string } =>
+      colorPorPct(100 - pct);
 
     const colorNps = (nps: number): { argb: string } => {
       if (nps >= 50) return { argb: 'FF92D050' };
@@ -448,8 +451,8 @@ export class ExcelXlsxService {
 
     type M = [string, any, 'pct' | 'int' | 'num'];
     const metrics: M[] = [
-      ['% Favorable (Top-2)', cg.pct_top2, 'pct'],
-      ['% Desfavorable (Bottom-2)', cg.pct_desfavorable, 'pct'],
+      ['% Satisfacción (Top-2)', cg.pct_top2, 'pct'],
+      ['% Insatisfacción (Bottom-2)', cg.pct_desfavorable, 'pct'],
       ['NSAT', cg.nsat, 'num'],
       ['% General', cg.pct_general, 'pct'],
       ['Total respuestas', cg.total_respuestas, 'int'],
@@ -477,8 +480,10 @@ export class ExcelXlsxService {
       valCell.font = { name: 'Calibri', size: 10 };
       valCell.alignment = { horizontal: 'center', vertical: 'middle' };
       valCell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-      if (m[0].startsWith('% Favorable')) {
+      if (m[0].startsWith('% Satisfacción')) {
         valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(Number(cg.pct_top2)) as any };
+      } else if (m[0].startsWith('% Insatisfacción')) {
+        valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(Number(cg.pct_desfavorable)) as any };
       }
     });
 
@@ -531,7 +536,7 @@ export class ExcelXlsxService {
         ['Cautela',    'En Desacuerdo',        '79-60'],
         ['Oportunidad','Totalmente en desacuerdo',  '59']
       ];
-      const leyendaColores = ['FF92D050', 'FFFFFF00', 'FFFFC000', 'FFFF0000'];
+      const leyendaColores = ['FF29B6F6', 'FF92D050', 'FFFFC000', 'FFFF0000'];
       leyendaDatos.forEach((filaValor, idx) => {
         const rowLeyenda = sheet1.getRow(1 + idx);
         filaValor.forEach((textoCelda, colIdx) => {
@@ -691,7 +696,13 @@ for (const entry of factorEntries) {
       bottom: { style: 'thin' },
       right: { style: 'thin' }
     };
-    if (idx === valoresResumen.length - 1) {
+    if (idx === valoresResumen.length - 2) {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: colorPorPctInverso(val)
+      };
+    } else if (idx === valoresResumen.length - 1) {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -714,7 +725,13 @@ for (const entry of factorEntries) {
       cell.value = val;
       cell.font = { name: 'Calibri', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      if (idx === valoresPregunta.length - 1) {
+      if (idx === valoresPregunta.length - 2) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: colorPorPctInverso(val)
+        };
+      } else if (idx === valoresPregunta.length - 1) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -821,7 +838,13 @@ for (const entry of factorEntries) {
     cell.value = val;
     cell.font = { name: 'Calibri', size: 10 };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    if (idx === valoresFactRes.length - 1) {
+    if (idx === valoresFactRes.length - 2) {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: colorPorPctInverso(val)
+      };
+    } else if (idx === valoresFactRes.length - 1) {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -914,8 +937,13 @@ if (climaData.granFactores) {
       cell.value = val;
       cell.font = { name: 'Calibri', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      if (idx === valoresGF.length - 1) {
-        // mismo helper que ya usas arriba
+      if (idx === valoresGF.length - 2) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: colorPorPctInverso(val)
+        };
+      } else if (idx === valoresGF.length - 1) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -971,7 +999,7 @@ if (climaData.granFactores) {
         ['Cautela',    'Desacuerdo',        '79-60'],
         ['Oportunidad','Total desacuerdo',  '59']
       ];
-      const leyendaColores2 = ['FF92D050', 'FFFFFF00', 'FFFFC000', 'FFFF0000'];
+      const leyendaColores2 = ['FF29B6F6', 'FF92D050', 'FFFFC000', 'FFFF0000'];
       leyendaDatos2.forEach((filaValor, idx) => {
         const rowLeyenda = sheet2.getRow(1 + idx);
         filaValor.forEach((textoCelda, colIdx) => {
@@ -1037,7 +1065,7 @@ if (climaData.granFactores) {
         });
       });
     }
-    // Orden de menor a mayor %Favorable
+    // Orden de menor a mayor % de satisfacción
     todasPreguntas.sort((a, b) => a.pctFav - b.pctFav);
 
     // Encabezados
@@ -1082,7 +1110,9 @@ if (climaData.granFactores) {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colIdx === valoresQ.length - 1) { // Satisfacción (pctFav) con color
+        if (colIdx === valoresQ.length - 2) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(val) };
+        } else if (colIdx === valoresQ.length - 1) { // Satisfacción (pctFav) con color
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
         }
       });
@@ -1200,7 +1230,7 @@ if (climaData.granFactores) {
         pctFav: r.pctFav
       });
     }
-    // Orden por %Favorable ascendente
+    // Orden por % de satisfacción ascendente
     listaFactores.sort((a, b) => a.pctFav - b.pctFav);
 
     listaFactores.forEach((f, idx) => {
@@ -1217,7 +1247,9 @@ if (climaData.granFactores) {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (cIdx === valoresFac.length - 1) {
+        if (cIdx === valoresFac.length - 2) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(val) };
+        } else if (cIdx === valoresFac.length - 1) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(val) };
         }
       });
@@ -1310,7 +1342,7 @@ if (climaData.granFactores) {
     }
     row4++;
 
-    // Extraer y ordenar por %Favorable
+    // Extraer y ordenar por % de satisfacción
     const preguntasPlanas: {
       Pregunta: string;
       factor: string;
@@ -1342,7 +1374,7 @@ if (climaData.granFactores) {
     }
     preguntasPlanas.sort((a, b) => a.pctFav - b.pctFav);
 
-    // Bottom 5 (peores %Favorable)
+    // Bottom 5 (menores porcentajes de satisfacción)
     const bottom5 = preguntasPlanas.slice(0, 5);
     bottom5.forEach((q, idx) => {
       const rowPB = sheet4.getRow(row4 + idx);
@@ -1359,7 +1391,9 @@ if (climaData.granFactores) {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colNumber === sheet4SatCol) {
+        if (colNumber === sheet4InsatCol) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(q.pctDesf) };
+        } else if (colNumber === sheet4SatCol) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(q.pctFav) };
         }
       });
@@ -1397,7 +1431,7 @@ if (climaData.granFactores) {
     }
     row4++;
 
-    // Top 5 (mejores %Favorable)
+    // Top 5 (mayores porcentajes de satisfacción)
     const top5 = preguntasPlanas.slice(-5).reverse();
     top5.forEach((q, idx) => {
       const rowPM = sheet4.getRow(row4 + idx);
@@ -1414,7 +1448,9 @@ if (climaData.granFactores) {
         cell.font = { name: 'Calibri', size: 10 };
         cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center', wrapText: true };
         cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-        if (colNumber === sheet4SatCol) {
+        if (colNumber === sheet4InsatCol) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(q.pctDesf) };
+        } else if (colNumber === sheet4SatCol) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(q.pctFav) };
         }
       });
@@ -1518,7 +1554,7 @@ if (climaData.granFactores) {
       rowB.getCell(3).font = { name: 'Calibri', size: 10 };
       rowB.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
       rowB.getCell(3).border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-      rowB.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPct(bItem.pctDesf) };
+      rowB.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: colorPorPctInverso(bItem.pctDesf) };
 
       rowB.getCell(4).value = bItem.brecha;
       rowB.getCell(4).font = { name: 'Calibri', size: 10 };

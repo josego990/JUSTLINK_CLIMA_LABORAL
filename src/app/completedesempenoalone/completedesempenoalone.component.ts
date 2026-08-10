@@ -1,5 +1,5 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { Component, Inject, OnDestroy, OnInit, Renderer2 } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import {
   DesempenoResponseResult,
 } from './completedesempenoalone.models';
 import { DynamicDesempenoFormComponent } from './dynamic-desempeno-form/dynamic-desempeno-form.component';
+import { TurnstileComponent } from '../shared/components/turnstile/turnstile.component';
 
 @Component({
   selector: 'app-completedesempenoalone',
@@ -24,11 +25,14 @@ import { DynamicDesempenoFormComponent } from './dynamic-desempeno-form/dynamic-
     MatProgressSpinnerModule,
     MatTooltipModule,
     DynamicDesempenoFormComponent,
+    TurnstileComponent,
   ],
   templateUrl: './completedesempenoalone.component.html',
   styleUrls: ['./completedesempenoalone.component.scss'],
 })
 export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
+  @ViewChild(TurnstileComponent) turnstileComponent?: TurnstileComponent;
+
   readonly accessKey: string | null;
   readonly urlToken: string | null;
   readonly evaluatorEmployeeId: number | null;
@@ -40,6 +44,7 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
   errorMessage = '';
   blockedMessage = '';
   responseResult: DesempenoResponseResult | null = null;
+  turnstileToken = '';
   private originalBodyClassName = '';
   private readonly managedThemeClasses = [
     'dark',
@@ -125,6 +130,7 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.resetTurnstile();
 
     this.organizationService
       .getDesempenoEvaluationForm(
@@ -207,13 +213,22 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.turnstileToken) {
+      void Swal.fire(
+        'Verificación de seguridad',
+        'Completa la verificación de seguridad antes de finalizar la encuesta.',
+        'warning'
+      );
+      return;
+    }
+
     if (this.isSavingDraft || this.isFinalizing || this.blockedMessage) {
       return;
     }
 
     this.isFinalizing = true;
     this.organizationService
-      .finalizeDesempenoResponse(token, payload)
+      .finalizeDesempenoResponse(token, payload, this.turnstileToken)
       .subscribe({
         next: async (response: any) => {
           this.responseResult = this.normalizeResponseResult(response);
@@ -224,11 +239,18 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
             'success'
           );
         },
-        error: (error: any) => this.handleResponseError(error),
+        error: (error: any) => {
+          this.resetTurnstile();
+          void this.handleResponseError(error);
+        },
       })
       .add(() => {
         this.isFinalizing = false;
       });
+  }
+
+  onTurnstileTokenChange(token: string): void {
+    this.turnstileToken = token;
   }
 
   private decodeEvaluatedEmployeeId(encodedKey: string | null): number | null {
@@ -276,6 +298,11 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
 
   private getResponseToken(): string | null {
     return this.urlToken || this.evaluation?.tokenAcceso || null;
+  }
+
+  private resetTurnstile(): void {
+    this.turnstileToken = '';
+    this.turnstileComponent?.reset();
   }
 
   private getEvaluationBlockedMessage(evaluation: DesempenoEvaluationForm): string {

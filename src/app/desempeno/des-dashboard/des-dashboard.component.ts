@@ -1,5 +1,5 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, HostBinding, Inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostBinding, Inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -27,7 +27,7 @@ import {
   ApexYAxis,
   NgApexchartsModule,
 } from 'ng-apexcharts';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 // @ts-ignore: import de la build browser de ExcelJS, igual que el dashboard de climas.
 import * as ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { saveAs } from 'file-saver';
@@ -153,7 +153,7 @@ interface ScenarioColumn {
   templateUrl: './des-dashboard.component.html',
   styleUrls: ['./des-dashboard.component.scss'],
 })
-export class DesDashboardComponent implements OnInit {
+export class DesDashboardComponent implements OnDestroy, OnInit {
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
   readonly pageTitleKey = 'DESEMPENO_MENUITEMS.DASHBOARD.TEXT';
 
@@ -199,6 +199,7 @@ export class DesDashboardComponent implements OnInit {
   private aiActionPlanLoadSequence = 0;
   private aiActionPlanLoadedKey: string | null = null;
   private groupedDashboardPayload: any | null = null;
+  private selectedOrganizationSubscription?: Subscription;
 
   @HostBinding('class.dark-mode')
   get isDarkMode(): boolean {
@@ -213,7 +214,29 @@ export class DesDashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    void this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        void this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      void this.onOrganizationChange(organization.Id);
+    });
   }
 
   get breadcrumbItems(): string[] {

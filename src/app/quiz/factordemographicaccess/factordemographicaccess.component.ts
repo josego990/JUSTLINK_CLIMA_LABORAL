@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -86,6 +86,7 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '@core';
+import { Subscription } from 'rxjs';
 
 
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -145,7 +146,7 @@ export interface FlujoConfig {
 
 
 
-export class FactorDemographicAccessComponent implements OnInit {
+export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
 
   
 
@@ -188,6 +189,7 @@ export class FactorDemographicAccessComponent implements OnInit {
   public accessToFilter = true;
   public accessToExport = true;
   public roleName = '';
+  private selectedOrganizationSubscription?: Subscription;
 
   public campos:any = [
  
@@ -284,10 +286,7 @@ export class FactorDemographicAccessComponent implements OnInit {
     });
 
 
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      this.getOrganizations();
-    }
-    else {
+    if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
       //validar permisos de acciones
       const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
@@ -311,16 +310,39 @@ export class FactorDemographicAccessComponent implements OnInit {
         //this.btnDisabled = true;
       }
 
-      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-
-
     }
 
-  
+    this.setupSelectedOrganizationListener();
 
 
 
 
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.idOrganization = 0;
+        this.nombreOrganizacion = '';
+        this.dataSourceOrganizations = [];
+        this.dataSourceClimas = [];
+        this.data = null;
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.idOrganization === organization.Id) {
+        this.nombreOrganizacion = organization.Nombre;
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
   }
 
 

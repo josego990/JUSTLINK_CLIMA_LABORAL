@@ -5,8 +5,8 @@
   border-left: 4px solid transparent;
   background: #fff;
 
+  &.light-blue { border-left-color: #29b6f6; }
   &.green  { border-left-color: #92d050; }
-  &.yellow { border-left-color: #ffff00; }
   &.orange { border-left-color: #ffc000; }
   &.red    { border-left-color: #ff0000; }
   &.neutral { border-left-color: #7c7d7c; }

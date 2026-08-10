@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 
 import Swal from 'sweetalert2';
 
@@ -31,6 +31,8 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { MatChipsModule } from '@angular/material/chips';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-demograficos-organizacion',
@@ -51,11 +53,12 @@ import { DemoLimitsService } from 'app/config/demo-limits.service';
     MatSelectModule,
     MatButtonModule,
     MatInputModule,
+    MatProgressSpinnerModule,
     CommonModule,
     TranslateModule,
 ],
 })
-export class CrearDemograficosComponent implements OnInit {
+export class CrearDemograficosComponent implements OnDestroy, OnInit {
   public demograficosForm: UntypedFormGroup;
   public dialogRef?: MatDialogRef<CrearDemograficosComponent> 
 
@@ -65,6 +68,8 @@ export class CrearDemograficosComponent implements OnInit {
   file: File | null = null;
   public selectedFile = {};
   public isButtonDisabled: boolean = true;
+  public isSavingDemografico = false;
+  private selectedOrganizationSubscription?: Subscription;
 
    langStoreValue?: string;
 
@@ -127,10 +132,7 @@ export class CrearDemograficosComponent implements OnInit {
 
     }
 
-     if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      this.getOrganizations();
-    }
-    else {
+     if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
       //validar permisos de acciones
       //const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
@@ -155,12 +157,36 @@ export class CrearDemograficosComponent implements OnInit {
         //this.btnDisabled = true;
       }
       */
-
-      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
     }
 
+    this.setupSelectedOrganizationListener();
     //this.getOrganizations()
     //this.getEmployeesByOrg();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.idOrganization = 0;
+        this.demograficosForm.get('IdOrganizacion')?.setValue(null);
+        this.dataSourceDemograficos = [];
+        this.isButtonDisabled = true;
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.idOrganization === organization.Id) {
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
   }
 
   onOrganizationChange(selectedId: number) {
@@ -268,6 +294,10 @@ export class CrearDemograficosComponent implements OnInit {
 
   // Enviar datos al servicio:
   onSubmit(): void {
+    if (this.isSavingDemografico) {
+      return;
+    }
+
     if (this.demograficosForm.valid) {
       const currentDemographics = Array.isArray(this.dataSourceDemograficos)
         ? this.dataSourceDemograficos.length
@@ -287,7 +317,8 @@ export class CrearDemograficosComponent implements OnInit {
         });
         return;
       }
-  
+
+      this.isSavingDemografico = true;
       this.organizacionService.saveNewDemografico(this.demograficosForm.value, this.idOrganization)
         .then((response:any) => {
          //console.log('Campo creado?:', response.data);
@@ -306,6 +337,9 @@ export class CrearDemograficosComponent implements OnInit {
             text:  this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.ERRORMESSAGE') + 'Error: ' + error,
             icon: 'error',
           });
+        })
+        .finally(() => {
+          this.isSavingDemografico = false;
         });
   
     } else {

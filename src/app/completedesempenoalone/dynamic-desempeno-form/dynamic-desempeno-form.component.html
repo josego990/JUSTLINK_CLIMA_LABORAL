@@ -99,6 +99,10 @@
     </mat-accordion>
   </section>
 
+  <div class="security-verification">
+    <ng-content select="[security-verification]"></ng-content>
+  </div>
+
   <footer class="submit-bar">
     <div class="progress-area">
       <div class="progress-label">
@@ -128,7 +132,7 @@
         mat-flat-button
         color="primary"
         type="submit"
-        [disabled]="disabled || isSavingDraft || isFinalizing">
+        [disabled]="disabled || isSavingDraft || isFinalizing || !canFinalize">
         <mat-icon>{{ isFinalizing ? 'sync' : 'fact_check' }}</mat-icon>
         Finalizar
       </button>

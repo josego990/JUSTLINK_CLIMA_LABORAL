@@ -67,6 +67,34 @@
     </div>
     <div class="collapse navbar-collapse header-right-collapse" [ngClass]="isNavbarCollapsed ? '' : 'show'">
       <ul class="nav navbar-nav navbar-right">
+        @if (organizations.length > 0) {
+        <li class="nav-item org-context-selector">
+          <mat-form-field appearance="outline" class="org-context-field">
+            <mat-label>Empresa</mat-label>
+            <mat-select
+              [(ngModel)]="selectedOrganizationId"
+              (selectionChange)="onHeaderOrganizationChange($event.value)"
+              [disabled]="loadingOrganizations || organizations.length === 1"
+              matTooltip="Empresa activa para los módulos"
+            >
+              @for (organization of organizations; track organization.Id) {
+              <mat-option [value]="organization.Id">
+                {{ organization.Nombre }}
+              </mat-option>
+              }
+            </mat-select>
+
+            @if (loadingOrganizations) {
+            <mat-progress-spinner
+              matSuffix
+              diameter="18"
+              mode="indeterminate"
+            ></mat-progress-spinner>
+            }
+          </mat-form-field>
+        </li>
+        }
+
         <!-- Full Screen Button -->
         <li class="fullscreen m-l-5 m-r-5">
           <button mat-icon-button class="nav-notification-icons" (click)="callFullscreen()">

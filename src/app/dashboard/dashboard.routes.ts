@@ -1,5 +1,6 @@
 import { Route } from "@angular/router";
 import { Page404Component } from "../authentication/page404/page404.component";
+import { ClimaActionPlansComponent } from "./clima-action-plans/clima-action-plans.component";
 import { Dashboard1Component } from "./dashboard1/dashboard1.component";
 import { Dashboard2Component } from "./dashboard2/dashboard2.component";
 
@@ -17,6 +18,10 @@ export const DASHBOARD_ROUTE: Route[] = [
   {
     path: "dashboard2",
     component: Dashboard2Component,
+  },
+  {
+    path: "planes-accion-clima",
+    component: ClimaActionPlansComponent,
   },
   
   { path: "**", component: Page404Component },

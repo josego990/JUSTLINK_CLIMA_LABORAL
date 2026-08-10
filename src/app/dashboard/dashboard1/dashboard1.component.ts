@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -67,6 +67,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { DemographicFiltersDialogComponent } from './dialogs/demographic-filters-dialog.component'
 import Swal from 'sweetalert2';
+import { Subscription } from 'rxjs';
 
 
 type Sent = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' | 'MIXED';
@@ -146,6 +147,26 @@ interface SliderPiePoint {
 type SliderRowView = SliderQuestionRow & {
   pieSeries: SliderPiePoint[];
 };
+
+interface ListResponseOption {
+  idOpcion: number;
+  valor: string;
+  etiqueta: string;
+  conteo: number;
+  porcentaje: number;
+}
+
+interface ListResponseChart {
+  idGranFactor: number;
+  etiquetaGranFactor: string;
+  idFactor: number;
+  factor: string;
+  idPregunta: number;
+  pregunta: string;
+  totalOpciones: number;
+  totalRespuestas: number;
+  chartOptions: Partial<ChartOptions>;
+}
 
 interface Todo {
   title: string;
@@ -589,14 +610,25 @@ function agruparPorCampo(
   ],
 })
 
-export class Dashboard1Component implements OnInit {
+export class Dashboard1Component implements OnDestroy, OnInit {
   selectedFilters: DemographicSelection[] = [];
   public areaChartOptions!: Partial<ChartOptions>;
+  readonly COLOR_LIGHT_BLUE = '#29B6F6';
   readonly COLOR_GREEN = '#92D050';
-  readonly COLOR_YELLOW = '#FFFF00';
   readonly COLOR_ORANGE = '#FFC000';
   readonly COLOR_RED = '#FF0000';
   readonly COLOR_GRAY = '#7C7D7C';
+  private readonly CLIMA_IMAGE_BUCKET_URL = 'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/';
+  private readonly LIST_RESPONSE_COLORS = [
+    '#2F80ED',
+    '#00A896',
+    '#7CB342',
+    '#F28E2B',
+    '#E15759',
+    '#B07AA1',
+    '#4E79A7',
+    '#76B7B2',
+  ];
   public metodoAplicacionClima = '';
   public showNeutralMetrics = false;
 
@@ -618,6 +650,12 @@ export class Dashboard1Component implements OnInit {
   };
 
   public sliderRows: SliderRowView[] = [];
+  public listResponseCharts: ListResponseChart[] = [];
+  public corporateAiAnalysis: any | null = null;
+  public corporateAiAnalysisMeta: any | null = null;
+  public corporateAiAnalysisError = '';
+  public isGeneratingCorporateAiAnalysis = false;
+  public isCorporateAiAnalysisCollapsed = false;
 
   public participacionRows = [];
 
@@ -794,6 +832,7 @@ export class Dashboard1Component implements OnInit {
   public accessToFilter = true;
   public accessToExport = true;
   public roleName = '';
+  private selectedOrganizationSubscription?: Subscription;
   
 
   public campos:any = [
@@ -887,10 +926,7 @@ export class Dashboard1Component implements OnInit {
       });
 
 
-      if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-        this.getOrganizations();
-      }
-      else {
+      if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
         //validar permisos de acciones
         const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
@@ -914,17 +950,41 @@ export class Dashboard1Component implements OnInit {
           this.btnDisabled = true;
         }
 
-        this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-
-
       }
 
-    
+      this.setupSelectedOrganizationListener();
 
       this.chartFactores();
 
 
 
+    }
+
+    ngOnDestroy(): void {
+      this.selectedOrganizationSubscription?.unsubscribe();
+    }
+
+    private setupSelectedOrganizationListener(): void {
+      this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+        if (!organization) {
+          this.idOrganization = 0;
+          this.idFlujo = 0;
+          this.nombreOrganizacion = '';
+          this.dataSourceOrganizations = [];
+          this.dataSourceClimas = [];
+          this.clearAll();
+          return;
+        }
+
+        this.dataSourceOrganizations = [organization];
+
+        if (this.idOrganization === organization.Id) {
+          this.nombreOrganizacion = organization.Nombre;
+          return;
+        }
+
+        this.onOrganizationChange(organization.Id);
+      });
     }
 
 
@@ -945,14 +1005,14 @@ export class Dashboard1Component implements OnInit {
 
   private getLikertDistributionColors(): string[] {
     return this.showNeutralMetrics
-      ? [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_GRAY, this.COLOR_YELLOW, this.COLOR_GREEN]
-      : [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_YELLOW, this.COLOR_GREEN];
+      ? [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_GRAY, this.COLOR_GREEN, this.COLOR_LIGHT_BLUE]
+      : [this.COLOR_RED, this.COLOR_ORANGE, this.COLOR_GREEN, this.COLOR_LIGHT_BLUE];
   }
 
   private getFactorSatisfactionColors(): string[] {
     return this.showNeutralMetrics
-      ? [this.COLOR_GREEN, this.COLOR_RED, this.COLOR_GRAY]
-      : [this.COLOR_GREEN, this.COLOR_RED];
+      ? [this.COLOR_LIGHT_BLUE, this.COLOR_RED, this.COLOR_GRAY]
+      : [this.COLOR_LIGHT_BLUE, this.COLOR_RED];
   }
 
   private syncNeutralAwareCharts(): void {
@@ -987,11 +1047,11 @@ export class Dashboard1Component implements OnInit {
   private buildPanoramaData(item: any): Array<{ name: string; value: number }> {
     const data = [
       {
-        name: 'Muy desfavorable',
+        name: 'Muy insatisfecho',
         value: Number(item?.opt_4_pct ?? 0),
       },
       {
-        name: 'Desfavorable',
+        name: 'Insatisfacción',
         value: Number(item?.opt_3_pct ?? 0),
       },
     ];
@@ -1005,11 +1065,11 @@ export class Dashboard1Component implements OnInit {
 
     data.push(
       {
-        name: 'Favorable',
+        name: 'Satisfacción',
         value: Number(item?.opt_2_pct ?? 0),
       },
       {
-        name: 'Muy favorable',
+        name: 'Muy satisfecho',
         value: Number(item?.opt_1_pct ?? 0),
       }
     );
@@ -1023,11 +1083,11 @@ export class Dashboard1Component implements OnInit {
   } {
     const definitions = [
       {
-        name: 'Muy desfavorable',
+        name: 'Muy insatisfecho',
         key: 'total_totalmente_en_desacuerdo',
       },
       {
-        name: 'Desfavorable',
+        name: 'Insatisfacción',
         key: 'total_en_desacuerdo',
       },
     ];
@@ -1041,11 +1101,11 @@ export class Dashboard1Component implements OnInit {
 
     definitions.push(
       {
-        name: 'Favorable',
+        name: 'Satisfacción',
         key: 'total_de_acuerdo',
       },
       {
-        name: 'Muy favorable',
+        name: 'Muy satisfecho',
         key: 'total_totalmente_de_acuerdo',
       }
     );
@@ -1101,6 +1161,7 @@ export class Dashboard1Component implements OnInit {
     this.selectedFilters = [];
     this.selectedGFactors = [];
     this.dataGrandesFactores = [];
+    this.idFlujo = 0;
     this.updateMetodoAplicacion(undefined);
     this.clearAll();
 
@@ -1122,6 +1183,7 @@ export class Dashboard1Component implements OnInit {
 
 
     this.single = [];
+    this.clearCorporateAiAnalysis();
     this.metricasSatisfaccionGeneralData = {};
     this.totalCreadas = 0;            
     this.totalContestadas = 0;
@@ -1149,6 +1211,7 @@ export class Dashboard1Component implements OnInit {
     this.subjects = [];
 
     this.sliderRows = [];
+    this.listResponseCharts = [];
 
     this.participacionRows = [];
     this.rowsPendientes = [];
@@ -1180,6 +1243,145 @@ export class Dashboard1Component implements OnInit {
         name: `Valor ${d.valor}`,
         value: d.conteo,
       }));
+  }
+
+  private parseListResponseOptions(rawOptions: unknown): ListResponseOption[] {
+    let parsed: unknown = rawOptions;
+
+    if (typeof rawOptions === 'string') {
+      try {
+        parsed = rawOptions.trim() ? JSON.parse(rawOptions) : [];
+      } catch {
+        parsed = [];
+      }
+    }
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map((option: any) => ({
+      idOpcion: Number(option?.IdOpcion ?? option?.idOpcion ?? 0),
+      valor: String(option?.Valor ?? option?.valor ?? ''),
+      etiqueta: String(option?.Etiqueta ?? option?.etiqueta ?? option?.Valor ?? option?.valor ?? 'Sin etiqueta'),
+      conteo: Math.max(0, Number(option?.Conteo ?? option?.conteo ?? 0) || 0),
+      porcentaje: Math.max(0, Math.min(100, Number(option?.Porcentaje ?? option?.porcentaje ?? 0) || 0)),
+    }));
+  }
+
+  private truncateChartLabel(value: unknown, maxLength = 42): string {
+    const label = String(value ?? '');
+    return label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+  }
+
+  private buildListResponseCharts(rows: unknown): ListResponseChart[] {
+    if (!Array.isArray(rows)) {
+      return [];
+    }
+
+    return rows.reduce<ListResponseChart[]>((charts, row: any) => {
+      const options = this.parseListResponseOptions(row?.OpcionesJSON ?? row?.opcionesJSON);
+      if (options.length === 0) {
+        return charts;
+      }
+
+      const idPregunta = Number(row?.IdPregunta ?? row?.idPregunta ?? 0);
+      const counts = options.map((option) => option.conteo);
+      const colors = options.map(
+        (_, index) => this.LIST_RESPONSE_COLORS[index % this.LIST_RESPONSE_COLORS.length]
+      );
+      const chartHeight = Math.max(260, options.length * 48 + 80);
+
+      charts.push({
+        idGranFactor: Number(row?.IdGranFactor ?? row?.idGranFactor ?? 0),
+        etiquetaGranFactor: String(row?.EtiquetaGranFactor ?? row?.etiquetaGranFactor ?? ''),
+        idFactor: Number(row?.IdFactor ?? row?.idFactor ?? 0),
+        factor: String(row?.Factor ?? row?.factor ?? ''),
+        idPregunta,
+        pregunta: String(row?.Pregunta ?? row?.pregunta ?? ''),
+        totalOpciones: Number(row?.total_opciones ?? row?.totalOpciones ?? options.length),
+        totalRespuestas: Number(row?.total_respuestas ?? row?.totalRespuestas ?? 0),
+        chartOptions: {
+          series: [{
+            name: 'Respuestas',
+            data: options.map((option) => option.porcentaje),
+          }],
+          chart: {
+            type: 'bar',
+            height: chartHeight,
+            toolbar: this.buildApexToolbar(`respuestas-lista-${idPregunta || 'pregunta'}`),
+          },
+          plotOptions: {
+            bar: {
+              horizontal: true,
+              distributed: true,
+              barHeight: '58%',
+              borderRadius: 4,
+              dataLabels: { position: 'center' },
+            },
+          },
+          dataLabels: {
+            enabled: true,
+            offsetX: 0,
+            textAnchor: 'middle',
+            formatter: (value: number, context: any) => {
+              const percentage = Number(value);
+              const count = counts[context?.dataPointIndex] ?? 0;
+              if (percentage < 7) {
+                return '';
+              }
+              return percentage < 15
+                ? `${percentage.toFixed(0)}%`
+                : `${percentage.toFixed(1)}% · ${count}`;
+            },
+            style: {
+              colors: ['#263238'],
+              fontSize: '12px',
+              fontWeight: '600',
+            },
+          },
+          xaxis: {
+            categories: options.map((option) => option.etiqueta),
+            min: 0,
+            max: 100,
+            tickAmount: 5,
+            labels: {
+              formatter: (value: string | number) => `${Number(value).toFixed(0)}%`,
+              style: { colors: '#6B7280', fontSize: '11px' },
+            },
+          },
+          yaxis: {
+            labels: {
+              maxWidth: 260,
+              formatter: (value: string | number) => this.truncateChartLabel(value),
+              style: { colors: '#374151', fontSize: '12px', fontWeight: '500' },
+            },
+          },
+          tooltip: {
+            y: {
+              formatter: (value: number, context: any) => {
+                const count = counts[context?.dataPointIndex] ?? 0;
+                const responseLabel = count === 1 ? 'respuesta' : 'respuestas';
+                return `${Number(value).toFixed(2)}% (${count} ${responseLabel})`;
+              },
+            },
+          },
+          grid: {
+            borderColor: '#E5E7EB',
+            padding: { right: 12 },
+          },
+          stroke: { width: 0 },
+          legend: { show: false },
+          colors,
+        },
+      });
+
+      return charts;
+    }, []);
+  }
+
+  trackListResponseChart(_: number, item: ListResponseChart): number {
+    return item.idPregunta;
   }
 
   getDemograficosOrg():void {
@@ -1249,7 +1451,7 @@ export class Dashboard1Component implements OnInit {
     ////console.log('clima:: ', clima);
     this.nombreFlujo = clima.Nombre;
     this.objetivoFlujo =  clima.Objetivo;
-    this.imgFlujo = clima.Imagen1Src;
+    this.imgFlujo = this.buildClimaImageSrc(clima?.Imagen1Src);
 
     //this.getMetricaPorcentajeRespuestas();
     //this.getMetricaFactores();
@@ -1270,6 +1472,24 @@ export class Dashboard1Component implements OnInit {
     this.getDemograficosOrgArbol();
 
   };
+
+  private buildClimaImageSrc(value: unknown): string {
+    const raw = String(value ?? '').trim();
+
+    if (!raw) {
+      return '';
+    }
+
+    if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('assets/')) {
+      return raw;
+    }
+
+    return `${this.CLIMA_IMAGE_BUCKET_URL}${raw.replace(/^\/+/, '')}`;
+  }
+
+  onSelectedClimaImageError(): void {
+    this.imgFlujo = '';
+  }
 
  
 
@@ -1520,7 +1740,11 @@ export class Dashboard1Component implements OnInit {
   getGFStyle(g: any) {
     const pct = this.getGFPct(g);
     const bg = this.getGFColor(pct);
-    const fg = (bg === this.COLOR_YELLOW || bg === this.COLOR_GRAY) ? '#2b2b2b' : '#fff';
+    const fg = (
+      bg === this.COLOR_LIGHT_BLUE ||
+      bg === this.COLOR_GREEN ||
+      bg === this.COLOR_GRAY
+    ) ? '#2b2b2b' : '#fff';
     return {
       'background-color': bg,
       color: fg,
@@ -2014,8 +2238,8 @@ export class Dashboard1Component implements OnInit {
   colorFor(v: number): string {
     const pct = Number(v);
     if (!Number.isFinite(pct)) return 'neutral';
-    if (pct >= 91) return 'green';
-    if (pct >= 80) return 'yellow';
+    if (pct >= 91) return 'light-blue';
+    if (pct >= 80) return 'green';
     if (pct >= 60) return 'orange';
     return 'red';
   }
@@ -2053,10 +2277,10 @@ export class Dashboard1Component implements OnInit {
 
   getGeneralCardTooltip(): string {
     if (this.generalRestrictivo) {
-      return 'Mide la favorabilidad general usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica general, en lugar del Top-2 estándar.';
+      return 'Mide el nivel de satisfacción usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica general, en lugar del Top-2 estándar.';
     }
 
-    return 'Mide la favorabilidad general del clima.\n\nSe calcula sumando las dos opciones más favorables de la escala (Top-2) y dividiéndolas entre el total de respuestas válidas.';
+    return 'Mide el nivel de satisfacción del clima.\n\nSe calcula sumando las dos opciones de mayor satisfacción de la escala (Top-2) y dividiéndolas entre el total de respuestas válidas.';
   }
 
   getTop1GaugeValue(): number {
@@ -2064,7 +2288,7 @@ export class Dashboard1Component implements OnInit {
   }
 
   getTop1CardTooltip(): string {
-    return 'Muestra el porcentaje de respuestas ubicadas en la opción más favorable de la escala.\n\nSe calcula como Top-1 sobre el total de respuestas válidas.';
+    return 'Muestra el porcentaje de respuestas ubicadas en la opción de mayor satisfacción de la escala.\n\nSe calcula como Top-1 sobre el total de respuestas válidas.';
   }
 
   private buildApexToolbar(baseName: string) {
@@ -2286,34 +2510,530 @@ export class Dashboard1Component implements OnInit {
 
   exportGeneralGaugeCsv(): void {
     this.exportCsvFile(
-      'favorabilidad-general',
+      'satisfaccion-general',
       ['Indicador', 'Modo', 'Valor'],
-      [['Favorabilidad general', this.getGeneralGaugeLabel(), this.getGeneralGaugeValue()]]
+      [['Satisfacción general', this.getGeneralGaugeLabel(), this.getGeneralGaugeValue()]]
     );
   }
 
   exportTop1GaugeCsv(): void {
     this.exportCsvFile(
-      'favorabilidad-maxima',
+      'satisfaccion-maxima',
       ['Indicador', 'Modo', 'Valor'],
-      [['Favorabilidad máxima', 'Top-1', this.getTop1GaugeValue()]]
+      [['Satisfacción máxima', 'Top-1', this.getTop1GaugeValue()]]
     );
   }
 
   exportDesfavorableGaugeCsv(): void {
     this.exportCsvFile(
-      'desfavorabilidad-general',
+      'insatisfaccion-general',
       ['Indicador', 'Modo', 'Valor'],
-      [['Desfavorabilidad general', this.getDesfavorableGaugeLabel(), this.getDesfavorableGaugeValue()]]
+      [['Insatisfacción general', this.getDesfavorableGaugeLabel(), this.getDesfavorableGaugeValue()]]
     );
   }
 
   exportBottom1GaugeCsv(): void {
     this.exportCsvFile(
-      'desfavorabilidad-maxima',
+      'insatisfaccion-maxima',
       ['Indicador', 'Modo', 'Valor'],
-      [['Desfavorabilidad máxima', 'Bottom-1', this.getBottom1GaugeValue()]]
+      [['Insatisfacción máxima', 'Bottom-1', this.getBottom1GaugeValue()]]
     );
+  }
+
+  private clearCorporateAiAnalysis(): void {
+    this.corporateAiAnalysis = null;
+    this.corporateAiAnalysisMeta = null;
+    this.corporateAiAnalysisError = '';
+    this.isCorporateAiAnalysisCollapsed = false;
+  }
+
+  async generateCorporateAiAnalysis(): Promise<void> {
+    if (!this.idFlujo || this.idFlujo <= 0) {
+      void Swal.fire({
+        icon: 'warning',
+        title: 'Seleccione un clima',
+        text: 'Debe seleccionar un clima para generar el análisis corporativo IA.',
+        confirmButtonText: 'Entendido',
+      });
+      return;
+    }
+
+    this.isGeneratingCorporateAiAnalysis = true;
+    this.corporateAiAnalysis = null;
+    this.corporateAiAnalysisMeta = null;
+    this.corporateAiAnalysisError = '';
+    this.isCorporateAiAnalysisCollapsed = false;
+
+    try {
+      const response: any = await this.organizacionService.generateClimaCorporateAiAnalysis({
+        IdFlujo: this.idFlujo,
+        FiltrosDemograficos: this.filtrosDemograficos || '',
+        FiltrosGf: this.filtrosGrandesFactores || '',
+        TipoFiltro: this.tipoFiltro || 'AND',
+      });
+
+      if (response?.data?.ok === false) {
+        throw new Error(response?.data?.message || 'No fue posible generar el análisis corporativo IA.');
+      }
+
+      const analysis = response?.data?.data ?? null;
+      if (!analysis) {
+        throw new Error('El servicio no devolvió datos de análisis.');
+      }
+
+      this.corporateAiAnalysis = analysis;
+      this.corporateAiAnalysisMeta = response?.data?.meta ?? null;
+
+      void Swal.fire({
+        icon: 'success',
+        title: 'Análisis generado',
+        text: 'El análisis corporativo IA está listo para revisar.',
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error: any) {
+      console.error('Error al generar análisis corporativo IA:', error);
+      this.corporateAiAnalysisError = error?.response?.data?.message
+        || error?.message
+        || 'No fue posible generar el análisis corporativo IA.';
+
+      void Swal.fire({
+        icon: 'error',
+        title: 'Análisis IA',
+        text: this.corporateAiAnalysisError,
+        confirmButtonText: 'Cerrar',
+      });
+    } finally {
+      this.isGeneratingCorporateAiAnalysis = false;
+    }
+  }
+
+  toggleCorporateAiAnalysisCollapse(): void {
+    this.isCorporateAiAnalysisCollapsed = !this.isCorporateAiAnalysisCollapsed;
+  }
+
+  downloadCorporateAiAnalysisPdf(): void {
+    if (!this.corporateAiAnalysis) {
+      void Swal.fire('PDF', 'No hay análisis corporativo IA para descargar.', 'warning');
+      return;
+    }
+
+    try {
+      const blob = this.buildCorporateAiAnalysisPdfBlob();
+      const org = this.sanitizeFileName(this.nombreOrganizacion || 'organizacion');
+      const clima = this.sanitizeFileName(this.nombreFlujo || 'clima');
+      this.downloadBlob(blob, `analisis-corporativo-ia-${org}-${clima}.pdf`);
+    } catch (error) {
+      console.error('Error al generar PDF de análisis corporativo IA:', error);
+      void Swal.fire('PDF', 'No fue posible generar el PDF del análisis corporativo IA.', 'error');
+    }
+  }
+
+  getCorporateAiItems(key: string): any[] {
+    const value = this.getCorporateAiValue(this.corporateAiAnalysis, [key]);
+    return Array.isArray(value) ? value : [];
+  }
+
+  getCorporateAiText(item: any, keys: string | string[], fallback: any = ''): string {
+    const value = this.getCorporateAiValue(item, Array.isArray(keys) ? keys : [keys]);
+
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
+    if (Array.isArray(value)) {
+      const joined = value.map((entry) => String(entry ?? '').trim()).filter(Boolean).join(', ');
+      return joined || fallback;
+    }
+
+    const text = String(value).trim();
+    return text || fallback;
+  }
+
+  getCorporateAiList(item: any, keys: string | string[]): string[] {
+    const value = this.getCorporateAiValue(item, Array.isArray(keys) ? keys : [keys]);
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      return value.split(',').map((entry) => entry.trim()).filter(Boolean);
+    }
+
+    return [];
+  }
+
+  getCorporateAiMetaLabel(): string {
+    if (!this.corporateAiAnalysisMeta) {
+      return '';
+    }
+
+    const model = this.getCorporateAiText(this.corporateAiAnalysisMeta, ['modeloIA', 'ModeloIA'], '');
+    const prompt = this.getCorporateAiText(this.corporateAiAnalysisMeta, ['promptVersion', 'PromptVersion'], '');
+    const source = this.getCorporateAiText(this.corporateAiAnalysisMeta, ['source', 'Source'], '');
+    const cacheHit = this.corporateAiAnalysisMeta?.cache?.hit === true ? 'cache' : '';
+
+    return [model, prompt, source, cacheHit].filter(Boolean).join(' · ');
+  }
+
+  getCorporateAiLevelClass(value: any): string {
+    const key = this.normalizeCorporateAiKey(value);
+    if (key.includes('SALUDABLE')) return 'ai-tone-success';
+    if (key.includes('ESTABLE')) return 'ai-tone-stable';
+    if (key.includes('OBSERVACION')) return 'ai-tone-warning';
+    if (key.includes('RIESGO')) return 'ai-tone-danger';
+    return 'ai-tone-neutral';
+  }
+
+  getCorporateAiSeverityClass(value: any): string {
+    const key = this.normalizeCorporateAiKey(value);
+    if (key.includes('ALTA') || key.includes('ALTO')) return 'ai-tone-danger';
+    if (key.includes('BAJA') || key.includes('BAJO')) return 'ai-tone-success';
+    return 'ai-tone-warning';
+  }
+
+  trackCorporateAiItem(index: number, item: any): string | number {
+    return item?.titulo || item?.riesgo || item?.accion || item?.segmento || index;
+  }
+
+  trackCorporateAiText(index: number, value: any): string {
+    return `${index}-${value}`;
+  }
+
+  private getCorporateAiValue(item: any, keys: string[]): any {
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(item, key)) {
+        return item[key];
+      }
+
+      const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+      if (Object.prototype.hasOwnProperty.call(item, pascalKey)) {
+        return item[pascalKey];
+      }
+    }
+
+    return null;
+  }
+
+  private normalizeCorporateAiKey(value: any): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  private buildCorporateAiAnalysisPdfBlob(): Blob {
+    const analysis = this.corporateAiAnalysis ?? {};
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 42;
+    const contentWidth = pageWidth - margin * 2;
+    const pages: string[][] = [];
+    let commands: string[] = [];
+    let y = 0;
+
+    const colors = {
+      navy: [15, 23, 42],
+      blue: [37, 99, 235],
+      green: [22, 163, 74],
+      orange: [245, 158, 11],
+      red: [220, 38, 38],
+      slate: [100, 116, 139],
+      line: [226, 232, 240],
+      soft: [248, 250, 252],
+      white: [255, 255, 255],
+      text: [15, 23, 42],
+    };
+
+    const rgb = (color: number[]) => color.map((value) => (value / 255).toFixed(3)).join(' ');
+    const clean = (value: any) => String(value ?? '')
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/[–—]/g, '-')
+      .replace(/≈/g, '~')
+      .replace(/•/g, '-')
+      .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+    const escapeText = (value: any) => clean(value)
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+    const byteLength = (value: string) => value.length;
+    const toBytes = (value: string) => {
+      const bytes = new Uint8Array(value.length);
+      for (let index = 0; index < value.length; index += 1) {
+        bytes[index] = value.charCodeAt(index) & 0xff;
+      }
+      return bytes;
+    };
+    const cmd = (value: string) => commands.push(value);
+    const rect = (x: number, top: number, width: number, height: number, fill: number[], stroke?: number[]) => {
+      const bottom = pageHeight - top - height;
+      cmd(`${rgb(fill)} rg ${x.toFixed(2)} ${bottom.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re f`);
+      if (stroke) {
+        cmd(`${rgb(stroke)} RG ${x.toFixed(2)} ${bottom.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`);
+      }
+    };
+    const line = (x1: number, top1: number, x2: number, top2: number, color: number[], width = 1) => {
+      cmd(`${rgb(color)} RG ${width.toFixed(2)} w ${x1.toFixed(2)} ${(pageHeight - top1).toFixed(2)} m ${x2.toFixed(2)} ${(pageHeight - top2).toFixed(2)} l S`);
+    };
+    const text = (value: any, x: number, baselineTop: number, size = 10, bold = false, color = colors.text) => {
+      cmd(`${rgb(color)} rg BT /${bold ? 'F2' : 'F1'} ${size.toFixed(2)} Tf ${x.toFixed(2)} ${(pageHeight - baselineTop).toFixed(2)} Td (${escapeText(value)}) Tj ET`);
+    };
+    const estimateWidth = (value: string, size: number) => clean(value).length * size * 0.48;
+    const wrapText = (value: any, maxWidth: number, size = 10): string[] => {
+      const words = clean(value).replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
+
+      words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (estimateWidth(candidate, size) <= maxWidth || !current) {
+          current = candidate;
+          return;
+        }
+
+        lines.push(current);
+        current = word;
+      });
+
+      if (current) {
+        lines.push(current);
+      }
+
+      return lines.length ? lines : ['-'];
+    };
+    const addPage = (first = false) => {
+      commands = [];
+      pages.push(commands);
+      rect(0, 0, pageWidth, first ? 94 : 54, colors.navy);
+      text('Análisis corporativo IA', margin, first ? 34 : 31, first ? 20 : 14, true, colors.white);
+      text(`${this.nombreOrganizacion || 'Organización'} · ${this.nombreFlujo || 'Clima'}`, margin, first ? 59 : 48, first ? 10 : 8, false, colors.white);
+      y = first ? 126 : 80;
+    };
+    const ensureSpace = (height: number) => {
+      if (y + height > pageHeight - 54) {
+        addPage(false);
+      }
+    };
+    const sectionTitle = (value: string) => {
+      ensureSpace(34);
+      text(value, margin, y, 13, true, colors.blue);
+      y += 10;
+      line(margin, y, pageWidth - margin, y, colors.line);
+      y += 18;
+    };
+    const paragraph = (value: any, size = 9.5, color = colors.text, indent = 0) => {
+      const lines = wrapText(value, contentWidth - indent, size);
+      lines.forEach((row) => {
+        ensureSpace(14);
+        text(row, margin + indent, y, size, false, color);
+        y += size + 4;
+      });
+    };
+    const card = (title: string, body: string[], accent: number[] = colors.blue) => {
+      const cleanBody = body.filter(Boolean);
+      const titleLines = wrapText(title, contentWidth - 28, 10.5);
+      const bodyLines = cleanBody.flatMap((item) => wrapText(item, contentWidth - 28, 8.7));
+      const height = 24 + titleLines.length * 13 + bodyLines.length * 12 + 10;
+      ensureSpace(height);
+      const startY = y - 13;
+      rect(margin, startY, contentWidth, height, colors.soft, colors.line);
+      rect(margin, startY, 4, height, accent);
+      y += 4;
+      titleLines.forEach((row) => {
+        text(row, margin + 14, y, 10.5, true, colors.text);
+        y += 13;
+      });
+      y += 2;
+      bodyLines.forEach((row) => {
+        text(row, margin + 14, y, 8.7, false, colors.slate);
+        y += 12;
+      });
+      y = startY + height + 12;
+    };
+    const toneColor = (value: any) => {
+      const key = this.normalizeCorporateAiKey(value);
+      if (key.includes('ALTA') || key.includes('ALTO') || key.includes('RIESGO')) return colors.red;
+      if (key.includes('BAJA') || key.includes('BAJO') || key.includes('SALUDABLE')) return colors.green;
+      if (key.includes('ESTABLE')) return colors.blue;
+      return colors.orange;
+    };
+
+    addPage(true);
+    sectionTitle('Resumen ejecutivo');
+    paragraph(this.getCorporateAiText(analysis, ['resumenEjecutivo', 'ResumenEjecutivo'], 'No se recibió resumen ejecutivo.'));
+
+    const lectura = analysis?.lecturaCorporativa ?? analysis?.LecturaCorporativa ?? {};
+    sectionTitle('Lectura corporativa');
+    card('Estado general del clima', [
+      `Nivel de clima: ${this.getCorporateAiText(lectura, ['nivelClima', 'NivelClima'], '-')}`,
+      `Calificación general: ${this.getCorporateAiText(lectura, ['calificacionGeneral', 'CalificacionGeneral'], '-')}`,
+      `Participación: ${this.getCorporateAiText(lectura, ['participacion', 'Participacion'], '-')}`,
+      `Interpretación: ${this.getCorporateAiText(lectura, ['interpretacion', 'Interpretacion'], '-')}`,
+    ], toneColor(this.getCorporateAiText(lectura, ['nivelClima', 'NivelClima'], '')));
+
+    const addCards = (
+      title: string,
+      items: any[],
+      titleKeys: string[],
+      bodyFactory: (item: any, index: number) => string[],
+      accentFactory: (item: any) => number[] = () => colors.blue
+    ) => {
+      if (!items.length) {
+        return;
+      }
+
+      sectionTitle(title);
+      items.forEach((item, index) => {
+        card(
+          this.getCorporateAiText(item, titleKeys, `${title} ${index + 1}`),
+          bodyFactory(item, index),
+          accentFactory(item)
+        );
+      });
+    };
+
+    addCards(
+      'Hallazgos clave',
+      this.getCorporateAiItems('hallazgosClave'),
+      ['titulo', 'Titulo'],
+      (item) => [
+        `Severidad: ${this.getCorporateAiText(item, ['severidad', 'Severidad'], 'media')}`,
+        this.getCorporateAiText(item, ['descripcion', 'Descripcion'], ''),
+        `Evidencia: ${this.getCorporateAiText(item, ['evidencia', 'Evidencia'], '-')}`,
+        this.getCorporateAiList(item, ['factoresImpactados', 'FactoresImpactados']).length
+          ? `Factores impactados: ${this.getCorporateAiList(item, ['factoresImpactados', 'FactoresImpactados']).join(', ')}`
+          : '',
+        this.getCorporateAiList(item, ['demograficosImpactados', 'DemograficosImpactados']).length
+          ? `Demográficos impactados: ${this.getCorporateAiList(item, ['demograficosImpactados', 'DemograficosImpactados']).join(', ')}`
+          : '',
+      ],
+      (item) => toneColor(this.getCorporateAiText(item, ['severidad', 'Severidad'], 'media'))
+    );
+
+    addCards(
+      'Fortalezas',
+      this.getCorporateAiItems('fortalezas'),
+      ['titulo', 'Titulo'],
+      (item) => [
+        this.getCorporateAiText(item, ['descripcion', 'Descripcion'], ''),
+        `Evidencia: ${this.getCorporateAiText(item, ['evidencia', 'Evidencia'], '-')}`,
+        this.getCorporateAiList(item, ['factoresRelacionados', 'FactoresRelacionados']).length
+          ? `Factores relacionados: ${this.getCorporateAiList(item, ['factoresRelacionados', 'FactoresRelacionados']).join(', ')}`
+          : '',
+      ],
+      () => colors.green
+    );
+
+    addCards(
+      'Riesgos prioritarios',
+      this.getCorporateAiItems('riesgosPrioritarios'),
+      ['riesgo', 'Riesgo'],
+      (item) => [
+        `Urgencia: ${this.getCorporateAiText(item, ['urgencia', 'Urgencia'], 'media')}`,
+        `Impacto probable: ${this.getCorporateAiText(item, ['impactoProbable', 'ImpactoProbable'], '-')}`,
+        `Evidencia: ${this.getCorporateAiText(item, ['evidencia', 'Evidencia'], '-')}`,
+      ],
+      (item) => toneColor(this.getCorporateAiText(item, ['urgencia', 'Urgencia'], 'media'))
+    );
+
+    addCards(
+      'Recomendaciones corporativas',
+      this.getCorporateAiItems('recomendacionesCorporativas'),
+      ['accion', 'Accion'],
+      (item, index) => [
+        `Prioridad: ${this.getCorporateAiText(item, ['prioridad', 'Prioridad'], String(index + 1))}`,
+        `Objetivo: ${this.getCorporateAiText(item, ['objetivo', 'Objetivo'], '-')}`,
+        `Responsable sugerido: ${this.getCorporateAiText(item, ['responsableSugerido', 'ResponsableSugerido'], '-')}`,
+        `Plazo: ${this.getCorporateAiText(item, ['plazo', 'Plazo'], '-')}`,
+        `Indicador: ${this.getCorporateAiText(item, ['indicador', 'Indicador'], '-')}`,
+        `Impacto esperado: ${this.getCorporateAiText(item, ['impactoEsperado', 'ImpactoEsperado'], 'medio')}`,
+      ],
+      (item) => toneColor(this.getCorporateAiText(item, ['impactoEsperado', 'ImpactoEsperado'], 'medio'))
+    );
+
+    addCards(
+      'Segmentos prioritarios',
+      this.getCorporateAiItems('segmentosPrioritarios'),
+      ['segmento', 'Segmento'],
+      (item) => [
+        `Hallazgo: ${this.getCorporateAiText(item, ['hallazgo', 'Hallazgo'], '-')}`,
+        `Evidencia: ${this.getCorporateAiText(item, ['evidencia', 'Evidencia'], '-')}`,
+        `Recomendación: ${this.getCorporateAiText(item, ['recomendacion', 'Recomendacion'], '-')}`,
+      ],
+      () => colors.orange
+    );
+
+    const comentarios = analysis?.analisisComentarios ?? analysis?.AnalisisComentarios ?? null;
+    if (comentarios) {
+      sectionTitle('Análisis de comentarios');
+      card('Comentarios abiertos', [
+        `Sentimiento general: ${this.getCorporateAiText(comentarios, ['sentimientoGeneral', 'SentimientoGeneral'], '-')}`,
+        this.getCorporateAiList(comentarios, ['temasRecurrentes', 'TemasRecurrentes']).length
+          ? `Temas recurrentes: ${this.getCorporateAiList(comentarios, ['temasRecurrentes', 'TemasRecurrentes']).join(', ')}`
+          : '',
+        this.getCorporateAiList(comentarios, ['alertas', 'Alertas']).length
+          ? `Alertas: ${this.getCorporateAiList(comentarios, ['alertas', 'Alertas']).join(', ')}`
+          : '',
+      ], colors.blue);
+
+      const citas = this.getCorporateAiList(comentarios, ['citasRepresentativas', 'CitasRepresentativas']);
+      if (citas.length) {
+        card('Citas representativas', citas.map((cita) => `"${cita}"`), colors.slate);
+      }
+    }
+
+    const pasos = this.getCorporateAiItems('proximosPasos');
+    if (pasos.length) {
+      sectionTitle('Próximos pasos');
+      pasos.forEach((step, index) => {
+        paragraph(`${index + 1}. ${step}`, 9.5, colors.text, 8);
+      });
+    }
+
+    pages.forEach((page, index) => {
+      commands = page;
+      line(margin, pageHeight - 38, pageWidth - margin, pageHeight - 38, colors.line);
+      text(`Generado desde JustLink · ${new Date().toLocaleDateString('es-GT')}`, margin, pageHeight - 22, 7.5, false, colors.slate);
+      text(`Página ${index + 1} de ${pages.length}`, pageWidth - margin - 58, pageHeight - 22, 7.5, false, colors.slate);
+    });
+
+    const objects: string[] = [];
+    objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+    objects.push(`<< /Type /Pages /Kids [${pages.map((_, index) => `${5 + index * 2} 0 R`).join(' ')}] /Count ${pages.length} >>`);
+    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+
+    pages.forEach((page, index) => {
+      const pageObject = 5 + index * 2;
+      const contentObject = pageObject + 1;
+      const stream = page.join('\n');
+      objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObject} 0 R >>`);
+      objects.push(`<< /Length ${byteLength(stream)} >>\nstream\n${stream}\nendstream`);
+    });
+
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    objects.forEach((object, index) => {
+      offsets.push(byteLength(pdf));
+      pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    });
+    const xrefOffset = byteLength(pdf);
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+    offsets.slice(1).forEach((offset) => {
+      pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    });
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+    return new Blob([toBytes(pdf)], { type: 'application/pdf' });
   }
 
   private getDesfavorableMetricKey(): 'pct_desfavorable' | 'pct_desfavorable_restrictivo' {
@@ -2334,10 +3054,10 @@ export class Dashboard1Component implements OnInit {
 
   getDesfavorableCardTooltip(): string {
     if (this.generalRestrictivo) {
-      return 'Mide la desfavorabilidad general usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica desfavorable, en lugar del Bottom-2 estándar.';
+      return 'Mide la insatisfacción usando el cálculo restrictivo.\n\nEn este modo se usa la versión restrictiva de la métrica de insatisfacción, en lugar del Bottom-2 estándar.';
     }
 
-    return 'Mide la desfavorabilidad general del clima.\n\nSe calcula sumando las dos opciones menos favorables de la escala (Bottom-2) y dividiéndolas entre el total de respuestas válidas.';
+    return 'Mide la insatisfacción general del clima.\n\nSe calcula sumando las dos opciones de mayor insatisfacción de la escala (Bottom-2) y dividiéndolas entre el total de respuestas válidas.';
   }
 
   getBottom1GaugeValue(): number {
@@ -2351,7 +3071,7 @@ export class Dashboard1Component implements OnInit {
   }
 
   getBottom1CardTooltip(): string {
-    return 'Muestra el porcentaje de respuestas ubicadas en la opción menos favorable de la escala.\n\nSe calcula como Bottom-1 sobre el total de respuestas válidas.';
+    return 'Muestra el porcentaje de respuestas ubicadas en la opción de mayor insatisfacción de la escala.\n\nSe calcula como Bottom-1 sobre el total de respuestas válidas.';
   }
 
   private colorByPct(value: number, inverted = false): string {
@@ -2359,8 +3079,8 @@ export class Dashboard1Component implements OnInit {
     if (!Number.isFinite(pct)) return this.COLOR_GRAY;
 
     const normalized = inverted ? (100 - pct) : pct;
-    if (normalized >= 91) return this.COLOR_GREEN;
-    if (normalized >= 80) return this.COLOR_YELLOW;
+    if (normalized >= 91) return this.COLOR_LIGHT_BLUE;
+    if (normalized >= 80) return this.COLOR_GREEN;
     if (normalized >= 60) return this.COLOR_ORANGE;
     return this.COLOR_RED;
   }
@@ -2480,7 +3200,16 @@ export class Dashboard1Component implements OnInit {
 
   async getAllMetricsAsync(filtro: string, filtroGf: string): Promise<void> {
 
+    const selectedClimaSnapshot = {
+      nombre: this.nombreFlujo,
+      objetivo: this.objetivoFlujo,
+      imagen: this.imgFlujo,
+    };
+
     this.clearAll();
+    this.nombreFlujo = selectedClimaSnapshot.nombre;
+    this.objetivoFlujo = selectedClimaSnapshot.objetivo;
+    this.imgFlujo = selectedClimaSnapshot.imagen;
 
     this.loadingGeneral = true;
     this.loadingPanorama = true;
@@ -2708,6 +3437,8 @@ export class Dashboard1Component implements OnInit {
       } else if (this.resultadoParaExcel && typeof this.resultadoParaExcel === 'object') {
         this.resultadoParaExcel.preguntasRango = [];
       }
+
+      this.listResponseCharts = this.buildListResponseCharts(data.respuestasTipoLista);
 
       //particiación por demográfico
       if(data.participacionPorDemografico){
@@ -2958,8 +3689,8 @@ export class Dashboard1Component implements OnInit {
     });
 
     const series: Array<{ name: string; data: number[] }> = [
-      { name: 'Favorable',     data: satData },
-      { name: 'Desfavorable',  data: insatData },
+      { name: 'Satisfacción',   data: satData },
+      { name: 'Insatisfacción', data: insatData },
     ];
 
     if (this.showNeutralMetrics) {

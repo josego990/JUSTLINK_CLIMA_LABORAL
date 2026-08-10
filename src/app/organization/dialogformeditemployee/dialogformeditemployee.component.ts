@@ -21,6 +21,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -59,6 +60,7 @@ import {
 @Component({
   selector: 'app-dialogformeditemployee',
   templateUrl: './dialogformeditemployee.component.html',
+  styleUrls: ['./dialogformeditemployee.component.scss'],
   imports: [
 
     MatDialogModule,MatCardModule,
@@ -75,8 +77,8 @@ import {
     MatButtonModule,
     CommonModule,
     MatProgressSpinnerModule,
-    
-    MatInputModule
+    MatInputModule,
+    MatAutocompleteModule
 ],
   
 })
@@ -125,6 +127,7 @@ export class DialogformEditEmployeeComponent implements OnInit {
   public selectedFieldType = 'text';
   public addSerieForm!: UntypedFormGroup;
   public selectedManagerName = '';
+  public autocompleteSearchByField: Record<string, string> = {};
  
   public id_card = 0;
   public title_card = '';
@@ -223,6 +226,16 @@ export class DialogformEditEmployeeComponent implements OnInit {
       country,
       this.translate.currentLang || localStorage.getItem('lang') || 'es',
     );
+  }
+
+  getEmployeeOrganizationLabel(): string {
+    return String(
+      this.data?.NombreOrganizacion ??
+      this.data?.nombreOrganizacion ??
+      this.data?.Organizacion ??
+      this.data?.organizacion ??
+      `ID ${this.data?.IdOrganizacion ?? ''}`
+    ).trim();
   }
 
   onPhoneCountryChange(): void {
@@ -336,6 +349,143 @@ export class DialogformEditEmployeeComponent implements OnInit {
     return [];
   }
 
+  private normalizeAutocompleteValue(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase();
+  }
+
+  private getEmployeeCargoValue(employee: any): string {
+    return String(
+      employee?.Cargo ??
+      employee?.cargo ??
+      employee?.Puesto ??
+      employee?.puesto ??
+      employee?.Position ??
+      employee?.position ??
+      ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  getCargoOptions(): string[] {
+    const cargosByKey = new Map<string, string>();
+
+    this.getManagerOptions().forEach((employee: any) => {
+      const cargo = this.getEmployeeCargoValue(employee);
+
+      if (!cargo) {
+        return;
+      }
+
+      const normalizedCargo = this.normalizeAutocompleteValue(cargo);
+
+      if (!cargosByKey.has(normalizedCargo)) {
+        cargosByKey.set(normalizedCargo, cargo);
+      }
+    });
+
+    return Array.from(cargosByKey.values()).sort((current, next) =>
+      current.localeCompare(next, 'es', { sensitivity: 'base' })
+    );
+  }
+
+  getFilteredCargoOptions(): string[] {
+    const normalizedSearch = this.normalizeAutocompleteValue(
+      String(this.autocompleteSearchByField['Cargo'] ?? '').trim()
+    );
+    const options = this.getCargoOptions();
+
+    return normalizedSearch
+      ? options.filter((cargo) => this.normalizeAutocompleteValue(cargo).includes(normalizedSearch))
+      : options;
+  }
+
+  onAutocompleteFocus(fieldKey: string): void {
+    this.autocompleteSearchByField = {
+      ...this.autocompleteSearchByField,
+      [fieldKey]: '',
+    };
+  }
+
+  onAutocompleteInput(fieldKey: string, event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+
+    this.autocompleteSearchByField = {
+      ...this.autocompleteSearchByField,
+      [fieldKey]: target?.value ?? '',
+    };
+  }
+
+  getDemographicFieldControlName(field: any): string {
+    return String(
+      field?.NombreCampo ??
+      field?.nombreCampo ??
+      field?.Nombre ??
+      field?.nombre ??
+      field?.Campo ??
+      field?.campo ??
+      ''
+    ).trim();
+  }
+
+  getDemographicAutocompleteKey(field: any): string {
+    return `demographic:${this.getDemographicFieldControlName(field)}`;
+  }
+
+  private getEmployeeDemographicValue(employee: any, fieldName: string): string {
+    const normalizedFieldName = this.normalizeAutocompleteValue(fieldName);
+    const matchingKey = Object.keys(employee ?? {}).find(
+      (key) => this.normalizeAutocompleteValue(key) === normalizedFieldName
+    );
+    const value = matchingKey ? employee?.[matchingKey] : employee?.[fieldName];
+
+    return String(value ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  getDemographicOptions(field: any): string[] {
+    const fieldName = this.getDemographicFieldControlName(field);
+    const valuesByKey = new Map<string, string>();
+
+    if (!fieldName) {
+      return [];
+    }
+
+    this.getManagerOptions().forEach((employee) => {
+      const value = this.getEmployeeDemographicValue(employee, fieldName);
+
+      if (!value) {
+        return;
+      }
+
+      const normalizedValue = this.normalizeAutocompleteValue(value);
+
+      if (!valuesByKey.has(normalizedValue)) {
+        valuesByKey.set(normalizedValue, value);
+      }
+    });
+
+    return Array.from(valuesByKey.values()).sort((current, next) =>
+      current.localeCompare(next, 'es', { sensitivity: 'base' })
+    );
+  }
+
+  getFilteredDemographicOptions(field: any): string[] {
+    const searchKey = this.getDemographicAutocompleteKey(field);
+    const normalizedSearch = this.normalizeAutocompleteValue(
+      String(this.autocompleteSearchByField[searchKey] ?? '').trim()
+    );
+    const options = this.getDemographicOptions(field);
+
+    return normalizedSearch
+      ? options.filter((option) => this.normalizeAutocompleteValue(option).includes(normalizedSearch))
+      : options;
+  }
+
   private getManagerNameById(managerId: number | null): string {
     if (!managerId) {
       return '';
@@ -380,7 +530,11 @@ export class DialogformEditEmployeeComponent implements OnInit {
         return;
       }
 
-      this.employeeFormX.get('IdEmpleadoJefe')?.setValue(result.id);
+      const managerControl = this.employeeFormX.get('IdEmpleadoJefe');
+
+      managerControl?.setValue(result.id);
+      managerControl?.markAsDirty();
+      managerControl?.updateValueAndValidity({ emitEvent: false });
       this.selectedManagerName = result.employee ? getEmployeeOptionFullName(result.employee) : '';
     });
   }
@@ -388,12 +542,16 @@ export class DialogformEditEmployeeComponent implements OnInit {
   private buildUpdatePayload(): any {
     const rawValue = this.employeeFormX.getRawValue();
     const { PhoneCountryIso, IdEmpleadoJefe, ...employeeData } = rawValue;
+    const normalizedManagerId = normalizeEmployeeManagerId(IdEmpleadoJefe);
 
     return {
       ...employeeData,
       IdEmpleado: this.data.Id,
       IdOrganizacion: this.data.IdOrganizacion,
-      IdEmpleadoJefe: normalizeEmployeeManagerId(IdEmpleadoJefe),
+      IdEmpleadoJefe: normalizedManagerId,
+      idEmpleadoJefe: normalizedManagerId,
+      IdJefe: normalizedManagerId,
+      idJefe: normalizedManagerId,
       Celular: buildFullPhoneNumber(PhoneCountryIso, rawValue.Celular),
     };
   }
@@ -453,16 +611,22 @@ export class DialogformEditEmployeeComponent implements OnInit {
   } finally {
     this.isSaving = false;
     this.employeeFormX.enable({ emitEvent: false });
+    this.employeeFormX.get('IdEmpleado')?.disable({ emitEvent: false });
   }
 }
 
   buildDemographicControlsFromData(data: any) {
     if (!data || !this.employeeFormX) return;
+    this.autocompleteSearchByField = {};
 
     // 1) Campos fijos que NO son demográficos
     const fixed = new Set<string>([
       'Id',
       'IdOrganizacion',
+      'NombreOrganizacion',
+      'nombreOrganizacion',
+      'Organizacion',
+      'organizacion',
       'Nombres',
       'Apellidos',
       'Cargo',
@@ -481,6 +645,14 @@ export class DialogformEditEmployeeComponent implements OnInit {
       'tipoEnvioEncuesta',    // por si llega en minúscula
       'FechaRegistro',        // usualmente no editable
       'estado',
+      'Estado',
+      'ESTADO',
+      'activo',
+      'Activo',
+      'ACTIVO',
+      'status',
+      'Status',
+      'STATUS',
       'camposDemograficos',
       'camposDemograficosOrganizacion',
       'employeeManagerOptions',

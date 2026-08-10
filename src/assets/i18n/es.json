@@ -5,6 +5,14 @@
     }
   },
   "MENUITEMS": {
+    "TURNSTILE": {
+      "TITLE": "Verificación de seguridad",
+      "DESCRIPTION": "Confirma la verificación antes de enviar tus respuestas.",
+      "REQUIRED": "Completa la verificación de seguridad antes de enviar la encuesta.",
+      "CONFIG_REQUIRED": "La verificación de seguridad no está configurada.",
+      "LOAD_ERROR": "No se pudo cargar la verificación. Recarga la página e inténtalo nuevamente.",
+      "EXPIRED": "La verificación expiró. Complétala nuevamente para continuar."
+    },
     "USER":{
       "POST": "Gerente"
     },
@@ -12,6 +20,9 @@
       "TEXT": "CLIMA LABORAL"
     },
 
+     "MAINPLNESCLIMA": {
+      "TEXT": "Planes de acción"
+    },
 
 
     "MAINDESEMPENIO": {
@@ -154,7 +165,12 @@
       "SENDINGBATCHES": "Cargando empleados Batch..",
       
       
-      "SENDTYPENONE": "Ninguno"
+      "SENDTYPENONE": "Ninguno",
+      "PRIMARYDATA": "Datos principales",
+      "CONTACTSENDDATA": "Contacto y envío",
+      "ASSIGNEDTO": "Asignado a",
+      "MANAGERPLACEHOLDER": "Sin jefe",
+      "DEMOGRAPHICCOLUMNS": "Campos demográficos"
 
     
 
@@ -218,6 +234,7 @@
     
       "TEXT": "CLIMA",
       "CREATE": "Crear nuevo clima",
+      "REFRESH": "Actualizar climas",
        "EDIT": "EDITAR ENCUESTA",
       "SEND": "ENVIOS",
       "FACTORS": "Factores",
@@ -333,6 +350,18 @@
         "COMPLETEDPERCENT": "Completado:"
         
 
+      },
+      "STRUCTURE": {
+        "TITLE": "Estructura de la evaluación",
+        "GRAND_FACTORS": "grandes factores",
+        "FACTORS": "factores",
+        "QUESTIONS": "preguntas",
+        "NO_QUESTIONS": "Este factor no tiene preguntas."
+      },
+      "EDITOR": {
+        "SETUP": "Clasificación de la encuesta",
+        "NEW_QUESTION": "Nueva pregunta",
+        "NO_GRAND_FACTOR": "No usar gran factor"
       }
 
     },
@@ -447,7 +476,10 @@
         "DESORGANIGRAMADESC": "Permite la visualización del organigrama para evaluaciones de desempeño",
 
         "DESADMIN": "Visualizar administración de Evaluaciones de desempeño",
-        "DESADMINDESC": "Permite la visualización del módulo de administración de Evaluaciones de desempeño"
+        "DESADMINDESC": "Permite la visualización del módulo de administración de Evaluaciones de desempeño",
+
+        "VIEWPLANEER": "Visualizar planes de acción para climas",
+        "ADMINPLANEER": "Permite la visualización del módulo de planes de seguimiento para climas organizacionales"
 
         
       }
@@ -474,6 +506,7 @@
 
     "LOGIN": {
       "WELCOME": "BIENVENIDO",
+      "WELCOME_DEMO": "BIENVENIDO AL MODO DEMO",
       "ACCESS": "Ingresar",
       "USERNAME": "Ususario",
       "USERNAMEREQUIRED": "Ususario es requerido",
@@ -545,13 +578,50 @@
     "TOUR": {
       "BTNADDQUIZ": "Crea",
       "BTNADDMSG": "Botón Agregar Nuevo Clima",
-      
-
-
-      "SEND": "ENVIAR ENCUESTA"
-        
-
-      
+      "SEND": "ENVIAR ENCUESTA",
+      "SYSTEM_GUIDE": "Guía del sistema",
+      "NAV": {
+        "PREV": "Anterior",
+        "NEXT": "Siguiente",
+        "DONE": "Finalizar",
+        "CLOSE": "Cerrar"
+      },
+      "CLIMATE_LIST": {
+        "ADD_TITLE": "Crear clima",
+        "ADD_TEXT": "Crea un nuevo clima para configurar posteriormente sus factores y preguntas.",
+        "CARD_TITLE": "Información del clima",
+        "CARD_TEXT": "Cada tarjeta resume la configuración y el estado actual de un clima.",
+        "STATUS_TITLE": "Seguimiento",
+        "STATUS_TEXT": "Consulta en tiempo real el avance de creación, envío, inicio y finalización de las encuestas.",
+        "EDIT_TITLE": "Editar clima",
+        "EDIT_TEXT": "Abre la configuración del clima para administrar grandes factores, factores y preguntas.",
+        "SEND_TITLE": "Administrar envíos",
+        "SEND_TEXT": "Abre el control de creación y envío de encuestas para los empleados."
+      },
+      "EDIT_CLIMATE": {
+        "OVERVIEW_TITLE": "Edición del clima",
+        "OVERVIEW_TEXT": "Desde este diálogo puedes estructurar el clima y administrar todas sus preguntas.",
+        "SETTINGS_TITLE": "Opciones del clima",
+        "SETTINGS_TEXT": "Aquí puedes activar o desactivar el clima, eliminarlo, cargar preguntas desde Excel o descargar la plantilla.",
+        "FACTORS_TITLE": "Grandes factores y factores",
+        "FACTORS_TEXT": "Selecciona la clasificación de la pregunta o crea nuevos grandes factores y factores. También puedes trabajar sin gran factor.",
+        "QUESTION_BUILDER_TITLE": "Nueva pregunta",
+        "QUESTION_BUILDER_TEXT": "Selecciona el tipo de pregunta, escribe su texto y completa las opciones que correspondan antes de guardarla.",
+        "QUESTION_LIST_TITLE": "Preguntas agregadas",
+        "QUESTION_LIST_TEXT": "Revisa, edita, activa, elimina y reordena las preguntas existentes dentro de sus factores."
+      },
+      "SEND_CLIMATE": {
+        "OVERVIEW_TITLE": "Administración de envíos",
+        "OVERVIEW_TEXT": "Este diálogo muestra el estado del clima y permite administrar las encuestas de cada empleado.",
+        "ACTIONS_TITLE": "Acciones masivas",
+        "ACTIONS_TEXT": "Crea las encuestas para los empleados activos y envía las que se encuentren pendientes.",
+        "SUMMARY_TITLE": "Resumen de estados",
+        "SUMMARY_TEXT": "Estas tarjetas muestran cuántas encuestas están creadas, enviadas, iniciadas y contestadas.",
+        "FILTERS_TITLE": "Filtros de resultados",
+        "FILTERS_TEXT": "Filtra los registros por canal de envío o estado de la encuesta para localizar casos específicos.",
+        "TABLE_TITLE": "Detalle por empleado",
+        "TABLE_TEXT": "Consulta los datos y el estado de cada encuesta. La última columna permite crear o enviar una encuesta individual."
+      }
     },
 
 
@@ -641,11 +711,11 @@
 
   "DESEMPENO_MENUITEMS": {
     "MAIN": {
-      "TEXT": "EVALUACION DE DESEMPEÑOx"
+      "TEXT": "DESEMPEÑO"
     },
     "DASHBOARD": {
       "TEXT": "Dashboard",
-      "BREADCRUMB_HOME": "Home",
+      "BREADCRUMB_HOME": "Inicio",
       "ORGANIZATION": "Organización",
       "EVALUATION": "Evaluación de desempeño",
       "EXPORT_EXCEL": "Exportar Excel",
@@ -787,6 +857,20 @@
       "EDIT_SURVEY": "Editar",
       "SENDS": "Envíos",
       "MODEL": "Ver diagrama de evaluación",
+      "DUPLICATE_MODEL": "Duplicar modelo",
+      "DUPLICATE_MODEL_HELP": "Crea una copia completa de este modelo de evaluación.",
+      "DUPLICATE_MODEL_DIALOG_TITLE": "Duplicar modelo de evaluación",
+      "DUPLICATE_MODEL_WARNING": "Se copiarán la configuración, participantes, escenarios, dimensiones, criterios e ítems evaluativos. El nuevo modelo se creará en estado borrador.",
+      "DUPLICATE_MODEL_NEW_NAME": "Nombre del nuevo modelo",
+      "DUPLICATE_MODEL_NAME_REQUIRED": "Ingresa el nombre del nuevo modelo.",
+      "DUPLICATE_MODEL_NAME_TOO_LONG": "El nombre no puede superar los 200 caracteres.",
+      "DUPLICATE_MODEL_NAME_EXISTS": "Ya existe un modelo con este nombre en la organización.",
+      "DUPLICATE_MODEL_CONFIRM": "Duplicar",
+      "DUPLICATE_MODEL_COPY_SUFFIX": "Copia",
+      "DUPLICATE_MODEL_SUCCESS_TITLE": "Modelo duplicado",
+      "DUPLICATE_MODEL_SUCCESS_TEXT": "El modelo \"{{name}}\" fue creado correctamente.",
+      "DUPLICATE_MODEL_ERROR_TITLE": "No se pudo duplicar el modelo",
+      "DUPLICATE_MODEL_ERROR_TEXT": "Ocurrió un error al crear la copia del modelo de evaluación.",
       "EMPTY_TITLE": "No hay evaluaciones aún",
       "EMPTY_TEXT": "Crea la primera evaluación para esta organización usando el catálogo y los ítems evaluativos disponibles.",
       "EDIT_TITLE": "Editar evaluación",
@@ -860,6 +944,7 @@
       "POSITION_MODELS_TITLE": "Criterios de evaluación e ítems evaluativos por puesto",
       "POSITION_MODELS_HELP": "Configura por puesto y escenario los criterios de evaluación y sus ítems evaluativos.",
       "EVALUATOR_ONLY": "Solo evaluador",
+      "EVALUATOR_ONLY_NO_MANAGER": "Este puesto quedó como solo evaluador porque ninguno de sus participantes tiene un jefe seleccionado que pueda evaluarlo en el modelo 90.",
       "POSITION_MODELS_EMPTY": "Selecciona al menos un puesto para configurar sus dimensiones, criterios de evaluación e ítems evaluativos.",
       "POSITION_QUESTION_COUNT": "{{count}} ítems evaluativos",
       "SCENARIO_NOT_APPLICABLE": "No aplica",
@@ -877,6 +962,10 @@
       "SCENARIO": "Escenario",
       "SCENARIO_ACTIVE": "Activo",
       "WEIGHT": "Ponderación",
+      "ACTIVE_SCENARIOS_COUNT": "Escenarios activos: {{count}}",
+      "WEIGHT_INCOMPLETE": "Ponderación pendiente",
+      "POSITION_WEIGHT_WARNING": "Revisa las ponderaciones de dimensiones, escenarios y criterios de este puesto. Cada grupo configurado debe sumar 100%.",
+      "SCENARIO_WEIGHT_WARNING": "Revisa las ponderaciones de dimensiones y criterios de este escenario. Cada grupo configurado debe sumar 100%.",
       "REQUIRED_RATING_LEVEL": "Nivel de exigencia",
       "REQUIRED_RATING_LEVEL_HINT": "Calificación deseada de 1 a 5",
       "REQUIRED_RATING_LEVEL_VALUE": "Exigencia: {{level}}/5.00",
@@ -925,23 +1014,86 @@
       "SAMPLE_JSON_HELP": "Este JSON corresponde al payload que se enviará al guardar el modelo.",
       "CLOSE": "Cerrar",
       "SAVE_EVALUATION": "Guardar evaluación",
+      "EXCEL_IMPORT": {
+        "TITLE": "Importación Excel",
+        "SUBTITLE": "Participantes y modelo por puesto",
+        "DOWNLOAD_TEMPLATE": "Descargar plantilla",
+        "UPLOAD": "Cargar Excel",
+        "POSITIONS": "puestos",
+        "DIMENSIONS": "dimensiones",
+        "CRITERIA": "criterios",
+        "ITEMS": "ítems",
+        "NEW_DIMENSIONS": "dimensiones nuevas",
+        "NEW_CRITERIA": "criterios nuevos",
+        "NEW_ITEMS": "ítems nuevos",
+        "EXISTING_SKIPPED": "existentes omitidos",
+        "OMITTED_SCENARIOS": "escenarios no aplicables omitidos",
+        "SUCCESS_TITLE": "Excel procesado correctamente",
+        "SUCCESS_WITH_WARNINGS_TITLE": "Excel procesado con advertencias",
+        "SUCCESS_TEXT": "Se procesaron {{positions}} puestos y se agregaron {{dimensions}} dimensiones, {{criteria}} criterios y {{items}} ítems nuevos. Se omitieron {{skipped}} valores que ya existían para el mismo puesto y escenario. Los cambios se guardarán en la base únicamente al guardar la evaluación.",
+        "OMITTED_SCENARIOS_WARNING": "Los siguientes escenarios no aplican según la estructura actual de empleados y no fueron incorporados. Los demás datos se cargaron normalmente:",
+        "WEIGHTS_RECALCULATED": "Las ponderaciones de los escenarios aplicables se ajustaron proporcionalmente para conservar un total de 100% por puesto.",
+        "ERROR_TITLE": "No se pudo cargar el Excel",
+        "UNEXPECTED_ERROR": "Ocurrió un error inesperado al leer el archivo.",
+        "README_TITLE": "PLANTILLA DE EVALUACIÓN DE DESEMPEÑO",
+        "README_SHEET": "Cada hoja de datos representa un puesto. La columna Puesto debe contener el nombre exacto de un puesto existente en la organización.",
+        "README_POSITION": "Duplica la hoja de ejemplo para agregar puestos. El nombre de la pestaña puede abreviarse, pero no cambies los encabezados ni el valor completo de Puesto.",
+        "README_TYPES": "Tipos admitidos: Likert de 5 niveles y Pregunta abierta.",
+        "README_WEIGHTS": "Las dimensiones, los escenarios de cada puesto y los criterios de cada dimensión deben sumar 100%.",
+        "README_ATOMIC": "La carga se valida completa y se combina con el borrador. Los valores existentes por puesto y escenario se omiten para evitar duplicados; nada se guarda en la base hasta pulsar Guardar evaluación.",
+        "AVAILABLE_SCENARIOS": "ESCENARIOS DISPONIBLES PARA EL TIPO DE MODELO",
+        "AVAILABLE_SCALES": "ESCALAS DISPONIBLES"
+      },
+      "EXCEL_VALIDATIONS": {
+        "INVALID_FILE": "Selecciona un archivo Excel con extensión .xlsx o .xls.",
+        "NO_DATA_SHEETS": "El libro no contiene hojas de puestos con datos.",
+        "POSITION_NOT_FOUND": "Hoja \"{{sheet}}\": el puesto \"{{value}}\" no existe o no está activo en la organización.",
+        "MULTIPLE_POSITIONS_IN_SHEET": "Hoja \"{{sheet}}\": todas las filas deben pertenecer al mismo puesto.",
+        "DUPLICATE_POSITION_SHEET": "El puesto \"{{position}}\" aparece en más de una hoja: \"{{previousSheet}}\" y \"{{sheet}}\".",
+        "EMPTY_SHEET": "Hoja \"{{sheet}}\": no contiene filas de datos.",
+        "MISSING_COLUMNS": "Hoja \"{{sheet}}\": faltan las columnas obligatorias {{columns}}.",
+        "REQUIRED_VALUE": "Hoja \"{{sheet}}\", fila {{row}}: el campo {{field}} es obligatorio.",
+        "INVALID_SCENARIO": "Hoja \"{{sheet}}\", fila {{row}}: el escenario \"{{value}}\" no existe o no corresponde al tipo de modelo.",
+        "INVALID_WEIGHT": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} debe ser un número entre 0 y 100.",
+        "INVALID_REQUIRED_LEVEL": "Hoja \"{{sheet}}\", fila {{row}}: el nivel de exigencia debe estar entre 1 y 5.",
+        "INVALID_ITEM_TYPE": "Hoja \"{{sheet}}\", fila {{row}}: el tipo \"{{value}}\" no está permitido. Utiliza Likert de 5 niveles o Pregunta abierta.",
+        "INVALID_CODE": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} solo admite letras, números, guion y guion bajo, con un máximo de 50 caracteres.",
+        "INVALID_SCALE": "Hoja \"{{sheet}}\", fila {{row}}: la escala \"{{value}}\" no existe o no está disponible.",
+        "DEFAULT_SCALE": "escala predeterminada",
+        "SCALE_WITHOUT_LEVELS": "Hoja \"{{sheet}}\", fila {{row}}: la escala \"{{value}}\" no tiene niveles configurados.",
+        "INVALID_OPTION_COUNT": "Hoja \"{{sheet}}\", fila {{row}}: se esperaban {{expected}} opciones Likert y se recibieron {{actual}}.",
+        "INVALID_OPTIONS": "Hoja \"{{sheet}}\", fila {{row}}: las opciones Likert no coinciden, en texto y orden, con la escala \"{{scale}}\".",
+        "OPEN_WITH_OPTIONS": "Hoja \"{{sheet}}\", fila {{row}}: una pregunta abierta no debe incluir opciones Likert.",
+        "INCONSISTENT_VALUE": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} no coincide con las demás filas del mismo grupo.",
+        "INCONSISTENT_ENTITY": "Hoja \"{{sheet}}\", fila {{row}}: los datos repetidos de \"{{entity}}\" no son consistentes.",
+        "DUPLICATE_CODE": "Hoja \"{{sheet}}\", fila {{row}}: el código \"{{code}}\" ya se utilizó para otro registro.",
+        "DUPLICATE_ITEM": "Hoja \"{{sheet}}\", fila {{row}}: el ítem \"{{item}}\" está duplicado dentro del criterio.",
+        "SCENARIO_TOTAL": "Puesto \"{{position}}\": las ponderaciones de escenarios suman {{total}}% y deben sumar 100%.",
+        "DIMENSION_TOTAL": "Las ponderaciones únicas de las dimensiones suman {{total}}% y deben sumar 100%.",
+        "CRITERION_TOTAL": "Puesto \"{{position}}\", escenario {{scenario}}, dimensión \"{{dimension}}\": los criterios suman {{total}}% y deben sumar 100%.",
+        "SCENARIO_NOT_APPLICABLE": "Hoja \"{{sheet}}\": el escenario \"{{scenario}}\" no aplica para el puesto \"{{position}}\" según la estructura actual de empleados.",
+        "DEMO_DIMENSION_LIMIT": "Modo demo: el archivo contiene {{actual}} dimensiones y el máximo permitido es {{limit}}.",
+        "DEMO_CRITERION_LIMIT": "Modo demo: el puesto \"{{position}}\" tiene {{actual}} criterios en la dimensión \"{{dimension}}\" y el máximo permitido es {{limit}}.",
+        "DEMO_ITEM_LIMIT": "Modo demo: el criterio \"{{criterion}}\" tiene {{actual}} ítems y el máximo permitido es {{limit}}."
+      },
       "SEND_DIALOG_TITLE": "Envíos",
       "SEND_DIALOG_HELP": "Administra qué colaboradores deben evaluar, a quiénes evaluarán y el estado persistido de cada envío.",
       "SEND_SUMMARY_EVALUATORS": "Evaluadores",
       "SEND_SUMMARY_ASSIGNMENTS": "Asignaciones",
       "SEND_ASSIGNMENTS_TITLE": "Matriz de envíos por evaluador",
       "SEND_ASSIGNMENTS_HELP": "Mostrando {{count}} evaluadores y el estado registrado de sus envíos.",
-      "SEND_CREATE": "Crear envíos",
+      "SEND_CREATE": "Asignar encuestas",
       "SEND_EVALUATOR": "Evaluador",
       "SEND_EVALUATEES": "Empleados a evaluar",
       "SEND_EVALUATEE_PLACEHOLDER": "Selecciona evaluados",
       "SEND_EVALUATEE_PLACEHOLDER_COUNT": "Empleados a evaluar ({{count}})",
       "SEND_TYPE": "Tipo de envío",
+      "SEND_DATE": "Fecha de envío",
       "SEND_STATUS": "Estado envío",
       "SEND_ACTIONS": "Acciones",
       "SEND_LAST_SENT": "Última actualización",
       "SEND_ANSWERED_PROGRESS": "{{answered}} de {{total}} contestadas",
-      "SEND_INDIVIDUAL": "Crear envío individual",
+      "SEND_INDIVIDUAL": "Asignar encuesta individual",
       "SEND_EVALUATION": "Enviar evaluación",
       "PREVIEW_EMAIL": "Previsualizar correo",
       "EMAIL_PREVIEW_TITLE": "Vista previa del correo",
@@ -950,6 +1102,7 @@
       "NO_POSITION": "Sin puesto",
       "NO_SEGMENT": "Sin clasificar",
       "SEND_TYPES": {
+        "NINGUNO": "Ninguno",
         "CORREO": "Correo",
         "WHATSAPP": "Whatsapp",
         "AMBOS": "Correo y Whatsapp"
@@ -1133,10 +1286,14 @@
         "ORG_REQUIRED_TEXT": "Selecciona una organización antes de crear una evaluación.",
         "NAME_REQUIRED_TITLE": "Nombre requerido",
         "NAME_REQUIRED_TEXT": "Ingresa el nombre de la evaluación.",
+        "GENERAL_DATA_REQUIRED_TITLE": "Datos generales incompletos",
+        "GENERAL_DATA_REQUIRED_TEXT": "Completa el nombre de la evaluación, descripción, tipo, estado del modelo y escala para guardar y continuar después.",
         "DATES_REQUIRED_TITLE": "Fechas requeridas",
         "DATES_REQUIRED_TEXT": "Ingresa la fecha de inicio y la fecha de cierre.",
         "DATE_RANGE_TITLE": "Rango de fechas inválido",
         "DATE_RANGE_TEXT": "La fecha de cierre no puede ser anterior a la fecha de inicio.",
+        "POSITION_CATALOG_TITLE": "Puesto pendiente de sincronización",
+        "POSITION_CATALOG_TEXT": "El puesto \"{{position}}\" está seleccionado, pero todavía no tiene un identificador válido en el catálogo de desempeño. Recarga los catálogos e intenta nuevamente.",
         "DIMENSION_WEIGHT_TITLE": "Ponderación incompleta",
         "DIMENSION_WEIGHT_TEXT": "La suma de las dimensiones debe ser 100%.",
         "COMPETENCY_WEIGHT_TITLE": "Ponderación de criterios incompleta",
@@ -1154,6 +1311,13 @@
         "QUESTION_SCENARIO_REQUIRED_TEXT": "Selecciona al menos un escenario para el ítem evaluativo.",
         "QUESTION_POSITION_REQUIRED_TITLE": "Puesto requerido",
         "QUESTION_POSITION_REQUIRED_TEXT": "Selecciona al menos un puesto o cambia el alcance a todos los puestos.",
+        "DEMO_LIMIT_TITLE": "Límite del modo demo",
+        "DEMO_MODEL_LIMIT_TEXT": "El modo demo permite crear un máximo de {{limit}} modelo de evaluación de desempeño por organización.",
+        "DEMO_DIMENSION_LIMIT_TEXT": "El modo demo permite un máximo de {{limit}} dimensiones por modelo de evaluación.",
+        "DEMO_CRITERIA_LIMIT_TEXT": "La dimensión \"{{dimension}}\" admite un máximo de {{limit}} criterios de evaluación por puesto y escenario en modo demo.",
+        "DEMO_ITEM_LIMIT_TEXT": "El criterio \"{{criterion}}\" admite un máximo de {{limit}} ítems evaluativos en modo demo.",
+        "DEMO_RESEND_BLOCKED_TITLE": "Reenvío no disponible",
+        "DEMO_RESEND_BLOCKED_TEXT": "Esta evaluación ya fue enviada. El modo demo no permite volver a enviarla.",
         "SAVE_TITLE": "Evaluación lista",
         "SAVE_TEXT": "El modelo de evaluación se guardó correctamente.",
         "SAVE_ERROR_TITLE": "No se pudo guardar el modelo",

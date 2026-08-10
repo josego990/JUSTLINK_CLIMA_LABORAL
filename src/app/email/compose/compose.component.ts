@@ -29,6 +29,7 @@ import { Router } from '@angular/router';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { relativeTimeThreshold } from 'moment';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
+import { Subscription } from 'rxjs';
 
 type ToTarget = 'correo' | 'pendiente_llenar' | 'encuestas_completadas' | 'todos_activos';
 type OrganizationOption = { Id: number; Nombre: string };
@@ -108,6 +109,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   public loadingOrganizations = false;
   public loadingClimas = false;
   public dataSourceOrganizations: any = [];
+  private selectedOrganizationSubscription?: Subscription;
 
   private validateEmailList = (control: AbstractControl): ValidationErrors | null => {
     const raw = String(control.value ?? '').trim();
@@ -288,10 +290,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
       this.translate.use(lang);
     });
 
-    if (this.authService.currentUserValue?.roles[0].roleName === 'admin') {
-      this.getOrganizations();
-    }
-    else {
+    if (this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
       //validar permisos de acciones
       const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
@@ -315,14 +314,34 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
         //this.btnDisabled = true;
       }
 
-      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-
-      
-
-
     }
 
+    this.setupSelectedOrganizationListener();
 
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizationService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.organizationCtrl.setValue(null, { emitEvent: false });
+        this.idOrganization = 0;
+        this.nombreOrganizacion = '';
+        this.dataSourceClimas = [];
+        this.resetSelectedClima();
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+      this.organizationCtrl.setValue(organization, { emitEvent: false });
+
+      if (this.idOrganization === organization.Id) {
+        this.nombreOrganizacion = organization.Nombre;
+        return;
+      }
+
+      this.onOrganizationChange(organization);
+    });
   }
 
   getEmailTemplatesByOrg(): void {
@@ -453,6 +472,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   };
 
   ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
     // Destruye el editor correctamente
     this.gjs?.destroy();
   }

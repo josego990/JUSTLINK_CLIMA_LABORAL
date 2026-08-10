@@ -200,7 +200,30 @@
 
               
         
-                    <button mat-raised-button color="primary" (click)="onSubmit()">{{'MENUITEMS.ORGANIZATION.SAVE' | translate}}</button>
+                    <div class="save-actions">
+                      <button
+                        class="save-org-button"
+                        mat-raised-button
+                        color="primary"
+                        type="button"
+                        [disabled]="isSavingOrganization"
+                        (click)="onSubmit()"
+                      >
+                        <mat-spinner
+                          *ngIf="isSavingOrganization"
+                          class="save-button-spinner"
+                          diameter="18"
+                        ></mat-spinner>
+                        <span>
+                          {{ isSavingOrganization ? 'Guardando...' : ('MENUITEMS.ORGANIZATION.SAVE' | translate) }}
+                        </span>
+                      </button>
+
+                      <div class="saving-organization-message" *ngIf="isSavingOrganization">
+                        <mat-spinner diameter="24"></mat-spinner>
+                        <span>Guardando organización, por favor espera...</span>
+                      </div>
+                    </div>
                 
 
 

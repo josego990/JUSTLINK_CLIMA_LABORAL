@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -13,6 +13,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '@core';
 import { TranslateModule } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -64,7 +65,7 @@ interface DesOrganizationOption {
   ],
   templateUrl: './des-campos-demograficos.component.html',
 })
-export class DesCamposDemograficosComponent implements OnInit {
+export class DesCamposDemograficosComponent implements OnDestroy, OnInit {
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
   readonly pageTitleKey = 'DESEMPENO_MENUITEMS.CAMPOS_DEMOGRAFICOS.TEXT';
   readonly tipoDatoOptions = [
@@ -105,6 +106,7 @@ export class DesCamposDemograficosComponent implements OnInit {
   public editingOptionId: number | null = null;
   public selectedOptionsField: DesDemographicField | null = null;
   public selectedOrganizationId: number | null = null;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -122,7 +124,29 @@ export class DesCamposDemograficosComponent implements OnInit {
       }
     });
 
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        void this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      void this.onOrganizationChange(organization.Id);
+    });
   }
 
   get isEditingField(): boolean {

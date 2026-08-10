@@ -1,4 +1,4 @@
-import { Component, OnInit, TemplateRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, TemplateRef } from '@angular/core';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { CommonModule, DatePipe } from '@angular/common'; 
@@ -18,10 +18,12 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subscription } from 'rxjs';
 
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
@@ -70,6 +72,10 @@ export function buildDemographicList(
     const defaultFixed = [
       'Id',
       'IdOrganizacion',
+      'NombreOrganizacion',
+      'nombreOrganizacion',
+      'Organizacion',
+      'organizacion',
       'Nombres',
       'Apellidos',
       'Cargo',
@@ -151,7 +157,8 @@ function isValidPhoneE164(value: any): boolean {
     CommonModule,
     MatProgressSpinnerModule,
     DatePipe,
-    MatInputModule
+    MatInputModule,
+    MatAutocompleteModule
 ],
   
 })
@@ -160,7 +167,7 @@ function isValidPhoneE164(value: any): boolean {
 
 
 
-export class CrearEmpleadosComponent implements OnInit {
+export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   public employeeForm: UntypedFormGroup;
   public dialogRef?: MatDialogRef<CrearEmpleadosComponent> 
   private employeeDialogRef?: MatDialogRef<unknown>;
@@ -169,17 +176,25 @@ export class CrearEmpleadosComponent implements OnInit {
 
   public dataSourceOrganizations:any = []; 
   public dataSourceEmployees:any = [];
+  public cargoOptions: string[] = [];
+  public filteredCargoOptions: string[] = [];
+  public demographicOptionsByField: Record<string, string[]> = {};
+  public filteredDemographicOptionsByField: Record<string, string[]> = {};
   public idOrganization =  0;
   file: File | null = null;
   public selectedFile = {};
   public isButtonDisabled: boolean = true;
   public btnDisabled: boolean = false;
+  public isSavingNewEmployee = false;
   camposDinamicos: string[] = [];
   camposDemograficosOrganizacion: any[] = [];
   langStoreValue?: string;
   public workbook: any | null = null;
   public jsonDatax: any | null = null;
   public selectedManagerName = '';
+  private selectedOrganizationSubscription?: Subscription;
+  private cargoValueSubscription?: Subscription;
+  private demographicValueSubscriptions: Subscription[] = [];
 
   public s3objectsServer  = '';
   public templateExcelFileNameSpanish = '';
@@ -257,6 +272,9 @@ export class CrearEmpleadosComponent implements OnInit {
     });
 
     this.applyPhoneControlValidation(this.employeeForm);
+    this.cargoValueSubscription = this.employeeForm.get('Cargo')?.valueChanges.subscribe((value) => {
+      this.updateFilteredCargoOptions(value);
+    });
   }
 
   
@@ -341,11 +359,7 @@ export class CrearEmpleadosComponent implements OnInit {
     });
 
     //validar primero si es admin
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      console.log('ES ADMIN!');
-      this.getOrganizations();
-    }
-    else {
+    if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
     //validar permisos de acciones
     const permisonDownloadExcelEmployee = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'descargaexcelempleado');
@@ -369,12 +383,40 @@ export class CrearEmpleadosComponent implements OnInit {
       this.accessToUploadExcelEmployee = false;
       this.isButtonDisabled = true;
     }
-
-
-    this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
     }
 
+    this.setupSelectedOrganizationListener();
 
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+    this.cargoValueSubscription?.unsubscribe();
+    this.clearDemographicValueSubscriptions();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.idOrganization = 0;
+        this.employeeForm.get('IdOrganizacion')?.setValue(null);
+        this.dataSourceEmployees = [];
+        this.refreshCargoOptions();
+        this.clearDemographicAutocompleteOptions();
+        this.camposDemograficosOrganizacion = [];
+        this.isButtonDisabled = true;
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.idOrganization === organization.Id) {
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
   }
 
   private getCurrentLanguage(): string {
@@ -512,6 +554,170 @@ export class CrearEmpleadosComponent implements OnInit {
     return Array.isArray(this.dataSourceEmployees) ? this.dataSourceEmployees : [];
   }
 
+  private normalizeCargoSearchValue(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase();
+  }
+
+  private getEmployeeCargoValue(employee: any): string {
+    return String(
+      employee?.Cargo ??
+      employee?.cargo ??
+      employee?.Puesto ??
+      employee?.puesto ??
+      employee?.Position ??
+      employee?.position ??
+      ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private refreshCargoOptions(): void {
+    const cargosByKey = new Map<string, string>();
+
+    this.getLoadedEmployeeManagerOptions().forEach((employee: any) => {
+      const cargo = this.getEmployeeCargoValue(employee);
+
+      if (!cargo) {
+        return;
+      }
+
+      const normalizedCargo = this.normalizeCargoSearchValue(cargo);
+
+      if (!cargosByKey.has(normalizedCargo)) {
+        cargosByKey.set(normalizedCargo, cargo);
+      }
+    });
+
+    this.cargoOptions = Array.from(cargosByKey.values()).sort((current, next) =>
+      current.localeCompare(next, 'es', { sensitivity: 'base' })
+    );
+    this.updateFilteredCargoOptions(this.employeeForm.get('Cargo')?.value);
+  }
+
+  private updateFilteredCargoOptions(value: any): void {
+    const normalizedSearch = this.normalizeCargoSearchValue(String(value ?? '').trim());
+
+    this.filteredCargoOptions = normalizedSearch
+      ? this.cargoOptions.filter((cargo) => this.normalizeCargoSearchValue(cargo).includes(normalizedSearch))
+      : [...this.cargoOptions];
+  }
+
+  private clearDemographicValueSubscriptions(): void {
+    this.demographicValueSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.demographicValueSubscriptions = [];
+  }
+
+  private clearDemographicAutocompleteOptions(): void {
+    this.clearDemographicValueSubscriptions();
+    this.demographicOptionsByField = {};
+    this.filteredDemographicOptionsByField = {};
+  }
+
+  getDemographicFieldControlName(field: any): string {
+    return this.getDemographicFieldName(field);
+  }
+
+  getFilteredDemographicOptions(field: any): string[] {
+    const fieldName = this.getDemographicFieldControlName(field);
+    return this.filteredDemographicOptionsByField[fieldName] ?? [];
+  }
+
+  private getEmployeeDemographicValue(employee: any, fieldName: string): string {
+    const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
+    const matchingKey = Object.keys(employee ?? {}).find(
+      (key) => this.normalizeEmployeeColumnKey(key) === normalizedFieldName
+    );
+    const value = matchingKey ? employee?.[matchingKey] : employee?.[fieldName];
+
+    return String(value ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private updateFilteredDemographicOptions(fieldName: string, value: any): void {
+    const normalizedSearch = this.normalizeCargoSearchValue(String(value ?? '').trim());
+    const options = this.demographicOptionsByField[fieldName] ?? [];
+
+    this.filteredDemographicOptionsByField = {
+      ...this.filteredDemographicOptionsByField,
+      [fieldName]: normalizedSearch
+        ? options.filter((option) => this.normalizeCargoSearchValue(option).includes(normalizedSearch))
+        : [...options],
+    };
+  }
+
+  private updateAllFilteredDemographicOptions(): void {
+    this.camposDemograficosOrganizacion.forEach((field) => {
+      const fieldName = this.getDemographicFieldControlName(field);
+
+      if (!fieldName) {
+        return;
+      }
+
+      this.updateFilteredDemographicOptions(fieldName, this.employeeForm.get(fieldName)?.value);
+    });
+  }
+
+  private refreshDemographicOptions(): void {
+    const optionsByField: Record<string, string[]> = {};
+
+    this.camposDemograficosOrganizacion.forEach((field) => {
+      const fieldName = this.getDemographicFieldControlName(field);
+
+      if (!fieldName) {
+        return;
+      }
+
+      const valuesByKey = new Map<string, string>();
+
+      this.getLoadedEmployeeManagerOptions().forEach((employee) => {
+        const value = this.getEmployeeDemographicValue(employee, fieldName);
+
+        if (!value) {
+          return;
+        }
+
+        const normalizedValue = this.normalizeCargoSearchValue(value);
+
+        if (!valuesByKey.has(normalizedValue)) {
+          valuesByKey.set(normalizedValue, value);
+        }
+      });
+
+      optionsByField[fieldName] = Array.from(valuesByKey.values()).sort((current, next) =>
+        current.localeCompare(next, 'es', { sensitivity: 'base' })
+      );
+    });
+
+    this.demographicOptionsByField = optionsByField;
+    this.updateAllFilteredDemographicOptions();
+  }
+
+  private setupDemographicAutocompleteControls(): void {
+    this.clearDemographicValueSubscriptions();
+
+    this.camposDemograficosOrganizacion.forEach((field) => {
+      const fieldName = this.getDemographicFieldControlName(field);
+      const control = this.employeeForm.get(fieldName);
+
+      if (!fieldName || !control) {
+        return;
+      }
+
+      const subscription = control.valueChanges.subscribe((value) => {
+        this.updateFilteredDemographicOptions(fieldName, value);
+      });
+
+      this.demographicValueSubscriptions.push(subscription);
+    });
+
+    this.refreshDemographicOptions();
+  }
+
   openManagerDialog(): void {
     const dialogRef = this.dialogItemModel.open<
       EmployeeManagerSelectDialogComponent,
@@ -537,13 +743,28 @@ export class CrearEmpleadosComponent implements OnInit {
         return;
       }
 
-      this.employeeForm.get('IdEmpleadoJefe')?.setValue(result.id);
+      const managerControl = this.employeeForm.get('IdEmpleadoJefe');
+
+      managerControl?.setValue(result.id);
+      managerControl?.markAsDirty();
+      managerControl?.updateValueAndValidity({ emitEvent: false });
       this.selectedManagerName = result.employee ? getEmployeeOptionFullName(result.employee) : '';
     });
   }
 
+  private getSelectedOrganizationId(): number {
+    const organizationId = Number(
+      this.organizacionService.selectedOrganizationSnapshot?.Id ??
+      this.idOrganization ??
+      this.employeeForm.getRawValue()?.IdOrganizacion
+    );
+
+    return Number.isFinite(organizationId) && organizationId > 0 ? organizationId : 0;
+  }
+
   private buildEmployeePayload(): any {
     const rawValue = this.employeeForm.getRawValue();
+    const selectedOrganizationId = this.getSelectedOrganizationId();
     const {
       IdOrganizacion: _idOrganizacion,
       PhoneCountryIso,
@@ -551,10 +772,16 @@ export class CrearEmpleadosComponent implements OnInit {
       ...employeeData
     } = rawValue;
 
+    const normalizedManagerId = normalizeEmployeeManagerId(IdEmpleadoJefe);
+
     return {
-      idOrganizacion: this.idOrganization,
+      IdOrganizacion: selectedOrganizationId,
+      idOrganizacion: selectedOrganizationId,
       ...employeeData,
-      IdEmpleadoJefe: normalizeEmployeeManagerId(IdEmpleadoJefe),
+      IdEmpleadoJefe: normalizedManagerId,
+      idEmpleadoJefe: normalizedManagerId,
+      IdJefe: normalizedManagerId,
+      idJefe: normalizedManagerId,
       Celular: buildFullPhoneNumber(PhoneCountryIso, rawValue.Celular),
     };
   }
@@ -612,7 +839,7 @@ export class CrearEmpleadosComponent implements OnInit {
 
     this.resetEmployeeForm();
     this.employeeDialogRef = this.dialogItemModel.open(template, {
-      width: '920px',
+      width: '1196px',
       maxWidth: '95vw',
       autoFocus: false,
       disableClose: true,
@@ -701,6 +928,10 @@ export class CrearEmpleadosComponent implements OnInit {
       'idJefe',
       'IdJefeEmpleado',
       'idJefeEmpleado',
+      'NombreOrganizacion',
+      'nombreOrganizacion',
+      'Organizacion',
+      'organizacion',
     ].map((column) => this.normalizeEmployeeColumnKey(column)));
   }
 
@@ -788,6 +1019,8 @@ export class CrearEmpleadosComponent implements OnInit {
   this.organizacionService.getEmployees(this.idOrganization)
     .then((response: any) => {
       this.dataSourceEmployees = response.data || [];
+      this.refreshCargoOptions();
+      this.refreshDemographicOptions();
       this.refreshEmployeeTableColumns();
       this.syncSelectedManagerName();
     })
@@ -868,10 +1101,28 @@ export class CrearEmpleadosComponent implements OnInit {
 
   // Enviar datos al servicio:
   onSubmit(): void {
+    if (this.isSavingNewEmployee) {
+      return;
+    }
+
     this.normalizePhoneControlValue(this.employeeForm);
     this.applyPhoneControlValidation(this.employeeForm);
 
     if (this.employeeForm.valid) {
+      const selectedOrganizationId = this.getSelectedOrganizationId();
+
+      if (!selectedOrganizationId) {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.EMPLOYEE.VERIFY'),
+          text: this.translate.instant('MENUITEMS.EMPLOYEE.SELECTORGANIZATION'),
+          icon: 'warning',
+        });
+        return;
+      }
+
+      this.idOrganization = selectedOrganizationId;
+      this.employeeForm.get('IdOrganizacion')?.setValue(selectedOrganizationId);
+
       if (this.demoLimitsService.exceedsLimit(
         'maxEmployeesPerOrganization',
         this.getCurrentEmployeesCount(),
@@ -881,6 +1132,7 @@ export class CrearEmpleadosComponent implements OnInit {
       }
 
       const reordered = this.buildEmployeePayload();
+      this.isSavingNewEmployee = true;
       
       this.organizacionService.saveNewEmployee(reordered)
         .then((response:any) => {
@@ -896,12 +1148,16 @@ export class CrearEmpleadosComponent implements OnInit {
           //this.dialogRef?.close(response.data);
         })
         .catch((error:any) => {
-          console.error('Error al crear empleado:', error.response.data.error);
+          const errorMessage = error?.response?.data?.error ?? error?.message ?? error;
+          console.error('Error al crear empleado:', errorMessage);
           Swal.fire({
             title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
-            text: this.translate.instant('MENUITEMS.EMPLOYEE.ERRCREATEEMPLOYEE') + ' Error: ' + error.response.data.error,
+            text: this.translate.instant('MENUITEMS.EMPLOYEE.ERRCREATEEMPLOYEE') + ' Error: ' + errorMessage,
             icon: 'error',
           });
+        })
+        .finally(() => {
+          this.isSavingNewEmployee = false;
         });
   
     } else {
@@ -943,16 +1199,19 @@ export class CrearEmpleadosComponent implements OnInit {
       ...item,
       camposDemograficos: this.camposDemograficosOrganizacion,
       IdOrganizacion: this.idOrganization,
+      NombreOrganizacion: this.dataSourceOrganizations[0]?.Nombre,
       employeeManagerOptions: this.getLoadedEmployeeManagerOptions(),
     };
 
     console.log('this.camposDemograficosOrganizacion:: ', this.camposDemograficosOrganizacion);
 
     const dialogRef = this.dialogItemModel.open(DialogformEditEmployeeComponent, {
-      width:  '95vw',
+      width:  '1196px',
       maxWidth: '95vw',    
       height: 'auto',  
       disableClose: true,
+      autoFocus: false,
+      panelClass: 'employee-edit-dialog-panel',
       data: dialogData
     });
 
@@ -1584,6 +1843,8 @@ export class CrearEmpleadosComponent implements OnInit {
   getDemograficos(): void {
     this.organizacionService.getDemograficos(this.idOrganization)
       .then((response: any) => {
+        this.clearDemographicValueSubscriptions();
+
         const fixedControls = new Set([
           'IdOrganizacion',
           'Nombres',
@@ -1608,13 +1869,20 @@ export class CrearEmpleadosComponent implements OnInit {
 
         // Agregar los campos demográficos al formulario reactivo
         this.camposDemograficosOrganizacion.forEach(field => {
-          if (this.employeeForm.get(field.NombreCampo)) {
-            this.employeeForm.get(field.NombreCampo)?.setValue('');
+          const fieldName = this.getDemographicFieldControlName(field);
+
+          if (!fieldName) {
+            return;
+          }
+
+          if (this.employeeForm.get(fieldName)) {
+            this.employeeForm.get(fieldName)?.setValue('');
           } else {
-            this.employeeForm.addControl(field.NombreCampo, new UntypedFormControl(''));
+            this.employeeForm.addControl(fieldName, new UntypedFormControl(''));
           }
         });
 
+        this.setupDemographicAutocompleteControls();
         this.refreshEmployeeTableColumns();
       })
       .catch((error: any) => {

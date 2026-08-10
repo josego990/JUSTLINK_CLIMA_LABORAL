@@ -1,12 +1,41 @@
-<div >
-  <div style="display: flex; justify-content: space-between; align-items: center;">
+<div class="climate-editor-dialog">
+  <div
+    class="dialog-title-row"
+    joyrideStep="editClimateOverview"
+    [title]="'MENUITEMS.TOUR.EDIT_CLIMATE.OVERVIEW_TITLE' | translate"
+    [text]="'MENUITEMS.TOUR.EDIT_CLIMATE.OVERVIEW_TEXT' | translate">
+
+    <div class="dialog-title-main">
+      <span class="dialog-title-icon" aria-hidden="true">
+        <mat-icon>edit_note</mat-icon>
+      </span>
+
+      <div class="dialog-title-copy">
+        <h2>{{'MENUITEMS.QUIZ.ADMINCLIMA' | translate}} {{card.title}}</h2>
+        <p>{{card.subtitle}}</p>
+      </div>
+    </div>
     
-    <h2 mat-dialog-title>{{'MENUITEMS.QUIZ.ADMINCLIMA' | translate}} {{card.title}}    
-    </h2>
-    
-    <button style="margin-right: 20px;" mat-icon-button [matMenuTriggerFor]="menu"> 
-      <mat-icon>settings</mat-icon>
-    </button>
+    <div class="dialog-title-actions">
+      <button
+        type="button"
+        mat-icon-button
+        class="dialog-guide-button"
+        (click)="startEditTour()"
+        [matTooltip]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate">
+        <mat-icon>help_outline</mat-icon>
+      </button>
+
+      <button
+        type="button"
+        mat-icon-button
+        joyrideStep="editClimateSettings"
+        [title]="'MENUITEMS.TOUR.EDIT_CLIMATE.SETTINGS_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.EDIT_CLIMATE.SETTINGS_TEXT' | translate"
+        [matMenuTriggerFor]="menu">
+        <mat-icon>settings</mat-icon>
+      </button>
+    </div>
     
     <mat-menu #menu="matMenu">
       <button [disabled]="!accessToActiveClima" mat-menu-item (click)="onMenuOptionClick('desactivar')">
@@ -42,25 +71,41 @@
 
   </div>
 
-  <h6 style="margin-left: 30px;">{{card.subtitle}}</h6>
+  <div mat-dialog-content class="climate-editor-content">
 
-  <div  mat-dialog-content>
+    <section class="editor-section editor-section--setup">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-heading__icon" aria-hidden="true">
+            <mat-icon>account_tree</mat-icon>
+          </span>
+          <div>
+            <h3>{{ 'MENUITEMS.QUIZ.EDITOR.SETUP' | translate }}</h3>
+            <p>{{ granFactores.length || 0 }} {{ 'MENUITEMS.QUIZ.STRUCTURE.GRAND_FACTORS' | translate }} · {{ getTotalFactorCount() }} {{ 'MENUITEMS.QUIZ.STRUCTURE.FACTORS' | translate }} · {{ getTotalQuestionCount() }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</p>
+          </div>
+        </div>
+      </div>
 
-    <div class="text-inside">
+      <div class="setup-grid">
       <!--      -->    
               
-      <div class="row" style="margin-bottom: 8px;">
+      <div class="row gran-factor-mode-row">
         <div class="col-12">
           <mat-slide-toggle
+            class="gran-factor-mode-toggle"
             [(ngModel)]="noUsarGranFactor"
             [disabled]="bloquearSwitchNoUsarGranFactor"
           >
-            No usar gran factor
+            {{ 'MENUITEMS.QUIZ.EDITOR.NO_GRAND_FACTOR' | translate }}
           </mat-slide-toggle>
         </div>
       </div>
 
-      <div class="gf-row" >
+      <div
+        class="gf-row"
+        joyrideStep="editClimateFactors"
+        [title]="'MENUITEMS.TOUR.EDIT_CLIMATE.FACTORS_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.EDIT_CLIMATE.FACTORS_TEXT' | translate">
         <!-- Gran Factor --> 
         <div class="gf-col">
           <div class="gf-group">
@@ -117,6 +162,8 @@
       </div>
 
 
+      </div>
+    </section>
 
       <div *ngIf="loading" class="loading-overlay" >
         <mat-progress-spinner
@@ -127,7 +174,25 @@
       </div>
 
 
-      <div class="row">
+    <section
+      class="editor-section editor-section--question-builder"
+      joyrideStep="editClimateQuestionBuilder"
+      [title]="'MENUITEMS.TOUR.EDIT_CLIMATE.QUESTION_BUILDER_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.EDIT_CLIMATE.QUESTION_BUILDER_TEXT' | translate">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-heading__icon section-heading__icon--accent" aria-hidden="true">
+            <mat-icon>add_task</mat-icon>
+          </span>
+          <div>
+            <h3>{{ 'MENUITEMS.QUIZ.EDITOR.NEW_QUESTION' | translate }}</h3>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="row question-builder-row"
+      >
         <div class="col-12 col-md-4 mt-3">
           <mat-form-field appearance="fill" class="w-100">
             <mat-label>{{'MENUITEMS.QUIZ.FIELDTYPE' | translate}}</mat-label>
@@ -156,8 +221,6 @@
       </div>
 
       
-
-    </div>
 
 
     <form *ngIf="selectedFieldType === 'select'"  id="form_select" [formGroup]="addSelectForm!" 
@@ -536,8 +599,24 @@
     </form>
 
 
-  
-    <h2 style="margin-left:1px" mat-dialog-title>{{'MENUITEMS.QUIZ.QUESTIONADDED' | translate}}</h2>
+    </section>
+
+    <section class="editor-section questions-section">
+      <div
+      class="questions-section__header"
+      joyrideStep="editClimateQuestionList"
+      [title]="'MENUITEMS.TOUR.EDIT_CLIMATE.QUESTION_LIST_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.EDIT_CLIMATE.QUESTION_LIST_TEXT' | translate">
+        <div class="section-heading">
+          <span class="section-heading__icon section-heading__icon--green" aria-hidden="true">
+            <mat-icon>format_list_bulleted</mat-icon>
+          </span>
+          <div>
+            <h3>{{'MENUITEMS.QUIZ.QUESTIONADDED' | translate}}</h3>
+            <p>{{ getTotalQuestionCount() }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</p>
+          </div>
+        </div>
+      </div>
     
     <!-- 
     <table mat-table [dataSource]="dataSource" class="w-100">
@@ -617,7 +696,7 @@
     </table>
  -->
     
-    <mat-accordion multi class="w-100" cdkDropListGroup>
+    <mat-accordion multi class="w-100 questions-accordion" cdkDropListGroup>
 
       <!-- DRAG GRANDES FACTORES  -->
       <div
@@ -630,17 +709,16 @@
           *ngFor="let gf of granFactores; trackBy: trackById"
           cdkDrag
           [cdkDragData]="gf"
-          class="mb-2"
+          class="mb-2 grand-factor-panel"
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              {{ gf.label || '-' }}
+              <span class="grand-factor-panel__title">{{ gf.label || '-' }}</span>
             </mat-panel-title>
 
-            <mat-panel-description>
-              
-              • {{ gf.series?.length || 0 }} factores
-              • {{ countQuestions(gf) }} preguntas
+            <mat-panel-description class="grand-factor-panel__meta">
+              <span>{{ gf.series?.length || 0 }} {{ 'MENUITEMS.QUIZ.STRUCTURE.FACTORS' | translate }}</span>
+              <span>{{ countQuestions(gf) }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</span>
             </mat-panel-description>
 
             <!-- Handle de drag (en header) -->
@@ -666,7 +744,7 @@
               *ngFor="let f of gf.series; trackBy: trackById"
               cdkDrag
               [cdkDragData]="f"
-              class="mb-2"
+              class="mb-2 factor-card"
             >
               <mat-card-title class="factor-title">
                 <div class="factor-title-text">
@@ -692,7 +770,7 @@
                   <form [formGroup]="formByFactor[f.Id]">
 
                     <div formArrayName="rows">
-                      <table mat-table [dataSource]="f.fields" class="w-100" >
+                      <table mat-table [dataSource]="f.fields" class="w-100 question-table" >
 
                         <!-- drag -->
                         <ng-container matColumnDef="drag">
@@ -947,10 +1025,11 @@
       </div>
 
     </mat-accordion>
+    </section>
 
 
   </div>
-  <div mat-dialog-actions>
+  <div mat-dialog-actions class="dialog-footer">
     <button style="color:#91a1a4; border-radius: 5px;" type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CLOSE' | translate}} </button>
   </div>
 </div>

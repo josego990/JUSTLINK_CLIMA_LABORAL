@@ -8,7 +8,9 @@ import { DesEscalasComponent } from './des-escalas/des-escalas.component';
 import { DesModelosComponent } from './des-modelos/des-modelos.component';
 import { DesOrganigramaComponent } from './des-organigrama/des-organigrama.component';
 import { DesOrganizacionesComponent } from './des-organizaciones/des-organizaciones.component';
+import { DesPlanesSeguimientoComponent } from './des-planes-seguimiento/des-planes-seguimiento.component';
 import { DesWhatsappComponent } from './des-whatsapp/des-whatsapp.component';
+import { DemoSuperAdminGuard } from '../core/guard/demo-super-admin.guard';
 
 export const DESEMPENO_ROUTE: Route[] = [
   {
@@ -21,8 +23,13 @@ export const DESEMPENO_ROUTE: Route[] = [
     component: DesDashboardComponent,
   },
   {
+    path: 'planes-seguimiento',
+    component: DesPlanesSeguimientoComponent,
+  },
+  {
     path: 'organizaciones',
     component: DesOrganizacionesComponent,
+    canActivate: [DemoSuperAdminGuard],
   },
   {
     path: 'empleados',

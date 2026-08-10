@@ -116,31 +116,6 @@
                     <div class="row">
                       <div class="col-lg-6 col-md-6 col-sm-12">
                         <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>Organización</mat-label>
-                          <mat-select
-                            [formControl]="organizationCtrl"
-                            (selectionChange)="onOrganizationChange($event.value)"
-                            [disabled]="loadingOrganizations"
-                          >
-                            <mat-option
-                              *ngFor="let organization of dataSourceOrganizations"
-                              [value]="organization"
-                            >
-                              {{ organization.Nombre }}
-                            </mat-option>
-                          </mat-select>
-
-                          <mat-progress-spinner
-                            *ngIf="loadingOrganizations"
-                            matSuffix
-                            diameter="18"
-                            mode="indeterminate"
-                          ></mat-progress-spinner>
-                        </mat-form-field>
-                      </div>
-
-                      <div class="col-lg-6 col-md-6 col-sm-12">
-                        <mat-form-field appearance="fill" class="w-100">
                           <mat-label>Climas {{nombreOrganizacion}}</mat-label>
                           <mat-select (selectionChange)="onClimaChange($event.value)">
                             <mat-option

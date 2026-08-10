@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -13,6 +13,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '@core';
 import { TranslateModule } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
@@ -107,7 +108,7 @@ interface DesEmployeeDemographicValue {
   ],
   templateUrl: './des-empleados.component.html',
 })
-export class DesEmpleadosComponent implements OnInit {
+export class DesEmpleadosComponent implements OnDestroy, OnInit {
   @ViewChild('employeeDialogTemplate')
   employeeDialogTemplate?: TemplateRef<unknown>;
 
@@ -151,6 +152,7 @@ export class DesEmpleadosComponent implements OnInit {
   public isSaving = false;
   public isUploadingExcel = false;
   private employeeDialogRef: MatDialogRef<unknown> | null = null;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -162,7 +164,29 @@ export class DesEmpleadosComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        void this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      void this.onOrganizationChange(organization.Id);
+    });
   }
 
   get isEditing(): boolean {

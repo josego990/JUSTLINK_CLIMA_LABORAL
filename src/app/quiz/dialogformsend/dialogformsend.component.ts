@@ -29,6 +29,10 @@ import { FormBuilder, FormGroup, Validators, FormsModule,
 } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { relativeTimeThreshold } from 'moment';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { JoyrideModule, JoyrideService } from 'ngx-joyride';
+import { DemoLimitsService } from '../../config/demo-limits.service';
 
 
 
@@ -66,7 +70,10 @@ function renderizarPlantilla(
     CommonModule,
     MatProgressSpinnerModule,
     
-    MatInputModule
+    MatInputModule,
+    MatTooltipModule,
+    TranslateModule,
+    JoyrideModule
   ]
 })
 
@@ -149,11 +156,14 @@ export class DialogformSendComponent implements OnInit {
  
 
   constructor(
-    private fb: UntypedFormBuilder, 
+    private joyrideService: JoyrideService,
+    private translate: TranslateService,
+    private fb: UntypedFormBuilder,
     public dialog: MatDialog,
     public dialogRef: MatDialogRef<DialogformSendComponent>,
     private organizacionService: OrganizacionService,
     private excelXlsxService: ExcelXlsxService,
+    private demoLimitsService: DemoLimitsService,
     @Inject(MAT_DIALOG_DATA) public dataRecibida: Quiz,
     ) {
      console.log('dataRecibeDialog::', dataRecibida );
@@ -162,10 +172,53 @@ export class DialogformSendComponent implements OnInit {
       this.idFlujo = dataRecibida.id;
     }
 
+  startSendTour(): void {
+    setTimeout(() => {
+      const candidates = [
+        'sendClimateOverview',
+        'sendClimateActions',
+        'sendClimateSummary',
+        'sendClimateFilters',
+        'sendClimateTable'
+      ];
+      const steps = candidates.filter((step) =>
+        document.querySelector(`[joyrideStep="${step}"]`)
+      );
+
+      this.joyrideService.startTour({
+        steps,
+        showPrevButton: true,
+        customTexts: {
+          prev: this.translate.instant('MENUITEMS.TOUR.NAV.PREV'),
+          next: this.translate.instant('MENUITEMS.TOUR.NAV.NEXT'),
+          done: this.translate.instant('MENUITEMS.TOUR.NAV.DONE'),
+          close: this.translate.instant('MENUITEMS.TOUR.NAV.CLOSE')
+        }
+      }).subscribe();
+    }, 100);
+  }
+
   public ngOnInit(): void {
-   
+
     this.obtenerEncuestasEmpleados();
 
+  }
+
+  get isDemoClimateBulkSendBlocked(): boolean {
+    return this.demoLimitsService.isDemoModeActive() &&
+      !this.tableDataSource.some(
+        (item) => this.normalizeEstadoEncuesta(item?.EstadoEncuesta) === 'Creado'
+      );
+  }
+
+  get isDemoClimateResendBlocked(): boolean {
+    return this.demoLimitsService.isDemoModeActive() &&
+      this.tableDataSource.some((item) => this.isClimateSurveyAlreadySent(item));
+  }
+
+  isDemoClimateSurveyResendBlocked(item: any): boolean {
+    return this.demoLimitsService.isDemoModeActive() &&
+      this.isClimateSurveyAlreadySent(item);
   }
 
   closeDialog(): void {
@@ -221,6 +274,11 @@ export class DialogformSendComponent implements OnInit {
 
 
   async enviarTodas(): Promise<void> {
+    if (this.isDemoClimateBulkSendBlocked) {
+      await this.showDemoClimateResendBlocked();
+      return;
+    }
+
     try {
       // Validar que la encuesta tenga preguntas antes de enviar
       const resultadopreguntas: any = await this.organizacionService.obtenerTotalPreguntasActivasClima({ idFlujo: this.idFlujo });
@@ -438,6 +496,11 @@ export class DialogformSendComponent implements OnInit {
   }
 
   async enviarTodasPendientes(): Promise<void> {
+    if (this.isDemoClimateResendBlocked) {
+      await this.showDemoClimateResendBlocked();
+      return;
+    }
+
     try {
       // Validar que la encuesta tenga preguntas antes de enviar
       const resultadopreguntas: any = await this.organizacionService.obtenerTotalPreguntasActivasClima({ idFlujo: this.idFlujo });
@@ -699,6 +762,7 @@ export class DialogformSendComponent implements OnInit {
       detalle: errores.join(', ') || 'Respuesta de WhatsApp inválida'
     };
   }
+  
 
   private obtenerTotalPreguntasDesdeRespuesta(response: any): number {
     const raw =
@@ -721,17 +785,7 @@ export class DialogformSendComponent implements OnInit {
 
     // 2) Fallback minimal si no hay plantilla
     if (!plantilla) {
-      plantilla = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>Equipo de Gestión de Talento Humano El Tejar</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
-
-      /*
-        '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<title>Invitación a encuesta</title></head><body style="font-family:Arial,Helvetica,sans-serif">' +
-        '<h2>Hola {{DATOS["nombre_empleado"]}}</h2>' +
-        '<p>Has sido invitado(a) a la encuesta <strong>{{DATOS["nombre_clima"]}}</strong>.</p>' +
-        '<p><a href="{{DATOS["url_encuesta"]}}" target="_blank">Abrir encuesta</a></p>' +
-        '<p>Gracias, equipo Just-Link</p>' +
-        '</body></html>';
-    */
+      plantilla = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>{{DATOS["nombre_organizacion"]}}</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
     }
 
   // 3) Reemplazos & render
@@ -772,8 +826,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
    //console.log(item);
     
     Swal.fire({
-      title: 'Crear encuesta individual',
-      html: 'Esta acción creará la encuesta al empleado <strong>' + item.Empleado + '</strong>',
+      title: 'Asignar encuesta individual',
+      html: 'Esta acción asignará la encuesta al empleado <strong>' + item.Empleado + '</strong>',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: 'green',
@@ -829,6 +883,10 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
   //envío encuesta individual
   swalConfirmaEnvio(item: any): void {
+    if (this.isDemoClimateSurveyResendBlocked(item)) {
+      void this.showDemoClimateResendBlocked();
+      return;
+    }
     
     //validar que la encuesta tenga preguntas antes de enviar
     this.organizacionService.obtenerTotalPreguntasActivasClima(
@@ -889,7 +947,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
                   } else {
                   //console.log('creo que entó a undefined!'); //plantilla genérica
-                    plantilla_con_variables = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>Equipo de Gestión de Talento Humano El Tejar</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
+                    plantilla_con_variables = //cambiar esta plantilla 
+                    '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>{{DATOS["nombre_organizacion"]}}</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link360</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
                     
                     var p = plantilla_con_variables.replaceAll('&quot;','"');
                   //console.log('p',p);
@@ -1002,7 +1061,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
         
                 //Cuerpecito del mensaje
                 const whatsappBody: any = {
-                  "to": "502" + item.Celular,
+                  "to": item.Celular,
                   "employe_name": item.Empleado,
                   "organization_name": this.dataRecibida.subtitle,
                   "clima_code": item.CodigoEncuestaEmpleado,
@@ -1099,7 +1158,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                 if (resilix?.data?.[0]) {
                   plantilla_con_variables = resilix.data[0].CuerpoHtml;
                 } else {
-                  plantilla_con_variables = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>Equipo de Gestión de Talento Humano El Tejar</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
+                  plantilla_con_variables = '<head><meta charset="utf-8"><meta name="x-apple-disable-message-reformatting"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Invitación a encuesta</title><style>@media (max-width:600px){.container{width:100%!important}.px{padding-left:20px!important;padding-right:20px!important}.btn{width:100%!important}}@media (prefers-color-scheme: dark){body,.wrapper{background:#0f1115!important}.card{background:#171a21!important}.text{color:#e8eaf0!important}.muted{color:#a7b0c0!important}.btn a{color:#0f1115!important}}</style></head><body style="margin:0;padding:0;background:#f4f6f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Invitación a completar la encuesta «{{DATOS["nombre_clima"]}}». Tu participación es importante.</div><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" class="wrapper" style="background:#f4f6f8;"><tr><td align="center" style="padding:24px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,40,.06);"><tr><td align="center" style="background:#0d6efd;padding:20px 24px;"></td></tr><tr><td class="px" style="padding:32px;"><h1 class="text" style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.3;color:#1f2937;">Estimado colaborador:</h1><p class="text" style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Has sido invitado a participar en la <br><strong style="font-size:17px;">“{{DATOS["nombre_clima"]}}”</strong></p><p class="text" style="margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.6;color:#374151;">Tu opinión nos ayuda a mejorar. Completarla toma solo unos minutos. ¡Gracias por tu tiempo!</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="btn" style="margin:0 auto 16px auto;"><tr><td align="center" bgcolor="#0d6efd" style="border-radius:10px;"><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;font-weight:600;line-height:48px;padding:0 28px;border-radius:10px;">Comenzar encuesta</a></td></tr></table><p class="muted" style="margin:8px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br><a href="{{DATOS["url_encuesta"]}}" target="_blank" style="color:#0d6efd;word-break:break-all;text-decoration:underline;">{{DATOS["url_encuesta"]}}</a></p><hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;"><p class="text" style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#374151;">Atentamente,<br><strong>{{DATOS["nombre_organizacion"]}}</strong></p><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">Por favor, no reenvíes este correo. El enlace es único para tu participación.</p></td></tr><tr><td align="center" style="padding:16px 24px;background:#ffffff;border-top:1px solid #eef2f7;"><p class="muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:12px;line-height:1.5;color:#98a2b3;">© Just-Link</p></td></tr></table><div style="height:24px;line-height:24px;font-size:24px;">&zwnj;</div></td></tr></table></body>';
                 }
 
                 const p = plantilla_con_variables.replaceAll('&quot;', '"');
@@ -1451,6 +1510,26 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
   normalizeEstadoEncuesta(estado: string | null | undefined): string {
     const normalized = (estado ?? '').toString().trim();
     return normalized || 'Sin encuesta';
+  }
+
+  private isClimateSurveyAlreadySent(item: any): boolean {
+    const status = this.normalizeEstadoEncuesta(item?.EstadoEncuesta).toLowerCase();
+    return [
+      'enviado',
+      're enviado',
+      'reenviado',
+      'iniciada',
+      'contestada',
+      'completada',
+    ].includes(status);
+  }
+
+  private async showDemoClimateResendBlocked(): Promise<void> {
+    await Swal.fire({
+      title: 'Reenvío no disponible',
+      text: 'La encuesta ya fue enviada. El modo demo no permite volver a enviarla.',
+      icon: 'info',
+    });
   }
 
   formatDynamicColumnValue(value: unknown): string {

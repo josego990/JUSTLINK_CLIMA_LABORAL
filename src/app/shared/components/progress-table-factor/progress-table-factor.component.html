@@ -13,28 +13,28 @@
 
     <!-- Muy de acuerdo (conteo + barra % sobre total) -->
     <ng-container matColumnDef="totacuerdo">
-      <th mat-header-cell *matHeaderCellDef>Muy favorable</th>
+      <th mat-header-cell *matHeaderCellDef>Muy satisfecho</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.totacuerdo }}
         ({{ getPct(subject.totacuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.totacuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
+          [style.--mdc-linear-progress-active-indicator-color]="colorLightBlue">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- De acuerdo -->
     <ng-container matColumnDef="acuerdo">
-      <th mat-header-cell *matHeaderCellDef>Favorable</th>
+      <th mat-header-cell *matHeaderCellDef>Satisfacción</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.acuerdo }}
         ({{ getPct(subject.acuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.acuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
+          [style.--mdc-linear-progress-active-indicator-color]="colorGreen">
         </mat-progress-bar>
       </td>
     </ng-container>
@@ -48,42 +48,42 @@
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.neutro, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
+          [style.--mdc-linear-progress-active-indicator-color]="colorGray">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- En desacuerdo -->
     <ng-container matColumnDef="desacuerdo">
-      <th mat-header-cell *matHeaderCellDef>Desfavorable</th>
+      <th mat-header-cell *matHeaderCellDef>Insatisfacción</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.desacuerdo }}
         ({{ getPct(subject.desacuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.desacuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getBlueColor()">
+          [style.--mdc-linear-progress-active-indicator-color]="colorOrange">
         </mat-progress-bar>
       </td>
     </ng-container>
 
     <!-- Muy en desacuerdo -->
     <ng-container matColumnDef="totdesacuerdo">
-      <th mat-header-cell *matHeaderCellDef>Muy desfavorable</th>
+      <th mat-header-cell *matHeaderCellDef>Muy insatisfecho</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.totdesacuerdo }}
         ({{ getPct(subject.totdesacuerdo, subject.duration) | number:'1.0-2' }}%)
         <mat-progress-bar
           mode="determinate"
           [value]="getPct(subject.totdesacuerdo, subject.duration)"
-          [style.--mdc-linear-progress-active-indicator-color]="getColor(getPct(subject.totdesacuerdo, subject.duration))">
+          [style.--mdc-linear-progress-active-indicator-color]="colorRed">
         </mat-progress-bar>
       </td>
     </ng-container>
 
-    <!-- % Favorable (Top-2) -->
+    <!-- % Satisfacción (Top-2) -->
     <ng-container matColumnDef="pctFav">
-      <th mat-header-cell *matHeaderCellDef>% Favorable (Top-2)</th>
+      <th mat-header-cell *matHeaderCellDef>% Satisfacción (Top-2)</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.pctFav | number:'1.0-2' }}%
         <mat-progress-bar
@@ -94,15 +94,15 @@
       </td>
     </ng-container>
 
-    <!-- % Desfavorable -->
+    <!-- % Insatisfacción -->
     <ng-container matColumnDef="pctDesf">
-      <th mat-header-cell *matHeaderCellDef>% Desfavorable</th>
+      <th mat-header-cell *matHeaderCellDef>% Insatisfacción</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.pctDesf | number:'1.0-2' }}%
         <mat-progress-bar
           mode="determinate"
           [value]="subject.pctDesf"
-          [style.--mdc-linear-progress-active-indicator-color]="getColor(subject.pctDesf)">
+          [style.--mdc-linear-progress-active-indicator-color]="getInverseColor(subject.pctDesf)">
         </mat-progress-bar>
       </td>
     </ng-container>

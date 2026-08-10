@@ -13,22 +13,7 @@
         <div class="card">
           <div class="body">
             <div class="row">
-              <div class="col-xl-4 col-lg-5 col-md-6 col-sm-12 mb-2">
-                <mat-form-field appearance="fill" class="w-100">
-                  <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.ORGANIZATION' | translate }}</mat-label>
-                  <mat-select
-                    [value]="selectedOrganizationId"
-                    [disabled]="isLoadingOrganizations"
-                    (selectionChange)="onOrganizationChange($event.value)"
-                  >
-                    <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
-                      {{ organization.Nombre }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-
-              <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 mb-2">
+              <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-2">
                 <mat-form-field appearance="fill" class="w-100">
                   <mat-label>{{ 'DESEMPENO_MENUITEMS.ESCALAS.FILTER_STATUS' | translate }}</mat-label>
                   <mat-select
@@ -43,7 +28,7 @@
                 </mat-form-field>
               </div>
 
-              <div class="col-xl-5 col-lg-4 col-md-12 col-sm-12 mb-2 d-flex justify-content-xl-end justify-content-start align-items-center">
+              <div class="col-xl-8 col-lg-8 col-md-6 col-sm-12 mb-2 d-flex justify-content-xl-end justify-content-start align-items-center">
                 <button
                   mat-raised-button
                   color="primary"

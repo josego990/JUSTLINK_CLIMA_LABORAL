@@ -17,26 +17,29 @@ import { TranslateService } from '@ngx-translate/core';
 import { TranslateModule } from '@ngx-translate/core'; 
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TurnstileComponent } from '../shared/components/turnstile/turnstile.component';
 
 @Component({
   selector: 'app-completeclimaalone',
   templateUrl: './completeclimaalone.component.html',
   styleUrls: ['./completeclimaalone.component.scss'],
   
-    imports: [
-      MatButtonModule,
-        MatProgressSpinnerModule,
-        MatMenuModule,
-        TranslateModule,
-        MatIconModule,
-      DynamicFormComponent,CommonModule
-      
-  
-      ],
+  imports: [
+    CommonModule,
+    DynamicFormComponent,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatProgressSpinnerModule,
+    TranslateModule,
+    TurnstileComponent,
+  ],
 })
 export class CompleteclimaaloneComponent implements OnInit {
-    @ViewChild(DynamicFormComponent)
+  @ViewChild(DynamicFormComponent)
   dynamicFormComponent!: DynamicFormComponent;
+  @ViewChild(TurnstileComponent)
+  turnstileComponent?: TurnstileComponent;
     flagvalue: string | string[] | undefined;
     countryName: string | string[] = [];
     langStoreValue?: any;
@@ -50,6 +53,7 @@ export class CompleteclimaaloneComponent implements OnInit {
     public nombreOrganizacion = '';
 
     isLoadingForm = true;
+    turnstileToken = '';
 
     formConfig: Quiz = {
       id: 0,
@@ -261,8 +265,15 @@ export class CompleteclimaaloneComponent implements OnInit {
 
     }
 
+    onTurnstileTokenChange(token: string): void {
+      this.turnstileToken = token;
+    }
+
+    resetTurnstile(): void {
+      this.turnstileToken = '';
+      this.turnstileComponent?.reset();
+    }
+
 
 }
-
-
 

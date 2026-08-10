@@ -3,6 +3,7 @@ import { Route } from "@angular/router";
 import { CrearOrganizacionComponent } from './create/create.component';
 import { CrearEmpleadosComponent } from './employees/employee.component';
 import { CrearDemograficosComponent } from './demograficos/demograficos.component';
+import { DemoSuperAdminGuard } from '../core/guard/demo-super-admin.guard';
 
 export const ORGANIZATION_ROUTE: Route[] = [
   {
@@ -13,6 +14,7 @@ export const ORGANIZATION_ROUTE: Route[] = [
   {
     path: "create",
     component: CrearOrganizacionComponent,
+    canActivate: [DemoSuperAdminGuard],
   },
   {
     path: "employee",

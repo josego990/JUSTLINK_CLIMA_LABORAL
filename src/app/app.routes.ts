@@ -3,6 +3,7 @@ import { MainLayoutComponent } from './layout/app-layout/main-layout/main-layout
 import { AuthGuard } from '@core/guard/auth.guard';
 import { AuthLayoutComponent } from './layout/app-layout/auth-layout/auth-layout.component';
 import { Page404Component } from './authentication/page404/page404.component';
+import { DemoSuperAdminGuard } from './core/guard/demo-super-admin.guard';
 //import { CompleteclimaaloneComponent } from './completeclimaalone/completeclimaalone.component'
 
 
@@ -32,8 +33,9 @@ export const APP_ROUTE: Route[] = [
                         (m) => m.ORGANIZATION_ROUTE
                     ),
             },
-             {
+            {
                 path: 'secure',
+                canActivate: [DemoSuperAdminGuard],
                 loadChildren: () =>
                     import('./secure/secure.routes').then(
                         (m) => m.SECURE_ROUTE

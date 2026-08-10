@@ -14,21 +14,6 @@
 
             <!-- Envuélvelo con un form que use [formGroup]="orgForm" -->
             <div>
-              <div class="col-md-6">
-                <mat-form-field appearance="fill" class="w-100">
-                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
-                  <mat-select [(ngModel)]="idOrganization" (selectionChange)="onOrganizationChange($event.value)">
-                    <mat-option
-                      *ngFor="let organization of dataSourceOrganizations"
-                      [value]="organization.Id"
-                    >
-                      {{ organization.Nombre }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-                
-              </div>
-
               <div class="body table-responsive">
                 <table mat-table [dataSource]="dataSourceDemograficos" class="table">
 
@@ -146,8 +131,30 @@
                   <!-- FIN formulario -->
 
                   <mat-dialog-actions align="end">
-                   
-                    <button mat-raised-button color="primary" (click)="onSubmit()">{{'MENUITEMS.DEMOGRAPHICS.SAVE' | translate}} </button>
+                    <div class="save-actions">
+                      <button
+                        class="save-demographic-button"
+                        mat-raised-button
+                        color="primary"
+                        type="button"
+                        [disabled]="isSavingDemografico"
+                        (click)="onSubmit()"
+                      >
+                        <mat-spinner
+                          *ngIf="isSavingDemografico"
+                          class="save-button-spinner"
+                          diameter="18"
+                        ></mat-spinner>
+                        <span>
+                          {{ isSavingDemografico ? 'Guardando...' : ('MENUITEMS.DEMOGRAPHICS.SAVE' | translate) }}
+                        </span>
+                      </button>
+
+                      <div class="saving-demographic-message" *ngIf="isSavingDemografico">
+                        <mat-spinner diameter="24"></mat-spinner>
+                        <span>Guardando campo demográfico, por favor espera...</span>
+                      </div>
+                    </div>
                   </mat-dialog-actions>
 
 

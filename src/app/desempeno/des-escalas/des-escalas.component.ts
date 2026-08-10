@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -19,6 +19,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '@core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -104,7 +105,7 @@ interface DesScaleDetailItem {
     }
   `],
 })
-export class DesEscalasComponent implements OnInit {
+export class DesEscalasComponent implements OnDestroy, OnInit {
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
   readonly pageTitleKey = 'DESEMPENO_MENUITEMS.BIBLIOTECA.LIST.ESCALAS';
   readonly scaleTypeOptions = [
@@ -128,6 +129,7 @@ export class DesEscalasComponent implements OnInit {
   public isLoadingScales = false;
   public isLoadingScaleDetail = false;
   public isSavingScale = false;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -140,7 +142,29 @@ export class DesEscalasComponent implements OnInit {
 
   ngOnInit(): void {
     this.resetForm();
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
   }
 
   get breadcrumbItems(): string[] {

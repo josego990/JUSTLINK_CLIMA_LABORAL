@@ -17,7 +17,7 @@ export class InfoBoxFactorComponent {
   @Input() trendPercentage: string = '';
   @Input() trendText: string = '';
 
-  @Input() colorClass: string = '';   // 'green' | 'yellow' | 'orange' | 'red' | 'neutral'
+  @Input() colorClass: string = '';   // 'light-blue' | 'green' | 'orange' | 'red' | 'neutral'
   @Input() gaugeColor: string = '';
   @Input() gaugeBg?: string;          // NUEVO: color de pista del gauge
 

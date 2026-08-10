@@ -6,17 +6,24 @@ import {
   OnInit,
   Renderer2,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ConfigService } from '@config';
 import { UnsubscribeOnDestroyAdapter } from '@shared';
 import { InConfiguration, AuthService, LanguageService } from '@core';
-import { NgScrollbar } from 'ngx-scrollbar';
 import { MatMenuModule } from '@angular/material/menu';
 import { FeatherIconsComponent } from '../../shared/components/feather-icons/feather-icons.component';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { OrganizacionService } from 'app/organization/services/organizacion.service';
+import {
+  OrganizacionService,
+  SelectedOrganization,
+} from 'app/organization/services/organizacion.service';
 
 interface Notifications {
   message: string;
@@ -37,6 +44,11 @@ interface Notifications {
         RouterLink,
         NgClass,
         MatIconModule,
+        MatFormFieldModule,
+        MatProgressSpinnerModule,
+        MatSelectModule,
+        MatTooltipModule,
+        FormsModule
     ],
     providers: [LanguageService]
 })
@@ -57,6 +69,9 @@ export class HeaderComponent
   isFullScreen = false;
 
   userContext: any = {};
+  organizations: SelectedOrganization[] = [];
+  selectedOrganizationId: number | null = null;
+  loadingOrganizations = false;
 
   constructor(
     private organizationService: OrganizacionService,
@@ -136,6 +151,10 @@ export class HeaderComponent
 
 
     this.getUserInfo();
+    this.subs.sink = this.organizationService.selectedOrganization$.subscribe((organization) => {
+      this.selectedOrganizationId = organization?.Id ?? null;
+    });
+    this.loadOrganizationsForHeader();
 
     this.homePage = 'dashboard/dashboard1';
 
@@ -149,6 +168,83 @@ export class HeaderComponent
     } else {
       this.flagvalue = val.map((element) => element.flag);
     }
+  }
+
+  onHeaderOrganizationChange(idOrganization: number | null): void {
+    const selected = this.organizations.find((organization) => organization.Id === Number(idOrganization));
+
+    if (selected) {
+      this.organizationService.setSelectedOrganization(selected);
+    }
+  }
+
+  trackByOrganizationId(_index: number, organization: SelectedOrganization): number {
+    return organization.Id;
+  }
+
+  private loadOrganizationsForHeader(): void {
+    const currentUser = this.authService.currentUserValue;
+    const roleName = currentUser?.roles?.[0]?.roleName;
+    const idOrganization = currentUser?.idOrganization;
+    const request = roleName === 'admin' || !idOrganization
+      ? this.organizationService.getOrganizations()
+      : this.organizationService.getOrganizationById(idOrganization);
+
+    this.loadingOrganizations = true;
+
+    request
+      .then((response: any) => {
+        this.organizations = this.normalizeOrganizations(response?.data);
+        this.syncSelectedOrganization(idOrganization);
+      })
+      .catch((error: any) => {
+        console.error('Error al cargar organizaciones para header:', error);
+        this.organizations = [];
+        this.organizationService.clearSelectedOrganization();
+      })
+      .finally(() => {
+        this.loadingOrganizations = false;
+      });
+  }
+
+  private normalizeOrganizations(value: any): SelectedOrganization[] {
+    const collection = Array.isArray(value)
+      ? value
+      : Array.isArray(value?.data)
+        ? value.data
+        : Array.isArray(value?.items)
+          ? value.items
+          : [];
+
+    return collection
+      .map((item: any) => this.organizationService.normalizeOrganizationOption(item))
+      .filter((item: SelectedOrganization | null): item is SelectedOrganization => !!item && item.Id > 0);
+  }
+
+  private syncSelectedOrganization(userOrganizationId?: number): void {
+    const storedSelection = this.organizationService.selectedOrganizationSnapshot;
+    const storedSelectionIsAvailable = !!storedSelection &&
+      this.organizations.some((organization) => organization.Id === storedSelection.Id);
+
+    if (storedSelectionIsAvailable) {
+      this.organizationService.setSelectedOrganization(storedSelection);
+      return;
+    }
+
+    const userSelection = userOrganizationId
+      ? this.organizationService.selectOrganizationById(userOrganizationId, this.organizations)
+      : null;
+
+    if (userSelection) {
+      return;
+    }
+
+    if (this.organizations.length > 0) {
+      this.organizationService.setSelectedOrganization(this.organizations[0]);
+      return;
+    }
+
+    this.organizationService.clearSelectedOrganization();
   }
 
   getUserInfo():void{

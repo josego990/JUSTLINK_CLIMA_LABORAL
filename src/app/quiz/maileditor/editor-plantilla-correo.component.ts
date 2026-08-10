@@ -14,6 +14,7 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
 import { FormsModule, ReactiveFormsModule, FormGroup } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-editors',
@@ -43,6 +44,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
   public dataSourceClimas:any = [];
   public html = '';
   accessToSave = true;
+  private selectedOrganizationSubscription?: Subscription;
 
   readonly variables = [
     { label: 'Nombre del empleado', token: '{{DATOS["nombre_empleado"]}}' },
@@ -114,12 +116,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
 
       this.editor.valueChanges.subscribe();
 
-      //this.getOrganizations();
-
-      if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      this.getOrganizations();
-      }
-      else {
+      if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
         //validar permisos de acciones
         const permisionsave = this.authService.currentUserValue?.permissions.
@@ -132,9 +129,31 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
           this.accessToSave = false;
         }
 
-        this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
       }
+
+      this.setupSelectedOrganizationListener();
   }; 
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.idOrganization = 0;
+        this.nombreOrganizacion = '';
+        this.dataSourceOrganizations = [];
+        this.dataSourceClimas = [];
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+
+      if (this.idOrganization === organization.Id) {
+        this.nombreOrganizacion = organization.Nombre;
+        return;
+      }
+
+      this.onOrganizationChange(organization.Id);
+    });
+  }
 
   getOrganizationById(idOrganization:any): void {
     this.organizacionService.getOrganizationById(idOrganization)
@@ -292,6 +311,7 @@ export class EditorPlantillaCorreoComponent implements OnInit, OnDestroy {
 
   // make sure to destory the editor
   ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
     this.editor?.destroy();
   }
 }

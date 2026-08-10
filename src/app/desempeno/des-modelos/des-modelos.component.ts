@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
@@ -306,7 +307,7 @@ interface DemographicFilter {
     }
   `],
 })
-export class DesModelosComponent implements OnInit {
+export class DesModelosComponent implements OnDestroy, OnInit {
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
   readonly pageTitleKey = 'DESEMPENO_MENUITEMS.BIBLIOTECA.LIST.MODELOS';
   readonly steps = [
@@ -390,11 +391,34 @@ export class DesModelosComponent implements OnInit {
   private nextBehaviorId = 1000;
   private nextAssignmentId = 1;
   private nextEvaluatorEntryId = 1;
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(private organizacionService: OrganizacionService) {}
 
   ngOnInit(): void {
-    this.loadOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.organizations = [];
+        void this.onOrganizationChange(null);
+        return;
+      }
+
+      this.organizations = [{ id: organization.Id, name: organization.Nombre }];
+
+      if (this.selectedOrganizationId === organization.Id) {
+        return;
+      }
+
+      void this.onOrganizationChange(organization.Id);
+    });
   }
 
   get selectedOrganizationName(): string {

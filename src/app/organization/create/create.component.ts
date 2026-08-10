@@ -32,7 +32,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { DialogformEditOrganizationComponent } from '../dialogformeditorganization/dialogformeditorganization.component';
-import { DemoLimitsService } from 'app/config/demo-limits.service';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -68,6 +67,7 @@ export class CrearOrganizacionComponent implements OnInit {
   public dataSourceOrganizations:any = [];
   public dataSourceCountries:any = [];
   isLoading = false;
+  isSavingOrganization = false;
   langStoreValue?: string;
   displayedColumns: string[] = [
     'Id',
@@ -89,8 +89,7 @@ export class CrearOrganizacionComponent implements OnInit {
   constructor(private languageService: LanguageService,private translate: TranslateService,
     private fb: FormBuilder, private router: Router,
     private organizacionService: OrganizacionService,
-    private dialogItemModel: MatDialog, 
-    private demoLimitsService: DemoLimitsService,
+    private dialogItemModel: MatDialog,
     
   ) {
     // Inicializamos el formulario y definimos validaciones:
@@ -208,25 +207,14 @@ export class CrearOrganizacionComponent implements OnInit {
 
   // Enviar datos al servicio:
   onSubmit(): void {
+    if (this.isSavingOrganization) {
+      return;
+    }
+
     if (this.orgForm.valid) {
-      const currentOrganizations = Array.isArray(this.dataSourceOrganizations)
-        ? this.dataSourceOrganizations.length
-        : 0;
-      const orgLimit = this.demoLimitsService.getLimit('maxOrganizations');
-
-      if (this.demoLimitsService.exceedsLimit('maxOrganizations', currentOrganizations)) {
-        Swal.fire({
-          title: 'Limite demo alcanzado',
-          text:
-            `Solo se puede ingresar ${orgLimit} organizacion en esta demo.` +
-            ` Actualmente existen ${currentOrganizations} registradas.`,
-          icon: 'warning',
-        });
-        return;
-      }
-
      //console.log('CHORICITO!!', this.orgForm.value);
-  
+
+      this.isSavingOrganization = true;
       this.organizacionService.saveNewOrganization(this.orgForm.value)
         .then((response:any) => {
          //console.log('Organización creada:', response.data);
@@ -245,9 +233,12 @@ export class CrearOrganizacionComponent implements OnInit {
             text: this.translate.instant('MENUITEMS.ORGANIZATION.ERRCREATEORG') + 'Error: ' + error,
             icon: 'error',
           });
-          
+
+        })
+        .finally(() => {
+          this.isSavingOrganization = false;
         });
-  
+
     } else {
       console.warn('Formulario inválido');
     }

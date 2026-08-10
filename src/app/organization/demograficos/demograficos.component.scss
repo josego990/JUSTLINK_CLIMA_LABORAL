@@ -22,3 +22,32 @@ input[type="range"], label {
   vertical-align: middle;
 }
 
+.save-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  width: 100%;
+}
+
+.save-demographic-button {
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.saving-demographic-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #58667e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.save-button-spinner {
+  --mdc-circular-progress-active-indicator-color: currentColor;
+}
+

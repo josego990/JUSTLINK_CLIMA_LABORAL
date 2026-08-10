@@ -42,11 +42,11 @@
 
       <div class="fc-badges">
         <span class="chip chip-soft" *ngIf="pct_opt1 != null">
-          Muy favorable: {{ pct_opt1 | number:'1.0-2' }}%
+          Muy satisfecho: {{ pct_opt1 | number:'1.0-2' }}%
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt2 != null">
-          Favorable: {{ pct_opt2 | number:'1.0-2' }}%
+          Satisfacción: {{ pct_opt2 | number:'1.0-2' }}%
         </span>
 
         <span class="chip chip-soft" *ngIf="showNeutral && pct_opt0 != null">
@@ -54,11 +54,11 @@
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt3 != null">
-          Desfavorable: {{ pct_opt3 | number:'1.0-2' }}%
+          Insatisfacción: {{ pct_opt3 | number:'1.0-2' }}%
         </span>
 
          <span class="chip chip-soft" *ngIf="pct_opt4 != null">
-          Muy desfavorable: {{ pct_opt4 | number:'1.0-2' }}%
+          Muy insatisfecho: {{ pct_opt4 | number:'1.0-2' }}%
         </span>
         
        

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TranslateModule } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 
@@ -48,11 +49,12 @@ interface SentMailHistoryItem {
     MatTooltipModule,
   ],
 })
-export class HistoryComponent implements OnInit {
+export class HistoryComponent implements OnDestroy, OnInit {
   public dataSourceOrganizations: OrganizationOption[] = [];
   public selectedOrganization: OrganizationOption | null = null;
   public loadingOrganizations = false;
   public sentMailHistory: SentMailHistoryItem[] = [];
+  private selectedOrganizationSubscription?: Subscription;
 
   constructor(
     private organizationService: OrganizacionService,
@@ -60,7 +62,24 @@ export class HistoryComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.getOrganizations();
+    this.setupSelectedOrganizationListener();
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizationService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.dataSourceOrganizations = [];
+        this.onOrganizationChange(null);
+        return;
+      }
+
+      this.dataSourceOrganizations = [organization];
+      this.onOrganizationChange(organization);
+    });
   }
 
   get filteredHistory(): SentMailHistoryItem[] {

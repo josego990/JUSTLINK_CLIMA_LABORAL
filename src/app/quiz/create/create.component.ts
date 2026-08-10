@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { FormBuilder, FormGroup, Validators, FormsModule,
   ReactiveFormsModule, UntypedFormGroup, UntypedFormBuilder,
  } from '@angular/forms';
@@ -59,6 +59,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { JoyrideService } from 'ngx-joyride';
 import { JoyrideModule } from 'ngx-joyride';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
+import { Subscription } from 'rxjs';
 
 function toArray<T = any>(v: T | T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : (v != null ? [v] : []);
@@ -96,7 +97,7 @@ function toArray<T = any>(v: T | T[] | null | undefined): T[] {
 
 
 })
-export class CreateComponent implements OnInit {
+export class CreateComponent implements OnDestroy, OnInit {
 
   closeResult = "";
   id_quiz_context = 0;
@@ -124,13 +125,15 @@ export class CreateComponent implements OnInit {
   quizName?: string;
   quizDesc?: string;
   dialogConfig?: MatDialogConfig;
-  public idOrganizacion: number = 1;
+  public idOrganizacion = 0;
   accessToCreate = true;
   accessToEdit = true;
   accessToSend = true;
   accessToDeleteFactor = true;
   
-   langStoreValue?: string;
+  langStoreValue?: string;
+  private selectedOrganizationSubscription?: Subscription;
+  private climateRequestSequence = 0;
 
   constructor(
     private joyrideService: JoyrideService,
@@ -151,10 +154,10 @@ export class CreateComponent implements OnInit {
         steps: ['step1', 'step2', 'step3', 'step4', 'step5'],
         showPrevButton: true,
          customTexts: {
-            prev: 'Anterior',
-            next: 'Siguiente',
-            done: 'Finalizar',
-            close: 'Cerrar'
+            prev: this.translate.instant('MENUITEMS.TOUR.NAV.PREV'),
+            next: this.translate.instant('MENUITEMS.TOUR.NAV.NEXT'),
+            done: this.translate.instant('MENUITEMS.TOUR.NAV.DONE'),
+            close: this.translate.instant('MENUITEMS.TOUR.NAV.CLOSE')
           }
       }).subscribe({
         complete: () => console.log('✅ Tour finalizado'),
@@ -236,10 +239,7 @@ export class CreateComponent implements OnInit {
     });
 
 
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-        this.getClimasLista();
-    }
-    else {
+    if(this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
 
       console.log('PERMISOS:: ',  this.authService.currentUserValue?.permissions);
 
@@ -286,95 +286,123 @@ export class CreateComponent implements OnInit {
     
 
 
-      this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
     }
 
-    //this.getClimasLista();
+    this.setupSelectedOrganizationListener();
 
+  }
+
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  private setupSelectedOrganizationListener(): void {
+    this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
+      if (!organization) {
+        this.climateRequestSequence++;
+        this.idOrganizacion = 0;
+        this.cardsData = [];
+        this.loading = false;
+        return;
+      }
+
+      const currentUser = this.authService.currentUserValue;
+      const roleName = currentUser?.roles?.[0]?.roleName;
+      const userOrganizationId = Number(currentUser?.idOrganization);
+      const selectedOrganizationId = roleName === 'admin' || !userOrganizationId
+        ? organization.Id
+        : userOrganizationId;
+
+      if (this.idOrganizacion === selectedOrganizationId) {
+        return;
+      }
+
+      this.idOrganizacion = selectedOrganizationId;
+      this.getClimasListaById(selectedOrganizationId);
+    });
   }
 
   getTooltipText(factor: any): string {
-    const preguntas = (factor.fields || [])
+    const fields = Array.isArray(factor?.fields) ? factor.fields : [];
+    const preguntas = fields
       .map((q: any, i: number) => `${i + 1}. ${q.label}`)
       .join('\n');
 
-    return preguntas || 'Sin preguntas';
+    if (!preguntas) {
+      return this.translate.instant('MENUITEMS.QUIZ.STRUCTURE.NO_QUESTIONS');
+    }
+
+    const heading = this.translate.instant('MENUITEMS.QUIZ.STRUCTURE.QUESTIONS');
+    return `${heading} (${fields.length})\n\n${preguntas}`;
+  }
+
+  getClimateFactorCount(card: Quiz): number {
+    return (card.granFactores || []).reduce(
+      (total, granFactor) => total + (Array.isArray(granFactor?.series) ? granFactor.series.length : 0),
+      0,
+    );
+  }
+
+  getClimateQuestionCount(card: Quiz): number {
+    return (card.granFactores || []).reduce(
+      (grandTotal, granFactor) => grandTotal + (granFactor?.series || []).reduce(
+        (factorTotal, factor) => factorTotal + (Array.isArray(factor?.fields) ? factor.fields.length : 0),
+        0,
+      ),
+      0,
+    );
   }
   
   public getClimasLista():void {
-    this.loading = true;
-    this.organizacionService.getClimas(this.idOrganizacion).then((lista_climas)=> {
-       //console.log('CLIMAS:: ', lista_climas.data);
-        const climas = lista_climas.data;
-        //crear nuevo clima
-        if(climas){this.cardsData = []}
-        climas.forEach((clima: 
-            {
-                Id: number;
-                IdOrganizacion: number;
-                NombreOrganizacion: string;
-                nombre_organizacion_oficial: string;
-                Nombre: string;
-                Objetivo: string;
-                FechaInicio: string; // o Date, si lo conviertes luego
-                FechaFin: string;    // o Date, igual que arriba
-                Frecuencia: string;
-                MetodoAplicacion: string;
-                EstimadoMinutos: number;
-                Anonimato: boolean;
-                FechaCreacion: string; // o Date
-                Imagen1Src: string;
-                Estado: number;
-                granFactores: any;
-                series: any;
-                estado_envio: string;
-                estadisticas_envio: EstadisticasEnvio | string;
-            })  => {
+    const selectedOrganizationId = this.organizacionService.selectedOrganizationSnapshot?.Id
+      ?? this.idOrganizacion;
 
-            const quiz: Quiz = {
-                id: clima.Id,
-                idOrganization: clima.IdOrganizacion,
-                contestadas: 0,
-                totalEncuestas: 0,
-                pendientes: 0,
-                totalEmpleados: 0,
-                avatarSrc: clima.Imagen1Src,
-                title: clima.Nombre,
-                subtitle: clima.nombre_organizacion_oficial,
-                imageSrc1: '',
-                content: clima.Objetivo,
-                score : 0,
-                completed : false,
-                startDate: '',
-                endDate: '',
-                estado: 1,
-                granFactores: clima.granFactores,
-                series: clima.series,
-                tipoEvaluacion: clima.MetodoAplicacion,
-                fields: [],
-                estadoEnvio: clima.estado_envio,
-                estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
-                ? JSON.parse(clima.estadisticas_envio)
-                : clima.estadisticas_envio
-              }
+    if (!selectedOrganizationId) {
+      this.climateRequestSequence++;
+      this.cardsData = [];
+      this.loading = false;
+      return;
+    }
 
-              this.cardsData.push(quiz);
-        });
-        this.loading = false;
-      }).catch((err)=> {
-        console.error(err);
-        this.loading = false;
-      })
+    this.idOrganizacion = selectedOrganizationId;
+    this.getClimasListaById(selectedOrganizationId);
   }
 
-  public getClimasListaById(idOrganizacion:any):void {
+  public refreshClimas(event?: Event): void {
+    event?.stopPropagation();
+
+    if (this.loading) {
+      return;
+    }
+
+    this.getClimasListaById(this.idOrganizacion, true);
+  }
+
+  public getClimasListaById(idOrganizacion:any, keepCurrentCards = false):void {
+    const selectedOrganizationId = Number(idOrganizacion);
+
+    if (!Number.isFinite(selectedOrganizationId) || selectedOrganizationId <= 0) {
+      this.climateRequestSequence++;
+      this.cardsData = [];
+      this.loading = false;
+      return;
+    }
+
+    const requestSequence = ++this.climateRequestSequence;
     this.loading = true;
-    this.organizacionService.getClimasById(idOrganizacion).then((lista_climas:any)=> {
+    if (!keepCurrentCards) {
+      this.cardsData = [];
+    }
+    this.organizacionService.getClimas(selectedOrganizationId).then((lista_climas:any)=> {
+        if (requestSequence !== this.climateRequestSequence || this.idOrganizacion !== selectedOrganizationId) {
+          return;
+        }
+
        //console.log('CLIMAS:: ', lista_climas.data);
-        const climas = lista_climas.data;
+        const climas = (Array.isArray(lista_climas.data) ? lista_climas.data : [])
+          .filter((clima: any) => Number(clima?.IdOrganizacion) === selectedOrganizationId);
         //crear nuevo clima
-        if(climas){this.cardsData = []}
-        climas.forEach((clima: 
+        const cards = climas.map((clima:
             {
                 Id: number;
                 IdOrganizacion: number;
@@ -398,7 +426,7 @@ export class CreateComponent implements OnInit {
                 estadisticas_envio: EstadisticasEnvio | string;
             })  => {
 
-            const quiz: Quiz = {
+            return {
                 id: clima.Id,
                 idOrganization: clima.IdOrganizacion,
                 contestadas: 0,
@@ -423,12 +451,16 @@ export class CreateComponent implements OnInit {
                 estadisticasEnvio: typeof clima.estadisticas_envio === 'string'
                 ? JSON.parse(clima.estadisticas_envio)
                 : clima.estadisticas_envio
-              }
+              } as Quiz;
 
-              this.cardsData.push(quiz);
         });
+        this.cardsData = cards;
         this.loading = false;
       }).catch((err)=> {
+        if (requestSequence !== this.climateRequestSequence) {
+          return;
+        }
+
         console.error(err);
         this.loading = false;
       })
@@ -516,9 +548,10 @@ export class CreateComponent implements OnInit {
     const dialogRef = this.dialogItemModel.open(DialogformSendComponent, {
       // anchura y altura relativas al viewport
       width:  '95vw',
-      maxWidth: '95vw',      
-      height: 'auto',         
+      maxWidth: '95vw',
+      height: 'auto',
       disableClose: true,
+      panelClass: 'climate-send-dialog-panel',
       data: card,
       
     });
@@ -526,12 +559,7 @@ export class CreateComponent implements OnInit {
     // ✅ Escuchar el cierre del diálogo
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-            this.getClimasLista();
-          }
-          else {        
-            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
-          }
+        this.getClimasLista();
       }
     });
 
@@ -575,17 +603,7 @@ export class CreateComponent implements OnInit {
       dialogRef.afterClosed().subscribe(result => {
         if (result === true) {
            //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG');
-            
-          if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-              this.getClimasLista();
-          }
-          else {
-
-        
-            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
-          }
-
-
+          this.getClimasLista();
         }
       });
     
@@ -599,6 +617,7 @@ export class CreateComponent implements OnInit {
       width:  '95vw',
       maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
       height: 'auto',         // o '100vh' si quieres pantalla completa
+      panelClass: 'climate-editor-dialog-panel',
       disableClose: true,
       data: [card]
     });
@@ -606,12 +625,7 @@ export class CreateComponent implements OnInit {
     // ✅ Escuchar el cierre del diálogo
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-       if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-            this.getClimasLista();
-          }
-          else {        
-            this.getClimasListaById(this.authService.currentUserValue?.idOrganization);
-          }
+        this.getClimasLista();
       }
     });
   } 

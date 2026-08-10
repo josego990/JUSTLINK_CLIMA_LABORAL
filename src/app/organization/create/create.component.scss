@@ -32,3 +32,31 @@ input[type="range"], label {
   background: rgba(36, 33, 33, 0.7);
   z-index: 10;
 }
+
+.save-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.save-org-button {
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.saving-organization-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #58667e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.save-button-spinner {
+  --mdc-circular-progress-active-indicator-color: currentColor;
+}

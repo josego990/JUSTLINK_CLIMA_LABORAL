@@ -91,7 +91,16 @@
         [formConfig]="formConfig"
         [idEmpleado]="idEmpleado"
         [idEncuestaEmpleado]="idEncuestaEmpleado"
-        [lang]="langStoreValue">
+        [lang]="langStoreValue"
+        [requireTurnstile]="true"
+        [turnstileToken]="turnstileToken"
+        (turnstileResetRequested)="resetTurnstile()">
+        <app-turnstile
+          security-verification
+          action="clima-survey"
+          [language]="langStoreValue || 'es'"
+          (tokenChange)="onTurnstileTokenChange($event)">
+        </app-turnstile>
       </app-dynamic-form>
     </div>
   </ng-container>

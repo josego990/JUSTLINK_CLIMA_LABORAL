@@ -5,6 +5,14 @@
     }
   },
   "MENUITEMS": {
+    "TURNSTILE": {
+      "TITLE": "Security verification",
+      "DESCRIPTION": "Complete the verification before submitting your answers.",
+      "REQUIRED": "Complete the security verification before submitting the survey.",
+      "CONFIG_REQUIRED": "Security verification is not configured.",
+      "LOAD_ERROR": "The verification could not be loaded. Reload the page and try again.",
+      "EXPIRED": "The verification expired. Complete it again to continue."
+    },
     "USER": {
       "POST": "Manager"
     },
@@ -117,7 +125,12 @@
 
 
 
-      "SENDTYPENONE": "None"
+      "SENDTYPENONE": "None",
+      "PRIMARYDATA": "Primary data",
+      "CONTACTSENDDATA": "Contact and delivery",
+      "ASSIGNEDTO": "Assigned to",
+      "MANAGERPLACEHOLDER": "No manager",
+      "DEMOGRAPHICCOLUMNS": "Demographic fields"
     },
     "DEMOGRAPHICS": {
       "TEXT": "DEMOGRAPHICS",
@@ -143,6 +156,7 @@
     "QUIZ": {
       "TEXT": "WORKPLACE CLIMATE",
       "CREATE": "Create new climate",
+      "REFRESH": "Refresh climates",
       "EDIT": "EDIT",
       "SEND": "SEND",
       "FACTORS": "Factors",
@@ -246,6 +260,18 @@
         "COMPLETED": "Answered:",
         "PENDING": "Pending:",
         "COMPLETEDPERCENT": "Completed:"
+      },
+      "STRUCTURE": {
+        "TITLE": "Assessment structure",
+        "GRAND_FACTORS": "main factors",
+        "FACTORS": "factors",
+        "QUESTIONS": "questions",
+        "NO_QUESTIONS": "This factor has no questions."
+      },
+      "EDITOR": {
+        "SETUP": "Survey classification",
+        "NEW_QUESTION": "New question",
+        "NO_GRAND_FACTOR": "Do not use main factor"
       }
     },
     "SECURE": {
@@ -325,6 +351,7 @@
 
     "LOGIN": {
       "WELCOME": "WELCOME",
+      "WELCOME_DEMO": "WELCOME TO DEMO MODE",
       "ACCESS": "Login",
       "USERNAME": "Username",
       "USERNAMEREQUIRED": "Username is required",
@@ -398,7 +425,50 @@
     "TOUR": {
       "BTNADDQUIZ": "Create",
       "BTNADDMSG": "Add New Climate Button",
-      "SEND": "SEND SURVEY"
+      "SEND": "SEND SURVEY",
+      "SYSTEM_GUIDE": "System guide",
+      "NAV": {
+        "PREV": "Previous",
+        "NEXT": "Next",
+        "DONE": "Finish",
+        "CLOSE": "Close"
+      },
+      "CLIMATE_LIST": {
+        "ADD_TITLE": "Create climate",
+        "ADD_TEXT": "Create a new climate survey and then configure its factors and questions.",
+        "CARD_TITLE": "Climate information",
+        "CARD_TEXT": "Each card summarizes the configuration and current status of a climate survey.",
+        "STATUS_TITLE": "Tracking",
+        "STATUS_TEXT": "Review the real-time progress of survey creation, delivery, starts, and completions.",
+        "EDIT_TITLE": "Edit climate",
+        "EDIT_TEXT": "Open the climate settings to manage main factors, factors, and questions.",
+        "SEND_TITLE": "Manage deliveries",
+        "SEND_TEXT": "Open the controls for creating and sending surveys to employees."
+      },
+      "EDIT_CLIMATE": {
+        "OVERVIEW_TITLE": "Edit climate",
+        "OVERVIEW_TEXT": "Use this dialog to structure the climate survey and manage all its questions.",
+        "SETTINGS_TITLE": "Climate options",
+        "SETTINGS_TEXT": "Activate or deactivate the climate, delete it, upload questions from Excel, or download the template.",
+        "FACTORS_TITLE": "Main factors and factors",
+        "FACTORS_TEXT": "Select the question classification or create new main factors and factors. You can also work without a main factor.",
+        "QUESTION_BUILDER_TITLE": "New question",
+        "QUESTION_BUILDER_TEXT": "Select the question type, enter its text, and complete the applicable options before saving it.",
+        "QUESTION_LIST_TITLE": "Added questions",
+        "QUESTION_LIST_TEXT": "Review, edit, activate, delete, and reorder existing questions within their factors."
+      },
+      "SEND_CLIMATE": {
+        "OVERVIEW_TITLE": "Delivery management",
+        "OVERVIEW_TEXT": "This dialog displays the climate status and lets you manage each employee's survey.",
+        "ACTIONS_TITLE": "Bulk actions",
+        "ACTIONS_TEXT": "Create surveys for active employees and send those that are still pending.",
+        "SUMMARY_TITLE": "Status summary",
+        "SUMMARY_TEXT": "These cards show how many surveys are created, sent, started, and completed.",
+        "FILTERS_TITLE": "Result filters",
+        "FILTERS_TEXT": "Filter records by delivery channel or survey status to find specific cases.",
+        "TABLE_TITLE": "Employee details",
+        "TABLE_TEXT": "Review each survey's data and status. The last column lets you create or send an individual survey."
+      }
     },
     "APPS": {
       "TEXT": "Apps"
@@ -690,6 +760,20 @@
         "EDIT_SURVEY": "Edit survey",
         "SENDS": "Deliveries",
         "MODEL": "View evaluation diagram",
+        "DUPLICATE_MODEL": "Duplicate model",
+        "DUPLICATE_MODEL_HELP": "Create a complete copy of this evaluation model.",
+        "DUPLICATE_MODEL_DIALOG_TITLE": "Duplicate evaluation model",
+        "DUPLICATE_MODEL_WARNING": "The configuration, participants, scenarios, dimensions, criteria, and evaluative items will be copied. The new model will be created as a draft.",
+        "DUPLICATE_MODEL_NEW_NAME": "New model name",
+        "DUPLICATE_MODEL_NAME_REQUIRED": "Enter the new model name.",
+        "DUPLICATE_MODEL_NAME_TOO_LONG": "The name cannot exceed 200 characters.",
+        "DUPLICATE_MODEL_NAME_EXISTS": "A model with this name already exists in the organization.",
+        "DUPLICATE_MODEL_CONFIRM": "Duplicate",
+        "DUPLICATE_MODEL_COPY_SUFFIX": "Copy",
+        "DUPLICATE_MODEL_SUCCESS_TITLE": "Model duplicated",
+        "DUPLICATE_MODEL_SUCCESS_TEXT": "Model \"{{name}}\" was created successfully.",
+        "DUPLICATE_MODEL_ERROR_TITLE": "The model could not be duplicated",
+        "DUPLICATE_MODEL_ERROR_TEXT": "An error occurred while creating the evaluation model copy.",
         "EMPTY_TITLE": "There are no evaluations yet",
         "EMPTY_TEXT": "Create the first evaluation for this organization using the catalog and available evaluative items.",
         "EDIT_TITLE": "Edit evaluation",
@@ -763,6 +847,7 @@
         "POSITION_MODELS_TITLE": "Evaluation criteria and evaluative items by position",
         "POSITION_MODELS_HELP": "Configure evaluation criteria and their evaluative items by position and scenario.",
         "EVALUATOR_ONLY": "Evaluator only",
+        "EVALUATOR_ONLY_NO_MANAGER": "This position was set as evaluator only because none of its participants has a selected manager who can evaluate them in the 90-degree model.",
         "POSITION_MODELS_EMPTY": "Select at least one position to configure its dimensions, evaluation criteria, and evaluative items.",
         "POSITION_QUESTION_COUNT": "{{count}} evaluative items",
         "SCENARIO_NOT_APPLICABLE": "Not applicable",
@@ -779,6 +864,10 @@
         "SCENARIO": "Scenario",
         "SCENARIO_ACTIVE": "Active",
         "WEIGHT": "Weight",
+        "ACTIVE_SCENARIOS_COUNT": "Active scenarios: {{count}}",
+        "WEIGHT_INCOMPLETE": "Weighting pending",
+        "POSITION_WEIGHT_WARNING": "Review the dimension, scenario, and criterion weights for this position. Each configured group must total 100%.",
+        "SCENARIO_WEIGHT_WARNING": "Review the dimension and criterion weights for this scenario. Each configured group must total 100%.",
         "REQUIRED_RATING_LEVEL": "Required rating level",
         "REQUIRED_RATING_LEVEL_HINT": "Desired rating from 1 to 5",
         "REQUIRED_RATING_LEVEL_VALUE": "Required: {{level}}/5",
@@ -809,6 +898,68 @@
         "SAMPLE_JSON_HELP": "This preview shows how we are shaping the evaluation structure while the new APIs arrive.",
         "CLOSE": "Close",
         "SAVE_EVALUATION": "Save evaluation",
+        "EXCEL_IMPORT": {
+          "TITLE": "Excel import",
+          "SUBTITLE": "Participants and model by position",
+          "DOWNLOAD_TEMPLATE": "Download template",
+          "UPLOAD": "Upload Excel",
+          "POSITIONS": "positions",
+          "DIMENSIONS": "dimensions",
+          "CRITERIA": "criteria",
+          "ITEMS": "items",
+          "NEW_DIMENSIONS": "new dimensions",
+          "NEW_CRITERIA": "new criteria",
+          "NEW_ITEMS": "new items",
+          "EXISTING_SKIPPED": "existing values skipped",
+          "OMITTED_SCENARIOS": "non-applicable scenarios skipped",
+          "SUCCESS_TITLE": "Excel processed successfully",
+          "SUCCESS_WITH_WARNINGS_TITLE": "Excel processed with warnings",
+          "SUCCESS_TEXT": "{{positions}} positions were processed and {{dimensions}} new dimensions, {{criteria}} new criteria, and {{items}} new items were added. {{skipped}} values that already existed for the same position and scenario were skipped. Changes are saved to the database only when the evaluation is saved.",
+          "OMITTED_SCENARIOS_WARNING": "The following scenarios do not apply to the current employee structure and were not imported. All other data was loaded normally:",
+          "WEIGHTS_RECALCULATED": "Applicable scenario weights were adjusted proportionally to preserve a total of 100% per position.",
+          "ERROR_TITLE": "The Excel file could not be loaded",
+          "UNEXPECTED_ERROR": "An unexpected error occurred while reading the file.",
+          "README_TITLE": "PERFORMANCE EVALUATION TEMPLATE",
+          "README_SHEET": "Each data sheet represents one position. The Position column must contain the exact name of an active position in the organization.",
+          "README_POSITION": "Duplicate the example sheet to add positions. The tab name may be shortened, but do not change the headers or the full Position value.",
+          "README_TYPES": "Supported types: 5-level Likert and Open question.",
+          "README_WEIGHTS": "Dimensions, scenarios for each position, and criteria in each dimension must total 100%.",
+          "README_ATOMIC": "The entire file is validated and merged into the draft. Existing values for the same position and scenario are skipped to prevent duplicates; nothing is saved to the database until Save evaluation is pressed.",
+          "AVAILABLE_SCENARIOS": "SCENARIOS AVAILABLE FOR THE MODEL TYPE",
+          "AVAILABLE_SCALES": "AVAILABLE SCALES"
+        },
+        "EXCEL_VALIDATIONS": {
+          "INVALID_FILE": "Select an Excel file with an .xlsx or .xls extension.",
+          "NO_DATA_SHEETS": "The workbook does not contain position sheets with data.",
+          "POSITION_NOT_FOUND": "Sheet \"{{sheet}}\": position \"{{value}}\" does not exist or is not active in the organization.",
+          "MULTIPLE_POSITIONS_IN_SHEET": "Sheet \"{{sheet}}\": every row must belong to the same position.",
+          "DUPLICATE_POSITION_SHEET": "Position \"{{position}}\" appears in more than one sheet: \"{{previousSheet}}\" and \"{{sheet}}\".",
+          "EMPTY_SHEET": "Sheet \"{{sheet}}\": it does not contain data rows.",
+          "MISSING_COLUMNS": "Sheet \"{{sheet}}\": required columns are missing: {{columns}}.",
+          "REQUIRED_VALUE": "Sheet \"{{sheet}}\", row {{row}}: {{field}} is required.",
+          "INVALID_SCENARIO": "Sheet \"{{sheet}}\", row {{row}}: scenario \"{{value}}\" does not exist or is not valid for the model type.",
+          "INVALID_WEIGHT": "Sheet \"{{sheet}}\", row {{row}}: {{field}} must be a number from 0 to 100.",
+          "INVALID_REQUIRED_LEVEL": "Sheet \"{{sheet}}\", row {{row}}: the required rating level must be from 1 to 5.",
+          "INVALID_ITEM_TYPE": "Sheet \"{{sheet}}\", row {{row}}: type \"{{value}}\" is not allowed. Use 5-level Likert or Open question.",
+          "INVALID_CODE": "Sheet \"{{sheet}}\", row {{row}}: {{field}} only accepts letters, numbers, hyphens, and underscores, up to 50 characters.",
+          "INVALID_SCALE": "Sheet \"{{sheet}}\", row {{row}}: scale \"{{value}}\" does not exist or is unavailable.",
+          "DEFAULT_SCALE": "default scale",
+          "SCALE_WITHOUT_LEVELS": "Sheet \"{{sheet}}\", row {{row}}: scale \"{{value}}\" has no configured levels.",
+          "INVALID_OPTION_COUNT": "Sheet \"{{sheet}}\", row {{row}}: {{expected}} Likert options were expected and {{actual}} were provided.",
+          "INVALID_OPTIONS": "Sheet \"{{sheet}}\", row {{row}}: the Likert options do not match the text and order of scale \"{{scale}}\".",
+          "OPEN_WITH_OPTIONS": "Sheet \"{{sheet}}\", row {{row}}: an open question must not contain Likert options.",
+          "INCONSISTENT_VALUE": "Sheet \"{{sheet}}\", row {{row}}: {{field}} does not match the other rows in the same group.",
+          "INCONSISTENT_ENTITY": "Sheet \"{{sheet}}\", row {{row}}: repeated data for \"{{entity}}\" is inconsistent.",
+          "DUPLICATE_CODE": "Sheet \"{{sheet}}\", row {{row}}: code \"{{code}}\" is already used by another record.",
+          "DUPLICATE_ITEM": "Sheet \"{{sheet}}\", row {{row}}: item \"{{item}}\" is duplicated within the criterion.",
+          "SCENARIO_TOTAL": "Position \"{{position}}\": scenario weights total {{total}}% and must total 100%.",
+          "DIMENSION_TOTAL": "Unique dimension weights total {{total}}% and must total 100%.",
+          "CRITERION_TOTAL": "Position \"{{position}}\", scenario {{scenario}}, dimension \"{{dimension}}\": criteria total {{total}}% and must total 100%.",
+          "SCENARIO_NOT_APPLICABLE": "Sheet \"{{sheet}}\": scenario \"{{scenario}}\" does not apply to position \"{{position}}\" based on the current employee structure.",
+          "DEMO_DIMENSION_LIMIT": "Demo mode: the file contains {{actual}} dimensions and the maximum is {{limit}}.",
+          "DEMO_CRITERION_LIMIT": "Demo mode: position \"{{position}}\" has {{actual}} criteria in dimension \"{{dimension}}\" and the maximum is {{limit}}.",
+          "DEMO_ITEM_LIMIT": "Demo mode: criterion \"{{criterion}}\" has {{actual}} items and the maximum is {{limit}}."
+        },
         "SEND_DIALOG_TITLE": "Deliveries",
         "SEND_DIALOG_HELP": "Manage which employees must evaluate, who they evaluate, the delivery channel, and progress for assigned evaluations.",
         "SEND_SUMMARY_EVALUATORS": "Evaluators",
@@ -825,6 +976,7 @@
         "SEND_EVALUATEES": "Employees to evaluate",
         "SEND_EVALUATEE_PLACEHOLDER": "Select evaluated employees",
         "SEND_TYPE": "Delivery type",
+        "SEND_DATE": "Sent date",
         "SEND_STATUS": "Delivery status",
         "SEND_COMPLETION": "% completed",
         "SEND_ACTIONS": "Actions",
@@ -835,6 +987,7 @@
         "NO_POSITION": "No position",
         "NO_SEGMENT": "Unclassified",
         "SEND_TYPES": {
+          "NINGUNO": "None",
           "CORREO": "Email",
           "WHATSAPP": "Whatsapp",
           "AMBOS": "Email and Whatsapp"
@@ -1018,6 +1171,10 @@
           "ORG_REQUIRED_TEXT": "Select an organization before creating an evaluation.",
           "NAME_REQUIRED_TITLE": "Name required",
           "NAME_REQUIRED_TEXT": "Enter the evaluation name.",
+          "GENERAL_DATA_REQUIRED_TITLE": "Incomplete general information",
+          "GENERAL_DATA_REQUIRED_TEXT": "Complete the evaluation name, description, type, model status, and scale to save and continue later.",
+          "POSITION_CATALOG_TITLE": "Position pending synchronization",
+          "POSITION_CATALOG_TEXT": "Position \"{{position}}\" is selected but does not yet have a valid performance catalog identifier. Reload the catalogs and try again.",
           "DIMENSION_WEIGHT_TITLE": "Incomplete weighting",
           "DIMENSION_WEIGHT_TEXT": "The sum of the dimensions must be 100%.",
           "COMPETENCY_WEIGHT_TITLE": "Incomplete criteria weighting",
@@ -1035,8 +1192,15 @@
           "QUESTION_SCENARIO_REQUIRED_TEXT": "Select at least one scenario for the evaluative item.",
           "QUESTION_POSITION_REQUIRED_TITLE": "Position required",
           "QUESTION_POSITION_REQUIRED_TEXT": "Select at least one position or change the scope to all positions.",
+          "DEMO_LIMIT_TITLE": "Demo mode limit",
+          "DEMO_MODEL_LIMIT_TEXT": "Demo mode allows a maximum of {{limit}} performance evaluation model per organization.",
+          "DEMO_DIMENSION_LIMIT_TEXT": "Demo mode allows a maximum of {{limit}} dimensions per evaluation model.",
+          "DEMO_CRITERIA_LIMIT_TEXT": "Dimension \"{{dimension}}\" allows a maximum of {{limit}} evaluation criteria per position and scenario in demo mode.",
+          "DEMO_ITEM_LIMIT_TEXT": "Criterion \"{{criterion}}\" allows a maximum of {{limit}} evaluative items in demo mode.",
+          "DEMO_RESEND_BLOCKED_TITLE": "Resending unavailable",
+          "DEMO_RESEND_BLOCKED_TEXT": "This evaluation has already been sent. Demo mode does not allow it to be sent again.",
           "SAVE_TITLE": "Evaluation ready",
-          "SAVE_TEXT": "The evaluation was saved locally with sample data so you can continue modeling.",
+          "SAVE_TEXT": "The evaluation model was saved successfully. You can continue configuring it later.",
           "LOAD_ORGS_ERROR_TITLE": "Error",
           "LOAD_ORGS_ERROR_TEXT": "Performance organizations could not be loaded.",
           "LOAD_EMPLOYEES_ERROR_TITLE": "Error",

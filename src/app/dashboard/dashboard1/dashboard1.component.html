@@ -9,7 +9,12 @@
       <div class="col-12">
         <div class="selected-clima-banner">
           <ng-container *ngIf="imgFlujo; else climaIconFallback">
-            <img [src]="imgFlujo" [alt]="nombreFlujo" class="selected-clima-img" />
+            <img
+              [src]="imgFlujo"
+              [alt]="nombreFlujo"
+              class="selected-clima-img"
+              (error)="onSelectedClimaImageError()"
+            />
           </ng-container>
           <ng-template #climaIconFallback>
             <div class="selected-clima-icon">
@@ -21,35 +26,41 @@
             <span class="selected-clima-label">Clima seleccionado</span>
             <h5 class="selected-clima-name">{{ nombreFlujo }}</h5>
           </div>
+
+          <div class="selected-clima-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              class="ai-analysis-trigger"
+              [disabled]="isGeneratingCorporateAiAnalysis || idFlujo <= 0"
+              (click)="generateCorporateAiAnalysis()"
+              matTooltip="Generar análisis corporativo IA"
+            >
+              <mat-progress-spinner
+                *ngIf="isGeneratingCorporateAiAnalysis"
+                diameter="18"
+                mode="indeterminate"
+              ></mat-progress-spinner>
+              <mat-icon *ngIf="!isGeneratingCorporateAiAnalysis">auto_awesome</mat-icon>
+              <span>{{ isGeneratingCorporateAiAnalysis ? 'Generando...' : 'Análisis IA' }}</span>
+            </button>
+
+            <button
+              mat-stroked-button
+              class="ai-pdf-trigger"
+              *ngIf="corporateAiAnalysis"
+              (click)="downloadCorporateAiAnalysisPdf()"
+              matTooltip="Descargar análisis en PDF"
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              <span>PDF</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="row" style="margin-left: 4px;">
-      
-      <div class="col-md-6 col-lg-4 col-sm-6 g-1">
-        <mat-form-field appearance="fill" class="w-100">
-          <mat-label>Organización</mat-label>
-          <mat-select [(ngModel)]="idOrganization" 
-            (selectionChange)="onOrganizationChange($event.value)">
-            <mat-option
-              *ngFor="let organization of dataSourceOrganizations"
-              [value]="organization.Id"
-            >
-              {{ organization.Nombre }}
-            </mat-option>
-          </mat-select>
-          <mat-progress-spinner
-              *ngIf="loadingOrganizations"
-              matSuffix
-              diameter="18"
-              mode="indeterminate"
-            >
-          </mat-progress-spinner>
-      </mat-form-field>
-
-      </div>
-
       <div class="col-md-6 col-lg-4 col-sm-6 g-1">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Climas {{nombreOrganizacion}}</mat-label>
@@ -89,18 +100,27 @@
              
       </div>
 
-       <div class="col-md-6 col-lg-4 col-sm-6 g-1">
-        <button style="border-radius: 8px; margin-top: 10px; margin-left: 10px ;" 
-        [disabled]="accessToFilter && btnDisabled" mat-stroked-button color="primary" (click)="openFilters()">
-          <mat-icon>filter_list</mat-icon>
-          Filtros demográficos
-        </button>
+       <div class="col-md-12 col-lg-4 col-sm-12 g-1">
+        <div class="dashboard-filter-actions">
+          <button
+            [disabled]="accessToFilter && btnDisabled"
+            mat-stroked-button
+            color="primary"
+            (click)="openFilters()"
+          >
+            <mat-icon>filter_list</mat-icon>
+            Filtros demográficos
+          </button>
 
-      </div>
-
-      <div class="col-md-2 g-1">
-         <button [disabled]="btnDisabled" type="button" style="border-radius: 8px; margin-top: 10px;"  class="btn btn-outline-success" 
-         (click)="onGenerateReportClick()">Reporte Excel</button>
+          <button
+            [disabled]="btnDisabled"
+            type="button"
+            class="btn btn-outline-success dashboard-excel-button"
+            (click)="onGenerateReportClick()"
+          >
+            Reporte Excel
+          </button>
+        </div>
       </div>
      
 
@@ -121,6 +141,7 @@
 
     </div>
 
+    <!-- Tipo de filtrado oculto por ahora. Se conserva para reactivarlo si vuelve a necesitarse.
     <div class="row">
      <div class="col-6 g-1" style="margin-left: 10px;">
         <h6 >Tipo Filtrado</h6>
@@ -137,8 +158,10 @@
         
       </div>
     </div>
+    -->
 
-    <div class="row" *ngIf="idFlujo > 0">
+    <ng-container *ngIf="idFlujo > 0; else noDashboardData">
+    <div class="row">
       <div class="col-12">
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px 0;">
           <mat-progress-spinner
@@ -179,8 +202,226 @@
       </div>
     </div>
 
-    <div class="row metric-cards-row">
-      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+    <section
+      class="corporate-ai-section"
+      *ngIf="isGeneratingCorporateAiAnalysis || corporateAiAnalysis || corporateAiAnalysisError"
+    >
+      <mat-card class="corporate-ai-panel" [class.is-collapsed]="isCorporateAiAnalysisCollapsed">
+        <div class="card-loader" *ngIf="isGeneratingCorporateAiAnalysis">
+          <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
+        </div>
+
+        <mat-card-header class="corporate-ai-header">
+          <mat-icon mat-card-avatar class="corporate-ai-avatar">auto_awesome</mat-icon>
+          <div class="corporate-ai-heading">
+            <mat-card-title>Análisis corporativo IA</mat-card-title>
+            <mat-card-subtitle>{{ getCorporateAiMetaLabel() || 'Lectura ejecutiva del clima seleccionado' }}</mat-card-subtitle>
+          </div>
+
+          <div class="corporate-ai-header-actions">
+            <button
+              mat-icon-button
+              class="corporate-ai-collapse-trigger"
+              [disabled]="isGeneratingCorporateAiAnalysis"
+              (click)="toggleCorporateAiAnalysisCollapse()"
+              [matTooltip]="isCorporateAiAnalysisCollapsed ? 'Expandir análisis' : 'Colapsar análisis'"
+            >
+              <mat-icon>{{ isCorporateAiAnalysisCollapsed ? 'expand_more' : 'expand_less' }}</mat-icon>
+            </button>
+
+            <button
+              mat-stroked-button
+              class="corporate-ai-header-action"
+              *ngIf="corporateAiAnalysis"
+              (click)="downloadCorporateAiAnalysisPdf()"
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              <span>Descargar PDF</span>
+            </button>
+          </div>
+        </mat-card-header>
+
+        <ng-container *ngIf="!isCorporateAiAnalysisCollapsed">
+          <mat-card-content *ngIf="corporateAiAnalysis as ai">
+            <div class="corporate-ai-summary-grid">
+              <article class="corporate-ai-summary">
+                <span class="corporate-ai-kicker">Resumen ejecutivo</span>
+                <p>{{ getCorporateAiText(ai, ['resumenEjecutivo', 'ResumenEjecutivo'], 'Sin resumen disponible.') }}</p>
+              </article>
+
+              <article class="corporate-ai-reading">
+                <span
+                  class="ai-status-pill"
+                  [ngClass]="getCorporateAiLevelClass(ai.lecturaCorporativa?.nivelClima)"
+                >
+                  {{ ai.lecturaCorporativa?.nivelClima || 'Sin datos' }}
+                </span>
+                <div>
+                  <small>Calificación general</small>
+                  <strong>{{ ai.lecturaCorporativa?.calificacionGeneral || '-' }}</strong>
+                </div>
+                <div>
+                  <small>Participación</small>
+                  <strong>{{ ai.lecturaCorporativa?.participacion || '-' }}</strong>
+                </div>
+                <p>{{ ai.lecturaCorporativa?.interpretacion || 'Sin interpretación disponible.' }}</p>
+              </article>
+            </div>
+
+            <div class="corporate-ai-block" *ngIf="getCorporateAiItems('hallazgosClave').length">
+              <div class="corporate-ai-block-title">
+                <mat-icon>priority_high</mat-icon>
+                <h3>Hallazgos clave</h3>
+              </div>
+              <div class="corporate-ai-grid">
+                <article
+                  class="corporate-ai-item"
+                  *ngFor="let item of getCorporateAiItems('hallazgosClave'); trackBy: trackCorporateAiItem"
+                >
+                  <div class="corporate-ai-item-head">
+                    <h4>{{ getCorporateAiText(item, ['titulo', 'Titulo'], 'Hallazgo') }}</h4>
+                    <span
+                      class="ai-status-pill"
+                      [ngClass]="getCorporateAiSeverityClass(getCorporateAiText(item, ['severidad', 'Severidad'], 'media'))"
+                    >
+                      {{ getCorporateAiText(item, ['severidad', 'Severidad'], 'media') }}
+                    </span>
+                  </div>
+                  <p>{{ getCorporateAiText(item, ['descripcion', 'Descripcion']) }}</p>
+                  <small *ngIf="getCorporateAiText(item, ['evidencia', 'Evidencia'])">
+                    Evidencia: {{ getCorporateAiText(item, ['evidencia', 'Evidencia']) }}
+                  </small>
+                  <div class="corporate-ai-tags" *ngIf="getCorporateAiList(item, ['factoresImpactados', 'FactoresImpactados']).length || getCorporateAiList(item, ['demograficosImpactados', 'DemograficosImpactados']).length">
+                    <span *ngFor="let tag of getCorporateAiList(item, ['factoresImpactados', 'FactoresImpactados']); trackBy: trackCorporateAiText">{{ tag }}</span>
+                    <span *ngFor="let tag of getCorporateAiList(item, ['demograficosImpactados', 'DemograficosImpactados']); trackBy: trackCorporateAiText">{{ tag }}</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="corporate-ai-two-cols">
+              <div class="corporate-ai-block" *ngIf="getCorporateAiItems('fortalezas').length">
+                <div class="corporate-ai-block-title">
+                  <mat-icon>verified</mat-icon>
+                  <h3>Fortalezas</h3>
+                </div>
+                <article
+                  class="corporate-ai-compact-item"
+                  *ngFor="let item of getCorporateAiItems('fortalezas'); trackBy: trackCorporateAiItem"
+                >
+                  <h4>{{ getCorporateAiText(item, ['titulo', 'Titulo'], 'Fortaleza') }}</h4>
+                  <p>{{ getCorporateAiText(item, ['descripcion', 'Descripcion']) }}</p>
+                  <small>{{ getCorporateAiText(item, ['evidencia', 'Evidencia']) }}</small>
+                </article>
+              </div>
+
+              <div class="corporate-ai-block" *ngIf="getCorporateAiItems('riesgosPrioritarios').length">
+                <div class="corporate-ai-block-title">
+                  <mat-icon>warning_amber</mat-icon>
+                  <h3>Riesgos prioritarios</h3>
+                </div>
+                <article
+                  class="corporate-ai-compact-item"
+                  *ngFor="let item of getCorporateAiItems('riesgosPrioritarios'); trackBy: trackCorporateAiItem"
+                >
+                  <div class="corporate-ai-item-head">
+                    <h4>{{ getCorporateAiText(item, ['riesgo', 'Riesgo'], 'Riesgo') }}</h4>
+                    <span
+                      class="ai-status-pill"
+                      [ngClass]="getCorporateAiSeverityClass(getCorporateAiText(item, ['urgencia', 'Urgencia'], 'media'))"
+                    >
+                      {{ getCorporateAiText(item, ['urgencia', 'Urgencia'], 'media') }}
+                    </span>
+                  </div>
+                  <p>{{ getCorporateAiText(item, ['impactoProbable', 'ImpactoProbable']) }}</p>
+                  <small>{{ getCorporateAiText(item, ['evidencia', 'Evidencia']) }}</small>
+                </article>
+              </div>
+            </div>
+
+            <div class="corporate-ai-block" *ngIf="getCorporateAiItems('recomendacionesCorporativas').length">
+              <div class="corporate-ai-block-title">
+                <mat-icon>task_alt</mat-icon>
+                <h3>Recomendaciones corporativas</h3>
+              </div>
+              <div class="corporate-ai-actions-list">
+                <article
+                  class="corporate-ai-action"
+                  *ngFor="let item of getCorporateAiItems('recomendacionesCorporativas'); let index = index; trackBy: trackCorporateAiItem"
+                >
+                  <span class="corporate-ai-action-number">{{ getCorporateAiText(item, ['prioridad', 'Prioridad'], index + 1) }}</span>
+                  <div>
+                    <h4>{{ getCorporateAiText(item, ['accion', 'Accion'], 'Acción recomendada') }}</h4>
+                    <p>{{ getCorporateAiText(item, ['objetivo', 'Objetivo']) }}</p>
+                    <div class="corporate-ai-action-meta">
+                      <span>{{ getCorporateAiText(item, ['responsableSugerido', 'ResponsableSugerido'], 'Responsable por definir') }}</span>
+                      <span>{{ getCorporateAiText(item, ['plazo', 'Plazo'], 'Plazo por definir') }}</span>
+                      <span>{{ getCorporateAiText(item, ['indicador', 'Indicador'], 'Indicador por definir') }}</span>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div class="corporate-ai-two-cols">
+              <div class="corporate-ai-block" *ngIf="getCorporateAiItems('segmentosPrioritarios').length">
+                <div class="corporate-ai-block-title">
+                  <mat-icon>groups</mat-icon>
+                  <h3>Segmentos prioritarios</h3>
+                </div>
+                <article
+                  class="corporate-ai-compact-item"
+                  *ngFor="let item of getCorporateAiItems('segmentosPrioritarios'); trackBy: trackCorporateAiItem"
+                >
+                  <h4>{{ getCorporateAiText(item, ['segmento', 'Segmento'], 'Segmento') }}</h4>
+                  <p>{{ getCorporateAiText(item, ['hallazgo', 'Hallazgo']) }}</p>
+                  <small>{{ getCorporateAiText(item, ['recomendacion', 'Recomendacion']) }}</small>
+                </article>
+              </div>
+
+              <div class="corporate-ai-block" *ngIf="ai.analisisComentarios">
+                <div class="corporate-ai-block-title">
+                  <mat-icon>forum</mat-icon>
+                  <h3>Análisis de comentarios</h3>
+                </div>
+                <article class="corporate-ai-compact-item">
+                  <h4>{{ ai.analisisComentarios?.sentimientoGeneral || 'Sentimiento general' }}</h4>
+                  <p *ngIf="getCorporateAiList(ai.analisisComentarios, ['temasRecurrentes', 'TemasRecurrentes']).length">
+                    Temas recurrentes:
+                    {{ getCorporateAiList(ai.analisisComentarios, ['temasRecurrentes', 'TemasRecurrentes']).join(', ') }}
+                  </p>
+                  <small *ngIf="getCorporateAiList(ai.analisisComentarios, ['alertas', 'Alertas']).length">
+                    Alertas: {{ getCorporateAiList(ai.analisisComentarios, ['alertas', 'Alertas']).join(', ') }}
+                  </small>
+                </article>
+              </div>
+            </div>
+
+            <div class="corporate-ai-block" *ngIf="getCorporateAiItems('proximosPasos').length">
+              <div class="corporate-ai-block-title">
+                <mat-icon>next_plan</mat-icon>
+                <h3>Próximos pasos</h3>
+              </div>
+              <ol class="corporate-ai-next-steps">
+                <li *ngFor="let step of getCorporateAiItems('proximosPasos'); trackBy: trackCorporateAiText">{{ step }}</li>
+              </ol>
+            </div>
+          </mat-card-content>
+
+          <mat-card-content *ngIf="corporateAiAnalysisError && !corporateAiAnalysis">
+            <div class="corporate-ai-error">
+              <mat-icon>error_outline</mat-icon>
+              <span>{{ corporateAiAnalysisError }}</span>
+            </div>
+          </mat-card-content>
+        </ng-container>
+      </mat-card>
+    </section>
+
+    <div class="row dashboard-summary-row">
+      <div class="col-12 col-xl-6 dashboard-summary-kpis">
+        <div class="row metric-cards-row">
+      <div class="col-12 col-md-6 metric-card-grid-col">
         <mat-card class="fixed-card metric-kpi-card">
           <div class="card-loader" *ngIf="loadingGeneral">
             <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
@@ -195,7 +436,7 @@
             >
               <mat-icon mat-card-avatar class="metric-card-avatar">analytics</mat-icon>
               <div>
-                <mat-card-title>Favorabilidad general</mat-card-title>
+                <mat-card-title>Nivel de satisfacción</mat-card-title>
                 <mat-card-subtitle>{{ getGeneralGaugeLabel() }}</mat-card-subtitle>
               </div>
             </div>
@@ -230,7 +471,7 @@
         </mat-card>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+      <div class="col-12 col-md-6 metric-card-grid-col">
         <mat-card class="fixed-card metric-kpi-card">
           <div class="card-loader" *ngIf="loadingGeneral">
             <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
@@ -245,7 +486,7 @@
             >
               <mat-icon mat-card-avatar class="metric-card-avatar">trending_up</mat-icon>
               <div>
-                <mat-card-title>Favorabilidad máxima</mat-card-title>
+                <mat-card-title>Nivel de satisfacción</mat-card-title>
                 <mat-card-subtitle>Top-1</mat-card-subtitle>
               </div>
             </div>
@@ -279,7 +520,7 @@
         </mat-card>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+      <div class="col-12 col-md-6 metric-card-grid-col">
         <mat-card class="fixed-card metric-kpi-card">
           <div class="card-loader" *ngIf="loadingGeneral">
             <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
@@ -294,7 +535,7 @@
             >
               <mat-icon mat-card-avatar class="metric-card-avatar">trending_down</mat-icon>
               <div>
-                <mat-card-title>Desfavorabilidad general</mat-card-title>
+                <mat-card-title>Nivel de insatisfacción</mat-card-title>
                 <mat-card-subtitle>{{ getDesfavorableGaugeLabel() }}</mat-card-subtitle>
               </div>
             </div>
@@ -317,7 +558,7 @@
               </ngx-gauge-append>
 
               <ngx-gauge-label style="color:rgb(93, 95, 95); font-weight: bold; font-size: 20px;">
-                Desfavorable
+                Insatisfacción
               </ngx-gauge-label>
 
               <ngx-gauge-value>
@@ -328,7 +569,7 @@
         </mat-card>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+      <div class="col-12 col-md-6 metric-card-grid-col">
         <mat-card class="fixed-card metric-kpi-card">
           <div class="card-loader" *ngIf="loadingGeneral">
             <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
@@ -343,7 +584,7 @@
             >
               <mat-icon mat-card-avatar class="metric-card-avatar">trending_down</mat-icon>
               <div>
-                <mat-card-title>Desfavorabilidad máxima</mat-card-title>
+                <mat-card-title>Nivel de insatisfacción</mat-card-title>
                 <mat-card-subtitle>Bottom-1</mat-card-subtitle>
               </div>
             </div>
@@ -376,11 +617,11 @@
           </div>
         </mat-card>
       </div>
-    </div>
+        </div>
+      </div>
 
-    <div class="row">
-      <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
-        <div class="card">
+      <div class="col-12 col-xl-6 dashboard-summary-panorama">
+        <div class="card panorama-summary-card">
           <div class="card-loader" *ngIf="loadingPanorama">
             <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
           </div>
@@ -398,7 +639,7 @@
             </div>
           </div>
           <div class="card-body">
-            <div id="panorama-general-chart" style="height: 400px" class="chart-export-surface">
+            <div id="panorama-general-chart" class="chart-export-surface panorama-summary-chart">
               <ngx-charts-bar-vertical [scheme]="colorScheme" [results]="single" [gradient]="gradient"
                 [xAxis]="showXAxis" [yAxis]="showYAxis" [legend]="showLegend" [legendPosition]="legendPosition"
                 [showXAxisLabel]="showXAxisLabel" [showYAxisLabel]="showYAxisLabel" [xAxisLabel]="vbarxAxisLabel"
@@ -574,7 +815,55 @@
 
 
     </div>
-   
+
+
+    <section class="list-response-section" *ngIf="listResponseCharts.length > 0">
+      <div class="list-response-section-header">
+        <mat-icon>list_alt</mat-icon>
+        <h2>Resultados de selección</h2>
+      </div>
+
+      <div class="list-response-grid">
+        <mat-card
+          class="list-response-card"
+          *ngFor="let item of listResponseCharts; trackBy: trackListResponseChart"
+        >
+          <mat-card-header class="list-response-card-header">
+            <div class="list-response-title-block">
+              <mat-card-subtitle class="list-response-context">
+                <span *ngIf="item.etiquetaGranFactor && item.etiquetaGranFactor.toLowerCase() !== 'generico'">
+                  {{ item.etiquetaGranFactor }} ·
+                </span>
+                {{ item.factor }}
+              </mat-card-subtitle>
+              <mat-card-title>{{ item.pregunta }}</mat-card-title>
+            </div>
+
+            <div class="list-response-totals">
+              <span>{{ item.totalOpciones }} {{ item.totalOpciones === 1 ? 'opción' : 'opciones' }}</span>
+              <strong>{{ item.totalRespuestas }} {{ item.totalRespuestas === 1 ? 'respuesta' : 'respuestas' }}</strong>
+            </div>
+          </mat-card-header>
+
+          <mat-card-content class="list-response-chart-wrap">
+            <apx-chart
+              [series]="item.chartOptions.series!"
+              [chart]="item.chartOptions.chart!"
+              [plotOptions]="item.chartOptions.plotOptions!"
+              [dataLabels]="item.chartOptions.dataLabels!"
+              [xaxis]="item.chartOptions.xaxis!"
+              [yaxis]="item.chartOptions.yaxis!"
+              [tooltip]="item.chartOptions.tooltip!"
+              [grid]="item.chartOptions.grid!"
+              [stroke]="item.chartOptions.stroke!"
+              [legend]="item.chartOptions.legend!"
+              [colors]="item.chartOptions.colors!"
+            ></apx-chart>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </section>
+
 
     <div class="row">
       <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
@@ -784,8 +1073,15 @@
       </mat-card>
     </div>
 
+    </ng-container>
 
-
+    <ng-template #noDashboardData>
+      <div class="dashboard-empty-state">
+        <mat-icon>dashboard_customize</mat-icon>
+        <h4>Sin datos de dashboard</h4>
+        <p>Seleccione un clima para consultar la información del dashboard de clima.</p>
+      </div>
+    </ng-template>
 
   </div>
 </section>

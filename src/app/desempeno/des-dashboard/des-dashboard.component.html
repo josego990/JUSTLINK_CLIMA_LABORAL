@@ -20,19 +20,6 @@
       <mat-card class="filter-card">
         <div class="filter-grid">
           <mat-form-field appearance="fill" class="w-100">
-            <mat-label>{{ 'MENUITEMS.ORGANIZATION.TEXT' | translate }}</mat-label>
-            <mat-select
-              [ngModel]="selectedOrganizationId"
-              [disabled]="isLoadingOrganizations || isLoadingModels || isLoadingDashboard || isGeneratingAiActionPlan"
-              (ngModelChange)="onOrganizationChange($event)"
-            >
-              <mat-option *ngFor="let organization of dataSourceOrganizations" [value]="organization.Id">
-                {{ organization.Nombre }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="w-100">
             <mat-label>Modelo</mat-label>
             <mat-select
               [ngModel]="selectedModelId"

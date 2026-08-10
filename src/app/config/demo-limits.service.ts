@@ -22,6 +22,19 @@ export class DemoLimitsService {
     return this.isDemoBuildEnabled();
   }
 
+  isSuperAdminRole(
+    roles: Array<{ roleName?: string | null }> | null | undefined
+  ): boolean {
+    return (roles ?? []).some(({ roleName }) => {
+      const normalizedRole = String(roleName ?? '')
+        .trim()
+        .toUpperCase()
+        .replace(/[\s_-]+/g, '');
+
+      return normalizedRole === 'ADMIN' || normalizedRole === 'SUPERADMIN';
+    });
+  }
+
   getLimit(key: DemoLimitKey): number {
     return this.limits[key];
   }

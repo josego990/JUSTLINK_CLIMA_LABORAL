@@ -152,7 +152,7 @@
 
 @media (min-width: 481px) and (max-width: 767px) {
   section.content {
-    margin: 55px 15px 0 15px;
+    margin: 111px 15px 0 15px;
     .content-block {
       padding: 25px 10px 0px 12px;
     }
@@ -207,7 +207,7 @@
 
 @media (min-width: 320px) and (max-width: 480px) {
   section.content {
-    margin: 55px 15px 0 15px;
+    margin: 111px 15px 0 15px;
     .content-block {
       padding: 25px 10px 0px 12px;
     }
@@ -217,7 +217,7 @@
       padding-right: 0px;
     }
     section.content {
-      margin: 55px 15px 0 15px;
+      margin: 111px 15px 0 15px;
       .content-block {
         padding: 25px 12px 0px 10px !important;
       }
@@ -262,14 +262,14 @@
 }
 @media (min-width: 281px) and (max-width: 364px) {
   section.content {
-    margin: 155px 15px 0 15px;
+    margin: 111px 15px 0 15px;
     .content-block {
       padding: 25px 10px 0px 12px;
     }
   }
   .rtl {
     section.content {
-      margin: 155px 15px 0 15px !important;
+      margin: 111px 15px 0 15px !important;
       .content-block {
         padding: 25px 12px 0px 10px !important;
       }
@@ -278,7 +278,7 @@
   .navbar {
     width: calc(100% - 4rem) !important;
     left: 0px !important;
-    height: 160px !important;
+    height: 116px !important;
     .navbar-collapse {
       display: block;
     }
@@ -304,19 +304,19 @@
   }
   .navbar .container-fluid,
   .navbar .container {
-    height: 160px !important;
+    height: 116px !important;
   }
 }
 @media (max-width: 280px) {
   section.content {
-    margin: 155px 15px 0 15px;
+    margin: 111px 15px 0 15px;
     .content-block {
       padding: 25px 10px 0px 12px;
     }
   }
   .rtl {
     section.content {
-      margin: 155px 15px 0 15px !important;
+      margin: 111px 15px 0 15px !important;
       .content-block {
         padding: 25px 12px 0px 10px !important;
       }
@@ -325,7 +325,7 @@
   .navbar {
     width: calc(100% - 4rem) !important;
     left: 0px !important;
-    height: 160px !important;
+    height: 116px !important;
     .navbar-collapse {
       display: block;
     }
@@ -360,6 +360,6 @@
   }
   .navbar .container-fluid,
   .navbar .container {
-    height: 160px !important;
+    height: 116px !important;
   }
 }
