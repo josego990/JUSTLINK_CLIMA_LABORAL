@@ -34,6 +34,10 @@ import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  performanceGapToPercent,
+  performanceScoreToPercent,
+} from '../shared/performance-score.utils';
 
 type DesDashboardChartOptions = {
   series: ApexAxisChartSeries;
@@ -1283,11 +1287,8 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
   }
 
   getScorePercent(value: number | null): number {
-    if (value === null) {
-      return 0;
-    }
-
-    return Math.max(0, Math.min(100, (value / 5) * 100));
+    const percentage = performanceScoreToPercent(value);
+    return percentage === null ? 0 : Math.max(0, Math.min(100, percentage));
   }
 
   getScoreStatus(value: number | null): string {
@@ -1794,9 +1795,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
           { header: 'Asignaciones', key: 'asignaciones', width: 16 },
           { header: 'Realizadas', key: 'realizadas', width: 16 },
           { header: 'Avance real', key: 'avance', width: 14 },
-          { header: 'Calificacion', key: 'calificacion', width: 14 },
-          { header: 'Exigencia', key: 'exigencia', width: 14 },
-          { header: 'Brecha', key: 'brecha', width: 14 },
+          { header: 'Calificacion (%)', key: 'calificacion', width: 16 },
+          { header: 'Exigencia (%)', key: 'exigencia', width: 16 },
+          { header: 'Brecha (%)', key: 'brecha', width: 16 },
         ],
         this.dashboardData.modelos.map((model) => ({
           modelo: this.getModelName(model),
@@ -1819,9 +1820,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
           { header: 'Tiene resultados', key: 'tieneResultados', width: 18 },
           { header: 'Realizadas', key: 'realizadas', width: 14 },
           { header: 'Avance real', key: 'avance', width: 14 },
-          { header: 'Calificacion', key: 'calificacion', width: 14 },
-          { header: 'Exigencia', key: 'exigencia', width: 14 },
-          { header: 'Brecha', key: 'brecha', width: 14 },
+          { header: 'Calificacion (%)', key: 'calificacion', width: 16 },
+          { header: 'Exigencia (%)', key: 'exigencia', width: 16 },
+          { header: 'Brecha (%)', key: 'brecha', width: 16 },
           { header: 'Empleados con resultado', key: 'empleados', width: 22 },
           { header: 'Puestos', key: 'puestos', width: 14 },
           { header: 'Escenarios', key: 'escenarios', width: 14 },
@@ -1858,9 +1859,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
           { header: 'Evaluaciones con resultado', key: 'evaluaciones', width: 24 },
           { header: 'Asignaciones realizadas', key: 'asignaciones', width: 22 },
           { header: 'Evaluadores', key: 'evaluadores', width: 38 },
-          { header: 'Calificacion', key: 'calificacion', width: 16 },
-          { header: 'Exigencia', key: 'exigencia', width: 16 },
-          { header: 'Brecha', key: 'brecha', width: 16 },
+          { header: 'Calificacion (%)', key: 'calificacion', width: 18 },
+          { header: 'Exigencia (%)', key: 'exigencia', width: 18 },
+          { header: 'Brecha (%)', key: 'brecha', width: 18 },
         ],
         this.dashboardData.empleadosEvaluados.map((employee) => ({
           empleado: this.getEmployeeName(employee),
@@ -1886,9 +1887,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
           { header: 'Criterio', key: 'criterio', width: 30 },
           { header: 'Item evaluativo', key: 'item', width: 58 },
           { header: 'Respuesta', key: 'respuesta', width: 24 },
-          { header: 'Resultado', key: 'resultado', width: 14 },
-          { header: 'Nivel esperado', key: 'exigencia', width: 16 },
-          { header: 'Brecha', key: 'brecha', width: 14 },
+          { header: 'Resultado (%)', key: 'resultado', width: 16 },
+          { header: 'Nivel esperado (%)', key: 'exigencia', width: 18 },
+          { header: 'Brecha (%)', key: 'brecha', width: 16 },
           { header: 'Estado', key: 'estado', width: 18 },
         ],
         this.buildEmployeeDetailExportRows(),
@@ -2310,21 +2311,22 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
   }
 
   formatScore(value: number | null): string {
-    if (value === null) return '-';
-    return this.roundTo(value, 2).toLocaleString('es-GT', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    return this.formatPercentageValue(performanceScoreToPercent(value));
   }
 
   formatGap(value: number | null): string {
+    const percentage = performanceGapToPercent(value);
+    if (percentage === null) return '-';
+    const prefix = percentage > 0 ? '+' : '';
+    return `${prefix}${this.formatPercentageValue(percentage)}`;
+  }
+
+  formatPercentageValue(value: number | null): string {
     if (value === null) return '-';
-    const rounded = this.roundTo(value, 2);
-    const prefix = rounded > 0 ? '+' : '';
-    return `${prefix}${rounded.toLocaleString('es-GT', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return `${this.roundTo(value, 1).toLocaleString('es-GT', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    })}%`;
   }
 
   formatDate(value: any): string {
@@ -3904,8 +3906,12 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     const normalizedRows = rows
       .map((item) => ({
         label: this.getText(item, labelKeys, 'Sin nombre'),
-        result: this.getNumber(item, ['calificacionPromedio', 'resultadoPromedio', 'resultadoTotal', 'resultado']),
-        target: this.getNumber(item, ['nivelExigenciaPromedio', 'nivelExigenciaTotal', 'nivelExigencia']),
+        result: performanceScoreToPercent(
+          this.getNumber(item, ['calificacionPromedio', 'resultadoPromedio', 'resultadoTotal', 'resultado'])
+        ),
+        target: performanceScoreToPercent(
+          this.getNumber(item, ['nivelExigenciaPromedio', 'nivelExigenciaTotal', 'nivelExigencia'])
+        ),
       }))
       .filter((item) => item.label && (item.result !== null || item.target !== null));
 
@@ -3915,12 +3921,10 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
 
     const resultSeries = normalizedRows.map((item) => item.result ?? 0);
     const targetSeries = normalizedRows.map((item) => item.target ?? 0);
-    const maxValue = Math.max(5, ...resultSeries, ...targetSeries);
-
     return {
       series: [
-        { name: 'Calificacion promedio', data: resultSeries },
-        { name: 'Nivel de exigencia', data: targetSeries },
+        { name: 'Calificacion promedio (%)', data: resultSeries },
+        { name: 'Nivel de exigencia (%)', data: targetSeries },
       ],
       chart: {
         type: 'bar',
@@ -3945,7 +3949,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
       },
       tooltip: {
         y: {
-          formatter: (value: number) => this.formatScore(Number(value)),
+          formatter: (value: number) => this.formatPercentageValue(Number(value)),
         },
       },
       xaxis: {
@@ -3957,9 +3961,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
       },
       yaxis: {
         min: 0,
-        max: maxValue <= 5 ? 5 : undefined,
+        max: 100,
         labels: {
-          formatter: (value: number) => this.roundTo(value, 1).toString(),
+          formatter: (value: number) => `${this.roundTo(value, 0)}%`,
         },
       },
     };
@@ -4967,9 +4971,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
   private resultColumns(firstHeader: string): Array<{ header: string; key: string; width?: number }> {
     return [
       { header: firstHeader, key: 'nombre', width: 34 },
-      { header: 'Calificacion', key: 'calificacion', width: 16 },
-      { header: 'Exigencia', key: 'exigencia', width: 16 },
-      { header: 'Brecha', key: 'brecha', width: 16 },
+      { header: 'Calificacion (%)', key: 'calificacion', width: 18 },
+      { header: 'Exigencia (%)', key: 'exigencia', width: 18 },
+      { header: 'Brecha (%)', key: 'brecha', width: 18 },
     ];
   }
 
@@ -4977,9 +4981,9 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     return [
       { header: 'Criterio', key: 'criterio', width: 34 },
       { header: 'Detalle', key: 'detalle', width: 44 },
-      { header: 'Calificacion', key: 'calificacion', width: 16 },
-      { header: 'Exigencia', key: 'exigencia', width: 16 },
-      { header: 'Brecha', key: 'brecha', width: 16 },
+      { header: 'Calificacion (%)', key: 'calificacion', width: 18 },
+      { header: 'Exigencia (%)', key: 'exigencia', width: 18 },
+      { header: 'Brecha (%)', key: 'brecha', width: 18 },
     ];
   }
 

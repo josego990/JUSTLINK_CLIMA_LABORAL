@@ -5,7 +5,7 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:4200',
-  turnstileSiteKey: '0x4AAAAAADEuTVPxRvyHp_Q9',
+  turnstileSiteKey: '0x4AAAAAADFN_BztKAVBrDVs',
   demo: {
     enabled: false,
   },

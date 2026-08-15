@@ -13,6 +13,7 @@
       "LOAD_ERROR": "No se pudo cargar la verificación. Recarga la página e inténtalo nuevamente.",
       "EXPIRED": "La verificación expiró. Complétala nuevamente para continuar."
     },
+    
     "USER":{
       "POST": "Gerente"
     },
@@ -42,16 +43,6 @@
       "ADMINISTRAR": "Administrar"
     },
    
-
-
-
-
-
-
-
-
-
-
     "DASHBOARD": {
       "TEXT": "DASHBOARD",
       "LIST": {
@@ -377,9 +368,15 @@
       "CONFIGS_TITTLE": "Variables Globales de Sistema",
       "CONFIGS": "Variables Globales",
       "CREATEROL": "Crear Nuevo Rol",
+      "ROLE_ASSIGNED_TO": "Asignado a {{organization}}",
+      "ROLE_ORGANIZATION_REQUIRED_TITLE": "Empresa requerida",
+      "ROLE_ORGANIZATION_REQUIRED_TEXT": "Selecciona una empresa en el encabezado antes de crear un rol.",
+      "LOADING_ROLES": "Cargando roles y accesos",
+      "SAVE": "Guardar",
+      "CANCEL": "Cancelar",
       
       "ACCESSDATA": {
-        "ACCESSDASHBOARD": "Visualizar el módulo Dashboard",
+        "ACCESSDASHBOARD": "Visualizar el módulo Dashboard CLIMA",
         "ACCESSDASHBOARDDESC": "Permite la visualización del módulo.",
 
         "EXPORTDASHBOARD": "Exportar datos del Dashboard",
@@ -448,7 +445,7 @@
         "ACCESSUSERS": "Visualizar módulo Usuarios",
         "ACCESSUSERSDESC": "Permite la visualización del módulo de Usuarios",
 
-        "ACCESSROLES": "Visualizar módulo Accesos",
+        "ACCESSROLES": "Visualizar módulo Roles y Accesos",
         "ACCESSROLESDESC": "Permite la visualización del módulo de Accesos por Roles",
 
         "ACCESSLOGS": "Visualizar módulo Logs",
@@ -492,7 +489,9 @@
 
     "USERS": {
       "TEXT": "USUARIOS",
-      "ACCESS": "ACCESOS"
+      "ACCESS": "ACCESOS",
+      "ORGANIZATION_REQUIRED_TITLE": "Empresa requerida",
+      "ORGANIZATION_REQUIRED_TEXT": "Selecciona una empresa en el encabezado antes de administrar usuarios."
      
     },
 
@@ -890,6 +889,14 @@
       "MODEL_CATALOG_SEARCH_HELP": "Simulación local: más adelante esta lista vendrá del backend para cargar el modelo completo.",
       "NO_MODEL_CATALOG_RESULTS": "No se encontraron modelos con esa búsqueda.",
       "DESCRIPTION": "Descripción",
+      "MODEL_IMAGE": "Imagen del modelo",
+      "MODEL_IMAGE_ALT": "Imagen del modelo de evaluación",
+      "MODEL_IMAGE_HELP": "Identifica visualmente el modelo en el encabezado y en la lista de evaluaciones. PNG, JPG o WebP de hasta 5 MB.",
+      "MODEL_IMAGE_SELECT": "Seleccionar imagen",
+      "MODEL_IMAGE_INVALID": "Selecciona una imagen PNG, JPG o WebP válida.",
+      "MODEL_IMAGE_TOO_LARGE": "La imagen no puede superar los 5 MB.",
+      "MODEL_IMAGE_READ_ERROR": "No fue posible preparar la vista previa de la imagen.",
+      "MODEL_IMAGE_UPLOAD_ERROR": "No fue posible cargar la imagen del modelo.",
       "TYPE": "Tipo",
       "MODEL_STATE": "Estado del modelo",
       "SCALE": "Escala",
@@ -948,6 +955,7 @@
       "POSITION_MODELS_EMPTY": "Selecciona al menos un puesto para configurar sus dimensiones, criterios de evaluación e ítems evaluativos.",
       "POSITION_QUESTION_COUNT": "{{count}} ítems evaluativos",
       "SCENARIO_NOT_APPLICABLE": "No aplica",
+      "PEER_SCENARIO_NOT_APPLICABLE": "Sin pares disponibles en la línea de reporte seleccionada",
       "NO_POSITION_QUESTIONS": "Este puesto aún no tiene ítems evaluativos en este criterio de evaluación.",
       "NO_COMPETENCIES": "Esta dimensión aún no tiene criterios de evaluación.",
       "NO_DIMENSIONS": "Agrega una dimensión para empezar a construir el modelo.",
@@ -963,13 +971,26 @@
       "SCENARIO_ACTIVE": "Activo",
       "WEIGHT": "Ponderación",
       "ACTIVE_SCENARIOS_COUNT": "Escenarios activos: {{count}}",
+      "SCENARIO_WEIGHT_TOTAL": "Ponderación total: {{total}}%",
       "WEIGHT_INCOMPLETE": "Ponderación pendiente",
       "POSITION_WEIGHT_WARNING": "Revisa las ponderaciones de dimensiones, escenarios y criterios de este puesto. Cada grupo configurado debe sumar 100%.",
       "SCENARIO_WEIGHT_WARNING": "Revisa las ponderaciones de dimensiones y criterios de este escenario. Cada grupo configurado debe sumar 100%.",
       "REQUIRED_RATING_LEVEL": "Nivel de exigencia",
-      "REQUIRED_RATING_LEVEL_HINT": "Calificación deseada de 1 a 5",
-      "REQUIRED_RATING_LEVEL_VALUE": "Exigencia: {{level}}/5.00",
+      "REQUIRED_RATING_LEVEL_HINT": "Porcentaje esperado de 1 a 100",
+      "REQUIRED_RATING_LEVEL_VALUE": "Exigencia: {{level}}%",
       "ONLY_ACTIVE": "Solo empleados activos",
+      "DEMOGRAPHIC_FILTERS": "Filtros demográficos",
+      "DEMOGRAPHIC_FILTERS_HELP": "Define primero la población; los puestos disponibles se actualizarán con los empleados que coincidan.",
+      "CLEAR_DEMOGRAPHIC_FILTERS": "Limpiar filtros",
+      "ALL_DEMOGRAPHIC_VALUES": "Todos los valores",
+      "NO_APPLICABLE_DEMOGRAPHIC_VALUES": "Sin valores aplicables",
+      "DEMOGRAPHIC_VALUES_SELECTED": "{{count}} valores seleccionados",
+      "DEMOGRAPHIC_VALUES_PICKER_TITLE": "Valores de {{field}}",
+      "SEARCH_DEMOGRAPHIC_VALUES": "Buscar valores",
+      "SEARCH_DEMOGRAPHIC_VALUES_PLACEHOLDER": "Escribe para filtrar los valores disponibles",
+      "SELECT_SUBORDINATES": "Seleccionar subordinados",
+      "SELECT_SUBORDINATES_HELP": "Agrega los puestos y empleados subordinados de todos los niveles vinculados con los jefes del puesto elegido.",
+      "SUBORDINATE_POSITION": "Puesto subordinado",
       "POSITIONS": "Puestos",
       "POSITION": "Puesto",
       "SPECIFIC_EMPLOYEES": "Empleados específicos",
@@ -1055,7 +1076,7 @@
         "REQUIRED_VALUE": "Hoja \"{{sheet}}\", fila {{row}}: el campo {{field}} es obligatorio.",
         "INVALID_SCENARIO": "Hoja \"{{sheet}}\", fila {{row}}: el escenario \"{{value}}\" no existe o no corresponde al tipo de modelo.",
         "INVALID_WEIGHT": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} debe ser un número entre 0 y 100.",
-        "INVALID_REQUIRED_LEVEL": "Hoja \"{{sheet}}\", fila {{row}}: el nivel de exigencia debe estar entre 1 y 5.",
+        "INVALID_REQUIRED_LEVEL": "Hoja \"{{sheet}}\", fila {{row}}: el nivel de exigencia debe ser un porcentaje entero entre 1 y 100.",
         "INVALID_ITEM_TYPE": "Hoja \"{{sheet}}\", fila {{row}}: el tipo \"{{value}}\" no está permitido. Utiliza Likert de 5 niveles o Pregunta abierta.",
         "INVALID_CODE": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} solo admite letras, números, guion y guion bajo, con un máximo de 50 caracteres.",
         "INVALID_SCALE": "Hoja \"{{sheet}}\", fila {{row}}: la escala \"{{value}}\" no existe o no está disponible.",
@@ -1276,6 +1297,59 @@
           "INTEGRITY": "Actúa con ética y transparencia."
         }
       },
+      "GUIDE": {
+        "BUTTON": "Guía del módulo",
+        "LIST": {
+          "OVERVIEW_TITLE": "Modelos de evaluación",
+          "OVERVIEW_TEXT": "Aquí puedes consultar y administrar los modelos de evaluación de desempeño de la organización seleccionada.",
+          "CREATE_TITLE": "Nueva evaluación",
+          "CREATE_TEXT": "Crea un modelo y define sus datos generales, participantes, escenarios, dimensiones, criterios e ítems evaluativos.",
+          "CARDS_TITLE": "Resumen de modelos",
+          "CARDS_TEXT": "Cada tarjeta presenta el estado, escala, tipo, período, progreso y estructura principal del modelo.",
+          "ACTIONS_TITLE": "Acciones del modelo",
+          "ACTIONS_TEXT": "Desde aquí puedes editar la encuesta, administrar envíos, consultar el diagrama de evaluación o duplicar el modelo.",
+          "CARD_IDENTITY_TITLE": "Identificación del modelo",
+          "CARD_IDENTITY_TEXT": "El encabezado identifica la evaluación, la organización a la que pertenece y el modelo de catálogo utilizado como base de configuración.",
+          "CARD_STATUS_TITLE": "Estado, escala y tipo de evaluación",
+          "CARD_STATUS_TEXT": "Estos indicadores muestran el estado actual del modelo, la escala de respuesta y si la evaluación es 90°, 180°, 360°, autoevaluación o mixta.",
+          "CARD_METRICS_TITLE": "Indicadores del modelo",
+          "CARD_METRICS_TEXT": "Consulta la cantidad de participantes activos, dimensiones configuradas, evaluaciones contestadas y el avance general de respuestas.",
+          "CARD_DIMENSIONS_TITLE": "Dimensiones de evaluación",
+          "CARD_DIMENSIONS_TEXT": "Cada sección representa una dimensión del modelo, como Objetivos, Competencias o Valores. El porcentaje indica su ponderación en el resultado final.",
+          "CARD_CRITERIA_TITLE": "Criterios e ítems evaluativos",
+          "CARD_CRITERIA_TEXT": "Los chips muestran los criterios incluidos en la dimensión. El número entre paréntesis indica cuántos ítems evaluativos o preguntas contiene cada criterio.",
+          "EDIT_ACTION_TITLE": "Editar encuesta",
+          "EDIT_ACTION_TEXT": "Abre la configuración completa para actualizar datos generales, participantes, escenarios, dimensiones, criterios, ítems y ponderaciones.",
+          "SEND_ACTION_TITLE": "Envíos de evaluación",
+          "SEND_ACTION_TEXT": "Prepara asignaciones, revisa evaluadores y evaluados, selecciona el canal, previsualiza los mensajes y envía las evaluaciones.",
+          "DIAGRAM_ACTION_TITLE": "Diagrama de evaluación",
+          "DIAGRAM_ACTION_TEXT": "Muestra gráficamente las relaciones entre evaluadores y evaluados para comprobar que los escenarios y asignaciones del modelo sean correctos.",
+          "DUPLICATE_ACTION_TITLE": "Duplicar modelo",
+          "DUPLICATE_ACTION_TEXT": "Crea un modelo nuevo con la misma configuración, participantes, escenarios, dimensiones, criterios e ítems, utilizando un nombre diferente."
+        },
+        "EDITOR": {
+          "OVERVIEW_TITLE": "Configuración de la evaluación",
+          "OVERVIEW_TEXT": "Este diálogo reúne toda la configuración del modelo. Utiliza las pestañas para avanzar entre catálogo, participantes, escenarios, criterios e ítems.",
+          "GENERAL_TITLE": "Datos generales",
+          "GENERAL_TEXT": "Ingresa el nombre, descripción, tipo, estado, escala y período de aplicación de la evaluación.",
+          "EXCEL_TITLE": "Importación desde Excel",
+          "EXCEL_TEXT": "Descarga la plantilla o carga un archivo validado para incorporar puestos, escenarios, dimensiones, criterios e ítems sin duplicar información existente.",
+          "DIMENSIONS_TITLE": "Dimensiones y ponderación",
+          "DIMENSIONS_TEXT": "Define las dimensiones del modelo y verifica que la suma de sus ponderaciones sea 100% antes de guardar.",
+          "SAVE_TITLE": "Guardar evaluación",
+          "SAVE_TEXT": "Guarda los avances del modelo. Puedes continuar su configuración posteriormente desde la tarjeta de la evaluación."
+        },
+        "SEND": {
+          "OVERVIEW_TITLE": "Envíos de la evaluación",
+          "OVERVIEW_TEXT": "Este diálogo permite preparar, consultar y enviar las evaluaciones asignadas a cada evaluador.",
+          "ACTIONS_TITLE": "Preparación de asignaciones",
+          "ACTIONS_TEXT": "Revisa las relaciones entre evaluadores y evaluados, y crea los registros de envío antes de realizar la comunicación.",
+          "SUMMARY_TITLE": "Resumen de envíos",
+          "SUMMARY_TEXT": "Estos indicadores muestran el total de evaluadores y asignaciones generadas para el modelo.",
+          "TABLE_TITLE": "Matriz por evaluador",
+          "TABLE_TEXT": "Consulta el contacto, puesto, evaluados, canal, fecha y estado. Las acciones permiten crear, previsualizar o enviar cada evaluación."
+        }
+      },
       "SEND_PREVIEW": {
         "CREATED": "Creado",
         "SENT": "Enviado",
@@ -1305,6 +1379,8 @@
         "DIMENSION_NAME_TEXT": "Ingresa el nombre de la dimensión.",
         "COMPETENCY_NAME_TITLE": "Nombre requerido",
         "COMPETENCY_NAME_TEXT": "Ingresa el nombre del criterio de evaluación.",
+        "REQUIRED_RATING_PERCENT_TITLE": "Nivel de exigencia inválido",
+        "REQUIRED_RATING_PERCENT_TEXT": "Ingresa un porcentaje entero entre 1 y 100.",
         "QUESTION_REQUIRED_TITLE": "Ítem evaluativo requerido",
         "QUESTION_REQUIRED_TEXT": "Ingresa el texto del ítem evaluativo.",
         "QUESTION_SCENARIO_REQUIRED_TITLE": "Escenario requerido",

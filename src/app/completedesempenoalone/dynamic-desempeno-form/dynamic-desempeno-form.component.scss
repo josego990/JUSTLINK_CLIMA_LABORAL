@@ -131,6 +131,18 @@
   font-weight: 700;
 }
 
+.answer-field--text {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
+.answer-field--text textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+}
+
 .likert-options {
   display: grid;
   grid-template-columns: repeat(5, minmax(105px, 1fr));

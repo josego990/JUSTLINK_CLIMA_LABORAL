@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
@@ -39,11 +40,23 @@ import {
   DesEvaluationExcelValidationError,
   parseDesEvaluationExcelWorkbook,
 } from './des-evaluaciones-excel';
+import {
+  requiredRatingPercentToScale,
+  requiredRatingScaleToPercent,
+} from '../shared/performance-score.utils';
 
 interface DesEvaluationOrganization {
   Id: number;
   Nombre: string;
 }
+
+interface PerformanceGuideStep {
+  target: string;
+  titleKey: string;
+  textKey: string;
+}
+
+type PerformanceGuidePlacement = 'above' | 'below' | 'center';
 
 interface DesEvaluationDemographicField {
   id: number;
@@ -69,6 +82,7 @@ interface DesEvaluationEmployee {
 
 type DesEvaluationScenarioKey = 'BOSS_TO_EMPLOYEE' | 'EMPLOYEE_TO_BOSS' | 'SELF' | 'PEER';
 type DesEvaluationQuestionPositionScope = 'ALL' | 'SELECTED';
+const DEFAULT_CRITERION_ITEM_TYPE = 'LIKERT_1_5';
 
 interface DesEvaluationQuestion {
   id: number;
@@ -123,7 +137,10 @@ interface DesEvaluationParticipantFilter {
 
 interface DesEvaluationParticipants {
   onlyActive: boolean;
+  selectSubordinates: boolean;
   positions: string[];
+  subordinateSourcePositions: string[];
+  excludedSubordinatePositions: string[];
   evaluatorOnlyPositions: string[];
   employeeIds: number[];
   demographicFilters: DesEvaluationParticipantFilter[];
@@ -154,11 +171,17 @@ interface DesEvaluationScenario {
   name: string;
   weight: number;
   active: boolean;
+  disabledByStructure?: boolean;
 }
 
 interface DesEvaluationPositionScenario {
   position: string;
   scenarios: DesEvaluationScenario[];
+}
+
+interface DesEvaluationScenarioApplicabilityContext {
+  population: DesEvaluationEmployee[];
+  applicableByPosition: Map<string, Set<DesEvaluationScenarioKey>>;
 }
 
 interface DesEvaluationScenarioOption {
@@ -178,6 +201,7 @@ interface DesEvaluationCard {
   minimumAnonymousResponses?: number;
   name: string;
   description: string;
+  imageSrc: string;
   avatarSrc: string;
   status: string;
   modelName: string;
@@ -248,7 +272,6 @@ interface FactorDraft {
   description: string;
   weight: number;
   requiredRatingLevel: number;
-  defaultQuestionType: string;
 }
 
 interface QuestionDraft {
@@ -408,6 +431,7 @@ interface DesEvaluationExcelApplicabilityResult {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatPaginatorModule,
     MatProgressSpinnerModule,
     MatRadioModule,
     MatSelectModule,
@@ -427,11 +451,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   @ViewChild('duplicateModelDialogTemplate') duplicateModelDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('modelCatalogSearchDialogTemplate') modelCatalogSearchDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('participantPositionsDialogTemplate') participantPositionsDialogTemplate?: TemplateRef<unknown>;
+  @ViewChild('participantDemographicValuesDialogTemplate')
+  participantDemographicValuesDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('bigFactorDialogTemplate') bigFactorDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('factorDialogTemplate') factorDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('questionDialogTemplate') questionDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('questionValuesDialogTemplate') questionValuesDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('duplicatePositionsDialogTemplate') duplicatePositionsDialogTemplate?: TemplateRef<unknown>;
+  @ViewChild('performanceGuidePopover') performanceGuidePopover?: ElementRef<HTMLElement>;
 
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
   readonly pageTitleKey = 'DESEMPENO_MENUITEMS.EVALUACIONES.TEXT';
@@ -490,7 +517,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       useAnonymity: false,
     },
   ];
-  public surveyTypes = ['360', '180', '90', 'AUTOEVALUACION', 'MIXTA'];
+  private readonly enabledSurveyTypeCodes = new Set<string>([
+    '360',
+    '180',
+    '90',
+    // 'AUTOEVALUACION', // Reactivar cuando el flujo vuelva a ofrecer este tipo.
+    // 'MIXTA', // Reactivar cuando el flujo vuelva a ofrecer este tipo.
+  ]);
+  public surveyTypes = Array.from(this.enabledSurveyTypeCodes);
   public questionTypes: Array<{ value: string; label?: string; labelKey?: string }> = [
     { value: 'LIKERT_1_5', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.LIKERT_1_5' },
     { value: 'ABIERTA', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.ABIERTA' },
@@ -572,6 +606,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public isLoadingModelDiagram = false;
   public isCreatingSendAssignments = false;
   public isSavingModel = false;
+  public modelImageUploadError = '';
+  public modelImageFileName = '';
   public isImportingModelExcel = false;
   public modelExcelImportSummary: DesEvaluationExcelImportSummary | null = null;
   public editingEvaluation: DesEvaluationCard | null = null;
@@ -603,6 +639,13 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public questionDraft: QuestionDraft = this.createEmptyQuestionDraft();
   public participantPositionSearchTerm = '';
   public participantEmployeeSearchTerm = '';
+  public participantEmployeePageIndex = 0;
+  public participantEmployeePageSize = 50;
+  public readonly participantEmployeePageSizeOptions = [25, 50, 100];
+  public participantEmployeeResultCount = 0;
+  public visibleParticipantEmployees: DesEvaluationEmployee[] = [];
+  public participantDemographicSearchTerm = '';
+  public activeParticipantDemographicField: DesEvaluationDemographicField | null = null;
   public questionPositionSearchTerm = '';
   public filteredQuestionPositions: string[] = [];
   public questionScenarioOptions: Array<{ key: DesEvaluationScenarioKey; label: string }> = [];
@@ -616,6 +659,11 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public duplicateContext: DesEvaluationDuplicateContext | null = null;
   public duplicatePositionSearchTerm = '';
   public selectedDuplicatePositions: string[] = [];
+  public isPerformanceGuideVisible = false;
+  public performanceGuideStepIndex = -1;
+  public performanceGuideFocusStyle: Record<string, string> = {};
+  public performanceGuidePopoverStyle: Record<string, string> = {};
+  public performanceGuidePlacement: PerformanceGuidePlacement = 'center';
   public modelDiagramView: [number, number] = [
     this.getModelDiagramViewportWidth(),
     this.getModelDiagramViewportHeight(),
@@ -657,6 +705,17 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   private organizationLoadSequence = 0;
   private modelLoadSequence = 0;
   private selectedOrganizationSubscription?: Subscription;
+  private performanceGuideSteps: PerformanceGuideStep[] = [];
+  private performanceGuideTarget: HTMLElement | null = null;
+  private performanceGuidePositionTimer: number | null = null;
+  private modelImageFileChanged = false;
+  private modelImageFormData = new FormData();
+  private filteredParticipantEmployees: DesEvaluationEmployee[] = [];
+  private readonly scenarioApplicabilityCache =
+    new WeakMap<DesEvaluationCard, DesEvaluationScenarioApplicabilityContext>();
+  private readonly modelImageBucketUrl =
+    'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/';
+  private readonly fallbackModelImageUrl = 'assets/images/user/user1.jpg';
 
   constructor(
     private dialog: MatDialog,
@@ -672,6 +731,203 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   ngOnDestroy(): void {
     this.selectedOrganizationSubscription?.unsubscribe();
+    this.closePerformanceGuide();
+  }
+
+  startEvaluationsGuide(): void {
+    this.startGuide([
+      this.guideStep('performance-list-overview', 'LIST.OVERVIEW'),
+      this.guideStep('performance-list-create', 'LIST.CREATE'),
+      this.guideStep('performance-card-identity', 'LIST.CARD_IDENTITY'),
+      this.guideStep('performance-card-status', 'LIST.CARD_STATUS'),
+      this.guideStep('performance-card-metrics', 'LIST.CARD_METRICS'),
+      this.guideStep('performance-card-dimension', 'LIST.CARD_DIMENSIONS'),
+      this.guideStep('performance-card-criteria', 'LIST.CARD_CRITERIA'),
+      this.guideStep('performance-card-edit', 'LIST.EDIT_ACTION'),
+      this.guideStep('performance-card-send', 'LIST.SEND_ACTION'),
+      this.guideStep('performance-card-diagram', 'LIST.DIAGRAM_ACTION'),
+      this.guideStep('performance-card-duplicate', 'LIST.DUPLICATE_ACTION'),
+    ]);
+  }
+
+  startEvaluationEditorGuide(): void {
+    this.activeEditorTabIndex = 0;
+    this.startGuide([
+      this.guideStep('performance-editor-overview', 'EDITOR.OVERVIEW'),
+      this.guideStep('performance-editor-general', 'EDITOR.GENERAL'),
+      this.guideStep('performance-editor-excel', 'EDITOR.EXCEL'),
+      this.guideStep('performance-editor-dimensions', 'EDITOR.DIMENSIONS'),
+      this.guideStep('performance-editor-save', 'EDITOR.SAVE'),
+    ]);
+  }
+
+  startEvaluationSendGuide(): void {
+    this.startGuide([
+      this.guideStep('performance-send-overview', 'SEND.OVERVIEW'),
+      this.guideStep('performance-send-actions', 'SEND.ACTIONS'),
+      this.guideStep('performance-send-summary', 'SEND.SUMMARY'),
+      this.guideStep('performance-send-table', 'SEND.TABLE'),
+    ]);
+  }
+
+  get activePerformanceGuideTitle(): string {
+    const step = this.performanceGuideSteps[this.performanceGuideStepIndex];
+    return step ? this.translate.instant(step.titleKey) : '';
+  }
+
+  get activePerformanceGuideText(): string {
+    const step = this.performanceGuideSteps[this.performanceGuideStepIndex];
+    return step ? this.translate.instant(step.textKey) : '';
+  }
+
+  get performanceGuideCounter(): string {
+    return `${this.performanceGuideStepIndex + 1} / ${this.performanceGuideSteps.length}`;
+  }
+
+  get isLastPerformanceGuideStep(): boolean {
+    return this.performanceGuideStepIndex === this.performanceGuideSteps.length - 1;
+  }
+
+  previousPerformanceGuideStep(): void {
+    if (this.performanceGuideStepIndex > 0) {
+      this.showPerformanceGuideStep(this.performanceGuideStepIndex - 1);
+    }
+  }
+
+  nextPerformanceGuideStep(): void {
+    if (this.isLastPerformanceGuideStep) {
+      this.closePerformanceGuide();
+      return;
+    }
+
+    this.showPerformanceGuideStep(this.performanceGuideStepIndex + 1);
+  }
+
+  closePerformanceGuide(): void {
+    if (this.performanceGuidePositionTimer !== null) {
+      window.clearTimeout(this.performanceGuidePositionTimer);
+      this.performanceGuidePositionTimer = null;
+    }
+
+    this.isPerformanceGuideVisible = false;
+    this.performanceGuideStepIndex = -1;
+    this.performanceGuideSteps = [];
+    this.performanceGuideTarget = null;
+    this.performanceGuideFocusStyle = {};
+    this.performanceGuidePopoverStyle = {};
+  }
+
+  private guideStep(target: string, translationPath: string): PerformanceGuideStep {
+    const baseKey = `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.${translationPath}`;
+    return {
+      target,
+      titleKey: `${baseKey}_TITLE`,
+      textKey: `${baseKey}_TEXT`,
+    };
+  }
+
+  private startGuide(steps: PerformanceGuideStep[]): void {
+    const renderedSteps = steps.filter((step) => this.findPerformanceGuideTarget(step.target));
+    if (!renderedSteps.length) {
+      return;
+    }
+
+    this.performanceGuideSteps = renderedSteps;
+    this.isPerformanceGuideVisible = true;
+    this.showPerformanceGuideStep(0);
+  }
+
+  private showPerformanceGuideStep(index: number): void {
+    const step = this.performanceGuideSteps[index];
+    const target = step ? this.findPerformanceGuideTarget(step.target) : null;
+    if (!step || !target) {
+      this.closePerformanceGuide();
+      return;
+    }
+
+    this.performanceGuideStepIndex = index;
+    this.performanceGuideTarget = target;
+
+    const rect = target.getBoundingClientRect();
+    const isVisible = rect.top >= 76 &&
+      rect.left >= 8 &&
+      rect.bottom <= window.innerHeight - 18 &&
+      rect.right <= window.innerWidth - 8;
+
+    if (!isVisible) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+
+    this.schedulePerformanceGuidePosition(isVisible ? 0 : 320);
+  }
+
+  private findPerformanceGuideTarget(target: string): HTMLElement | null {
+    return document.querySelector<HTMLElement>(`[data-performance-guide="${target}"]`);
+  }
+
+  private schedulePerformanceGuidePosition(delay = 0): void {
+    if (this.performanceGuidePositionTimer !== null) {
+      window.clearTimeout(this.performanceGuidePositionTimer);
+    }
+
+    this.performanceGuidePositionTimer = window.setTimeout(() => {
+      this.performanceGuidePositionTimer = null;
+      window.requestAnimationFrame(() => this.positionPerformanceGuide());
+    }, delay);
+  }
+
+  private positionPerformanceGuide(): void {
+    if (!this.isPerformanceGuideVisible || !this.performanceGuideTarget) {
+      return;
+    }
+
+    const rect = this.performanceGuideTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const focusPadding = 6;
+    const focusLeft = Math.max(6, rect.left - focusPadding);
+    const focusTop = Math.max(6, rect.top - focusPadding);
+    const focusRight = Math.min(viewportWidth - 6, rect.right + focusPadding);
+    const focusBottom = Math.min(viewportHeight - 6, rect.bottom + focusPadding);
+
+    this.performanceGuideFocusStyle = {
+      left: `${focusLeft}px`,
+      top: `${focusTop}px`,
+      width: `${Math.max(0, focusRight - focusLeft)}px`,
+      height: `${Math.max(0, focusBottom - focusTop)}px`,
+    };
+
+    const popoverRect = this.performanceGuidePopover?.nativeElement.getBoundingClientRect();
+    const popoverWidth = Math.min(popoverRect?.width || 360, viewportWidth - 24);
+    const popoverHeight = popoverRect?.height || 220;
+    const gap = 16;
+    const horizontalMargin = 12;
+    let left = rect.left + (rect.width - popoverWidth) / 2;
+    let top: number;
+
+    left = Math.max(horizontalMargin, Math.min(left, viewportWidth - popoverWidth - horizontalMargin));
+
+    if (viewportHeight - rect.bottom >= popoverHeight + gap) {
+      top = rect.bottom + gap;
+      this.performanceGuidePlacement = 'below';
+    } else if (rect.top >= popoverHeight + gap) {
+      top = rect.top - popoverHeight - gap;
+      this.performanceGuidePlacement = 'above';
+    } else {
+      top = Math.max(12, (viewportHeight - popoverHeight) / 2);
+      left = Math.max(12, (viewportWidth - popoverWidth) / 2);
+      this.performanceGuidePlacement = 'center';
+    }
+
+    this.performanceGuidePopoverStyle = {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${popoverWidth}px`,
+    };
   }
 
   private setupSelectedOrganizationListener(): void {
@@ -695,6 +951,23 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   @HostListener('window:resize')
   onWindowResize(): void {
     this.syncModelDiagramViewport();
+    if (this.isPerformanceGuideVisible) {
+      this.schedulePerformanceGuidePosition();
+    }
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (this.isPerformanceGuideVisible) {
+      this.schedulePerformanceGuidePosition();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onPerformanceGuideEscape(): void {
+    if (this.isPerformanceGuideVisible) {
+      this.closePerformanceGuide();
+    }
   }
 
   get hasSelectedOrganization(): boolean {
@@ -828,10 +1101,17 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    if (this.demographicFields.length === 0) {
-      this.demographicFields = this.buildDemographicFieldsFromEmployees();
-      this.rebuildDemographicValueOptions();
-    }
+    const employeeDemographicFields = this.buildDemographicFieldsFromEmployees();
+    const knownDemographicKeys = new Set(
+      this.demographicFields.flatMap((field) => [field.name, field.code])
+        .map((key) => this.normalizeSearchText(key))
+        .filter((key) => key.length > 0)
+    );
+    const missingEmployeeFields = employeeDemographicFields.filter(
+      (field) => !knownDemographicKeys.has(this.normalizeSearchText(field.name))
+    );
+    this.demographicFields = [...this.demographicFields, ...missingEmployeeFields];
+    this.rebuildDemographicValueOptions();
 
     await this.loadModels(selectedOrganizationId);
   }
@@ -859,6 +1139,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.selectedModelCatalogId = null;
     this.modelCatalogSearchTerm = '';
     this.modelExcelImportSummary = null;
+    this.resetModelImageUpload();
     this.draftEvaluation = this.createBlankEvaluation(this.selectedOrganizationId);
     this.refreshQuestionScenarioState();
     this.openEditorDialog();
@@ -883,6 +1164,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       this.editingEvaluation = normalizedCard;
       this.activeEditorTabIndex = 0;
       this.modelExcelImportSummary = null;
+      this.resetModelImageUpload();
       this.draftEvaluation = this.cloneEvaluation(this.ensureDraftFilters(normalizedCard));
       this.draftEvaluation.scenarios = this.buildScenariosForType(
         this.draftEvaluation.modelType,
@@ -1108,6 +1390,66 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.editorDialogRef?.close();
   }
 
+  onModelImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file || !this.draftEvaluation) {
+      return;
+    }
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.modelImageUploadError = this.t(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_INVALID'
+      );
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.modelImageUploadError = this.t(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_TOO_LARGE'
+      );
+      input.value = '';
+      return;
+    }
+
+    const safeOriginalName = file.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '-')
+      .replace(/-+/g, '-');
+    const fileName = `modelo-desempeno-${Date.now()}-${safeOriginalName}`;
+    const formData = new FormData();
+    formData.append('file', file, fileName);
+
+    this.modelImageFormData = formData;
+    this.modelImageFileName = fileName;
+    this.modelImageFileChanged = true;
+    this.modelImageUploadError = '';
+    this.draftEvaluation.imageSrc = fileName;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (this.draftEvaluation && typeof reader.result === 'string') {
+        this.draftEvaluation.avatarSrc = reader.result;
+      }
+    };
+    reader.onerror = () => {
+      this.modelImageUploadError = this.t(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_READ_ERROR'
+      );
+    };
+    reader.readAsDataURL(file);
+  }
+
+  onModelImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    if (!image.src.endsWith(this.fallbackModelImageUrl)) {
+      image.src = this.fallbackModelImageUrl;
+    }
+  }
+
   async saveDraftEvaluation(): Promise<void> {
     if (!this.draftEvaluation || !this.selectedOrganizationId || this.isSavingModel) {
       return;
@@ -1245,6 +1587,18 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.isSavingModel = true;
 
     try {
+      if (this.modelImageFileChanged) {
+        try {
+          await this.organizacionService.uploadFileV2(this.modelImageFormData);
+        } catch (error) {
+          this.modelImageUploadError = this.t(
+            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_UPLOAD_ERROR'
+          );
+          throw error;
+        }
+        this.modelImageFileChanged = false;
+      }
+
       if (editingId) {
         await this.organizacionService.updateDesempenoModel(editingId, payload);
       } else {
@@ -1612,7 +1966,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
             description: row.criterionDescription,
             weight: row.criterionWeight,
             requiredRatingLevel: row.requiredRatingLevel,
-            defaultQuestionType: importedItemType,
+            defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
             questions: [],
             scenarioKeys: [row.scenarioKey],
             positionScope: 'SELECTED',
@@ -1996,7 +2350,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         [DES_EVALUATION_EXCEL_HEADERS.criterionName]: definition.criterionName,
         [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: definition.criterionDescription,
         [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
-        [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 4,
+        [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 80,
         [DES_EVALUATION_EXCEL_HEADERS.itemCode]: itemCode,
         [DES_EVALUATION_EXCEL_HEADERS.itemText]: itemText,
         [DES_EVALUATION_EXCEL_HEADERS.itemType]: itemType,
@@ -2170,6 +2524,22 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.refreshQuestionScenarioState();
   }
 
+  onEditorTabChange(index: number): void {
+    this.activeEditorTabIndex = index;
+    if (index !== 1 || !this.draftEvaluation) {
+      return;
+    }
+
+    const type = this.draftEvaluation.modelType || this.draftEvaluation.surveyType || '360';
+    this.draftEvaluation.modelType = type;
+    this.draftEvaluation.surveyType = type;
+    this.draftEvaluation.scenarios = this.buildScenariosForType(
+      type,
+      this.draftEvaluation.scenarios
+    );
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
+  }
+
   openBigFactorDialog(index?: number): void {
     if (!this.draftEvaluation) {
       return;
@@ -2302,8 +2672,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
           name: currentFactor.name,
           description: currentFactor.description,
           weight: currentFactor.weight,
-          requiredRatingLevel: this.getFactorRequiredRatingLevel(currentFactor),
-          defaultQuestionType: currentFactor.defaultQuestionType,
+          requiredRatingLevel: requiredRatingScaleToPercent(
+            this.getFactorRequiredRatingLevel(currentFactor)
+          ),
         }
       : {
           ...this.createEmptyFactorDraft(),
@@ -2331,6 +2702,20 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       Swal.fire(
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.COMPETENCY_NAME_TITLE'),
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.COMPETENCY_NAME_TEXT'),
+        'warning'
+      );
+      return;
+    }
+
+    const requiredRatingPercent = Number(this.factorDraft.requiredRatingLevel);
+    if (
+      !Number.isInteger(requiredRatingPercent) ||
+      requiredRatingPercent < 1 ||
+      requiredRatingPercent > 100
+    ) {
+      Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.REQUIRED_RATING_PERCENT_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.REQUIRED_RATING_PERCENT_TEXT'),
         'warning'
       );
       return;
@@ -2371,8 +2756,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       name: this.factorDraft.name.trim(),
       description: this.factorDraft.description.trim(),
       weight: Number(this.factorDraft.weight) || 0,
-      requiredRatingLevel: this.normalizeRequiredRatingLevel(this.factorDraft.requiredRatingLevel),
-      defaultQuestionType: this.factorDraft.defaultQuestionType,
+      requiredRatingLevel: requiredRatingPercentToScale(requiredRatingPercent),
+      defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
       questions: currentFactor
         ? currentFactor.questions.map((question) => ({
           ...question,
@@ -3018,8 +3403,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
+    scenario.disabledByStructure = false;
     scenario.active = selected &&
       this.isPositionScenarioStructurallyApplicable(position, scenarioKey, this.draftEvaluation);
+    this.rebalancePositionScenarioWeights(position, this.draftEvaluation, true);
     this.syncGlobalScenariosFromPositionConfigs(this.draftEvaluation);
   }
 
@@ -3041,7 +3428,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    scenario.weight = Math.max(0, Math.min(100, Number(value) || 0));
+    scenario.weight = Math.round(Math.max(0, Math.min(100, Number(value) || 0)));
     this.syncGlobalScenariosFromPositionConfigs(this.draftEvaluation);
   }
 
@@ -3049,10 +3436,30 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     position: string,
     evaluation: DesEvaluationCard | null = this.draftEvaluation
   ): number {
-    return this.getActivePositionScenarios(position, evaluation).reduce(
+    const total = this.getActivePositionScenarios(position, evaluation).reduce(
       (total, scenario) => total + (Number(scenario.weight) || 0),
       0
     );
+
+    return Math.round(total * 100) / 100;
+  }
+
+  isPositionScenarioWeightInvalid(
+    position: string,
+    evaluation: DesEvaluationCard | null = this.draftEvaluation
+  ): boolean {
+    const activeScenarios = this.getActivePositionScenarios(position, evaluation);
+
+    return activeScenarios.length === 0 ||
+      !this.isWeightTotalComplete(this.getPositionScenarioWeightTotal(position, evaluation));
+  }
+
+  getScenarioNotApplicableTranslationKey(
+    scenarioKey: DesEvaluationScenarioKey | undefined
+  ): string {
+    return scenarioKey === 'PEER'
+      ? 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.PEER_SCENARIO_NOT_APPLICABLE'
+      : 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_NOT_APPLICABLE';
   }
 
   getPositionScenarioWeight(
@@ -3133,25 +3540,15 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     scenarioKey: DesEvaluationScenarioKey | undefined,
     evaluation: DesEvaluationCard | null = this.draftEvaluation
   ): boolean {
-    if (!scenarioKey || !evaluation || this.isPositionEvaluatorOnly(position, evaluation)) {
+    if (!scenarioKey || !evaluation) {
       return false;
     }
 
-    const population = this.getMatchedEmployees(evaluation);
-    const positionEmployees = this.getPositionParticipants(position, population);
-
-    if (scenarioKey === 'BOSS_TO_EMPLOYEE') {
-      return positionEmployees.some((employee) =>
-        this.getDirectManagers(employee, population).length > 0
-      );
-    }
-
-    if (scenarioKey !== 'EMPLOYEE_TO_BOSS') {
-      return true;
-    }
-
-    return positionEmployees.some((employee) =>
-      this.getDirectReports(employee, population).length > 0
+    return this.isPositionScenarioApplicableInContext(
+      position,
+      scenarioKey,
+      evaluation,
+      this.getScenarioApplicabilityContext(evaluation)
     );
   }
 
@@ -3163,11 +3560,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return false;
     }
 
-    const population = this.getMatchedEmployees(evaluation);
-    const positionEmployees = this.getPositionParticipants(position, population);
-
-    return positionEmployees.length > 0 && !positionEmployees.some((employee) =>
-      this.getDirectManagers(employee, population).length > 0
+    return this.isPositionAutomaticallyEvaluatorOnlyInContext(
+      position,
+      evaluation,
+      this.getScenarioApplicabilityContext(evaluation)
     );
   }
 
@@ -3175,8 +3571,123 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     position: string,
     evaluation: DesEvaluationCard | null = this.draftEvaluation
   ): boolean {
-    return (evaluation?.participants.evaluatorOnlyPositions?.includes(position) ?? false) ||
-      this.isPositionAutomaticallyEvaluatorOnly(position, evaluation);
+    if (!evaluation) {
+      return false;
+    }
+
+    return this.isPositionEvaluatorOnlyInContext(
+      position,
+      evaluation,
+      this.getScenarioApplicabilityContext(evaluation)
+    );
+  }
+
+  private getScenarioApplicabilityContext(
+    evaluation: DesEvaluationCard,
+    refresh = false
+  ): DesEvaluationScenarioApplicabilityContext {
+    if (!refresh) {
+      const cached = this.scenarioApplicabilityCache.get(evaluation);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const population = this.getMatchedEmployees(evaluation);
+    const populationIds = new Set(population.map((employee) => employee.id));
+    const employeesByPosition = new Map<string, DesEvaluationEmployee[]>();
+    const directReportCountByManagerId = new Map<number, number>();
+
+    population.forEach((employee) => {
+      if (employee.cargo) {
+        const positionKey = this.normalizeSearchText(employee.cargo);
+        const positionEmployees = employeesByPosition.get(positionKey) ?? [];
+        positionEmployees.push(employee);
+        employeesByPosition.set(positionKey, positionEmployees);
+      }
+
+      if (employee.managerId && populationIds.has(employee.managerId)) {
+        directReportCountByManagerId.set(
+          employee.managerId,
+          (directReportCountByManagerId.get(employee.managerId) ?? 0) + 1
+        );
+      }
+    });
+
+    const applicableByPosition = new Map<string, Set<DesEvaluationScenarioKey>>();
+    employeesByPosition.forEach((positionEmployees, positionKey) => {
+      const applicableScenarios = new Set<DesEvaluationScenarioKey>();
+      if (positionEmployees.length > 0) {
+        applicableScenarios.add('SELF');
+      }
+      if (positionEmployees.some((employee) => {
+        const managerIds = employee.managerIds.length > 0
+          ? employee.managerIds
+          : employee.managerId
+            ? [employee.managerId]
+            : [];
+        return managerIds.some((managerId) => populationIds.has(managerId));
+      })) {
+        applicableScenarios.add('BOSS_TO_EMPLOYEE');
+      }
+      if (positionEmployees.some((employee) =>
+        (directReportCountByManagerId.get(employee.id) ?? 0) > 0
+      )) {
+        applicableScenarios.add('EMPLOYEE_TO_BOSS');
+      }
+      if (positionEmployees.some((employee) =>
+        !!employee.managerId &&
+        (directReportCountByManagerId.get(employee.managerId) ?? 0) > 1
+      )) {
+        applicableScenarios.add('PEER');
+      }
+
+      applicableByPosition.set(positionKey, applicableScenarios);
+    });
+
+    const context = { population, applicableByPosition };
+    this.scenarioApplicabilityCache.set(evaluation, context);
+    return context;
+  }
+
+  private isPositionScenarioApplicableInContext(
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey,
+    evaluation: DesEvaluationCard,
+    context: DesEvaluationScenarioApplicabilityContext
+  ): boolean {
+    if (this.isPositionEvaluatorOnlyInContext(position, evaluation, context)) {
+      return false;
+    }
+
+    return context.applicableByPosition
+      .get(this.normalizeSearchText(position))
+      ?.has(scenarioKey) ?? false;
+  }
+
+  private isPositionAutomaticallyEvaluatorOnlyInContext(
+    position: string,
+    evaluation: DesEvaluationCard,
+    context: DesEvaluationScenarioApplicabilityContext
+  ): boolean {
+    if (this.normalizeKey(evaluation.modelType) !== '90') {
+      return false;
+    }
+
+    const applicableScenarios = context.applicableByPosition.get(
+      this.normalizeSearchText(position)
+    );
+    return !!applicableScenarios?.has('SELF') &&
+      !applicableScenarios.has('BOSS_TO_EMPLOYEE');
+  }
+
+  private isPositionEvaluatorOnlyInContext(
+    position: string,
+    evaluation: DesEvaluationCard,
+    context: DesEvaluationScenarioApplicabilityContext
+  ): boolean {
+    return evaluation.participants.evaluatorOnlyPositions?.includes(position) ||
+      this.isPositionAutomaticallyEvaluatorOnlyInContext(position, evaluation, context);
   }
 
   setPositionEvaluatorOnly(
@@ -3623,6 +4134,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return this.normalizeRequiredRatingLevel(factor.requiredRatingLevel);
   }
 
+  getFactorRequiredRatingPercentage(factor: DesEvaluationFactor): number {
+    return requiredRatingScaleToPercent(this.getFactorRequiredRatingLevel(factor));
+  }
+
   getBigFactorWeightTotal(evaluation: DesEvaluationCard | null): number {
     if (!evaluation) {
       return 0;
@@ -3648,29 +4163,389 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   getFilteredParticipantPositions(): string[] {
     const search = this.normalizeSearchText(this.participantPositionSearchTerm);
+    const availablePositions = this.getDemographicallyAvailablePositions();
 
     if (!search) {
+      return availablePositions;
+    }
+
+    return availablePositions.filter((position) =>
+      this.normalizeSearchText(position).includes(search)
+    );
+  }
+
+  getParticipantDemographicFields(): DesEvaluationDemographicField[] {
+    return this.demographicFields.filter(
+      (field) => this.getDemographicValues(field.name).length > 0
+    );
+  }
+
+  openParticipantDemographicValuesDialog(field: DesEvaluationDemographicField): void {
+    if (!this.draftEvaluation || !this.participantDemographicValuesDialogTemplate) {
+      return;
+    }
+
+    this.activeParticipantDemographicField = field;
+    this.participantDemographicSearchTerm = '';
+    this.nestedDialogRef = this.dialog.open(this.participantDemographicValuesDialogTemplate, {
+      width: '720px',
+      maxWidth: '94vw',
+      maxHeight: '86vh',
+      autoFocus: false,
+      panelClass: 'des-evaluaciones-dialog-panel',
+    });
+  }
+
+  getFilteredParticipantDemographicValues(): string[] {
+    if (!this.activeParticipantDemographicField) {
+      return [];
+    }
+
+    const values = this.getParticipantDemographicApplicableValues(
+      this.activeParticipantDemographicField.name
+    );
+    const search = this.normalizeSearchText(this.participantDemographicSearchTerm);
+
+    return search
+      ? values.filter((value) => this.normalizeSearchText(value).includes(search))
+      : values;
+  }
+
+  getParticipantDemographicSelectedValues(fieldName: string): string[] {
+    const applicableValues = this.getParticipantDemographicApplicableValues(fieldName);
+    const filter = this.draftEvaluation?.participants.demographicFilters.find(
+      (item) => this.normalizeSearchText(item.fieldName) === this.normalizeSearchText(fieldName)
+    );
+
+    if (!filter) {
+      return applicableValues;
+    }
+
+    const applicableValueKeys = new Set(
+      applicableValues.map((value) => this.normalizeSearchText(value))
+    );
+    return filter.selectedValues.filter((value) =>
+      applicableValueKeys.has(this.normalizeSearchText(value))
+    );
+  }
+
+  getParticipantDemographicApplicableValues(fieldName: string): string[] {
+    const values = this.getDemographicValues(fieldName);
+    const evaluation = this.draftEvaluation;
+    if (!evaluation) {
+      return values;
+    }
+
+    const fieldIndex = this.getParticipantDemographicFieldIndex(fieldName);
+    if (fieldIndex <= 0) {
+      return values;
+    }
+
+    const priorFieldKeys = new Set(
+      this.demographicFields
+        .slice(0, fieldIndex)
+        .flatMap((field) => [field.name, field.code])
+        .map((key) => this.normalizeSearchText(key))
+        .filter((key) => key.length > 0)
+    );
+    const priorFilters = evaluation.participants.demographicFilters.filter((filter) =>
+      priorFieldKeys.has(this.normalizeSearchText(filter.fieldName))
+    );
+    if (priorFilters.length === 0) {
+      return values;
+    }
+
+    const applicableValueKeys = new Set<string>();
+    this.employees.forEach((employee) => {
+      if (
+        (evaluation.participants.onlyActive && !employee.activo) ||
+        !this.employeeMatchesDemographicFilters(employee, priorFilters)
+      ) {
+        return;
+      }
+
+      const value = this.getEmployeeDemographicValue(employee, fieldName);
+      if (value) {
+        applicableValueKeys.add(this.normalizeSearchText(value));
+      }
+    });
+
+    return values.filter((value) =>
+      applicableValueKeys.has(this.normalizeSearchText(value))
+    );
+  }
+
+  getParticipantDemographicSelectedCount(fieldName: string): number {
+    return this.getParticipantDemographicSelectedValues(fieldName).length;
+  }
+
+  getActiveParticipantDemographicFilterCount(): number {
+    return this.draftEvaluation?.participants.demographicFilters.length ?? 0;
+  }
+
+  isParticipantDemographicFieldRestricted(fieldName: string): boolean {
+    return this.draftEvaluation?.participants.demographicFilters.some(
+      (filter) => this.normalizeSearchText(filter.fieldName) === this.normalizeSearchText(fieldName)
+    ) ?? false;
+  }
+
+  isParticipantDemographicValueSelected(fieldName: string, value: string): boolean {
+    const normalizedValue = this.normalizeSearchText(value);
+    return this.getParticipantDemographicSelectedValues(fieldName).some(
+      (selectedValue) => this.normalizeSearchText(selectedValue) === normalizedValue
+    );
+  }
+
+  toggleParticipantDemographicValue(fieldName: string, value: string): void {
+    this.setParticipantDemographicValueSelected(
+      fieldName,
+      value,
+      !this.isParticipantDemographicValueSelected(fieldName, value)
+    );
+  }
+
+  setParticipantDemographicValueSelected(
+    fieldName: string,
+    value: string,
+    selected: boolean
+  ): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const currentValues = new Set(
+      this.getParticipantDemographicSelectedValues(fieldName).map((item) =>
+        this.normalizeSearchText(item)
+      )
+    );
+    const normalizedValue = this.normalizeSearchText(value);
+    selected ? currentValues.add(normalizedValue) : currentValues.delete(normalizedValue);
+    const selectedValues = this.getParticipantDemographicApplicableValues(fieldName).filter((item) =>
+      currentValues.has(this.normalizeSearchText(item))
+    );
+
+    this.updateParticipantDemographicFilter(fieldName, selectedValues);
+  }
+
+  selectAllFilteredParticipantDemographicValues(): void {
+    if (!this.activeParticipantDemographicField) {
+      return;
+    }
+
+    const fieldName = this.activeParticipantDemographicField.name;
+    const selectedValues = new Set([
+      ...this.getParticipantDemographicSelectedValues(fieldName),
+      ...this.getFilteredParticipantDemographicValues(),
+    ].map((value) => this.normalizeSearchText(value)));
+
+    this.updateParticipantDemographicFilter(
+      fieldName,
+      this.getParticipantDemographicApplicableValues(fieldName).filter((value) =>
+        selectedValues.has(this.normalizeSearchText(value))
+      )
+    );
+  }
+
+  clearParticipantDemographicField(fieldName: string): void {
+    this.updateParticipantDemographicFilter(fieldName, []);
+  }
+
+  clearAllParticipantDemographicFilters(): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    this.draftEvaluation.participants.demographicFilters = [];
+    this.reconcileParticipantPositionsWithDemographics();
+  }
+
+  trackByDemographicField(_index: number, field: DesEvaluationDemographicField): string {
+    return field.code || field.name;
+  }
+
+  private updateParticipantDemographicFilter(fieldName: string, selectedValues: string[]): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const availableValues = this.getParticipantDemographicApplicableValues(fieldName);
+    const selectedValueKeys = new Set(
+      selectedValues.map((value) => this.normalizeSearchText(value))
+    );
+    const normalizedSelectedValues = availableValues.filter((value) =>
+      selectedValueKeys.has(this.normalizeSearchText(value))
+    );
+    const normalizedFieldName = this.normalizeSearchText(fieldName);
+    const remainingFilters = this.draftEvaluation.participants.demographicFilters.filter(
+      (filter) => this.normalizeSearchText(filter.fieldName) !== normalizedFieldName
+    );
+    const includesAllValues = availableValues.length > 0 &&
+      normalizedSelectedValues.length === availableValues.length;
+
+    this.draftEvaluation.participants.demographicFilters = includesAllValues
+      ? remainingFilters
+      : [...remainingFilters, { fieldName, selectedValues: normalizedSelectedValues }];
+
+    this.reconcileSubsequentParticipantDemographicFilters(fieldName);
+    this.reconcileParticipantPositionsWithDemographics();
+  }
+
+  private getParticipantDemographicFieldIndex(fieldName: string): number {
+    const normalizedFieldName = this.normalizeSearchText(fieldName);
+    return this.demographicFields.findIndex((field) =>
+      this.normalizeSearchText(field.name) === normalizedFieldName ||
+      this.normalizeSearchText(field.code) === normalizedFieldName
+    );
+  }
+
+  private reconcileSubsequentParticipantDemographicFilters(fieldName: string): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const changedFieldIndex = this.getParticipantDemographicFieldIndex(fieldName);
+    if (changedFieldIndex < 0) {
+      return;
+    }
+
+    const participants = this.draftEvaluation.participants;
+    const originalFilters = [...participants.demographicFilters];
+    const originalByField = new Map(
+      originalFilters.map((filter) => [this.normalizeSearchText(filter.fieldName), filter])
+    );
+    const reconciledFilters = originalFilters.filter((filter) => {
+      const filterIndex = this.getParticipantDemographicFieldIndex(filter.fieldName);
+      return filterIndex < 0 || filterIndex <= changedFieldIndex;
+    });
+    participants.demographicFilters = reconciledFilters;
+
+    this.demographicFields.slice(changedFieldIndex + 1).forEach((field) => {
+      const originalFilter = originalByField.get(this.normalizeSearchText(field.name)) ??
+        originalByField.get(this.normalizeSearchText(field.code));
+      if (!originalFilter) {
+        return;
+      }
+
+      const applicableValues = this.getParticipantDemographicApplicableValues(field.name);
+      const applicableValueKeys = new Set(
+        applicableValues.map((value) => this.normalizeSearchText(value))
+      );
+      const selectedValues = originalFilter.selectedValues.filter((value) =>
+        applicableValueKeys.has(this.normalizeSearchText(value))
+      );
+
+      if (
+        selectedValues.length > 0 &&
+        selectedValues.length < applicableValues.length
+      ) {
+        reconciledFilters.push({ fieldName: field.name, selectedValues });
+        participants.demographicFilters = [...reconciledFilters];
+      }
+    });
+  }
+
+  private getDemographicallyAvailablePositions(
+    evaluation: DesEvaluationCard | null = this.draftEvaluation
+  ): string[] {
+    if (!evaluation) {
       return this.availablePositions;
     }
 
-    return this.availablePositions.filter((position) => this.normalizeSearchText(position).includes(search));
+    const availablePositionKeys = new Set(
+      this.employees
+        .filter((employee) =>
+          (!evaluation.participants.onlyActive || employee.activo) &&
+          !!employee.cargo &&
+          this.employeeMatchesParticipantDemographics(employee, evaluation)
+        )
+        .map((employee) => this.normalizeSearchText(employee.cargo ?? ''))
+    );
+
+    return this.availablePositions.filter((position) =>
+      availablePositionKeys.has(this.normalizeSearchText(position))
+    );
   }
 
-  getFilteredParticipantEmployees(): DesEvaluationEmployee[] {
+  private reconcileParticipantPositionsWithDemographics(): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const evaluation = this.draftEvaluation;
+    const participants = evaluation.participants;
+    const availablePositionKeys = new Set(
+      this.getDemographicallyAvailablePositions(evaluation).map((position) =>
+        this.normalizeSearchText(position)
+      )
+    );
+    const keepAvailablePosition = (position: string): boolean =>
+      availablePositionKeys.has(this.normalizeSearchText(position));
+
+    participants.subordinateSourcePositions = participants.subordinateSourcePositions
+      .filter(keepAvailablePosition);
+    participants.positions = participants.positions.filter(keepAvailablePosition);
+    participants.excludedSubordinatePositions = (
+      participants.excludedSubordinatePositions ?? []
+    ).filter((position) => this.availablePositions.some(
+      (availablePosition) =>
+        this.normalizeSearchText(availablePosition) === this.normalizeSearchText(position)
+    ));
+
+    if (participants.selectSubordinates) {
+      this.selectParticipantEmployeesFromSelectedPositions();
+      return;
+    } else {
+      participants.subordinateSourcePositions = [...participants.positions];
+    }
+
+    this.pruneEvaluatorOnlyPositions(evaluation, false);
+    this.selectParticipantEmployeesFromSelectedPositions();
+  }
+
+  onParticipantEmployeeSearchChange(value: string): void {
+    this.participantEmployeeSearchTerm = value;
+    this.participantEmployeePageIndex = 0;
+    this.refreshParticipantEmployeeView();
+  }
+
+  onParticipantEmployeePageChange(event: PageEvent): void {
+    this.participantEmployeePageIndex = event.pageIndex;
+    this.participantEmployeePageSize = event.pageSize;
+    this.refreshParticipantEmployeePage();
+  }
+
+  private refreshParticipantEmployeeView(): void {
     const search = this.normalizeSearchText(this.participantEmployeeSearchTerm);
     const candidateEmployees = this.getParticipantCandidateEmployees(this.draftEvaluation);
 
-    if (!search) {
-      return candidateEmployees;
-    }
+    this.filteredParticipantEmployees = search
+      ? candidateEmployees.filter((employee) =>
+          this.normalizeSearchText([
+            employee.fullName,
+            employee.cargo,
+            employee.email,
+            ...Object.values(employee.demographicValues),
+          ].join(' ')).includes(search)
+        )
+      : candidateEmployees;
+    this.participantEmployeeResultCount = this.filteredParticipantEmployees.length;
 
-    return candidateEmployees.filter((employee) =>
-      this.normalizeSearchText([
-        employee.fullName,
-        employee.cargo,
-        employee.email,
-        ...Object.values(employee.demographicValues),
-      ].join(' ')).includes(search)
+    const maxPageIndex = Math.max(
+      0,
+      Math.ceil(this.participantEmployeeResultCount / this.participantEmployeePageSize) - 1
+    );
+    this.participantEmployeePageIndex = Math.min(
+      this.participantEmployeePageIndex,
+      maxPageIndex
+    );
+    this.refreshParticipantEmployeePage();
+  }
+
+  private refreshParticipantEmployeePage(): void {
+    const start = this.participantEmployeePageIndex * this.participantEmployeePageSize;
+    this.visibleParticipantEmployees = this.filteredParticipantEmployees.slice(
+      start,
+      start + this.participantEmployeePageSize
     );
   }
 
@@ -3687,11 +4562,38 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    const selectedPositions = new Set(this.draftEvaluation.participants.positions);
-    selected ? selectedPositions.add(position) : selectedPositions.delete(position);
+    const participants = this.draftEvaluation.participants;
+    const positionKey = this.normalizeSearchText(position);
+    const sourcePositionKeys = new Set(
+      participants.selectSubordinates
+        ? participants.subordinateSourcePositions.map((item) => this.normalizeSearchText(item))
+        : participants.positions.map((item) => this.normalizeSearchText(item))
+    );
+    const excludedPositionKeys = new Set(
+      (participants.excludedSubordinatePositions ?? [])
+        .map((item) => this.normalizeSearchText(item))
+    );
 
-    this.draftEvaluation.participants.positions = this.availablePositions.filter((item) => selectedPositions.has(item));
-    this.pruneEvaluatorOnlyPositions(this.draftEvaluation);
+    if (selected) {
+      sourcePositionKeys.add(positionKey);
+      excludedPositionKeys.delete(positionKey);
+    } else {
+      sourcePositionKeys.delete(positionKey);
+      if (participants.selectSubordinates) {
+        excludedPositionKeys.add(positionKey);
+      }
+    }
+
+    participants.subordinateSourcePositions = this.availablePositions.filter((item) =>
+      sourcePositionKeys.has(this.normalizeSearchText(item))
+    );
+    participants.excludedSubordinatePositions = participants.selectSubordinates
+      ? this.availablePositions.filter((item) =>
+          excludedPositionKeys.has(this.normalizeSearchText(item))
+        )
+      : [];
+    participants.positions = [...participants.subordinateSourcePositions];
+    this.pruneEvaluatorOnlyPositions(this.draftEvaluation, false);
     this.selectParticipantEmployeesFromSelectedPositions();
   }
 
@@ -3700,13 +4602,35 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    const selectedPositions = new Set([
-      ...this.draftEvaluation.participants.positions,
-      ...this.getFilteredParticipantPositions(),
+    const participants = this.draftEvaluation.participants;
+    const filteredPositionKeys = new Set(
+      this.getFilteredParticipantPositions().map((position) =>
+        this.normalizeSearchText(position)
+      )
+    );
+    const selectedPositionKeys = new Set([
+      ...(participants.selectSubordinates
+        ? participants.subordinateSourcePositions
+        : participants.positions
+      ).map((position) => this.normalizeSearchText(position)),
+      ...filteredPositionKeys,
     ]);
+    const excludedPositionKeys = new Set(
+      (participants.excludedSubordinatePositions ?? [])
+        .map((position) => this.normalizeSearchText(position))
+    );
+    filteredPositionKeys.forEach((positionKey) => excludedPositionKeys.delete(positionKey));
 
-    this.draftEvaluation.participants.positions = this.availablePositions.filter((item) => selectedPositions.has(item));
-    this.pruneEvaluatorOnlyPositions(this.draftEvaluation);
+    participants.subordinateSourcePositions = this.availablePositions.filter((item) =>
+      selectedPositionKeys.has(this.normalizeSearchText(item))
+    );
+    participants.excludedSubordinatePositions = participants.selectSubordinates
+      ? this.availablePositions.filter((item) =>
+          excludedPositionKeys.has(this.normalizeSearchText(item))
+        )
+      : [];
+    participants.positions = [...participants.subordinateSourcePositions];
+    this.pruneEvaluatorOnlyPositions(this.draftEvaluation, false);
     this.selectParticipantEmployeesFromSelectedPositions();
   }
 
@@ -3716,6 +4640,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     this.draftEvaluation.participants.positions = [];
+    this.draftEvaluation.participants.subordinateSourcePositions = [];
+    this.draftEvaluation.participants.excludedSubordinatePositions = [];
     this.draftEvaluation.participants.evaluatorOnlyPositions = [];
     this.draftEvaluation.positionScenarios = [];
     this.selectParticipantEmployeesFromSelectedPositions();
@@ -3723,6 +4649,40 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   removeParticipantPosition(position: string): void {
     this.setParticipantPositionSelected(position, false);
+  }
+
+  isAutoSelectedSubordinatePosition(position: string): boolean {
+    const participants = this.draftEvaluation?.participants;
+    if (!participants?.selectSubordinates) {
+      return false;
+    }
+
+    return participants.positions.includes(position) &&
+      !participants.subordinateSourcePositions.includes(position);
+  }
+
+  onParticipantSelectSubordinatesChange(selectSubordinates: boolean): void {
+    if (!this.draftEvaluation) {
+      return;
+    }
+
+    const participants = this.draftEvaluation.participants;
+
+    if (!selectSubordinates) {
+      participants.selectSubordinates = false;
+      participants.subordinateSourcePositions = [...participants.positions];
+      participants.excludedSubordinatePositions = [];
+      this.ensurePositionScenarioConfigs(this.draftEvaluation);
+      return;
+    }
+
+    participants.selectSubordinates = true;
+    participants.excludedSubordinatePositions = [];
+    if (participants.subordinateSourcePositions.length === 0) {
+      participants.subordinateSourcePositions = [...participants.positions];
+    }
+    participants.positions = [...participants.subordinateSourcePositions];
+    this.selectParticipantEmployeesFromSelectedPositions();
   }
 
   isParticipantEmployeeSelected(employeeId: number): boolean {
@@ -3742,6 +4702,16 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     selected ? selectedEmployeeIds.add(employeeId) : selectedEmployeeIds.delete(employeeId);
 
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
+    if (!selected) {
+      const employeePosition = this.employees.find((employee) => employee.id === employeeId)?.cargo;
+      if (employeePosition) {
+        this.removeParticipantPositionsWithoutSelectedEmployees([
+          this.normalizeSearchText(employeePosition),
+        ]);
+        return;
+      }
+    }
+
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
@@ -3752,7 +4722,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
     const selectedEmployeeIds = new Set([
       ...this.draftEvaluation.participants.employeeIds,
-      ...this.getFilteredParticipantEmployees().map((employee) => employee.id),
+      ...this.filteredParticipantEmployees.map((employee) => employee.id),
     ]);
 
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
@@ -3764,8 +4734,74 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    this.draftEvaluation.participants.employeeIds = [];
+    const participants = this.draftEvaluation.participants;
+    if (participants.selectSubordinates) {
+      const excludedPositionKeys = new Set([
+        ...(participants.excludedSubordinatePositions ?? []),
+        ...participants.positions,
+      ].map((position) => this.normalizeSearchText(position)));
+      participants.excludedSubordinatePositions = this.availablePositions.filter((position) =>
+        excludedPositionKeys.has(this.normalizeSearchText(position))
+      );
+    } else {
+      participants.subordinateSourcePositions = [];
+      participants.excludedSubordinatePositions = [];
+    }
+
+    participants.positions = [];
+    participants.employeeIds = [];
+    this.pruneEvaluatorOnlyPositions(this.draftEvaluation, false);
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
+  }
+
+  private removeParticipantPositionsWithoutSelectedEmployees(
+    candidatePositionKeys: string[]
+  ): void {
+    if (!this.draftEvaluation || candidatePositionKeys.length === 0) {
+      return;
+    }
+
+    const evaluation = this.draftEvaluation;
+    const participants = evaluation.participants;
+    const selectedEmployeeIds = new Set(participants.employeeIds);
+    const positionsWithSelectedEmployees = new Set(
+      this.employees
+        .filter((employee) => selectedEmployeeIds.has(employee.id) && !!employee.cargo)
+        .map((employee) => this.normalizeSearchText(employee.cargo ?? ''))
+    );
+    const candidateKeys = new Set(candidatePositionKeys);
+    const emptyPositionKeys = new Set(
+      participants.positions
+        .map((position) => this.normalizeSearchText(position))
+        .filter((positionKey) =>
+          candidateKeys.has(positionKey) && !positionsWithSelectedEmployees.has(positionKey)
+        )
+    );
+
+    if (emptyPositionKeys.size === 0) {
+      this.ensurePositionScenarioConfigs(evaluation);
+      return;
+    }
+
+    participants.positions = participants.positions.filter(
+      (position) => !emptyPositionKeys.has(this.normalizeSearchText(position))
+    );
+
+    if (participants.selectSubordinates) {
+      const excludedPositionKeys = new Set(
+        (participants.excludedSubordinatePositions ?? [])
+          .map((position) => this.normalizeSearchText(position))
+      );
+      emptyPositionKeys.forEach((positionKey) => excludedPositionKeys.add(positionKey));
+      participants.excludedSubordinatePositions = this.availablePositions.filter((position) =>
+        excludedPositionKeys.has(this.normalizeSearchText(position))
+      );
+    } else {
+      participants.subordinateSourcePositions = [...participants.positions];
+    }
+
+    this.pruneEvaluatorOnlyPositions(evaluation, false);
+    this.ensurePositionScenarioConfigs(evaluation);
   }
 
   syncParticipantEmployeeSelectionWithCriteria(): void {
@@ -3785,14 +4821,103 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    if (this.draftEvaluation.participants.positions.length === 0) {
-      this.draftEvaluation.participants.employeeIds = [];
+    this.participantEmployeePageIndex = 0;
+    const participants = this.draftEvaluation.participants;
+    if (participants.positions.length === 0) {
+      participants.employeeIds = [];
+      this.ensurePositionScenarioConfigs(this.draftEvaluation);
       return;
     }
 
-    this.draftEvaluation.participants.employeeIds = this.getParticipantCandidateEmployees(this.draftEvaluation)
+    if (participants.selectSubordinates) {
+      this.selectParticipantBranchFromSourcePositions(this.draftEvaluation);
+      return;
+    }
+
+    participants.subordinateSourcePositions = [...participants.positions];
+    participants.employeeIds = this.getParticipantCandidateEmployees(this.draftEvaluation)
       .map((employee) => employee.id);
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
+  }
+
+  private selectParticipantBranchFromSourcePositions(evaluation: DesEvaluationCard): void {
+    const participants = evaluation.participants;
+    const { sourceEmployees, subordinateEmployees } = this.getParticipantBranchEmployees(evaluation);
+    const matchingBranchEmployees = [...sourceEmployees, ...subordinateEmployees]
+      .filter((employee) => this.employeeMatchesParticipantDemographics(employee, evaluation));
+    const excludedPositionKeys = new Set(
+      (participants.excludedSubordinatePositions ?? [])
+        .map((position) => this.normalizeSearchText(position))
+    );
+    const includedBranchEmployees = matchingBranchEmployees.filter((employee) =>
+      !employee.cargo || !excludedPositionKeys.has(this.normalizeSearchText(employee.cargo))
+    );
+    const selectedPositionKeys = new Set<string>();
+
+    includedBranchEmployees.forEach((employee) => {
+      if (employee.cargo) {
+        selectedPositionKeys.add(this.normalizeSearchText(employee.cargo));
+      }
+    });
+
+    participants.positions = this.availablePositions.filter((position) =>
+      selectedPositionKeys.has(this.normalizeSearchText(position))
+    );
+    participants.employeeIds = this.orderParticipantEmployeeIds(
+      includedBranchEmployees.map((employee) => employee.id)
+    );
+    this.pruneEvaluatorOnlyPositions(evaluation, false);
+    this.ensurePositionScenarioConfigs(evaluation);
+  }
+
+  private getParticipantBranchEmployees(evaluation: DesEvaluationCard): {
+    sourceEmployees: DesEvaluationEmployee[];
+    subordinateEmployees: DesEvaluationEmployee[];
+  } {
+    const participants = evaluation.participants;
+    const sourcePositionKeys = new Set(
+      participants.subordinateSourcePositions.map((position) =>
+        this.normalizeSearchText(position)
+      )
+    );
+    const sourceEmployees = this.employees.filter((employee) =>
+      (!participants.onlyActive || employee.activo) &&
+      !!employee.cargo &&
+      sourcePositionKeys.has(this.normalizeSearchText(employee.cargo))
+    );
+    const sourceEmployeeIds = new Set(sourceEmployees.map((employee) => employee.id));
+    const childrenByManagerId = new Map<number, DesEvaluationEmployee[]>();
+    this.employees.forEach((employee) => {
+      if (employee.managerId === null) {
+        return;
+      }
+
+      const managerChildren = childrenByManagerId.get(employee.managerId) ?? [];
+      managerChildren.push(employee);
+      childrenByManagerId.set(employee.managerId, managerChildren);
+    });
+
+    const branchEmployeeIds = new Set(sourceEmployeeIds);
+    const subordinateEmployees: DesEvaluationEmployee[] = [];
+    const pendingManagerIds = [...sourceEmployeeIds];
+
+    for (let index = 0; index < pendingManagerIds.length; index++) {
+      const managerId = pendingManagerIds[index];
+      (childrenByManagerId.get(managerId) ?? []).forEach((employee) => {
+        if (branchEmployeeIds.has(employee.id)) {
+          return;
+        }
+
+        branchEmployeeIds.add(employee.id);
+        pendingManagerIds.push(employee.id);
+
+        if (!participants.onlyActive || employee.activo) {
+          subordinateEmployees.push(employee);
+        }
+      });
+    }
+
+    return { sourceEmployees, subordinateEmployees };
   }
 
   trackByPosition(_index: number, position: string): string {
@@ -4136,9 +5261,13 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     const dialogRef = this.dialog.open(this.performanceEmailPreviewDialogTemplate, {
       width: '920px',
       maxWidth: '96vw',
-      maxHeight: '90vh',
+      height: '71vh',
+      maxHeight: '84vh',
       autoFocus: false,
-      panelClass: 'des-evaluaciones-dialog-panel',
+      panelClass: [
+        'des-evaluaciones-dialog-panel',
+        'performance-email-preview-dialog-panel',
+      ],
     });
 
     dialogRef.afterClosed().subscribe(() => {
@@ -4244,7 +5373,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   }
 
   getDemographicValues(fieldName: string): string[] {
-    return this.demographicValueOptions[fieldName] ?? [];
+    const normalizedFieldName = this.normalizeSearchText(
+      this.resolveDemographicFieldName(fieldName)
+    );
+    const matchingKey = Object.keys(this.demographicValueOptions).find(
+      (key) => this.normalizeSearchText(key) === normalizedFieldName
+    );
+
+    return matchingKey ? this.demographicValueOptions[matchingKey] : [];
   }
 
   onParticipantOnlyActiveChange(onlyActive: boolean): void {
@@ -4293,6 +5429,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         this.editingEvaluation = null;
         this.draftEvaluation = null;
         this.activeEditorTabIndex = 0;
+        this.resetModelImageUpload();
       });
     } catch (error) {
       console.error('Error al abrir el dialog de evaluación:', error);
@@ -4437,7 +5574,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       }
 
       if (this.modelTypeOptions.length > 0) {
-        this.surveyTypes = this.modelTypeOptions.map((item) => item.code);
+        this.surveyTypes = this.modelTypeOptions
+          .map((item) => item.code)
+          .filter((code) => this.enabledSurveyTypeCodes.has(this.normalizeKey(code)));
       }
 
       if (this.modelStateOptions.length > 0) {
@@ -4566,6 +5705,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
               this.normalizeBoolean(
                 row?.activoPredeterminado ?? row?.ActivoPredeterminado ?? true
               ),
+            disabledByStructure: current?.disabledByStructure ?? false,
           } satisfies DesEvaluationScenario;
         })
         .filter((item): item is DesEvaluationScenario => !!item);
@@ -5041,6 +6181,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       value?.Escenarios ??
       [];
     const specificEmployeeIds = this.extractSpecificEmployeeIds(container, value);
+    const participantDemographicFilters = this.extractParticipantDemographicFilters(container, value);
 
     const bigFactors = this.normalizeModelDimensions(dimensionsSource);
     const scenarios = this.normalizeModelScenarios(scenariosSource, modelType);
@@ -5170,17 +6311,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
                 requiredRatingLevel: this.normalizeRequiredRatingLevel(
                   criterion?.nivelExigencia ?? criterion?.NivelExigencia
                 ),
-                defaultQuestionType: this.resolveFrontendItemTypeCode(
-                  criterion?.tipoItemPredeterminado?.codigo ??
-                  criterion?.TipoItemPredeterminado?.Codigo ??
-                  criterion?.tipoItemPredeterminadoCodigo ??
-                  criterion?.TipoItemPredeterminadoCodigo,
-                  criterion?.tipoItemPredeterminado?.id ??
-                  criterion?.TipoItemPredeterminado?.Id ??
-                  criterion?.tipoItemPredeterminadoId ??
-                  criterion?.TipoItemPredeterminadoId ??
-                  criterion?.IdTipoItemPredeterminado
-                ),
+                defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
                 questions: Array.isArray(items)
                   ? items.map((item: any, itemIndex: number) =>
                       this.normalizeModelQuestion(
@@ -5240,7 +6371,15 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       ),
       name,
       description: String(container?.descripcion ?? container?.Descripcion ?? '').trim(),
-      avatarSrc: 'assets/images/user/user1.jpg',
+      imageSrc: this.toOptionalText(
+        container?.imagenSrc ??
+        container?.ImagenSrc ??
+        container?.imagenSRC ??
+        container?.imageSrc ??
+        value?.imagenSrc ??
+        value?.ImagenSrc
+      ) ?? '',
+      avatarSrc: '',
       status: modelState,
       modelName: String(
         typeSource?.nombre ??
@@ -5280,10 +6419,13 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       },
       participants: {
         onlyActive: true,
+        selectSubordinates: false,
         positions: this.sortPositionsByHierarchy(Array.from(new Set(participantPositions))),
+        subordinateSourcePositions: this.sortPositionsByHierarchy(Array.from(new Set(participantPositions))),
+        excludedSubordinatePositions: [],
         evaluatorOnlyPositions: Array.from(new Set(evaluatorOnlyPositions)),
         employeeIds: this.orderParticipantEmployeeIds(specificEmployeeIds),
-        demographicFilters: [],
+        demographicFilters: participantDemographicFilters,
         notes: '',
       },
       scenarios,
@@ -5291,6 +6433,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       openQuestionExamples: [],
       stats: this.normalizeModelStats(container),
     };
+
+    card.avatarSrc = this.getModelImageUrl(card.imageSrc);
 
     this.ensurePositionScenarioConfigs(card);
 
@@ -5378,13 +6522,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       requiredRatingLevel: this.normalizeRequiredRatingLevel(
         criterion?.nivelExigencia ?? criterion?.NivelExigencia
       ),
-      defaultQuestionType: this.resolveFrontendItemTypeCode(
-        criterion?.tipoItemPredeterminadoCodigo ??
-        criterion?.TipoItemPredeterminadoCodigo,
-        criterion?.tipoItemPredeterminadoId ??
-        criterion?.TipoItemPredeterminadoId ??
-        criterion?.IdTipoItemPredeterminado
-      ),
+      defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
       questions: items.map((item, itemIndex) => ({
         id: Number(
           item?.id ??
@@ -5678,6 +6816,65 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     );
   }
 
+  private extractParticipantDemographicFilters(
+    container: any,
+    value: any
+  ): DesEvaluationParticipantFilter[] {
+    const participants =
+      container?.participantes ??
+      container?.Participantes ??
+      value?.participantes ??
+      value?.Participantes ??
+      {};
+    const source =
+      participants?.demograficos ??
+      participants?.Demograficos ??
+      participants?.filtrosDemograficos ??
+      participants?.FiltrosDemograficos ??
+      [];
+
+    const filters = Array.isArray(source)
+      ? source
+      : source && typeof source === 'object'
+        ? [source]
+        : [];
+
+    return filters
+      .map((filter: any) => {
+        const fieldName = this.resolveDemographicFieldName(String(
+          filter?.campo ??
+          filter?.Campo ??
+          filter?.fieldName ??
+          filter?.FieldName ??
+          filter?.nombre ??
+          filter?.Nombre ??
+          ''
+        ).trim());
+        const rawValues =
+          filter?.valores ??
+          filter?.Valores ??
+          filter?.selectedValues ??
+          filter?.SelectedValues ??
+          filter?.valor ??
+          filter?.Valor ??
+          [];
+        const parsedValues = this.normalizeArrayValue(rawValues);
+        const valueList = Array.isArray(rawValues)
+          ? rawValues
+          : parsedValues.length > 0
+            ? parsedValues
+            : [rawValues];
+        const selectedValues = Array.from(new Set(
+          valueList
+            .map((item) => String(item ?? '').trim())
+            .filter((item) => item.length > 0)
+        ));
+
+        return { fieldName, selectedValues };
+      })
+      .filter((filter) => filter.fieldName.length > 0 && filter.selectedValues.length > 0);
+  }
+
   private buildDemographicFieldsFromEmployees(): DesEvaluationDemographicField[] {
     const names = Array.from(new Set(this.employees.flatMap((employee) => Object.keys(employee.demographicValues))));
 
@@ -5691,16 +6888,22 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   private rebuildDemographicValueOptions(): void {
     const options: Record<string, string[]> = {};
+    const canonicalFieldNames = new Map<string, string>();
 
     this.demographicFields.forEach((field) => {
       options[field.name] = [];
+      canonicalFieldNames.set(this.normalizeSearchText(field.name), field.name);
+      if (field.code) {
+        canonicalFieldNames.set(this.normalizeSearchText(field.code), field.name);
+      }
     });
 
     this.employees.forEach((employee) => {
       Object.entries(employee.demographicValues).forEach(([key, value]) => {
         if (!value) return;
-        if (!options[key]) options[key] = [];
-        if (!options[key].includes(value)) options[key].push(value);
+        const canonicalKey = canonicalFieldNames.get(this.normalizeSearchText(key)) ?? key;
+        if (!options[canonicalKey]) options[canonicalKey] = [];
+        if (!options[canonicalKey].includes(value)) options[canonicalKey].push(value);
       });
     });
 
@@ -5847,7 +7050,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       minimumAnonymousResponses: 3,
       name,
       description: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEFAULT_DESCRIPTION'),
-      avatarSrc: 'assets/images/user/user1.jpg',
+      imageSrc: '',
+      avatarSrc: this.fallbackModelImageUrl,
       status: 'CONFIGURACION',
       modelName: name,
       modelType: defaultType,
@@ -5866,7 +7070,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       },
       participants: {
         onlyActive: true,
+        selectSubordinates: false,
         positions: [],
+        subordinateSourcePositions: [],
+        excludedSubordinatePositions: [],
         evaluatorOnlyPositions: [],
         employeeIds: [],
         demographicFilters: [],
@@ -5921,6 +7128,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         name: catalog?.name ?? name,
         weight: currentScenario?.weight ?? definition.weight,
         active: currentScenario?.active !== false,
+        disabledByStructure: currentScenario?.disabledByStructure ?? false,
       };
     });
   }
@@ -5937,8 +7145,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         ];
       case '180':
         return [
-          { key: 'BOSS_TO_EMPLOYEE', nameKey: `${scenarioKey}.BOSS_TO_EMPLOYEE`, weight: 50 },
-          { key: 'EMPLOYEE_TO_BOSS', nameKey: `${scenarioKey}.EMPLOYEE_TO_BOSS`, weight: 50 },
+          { key: 'BOSS_TO_EMPLOYEE', nameKey: `${scenarioKey}.BOSS_TO_EMPLOYEE`, weight: 60 },
+          { key: 'EMPLOYEE_TO_BOSS', nameKey: `${scenarioKey}.EMPLOYEE_TO_BOSS`, weight: 40 },
         ];
       case 'AUTOEVALUACION':
         return [
@@ -5948,10 +7156,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       case 'MIXTA':
       default:
         return [
-          { key: 'BOSS_TO_EMPLOYEE', nameKey: `${scenarioKey}.BOSS_TO_EMPLOYEE`, weight: 25 },
-          { key: 'EMPLOYEE_TO_BOSS', nameKey: `${scenarioKey}.EMPLOYEE_TO_BOSS`, weight: 25 },
-          { key: 'SELF', nameKey: `${scenarioKey}.SELF`, weight: 25 },
-          { key: 'PEER', nameKey: `${scenarioKey}.PEER`, weight: 25 },
+          { key: 'BOSS_TO_EMPLOYEE', nameKey: `${scenarioKey}.BOSS_TO_EMPLOYEE`, weight: 40 },
+          { key: 'EMPLOYEE_TO_BOSS', nameKey: `${scenarioKey}.EMPLOYEE_TO_BOSS`, weight: 30 },
+          { key: 'PEER', nameKey: `${scenarioKey}.PEER`, weight: 20 },
+          { key: 'SELF', nameKey: `${scenarioKey}.SELF`, weight: 10 },
         ];
     }
   }
@@ -5996,8 +7204,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       name: '',
       description: '',
       weight: 0,
-      requiredRatingLevel: 3,
-      defaultQuestionType: 'LIKERT_1_5',
+      requiredRatingLevel: 60,
     };
   }
 
@@ -6421,10 +7628,18 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return [];
     }
 
-    const baseEmployees = this.employees.filter((employee) => !evaluation.participants.onlyActive || employee.activo);
-
     if (evaluation.participants.positions.length === 0) {
       return [];
+    }
+
+    let baseEmployees: DesEvaluationEmployee[];
+    if (evaluation.participants.selectSubordinates) {
+      const branch = this.getParticipantBranchEmployees(evaluation);
+      baseEmployees = [...branch.sourceEmployees, ...branch.subordinateEmployees];
+    } else {
+      baseEmployees = this.employees.filter(
+        (employee) => !evaluation.participants.onlyActive || employee.activo
+      );
     }
 
     return baseEmployees.filter((employee) => this.employeeMatchesAnyParticipantCriteria(employee, evaluation));
@@ -6439,31 +7654,102 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     const employeePosition = this.normalizeSearchText(employee.cargo);
-    return evaluation.participants.positions.some(
+    const matchesPosition = evaluation.participants.positions.some(
       (position) => this.normalizeSearchText(position) === employeePosition
     );
+
+    return matchesPosition && this.employeeMatchesParticipantDemographics(employee, evaluation);
+  }
+
+  private employeeMatchesParticipantDemographics(
+    employee: DesEvaluationEmployee,
+    evaluation: DesEvaluationCard
+  ): boolean {
+    return this.employeeMatchesDemographicFilters(
+      employee,
+      evaluation.participants.demographicFilters
+    );
+  }
+
+  private employeeMatchesDemographicFilters(
+    employee: DesEvaluationEmployee,
+    filters: DesEvaluationParticipantFilter[]
+  ): boolean {
+    return filters.every((filter) => {
+      if (filter.selectedValues.length === 0) {
+        return false;
+      }
+
+      const employeeValue = this.getEmployeeDemographicValue(employee, filter.fieldName);
+      if (!employeeValue) {
+        return false;
+      }
+
+      const normalizedEmployeeValue = this.normalizeSearchText(employeeValue);
+      return filter.selectedValues.some(
+        (selectedValue) => this.normalizeSearchText(selectedValue) === normalizedEmployeeValue
+      );
+    });
+  }
+
+  private getEmployeeDemographicValue(
+    employee: DesEvaluationEmployee,
+    fieldName: string
+  ): string | null {
+    const resolvedField = this.demographicFields.find((field) =>
+      this.normalizeSearchText(field.name) === this.normalizeSearchText(fieldName) ||
+      this.normalizeSearchText(field.code) === this.normalizeSearchText(fieldName)
+    );
+    const matchingKeys = new Set(
+      [resolvedField?.name ?? fieldName, resolvedField?.code ?? '']
+        .map((key) => this.normalizeSearchText(key))
+        .filter((key) => key.length > 0)
+    );
+    const matchingEntry = Object.entries(employee.demographicValues).find(
+      ([key]) => matchingKeys.has(this.normalizeSearchText(key))
+    );
+
+    return matchingEntry?.[1] ?? null;
+  }
+
+  private resolveDemographicFieldName(fieldName: string): string {
+    const normalizedFieldName = this.normalizeSearchText(fieldName);
+    const matchingField = this.demographicFields.find((field) =>
+      this.normalizeSearchText(field.name) === normalizedFieldName ||
+      this.normalizeSearchText(field.code) === normalizedFieldName
+    );
+
+    return matchingField?.name ?? fieldName;
   }
 
   private ensureDraftFilters(card: DesEvaluationCard): DesEvaluationCard {
     const draft = this.cloneEvaluation(card);
-    draft.participants.demographicFilters = [];
+    draft.participants.selectSubordinates = false;
+    draft.participants.subordinateSourcePositions = [...draft.participants.positions];
+    draft.participants.excludedSubordinatePositions = [];
     draft.participants.notes = '';
     this.pruneEvaluatorOnlyPositions(draft);
 
     return draft;
   }
 
-  private pruneEvaluatorOnlyPositions(evaluation: DesEvaluationCard): void {
+  private pruneEvaluatorOnlyPositions(
+    evaluation: DesEvaluationCard,
+    ensureScenarios = true
+  ): void {
     const selectedPositions = new Set(evaluation.participants.positions);
     evaluation.participants.evaluatorOnlyPositions = (
       evaluation.participants.evaluatorOnlyPositions ?? []
     ).filter((position) => selectedPositions.has(position));
     evaluation.positionScenarios = (evaluation.positionScenarios ?? [])
       .filter((item) => selectedPositions.has(item.position));
-    this.ensurePositionScenarioConfigs(evaluation);
+    if (ensureScenarios) {
+      this.ensurePositionScenarioConfigs(evaluation);
+    }
   }
 
   private ensurePositionScenarioConfigs(evaluation: DesEvaluationCard): void {
+    const applicabilityContext = this.getScenarioApplicabilityContext(evaluation, true);
     const currentByPosition = new Map(
       (evaluation.positionScenarios ?? []).map((item) => [item.position, item])
     );
@@ -6471,9 +7757,13 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       evaluation.modelType,
       evaluation.scenarios
     );
+    const newPositionConfigs = new Set<string>();
 
     evaluation.positionScenarios = evaluation.participants.positions.map((position) => {
       const current = currentByPosition.get(position);
+      if (!current) {
+        newPositionConfigs.add(position);
+      }
       const currentByKey = new Map(
         (current?.scenarios ?? [])
           .filter((scenario) => !!scenario.key)
@@ -6496,36 +7786,190 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
             backendId: configuredScenario?.backendId ?? baseScenario.backendId,
             name: configuredScenario?.name || baseScenario.name,
             weight: Number(configuredScenario?.weight ?? baseScenario.weight) || 0,
-            active,
+            active: current ? active : true,
+            disabledByStructure: configuredScenario?.disabledByStructure ?? false,
           };
         }),
       };
     });
 
     evaluation.positionScenarios.forEach((positionConfig) => {
-      const isEvaluatorOnly = this.isPositionEvaluatorOnly(positionConfig.position, evaluation);
+      const isEvaluatorOnly = this.isPositionEvaluatorOnlyInContext(
+        positionConfig.position,
+        evaluation,
+        applicabilityContext
+      );
+      let applicabilityChanged = false;
 
       positionConfig.scenarios.forEach((scenario) => {
-        if (
-          !scenario.key ||
-          isEvaluatorOnly ||
-          !this.isPositionScenarioStructurallyApplicable(
+        const wasActive = scenario.active !== false;
+        const isStructurallyApplicable = !!scenario.key &&
+          !isEvaluatorOnly &&
+          this.isPositionScenarioApplicableInContext(
             positionConfig.position,
             scenario.key,
-            evaluation
-          )
-        ) {
+            evaluation,
+            applicabilityContext
+          );
+
+        if (!isStructurallyApplicable) {
+          if (wasActive) {
+            scenario.disabledByStructure = true;
+          }
           scenario.active = false;
+        } else if (scenario.disabledByStructure) {
+          scenario.active = true;
+          scenario.disabledByStructure = false;
         } else if (
           this.normalizeKey(evaluation.modelType) === '90' &&
           scenario.key === 'BOSS_TO_EMPLOYEE'
         ) {
           scenario.active = true;
         }
+
+        applicabilityChanged = applicabilityChanged || wasActive !== (scenario.active !== false);
       });
+
+      if (
+        !isEvaluatorOnly &&
+        (
+          newPositionConfigs.has(positionConfig.position) ||
+          applicabilityChanged ||
+          positionConfig.scenarios.some((scenario) =>
+            scenario.key &&
+            scenario.active !== false &&
+            this.isPositionScenarioApplicableInContext(
+              positionConfig.position,
+              scenario.key,
+              evaluation,
+              applicabilityContext
+            ) &&
+            (
+              !Number.isInteger(Number(scenario.weight)) ||
+              Number(scenario.weight) % 10 !== 0
+            )
+          ) ||
+          this.isPositionScenarioWeightInvalid(positionConfig.position, evaluation)
+        )
+      ) {
+        this.rebalancePositionScenarioWeights(positionConfig.position, evaluation, true);
+      }
     });
 
     this.syncGlobalScenariosFromPositionConfigs(evaluation);
+    if (evaluation === this.draftEvaluation) {
+      this.refreshParticipantEmployeeView();
+    }
+  }
+
+  private rebalancePositionScenarioWeights(
+    position: string,
+    evaluation: DesEvaluationCard,
+    force = false
+  ): void {
+    const positionConfig = evaluation.positionScenarios
+      .find((item) => item.position === position);
+    if (!positionConfig || this.isPositionEvaluatorOnly(position, evaluation)) {
+      return;
+    }
+
+    const activeScenarios = positionConfig.scenarios.filter(
+      (scenario): scenario is DesEvaluationScenario & { key: DesEvaluationScenarioKey } =>
+        !!scenario.key &&
+        scenario.active !== false &&
+        this.isPositionScenarioStructurallyApplicable(position, scenario.key, evaluation)
+    );
+    if (activeScenarios.length === 0) {
+      return;
+    }
+
+    const currentTotal = activeScenarios.reduce(
+      (total, scenario) => total + (Number(scenario.weight) || 0),
+      0
+    );
+    if (!force && this.isWeightTotalComplete(currentTotal)) {
+      return;
+    }
+
+    const definitions = this.getScenarioDefinitions(evaluation.modelType);
+    const definitionByKey = new Map(
+      definitions.map((definition, index) => [
+        definition.key,
+        { weight: definition.weight, priority: index },
+      ])
+    );
+    const orderedScenarios = [...activeScenarios].sort((left, right) =>
+      (definitionByKey.get(left.key)?.priority ?? Number.MAX_SAFE_INTEGER) -
+      (definitionByKey.get(right.key)?.priority ?? Number.MAX_SAFE_INTEGER)
+    );
+    const balancedWeights = this.distributeRoundedScenarioWeights(
+      orderedScenarios.map((scenario) => ({
+        key: scenario.key,
+        weight: definitionByKey.get(scenario.key)?.weight ?? 1,
+        priority: definitionByKey.get(scenario.key)?.priority ?? Number.MAX_SAFE_INTEGER,
+      }))
+    );
+
+    activeScenarios.forEach((scenario) => {
+      scenario.weight = balancedWeights.get(scenario.key) ?? 0;
+    });
+  }
+
+  private distributeRoundedScenarioWeights(
+    scenarios: Array<{
+      key: DesEvaluationScenarioKey;
+      weight: number;
+      priority: number;
+    }>
+  ): Map<DesEvaluationScenarioKey, number> {
+    const result = new Map<DesEvaluationScenarioKey, number>();
+    if (scenarios.length === 0) {
+      return result;
+    }
+
+    const normalizedScenarios = scenarios.map((scenario) => ({
+      ...scenario,
+      weight: Math.max(0, Number(scenario.weight) || 0),
+    }));
+    const sourceTotal = normalizedScenarios.reduce(
+      (total, scenario) => total + scenario.weight,
+      0
+    );
+    const fallbackWeight = sourceTotal > 0 ? 0 : 1;
+    const normalizedTotal = sourceTotal > 0 ? sourceTotal : normalizedScenarios.length;
+    const weightIncrement = 10;
+    const totalUnits = 100 / weightIncrement;
+    const allocations = normalizedScenarios.map((scenario) => {
+      const rawUnits = ((scenario.weight || fallbackWeight) / normalizedTotal) * totalUnits;
+      const assignedUnits = Math.floor(rawUnits);
+
+      return {
+        ...scenario,
+        assignedUnits,
+        remainder: rawUnits - assignedUnits,
+      };
+    });
+    let remainingUnits = totalUnits - allocations.reduce(
+      (total, allocation) => total + allocation.assignedUnits,
+      0
+    );
+
+    allocations
+      .sort((left, right) =>
+        right.remainder - left.remainder || left.priority - right.priority
+      )
+      .forEach((allocation) => {
+        if (remainingUnits > 0) {
+          allocation.assignedUnits++;
+          remainingUnits--;
+        }
+      });
+
+    allocations.forEach((allocation) => {
+      result.set(allocation.key, allocation.assignedUnits * weightIncrement);
+    });
+
+    return result;
   }
 
   private syncGlobalScenariosFromPositionConfigs(evaluation: DesEvaluationCard): void {
@@ -6581,15 +8025,27 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       };
     });
 
-    const activeScenarios = globalScenarios.filter((scenario) => scenario.active);
-    const roundedTotal = activeScenarios.reduce(
-      (total, scenario) => total + scenario.weight,
-      0
+    const activeScenarios = globalScenarios.filter(
+      (scenario): scenario is DesEvaluationScenario & { key: DesEvaluationScenarioKey } =>
+        scenario.active && !!scenario.key
     );
-    const lastScenario = activeScenarios[activeScenarios.length - 1];
-    if (lastScenario && Math.abs(roundedTotal - 100) <= 0.05) {
-      lastScenario.weight = Math.round((lastScenario.weight + 100 - roundedTotal) * 100) / 100;
-    }
+    const definitionPriority = new Map(
+      this.getScenarioDefinitions(evaluation.modelType).map((definition, index) => [
+        definition.key,
+        index,
+      ])
+    );
+    const integerWeights = this.distributeRoundedScenarioWeights(
+      activeScenarios.map((scenario) => ({
+        key: scenario.key,
+        weight: scenario.weight,
+        priority: definitionPriority.get(scenario.key) ?? Number.MAX_SAFE_INTEGER,
+      }))
+    );
+
+    activeScenarios.forEach((scenario) => {
+      scenario.weight = integerWeights.get(scenario.key) ?? 0;
+    });
 
     evaluation.scenarios = globalScenarios;
   }
@@ -6609,6 +8065,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       dimension.weight = Number(dimension.weight) || 0;
       dimension.factors.forEach((criterion) => {
         criterion.weight = Number(criterion.weight) || 0;
+        criterion.defaultQuestionType = DEFAULT_CRITERION_ITEM_TYPE;
         criterion.requiredRatingLevel = this.normalizeRequiredRatingLevel(
           criterion.requiredRatingLevel
         );
@@ -6662,6 +8119,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       nombre: evaluation.name.trim(),
       catalogoModeloNombre: evaluation.name.trim(),
       descripcion: evaluation.description.trim() || null,
+      imagenSrc: evaluation.imageSrc.trim() || null,
       fechaInicio: evaluation.period.startDate,
       fechaCierre: evaluation.period.endDate,
       empleadosEspecificosIds: this.orderParticipantEmployeeIds(
@@ -6731,7 +8189,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
                       descripcion: factor.description.trim() || null,
                       ponderacion: Number(factor.weight) || 0,
                       nivelExigencia: this.getFactorRequiredRatingLevel(factor),
-                      tipoItemPredeterminadoId: this.getItemTypeId(factor.defaultQuestionType),
+                      tipoItemPredeterminadoId: this.getItemTypeId(DEFAULT_CRITERION_ITEM_TYPE),
                       escalaPredeterminadaId: factorScaleId,
                       orden: criterionIndex + 1,
                       items: this.getQuestionsForPositionAndScenario(
@@ -6815,7 +8273,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
                     descripcion: factor.description,
                     ponderacion: Number(factor.weight) || 0,
                     nivelExigencia: this.getFactorRequiredRatingLevel(factor),
-                    tipoItemEvaluativoPredeterminado: factor.defaultQuestionType,
+                    tipoItemEvaluativoPredeterminado: DEFAULT_CRITERION_ITEM_TYPE,
                     itemsEvaluativos: this.getQuestionsForPositionAndScenario(
                       factor,
                       position,
@@ -6915,9 +8373,6 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         ? this.scenarioCatalogOptions.find((item) => item.code === scenarioCode)?.id ??
           (scenario ? this.getScenarioCatalogId(scenario) : 0)
         : 0;
-      const surveyUrl = surveyCode
-        ? `https://justlink360.net/#/completeclima/completedesempenoalone?key=${encodeURIComponent(surveyCode)}&id_emp=${encodeURIComponent(assignment.evaluator.id)}`
-        : null;
 
       return {
         empleadoId: evaluateeId,
@@ -6928,34 +8383,23 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
           ? this.getQuestionScenarioLabel(scenarioCode)
           : null,
         codigoEncuestaEmpleado: surveyCode,
-        urlEncuesta: surveyUrl,
       };
     });
-    const evaluationListHtml = evaluations
-      .map((item) => {
-        const employeeName = this.escapeHtml(item.nombreEmpleado);
-        const surveyUrl = item.urlEncuesta
-          ? this.escapeHtml(item.urlEncuesta)
-          : '';
-        const link = surveyUrl
-          ? `<a href="${surveyUrl}" target="_blank" style="color:#2563eb;word-break:break-all;text-decoration:underline;">${surveyUrl}</a>`
-          : '<span style="color:#b42318;">Enlace aún no disponible</span>';
-
-        return `
-          <li style="margin:0 0 16px 0;">
-            <strong style="display:block;margin-bottom:4px;color:#1f2937;">${employeeName}</strong>
-            ${link}
-          </li>`;
-      })
-      .join('');
+    const portalAccessCode = btoa(`${assignment.evaluator.id}|${evaluation.id}`);
+    const portalUrl = `https://justlink360.net/#/portal-desempeno/evaluaciones/${portalAccessCode}`;
     const template = this.getPerformanceEmailTemplate();
     const htmlFinal = this.renderPerformanceEmailTemplate(template, {
       nombre_receptor: this.escapeHtml(assignment.evaluator.fullName),
       nombre_evaluacion: this.escapeHtml(evaluation.name),
+      total_evaluaciones: this.escapeHtml(
+        evaluations.length === 1
+          ? '1 evaluación asignada'
+          : `${evaluations.length} evaluaciones asignadas`
+      ),
       fecha_cierre: this.escapeHtml(
         this.formatPerformanceClosingDate(evaluation.period.endDate)
       ),
-      lista_evaluaciones: evaluationListHtml,
+      url_centro_evaluaciones: this.escapeHtml(portalUrl),
     });
 
     return {
@@ -6965,6 +8409,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       organizationId,
       IdModelo: evaluation.id,
       IdEmpleado: assignment.evaluator.id,
+      codigoCentroEvaluaciones: portalAccessCode,
+      urlCentroEvaluaciones: portalUrl,
       evaluaciones: evaluations,
     };
   }
@@ -6998,19 +8444,33 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
                         Hola <strong>{{DATOS["nombre_receptor"]}}</strong>,
                       </p>
                       <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
-                        Amablemente te informamos que tienes evaluaciones asignadas correspondientes a
-                        <strong>{{DATOS["nombre_evaluacion"]}}</strong>.
+                        Tienes <strong>{{DATOS["total_evaluaciones"]}}</strong> correspondientes a
+                        <strong>{{DATOS["nombre_evaluacion"]}}</strong>. Ingresa a tu centro de
+                        evaluaciones para consultar tus pendientes, continuar las evaluaciones iniciadas
+                        y dar seguimiento a tu avance.
                       </p>
                       <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">
                         La fecha límite para completarlas es el
                         <strong>{{DATOS["fecha_cierre"]}}</strong>.
                       </p>
-                      <p style="margin:0 0 12px;font-size:16px;line-height:1.6;">
-                        Empleados a evaluar:
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;">
+                        <tr>
+                          <td align="center">
+                            <a href="{{DATOS["url_centro_evaluaciones"]}}" target="_blank" style="display:inline-block;padding:13px 24px;border-radius:6px;background:#2563eb;color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:700;text-decoration:none;">
+                              Ver mis evaluaciones
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                      <p style="margin:0 0 22px;font-size:12px;line-height:1.55;color:#667085;text-align:center;">
+                        Si el botón no funciona, abre este enlace:<br>
+                        <a href="{{DATOS["url_centro_evaluaciones"]}}" target="_blank" style="color:#2563eb;word-break:break-all;text-decoration:underline;">{{DATOS["url_centro_evaluaciones"]}}</a>
                       </p>
-                      <ol style="margin:0 0 24px;padding-left:24px;font-size:15px;line-height:1.5;">
-                        {{DATOS["lista_evaluaciones"]}}
-                      </ol>
+                      <div style="margin:0 0 22px;padding:14px 16px;border:1px solid #fedf89;border-radius:6px;background:#fffaeb;color:#7a2e0e;font-size:13px;line-height:1.55;">
+                        <strong style="display:block;margin-bottom:3px;">Enlace personal y confidencial</strong>
+                        No compartas esta URL con otras personas. Tus respuestas son confidenciales y se
+                        utilizarán exclusivamente dentro de los procesos internos de tu organización.
+                      </div>
                       <p style="margin:0;font-size:14px;line-height:1.6;color:#667085;">
                         Gracias por dedicar el tiempo necesario y responder con objetividad.
                       </p>
@@ -7018,7 +8478,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
                   </tr>
                   <tr>
                     <td align="center" style="padding:16px 24px;border-top:1px solid #eef2f7;font-family:Arial,sans-serif;font-size:12px;color:#98a2b3;">
-                      Just-Link
+                      Just-Link360
                     </td>
                   </tr>
                 </table>
@@ -8248,7 +9708,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     const typeOption = this.itemTypeOptions.find(
-      (item) => item.code === this.toBackendItemTypeCode(factor.defaultQuestionType)
+      (item) => item.code === this.toBackendItemTypeCode(DEFAULT_CRITERION_ITEM_TYPE)
     );
     return typeOption?.['usaEscala'] === false ? null : fallbackScaleId;
   }
@@ -8351,6 +9811,31 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return JSON.parse(JSON.stringify(card)) as DesEvaluationCard;
   }
 
+  private getModelImageUrl(imageSrc: string | null | undefined): string {
+    const normalizedImageSrc = String(imageSrc ?? '').trim();
+
+    if (!normalizedImageSrc) {
+      return this.fallbackModelImageUrl;
+    }
+
+    if (/^(?:https?:|data:|blob:|assets\/)/i.test(normalizedImageSrc)) {
+      return normalizedImageSrc;
+    }
+
+    const encodedKey = normalizedImageSrc
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+    return `${this.modelImageBucketUrl}${encodedKey}`;
+  }
+
+  private resetModelImageUpload(): void {
+    this.modelImageUploadError = '';
+    this.modelImageFileName = '';
+    this.modelImageFileChanged = false;
+    this.modelImageFormData = new FormData();
+  }
+
   private generateId(): number {
     this.localIdSequence += 1;
     return this.localIdSequence;
@@ -8363,7 +9848,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return 3;
     }
 
-    const boundedValue = Math.min(5, Math.max(1, numericValue));
+    const boundedValue = Math.min(5, Math.max(0.1, numericValue));
     return Math.round((boundedValue + Number.EPSILON) * 100) / 100;
   }
 

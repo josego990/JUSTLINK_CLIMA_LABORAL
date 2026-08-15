@@ -15,8 +15,8 @@ import {
 } from '@angular/material/snack-bar';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { SelectionModel } from '@angular/cdk/collections';
 import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { FormDialogComponent } from './dialogs/form-dialog/form-dialog.component';
 import { DeleteDialogComponent } from './dialogs/delete/delete.component';
 import {
@@ -39,22 +39,21 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FeatherIconsComponent } from '@shared/components/feather-icons/feather-icons.component';
-import { HttpClient } from '@angular/common/http';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb.component';
 import { Direction } from '@angular/cdk/bidi';
 
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core';
-import { relativeTimeThreshold } from 'moment';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
-import { AuthService } from '@core';
+import { OrganizacionService } from 'app/organization/services/organizacion.service';
+import Swal from 'sweetalert2';
 
 @Component({
     selector: 'app-advance-table',
     templateUrl: './users.component.html',
-    //styleUrls: ['./users.component.scss'],
+    styleUrls: ['./users.component.scss'],
     providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
     animations: [rowsAnimation],
     imports: [
@@ -83,32 +82,35 @@ import { AuthService } from '@core';
     ]
 })
 export class UsersComponent implements OnInit, OnDestroy {
+  private readonly profileImageBucketUrl =
+    'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/';
+  private readonly fallbackProfileImageUrl = 'assets/images/user/usrbig3.jpg';
+  private profileImageCacheVersion = Date.now();
   langStoreValue?: string;
   columnDefinitions = [
-  { def: 'select',        label: 'Checkbox',     type: 'check',       visible: true },
+  { def: 'imagenUrl',     label: 'Imagen',        type: 'image',       visible: true },
   { def: 'id',            label: 'User ID',       type: 'number',      visible: false },
   { def: 'username',      label: 'Username',      type: 'text',        visible: true },
   { def: 'email',         label: 'Email',         type: 'email',       visible: true },
-  { def: 'isActive',      label: 'Active',        type: 'boolean',     visible: true },
-  { def: 'createdAt',     label: 'Created At',    type: 'datetime',    visible: true },
+  { def: 'isActive',      label: 'Active',        type: 'boolean',     visible: false },
+  { def: 'createdAt',     label: 'Creado el',     type: 'datetime',    visible: false },
   { def: 'nombres',       label: 'Nombres',       type: 'text',        visible: true },
   { def: 'apellidos',     label: 'Apellidos',     type: 'text',        visible: true },
   { def: 'telefono',      label: 'Teléfono',      type: 'phone',       visible: true },
-  { def: 'imagenUrl',     label: 'Imagen',        type: 'image',       visible: true },
   { def: 'cargo',         label: 'Cargo',         type: 'text',        visible: true },
   { def: 'organizacion',  label: 'Organización',  type: 'text',        visible: true },
   { def: 'genero',        label: 'Género',        type: 'text',        visible: true },
-  { def: 'ciudad',        label: 'Ciudad',        type: 'text',        visible: true },
+  { def: 'ciudad',        label: 'Ciudad',        type: 'text',        visible: false },
   //{ def: 'roleId',        label: 'Role ID',       type: 'number',      visible: false },
-  { def: 'roleName',      label: 'Role Name',     type: 'text',        visible: true },
+  { def: 'roleName',      label: 'Rol',           type: 'text',        visible: true },
   { def: 'actions',       label: 'Actions',       type: 'actionBtn',   visible: true },
 ];
 
   dataSource = new MatTableDataSource<UserModel>([]);
-  selection = new SelectionModel<UserModel>(true, []);
   contextMenuPosition = { x: '0px', y: '0px' };
   isLoading = true;
   private destroy$ = new Subject<void>();
+  private usersRequestId = 0;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -125,10 +127,11 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   constructor(
     private languageService: LanguageService,private translate: TranslateService,
-    public httpClient: HttpClient,private authService: AuthService,
     public dialog: MatDialog,
     public advanceTableService: AdvanceTableService,
-    private snackBar: MatSnackBar, private router: Router
+    private snackBar: MatSnackBar,
+    private router: Router,
+    private organizationService: OrganizacionService,
   ) {}
   
   
@@ -163,50 +166,24 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.translate.use(this.langStoreValue);
 
     //jjg aquí se maneja el cambio desde el componente header
-    this.languageService.getLanguageChangeSubject().subscribe(lang => {
-      this.translate.use(lang);
-    });
+    this.languageService.getLanguageChangeSubject()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(lang => this.translate.use(lang));
 
+    this.organizationService.selectedOrganization$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((organization) => {
+        const organizationId = Number(organization?.Id);
 
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-      this.loadData();
-    }
-    else {
+        if (Number.isInteger(organizationId) && organizationId > 0) {
+          this.loadData(organizationId);
+          return;
+        }
 
-      //validar permisos de acciones
-      const permisoexport = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === 'exportdash');
-      const permisofilter = this.authService.currentUserValue?.permissions.find((p: { ActionCode: string; }) => p.ActionCode === '"filterdash"');
-
-      //console.log('permisoexport',permisoexport);
-
-      /*
-      if(permisoexport){
-        this.accessToExport = true;
-        this.btnDisabled = false;
-      }else{
-        this.accessToExport = false;
-        this.btnDisabled = true;
-      }
-
-      if(permisofilter){
-        this.accessToFilter = true;
-        //this.btnDisabled = false;
-      }else{
-        this.accessToFilter = false;
-        //this.btnDisabled = true;
-      }
-      */
-
-      console.log('this.authService.currentUserValue?.idOrganization: ', 
-        this.authService.currentUserValue?.idOrganization);
-
-      this.loadDataById(this.authService.currentUserValue?.idOrganization);
-
-    }
-
-    
-
-
+        ++this.usersRequestId;
+        this.dataSource.data = [];
+        this.isLoading = false;
+      });
   }
 
   ngOnDestroy() {
@@ -215,12 +192,31 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   refresh() {
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-        this.loadData();
-      }
-      else {
-        this.loadDataById(this.authService.currentUserValue?.idOrganization);
-      }
+    const organizationId = this.getSelectedOrganizationId();
+    if (organizationId > 0) {
+      this.loadData(organizationId);
+    }
+  }
+
+  getProfileImageUrl(fileName: string | null | undefined): string {
+    const normalizedFileName = String(fileName ?? '').trim();
+    if (!normalizedFileName) {
+      return this.fallbackProfileImageUrl;
+    }
+
+    const encodedKey = normalizedFileName
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
+    return `${this.profileImageBucketUrl}${encodedKey}?v=${this.profileImageCacheVersion}`;
+  }
+
+  onProfileImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    if (!image.src.endsWith(this.fallbackProfileImageUrl)) {
+      image.src = this.fallbackProfileImageUrl;
+    }
   }
 
   getDisplayedColumns(): string[] {
@@ -239,6 +235,18 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   openDialog(action: 'add' | 'edit', data?: UserModel) {
+    const selectedOrganization = this.organizationService.selectedOrganizationSnapshot;
+    const organizationId = this.getSelectedOrganizationId();
+
+    if (organizationId <= 0) {
+      void Swal.fire(
+        this.translate.instant('MENUITEMS.USERS.ORGANIZATION_REQUIRED_TITLE'),
+        this.translate.instant('MENUITEMS.USERS.ORGANIZATION_REQUIRED_TEXT'),
+        'warning'
+      );
+      return;
+    }
+
     let varDirection: Direction;
     if (localStorage.getItem('isRtl') === 'true') {
       varDirection = 'rtl';
@@ -247,9 +255,16 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
 
     const dialogRef = this.dialog.open(FormDialogComponent, {
-      width: '80vw',
-      maxWidth: '100vw',
-      data: { user: data, action },
+      width: '1040px',
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+      panelClass: 'user-form-dialog-panel',
+      data: {
+        user: data,
+        action,
+        idOrganization: organizationId,
+        organizationName: selectedOrganization?.Nombre ?? data?.organizacion ?? '',
+      },
       direction: varDirection,
       autoFocus: false,
   });
@@ -264,19 +279,26 @@ export class UsersComponent implements OnInit, OnDestroy {
         //this.refreshTable();
         this.showNotification(
           action === 'add' ? 'snackbar-success' : 'black',
-          `${action === 'add' ? 'Agragar' : 'Editar'} Registro Satisfactorio...!!!`,
+          action === 'add'
+            ? 'Usuario creado correctamente.'
+            : 'Usuario actualizado correctamente.',
           'bottom',
           'center'
         );
         
-        if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-          this.loadData();
-        }
-        else {
-          this.loadDataById(this.authService.currentUserValue?.idOrganization);
-        }
+        this.loadData(organizationId);
       }
     });
+  }
+
+  private getSelectedOrganizationId(): number {
+    const organizationId = Number(
+      this.organizationService.selectedOrganizationSnapshot?.Id
+    );
+
+    return Number.isInteger(organizationId) && organizationId > 0
+      ? organizationId
+      : 0;
   }
 
   private updateRecord(updatedRecord: UserModel) {
@@ -320,72 +342,37 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.dataSource.filter = filterValue;
   }
 
-  isAllSelected() {
-    return this.selection.selected.length === this.dataSource.data.length;
-  }
+  loadData(idOrganization: number) {
+    const requestId = ++this.usersRequestId;
+    this.dataSource.data = [];
+    this.isLoading = true;
 
-  masterToggle() {
-    this.isAllSelected()
-      ? this.selection.clear()
-      : this.dataSource.data.forEach((row) => this.selection.select(row));
-  }
-
-  removeSelectedRows() {
-    const totalSelect = this.selection.selected.length;
-    this.dataSource.data = this.dataSource.data.filter(
-      (item) => !this.selection.selected.includes(item)
-    );
-    this.selection.clear();
-    this.showNotification(
-      'snackbar-danger',
-      `${totalSelect} Record(s) Deleted Successfully...!!!`,
-      'bottom',
-      'center'
-    );
-  }
-
-  loadData() {
-    this.isLoading = true; // Start loading
-
-    this.advanceTableService.getAllAdvanceTables().subscribe({
+    this.advanceTableService.getAllAdvanceTables(idOrganization).subscribe({
       next: (data) => {
-        this.dataSource.data = data; // Assign the data to your data source
+        if (requestId !== this.usersRequestId) {
+          return;
+        }
+
+        this.profileImageCacheVersion = Date.now();
+        this.dataSource.data = Array.isArray(data) ? data : [];
         this.refreshTable();
         this.dataSource.filterPredicate = (
           data: UserModel,
           filter: string
         ) =>
           Object.values(data).some((value) =>
-            value.toString().toLowerCase().includes(filter)
+            String(value ?? '').toLowerCase().includes(filter)
           );
-        this.isLoading = false; // Stop loading
+        this.isLoading = false;
       },
       error: (err) => {
-        console.error(err);
-        this.isLoading = false; // Stop loading on error
-      },
-    });
-  }
+        if (requestId !== this.usersRequestId) {
+          return;
+        }
 
-  loadDataById(idOrganization: any) {
-    this.isLoading = true; // Start loading
-
-    this.advanceTableService.getAllUsersById(idOrganization).subscribe({
-      next: (data) => {
-        this.dataSource.data = data; // Assign the data to your data source
-        this.refreshTable();
-        this.dataSource.filterPredicate = (
-          data: UserModel,
-          filter: string
-        ) =>
-          Object.values(data).some((value) =>
-            value.toString().toLowerCase().includes(filter)
-          );
-        this.isLoading = false; // Stop loading
-      },
-      error: (err) => {
         console.error(err);
-        this.isLoading = false; // Stop loading on error
+        this.dataSource.data = [];
+        this.isLoading = false;
       },
     });
   }

@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -63,6 +65,7 @@ interface OrgGraphNodeData extends OrgChartNode {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     BreadcrumbComponent,
     TranslateModule,
     MatCheckboxModule,
@@ -70,6 +73,7 @@ interface OrgGraphNodeData extends OrgChartNode {
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
+    MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
     NgxGraphModule,
@@ -170,7 +174,280 @@ interface OrgGraphNodeData extends OrgChartNode {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
-      margin-bottom: 10px;
+      margin: 0;
+    }
+
+    .org-filter-panel {
+      display: grid;
+      grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+    }
+
+    .org-filter-copy {
+      min-width: 0;
+    }
+
+    .org-filter-title {
+      margin: 0;
+      font-size: 0.82rem;
+      line-height: 1.2;
+    }
+
+    .org-filter-help {
+      margin-top: 2px;
+      font-size: 0.7rem;
+      line-height: 1.2;
+    }
+
+    .org-filter-list {
+      flex: initial;
+      flex-wrap: nowrap;
+      gap: 4px 7px;
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .org-filter-item {
+      flex: 0 0 auto;
+      min-height: 30px;
+      padding: 0 6px 0 0;
+      border-radius: 6px;
+    }
+
+    :host ::ng-deep .org-filter-item .mdc-form-field {
+      font-size: 0.76rem;
+    }
+
+    :host ::ng-deep .org-filter-item .mdc-checkbox {
+      padding: 4px;
+    }
+
+    :host ::ng-deep .org-filter-item .mat-mdc-checkbox-touch-target {
+      width: 32px;
+      height: 32px;
+    }
+
+    .org-filter-actions {
+      min-width: auto;
+    }
+
+    .org-filter-actions button {
+      min-height: 34px;
+      padding-inline: 14px;
+    }
+
+    .org-navigation-toolbar {
+      display: grid;
+      grid-template-columns: minmax(240px, 340px) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 58px;
+      padding: 7px 9px;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 12;
+      border: 1px solid #d8e1ea;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    .org-navigation-toolbar > .org-graph-controls {
+      grid-column: 3;
+      justify-self: end;
+    }
+
+    .org-employee-search {
+      position: relative;
+      width: min(440px, 100%);
+    }
+
+    .org-employee-search .mat-mdc-form-field {
+      width: 100%;
+    }
+
+    :host ::ng-deep .org-employee-search .mat-mdc-text-field-wrapper,
+    :host ::ng-deep .org-employee-search .mat-mdc-form-field-flex {
+      height: 42px;
+    }
+
+    :host ::ng-deep .org-employee-search .mat-mdc-form-field-flex {
+      align-items: center;
+    }
+
+    .org-search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 310px;
+      overflow-y: auto;
+      padding: 6px;
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.16);
+    }
+
+    .org-search-result {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #0f172a;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .org-search-result:hover,
+    .org-search-result:focus-visible {
+      background: #eff6ff;
+      outline: none;
+    }
+
+    .org-search-result mat-icon {
+      color: #2563eb;
+    }
+
+    .org-search-result strong,
+    .org-search-result small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .org-search-result small,
+    .org-search-empty {
+      color: #64748b;
+    }
+
+    .org-search-empty {
+      padding: 14px;
+      text-align: center;
+      font-size: 0.84rem;
+    }
+
+    .org-selected-employee {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .org-selected-avatar {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      background: #e8f1fb;
+      color: #1769aa;
+    }
+
+    .org-selected-avatar mat-icon {
+      width: 19px;
+      height: 19px;
+      font-size: 19px;
+    }
+
+    .org-selected-copy {
+      min-width: 0;
+    }
+
+    .org-selected-identity {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      min-width: 0;
+      line-height: 1.15;
+    }
+
+    .org-selected-identity strong,
+    .org-selected-identity span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .org-selected-identity strong {
+      flex: 0 1 auto;
+      color: #172033;
+      font-size: 0.82rem;
+    }
+
+    .org-selected-identity span {
+      flex: 1 1 auto;
+      color: #64748b;
+      font-size: 0.71rem;
+    }
+
+    .org-selected-details,
+    .org-selected-demographics {
+      display: flex;
+      align-items: center;
+      gap: 4px 9px;
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .org-selected-details {
+      margin-top: 3px;
+      color: #526175;
+      font-size: 0.68rem;
+    }
+
+    .org-selected-details > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .org-selected-details mat-icon {
+      flex: 0 0 auto;
+      width: 13px;
+      height: 13px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .org-selected-demographics {
+      margin-top: 4px;
+    }
+
+    .org-selected-demographics > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border: 1px solid #dbe4ee;
+      border-radius: 5px;
+      background: #f6f9fc;
+      color: #475569;
+      font-size: 0.64rem;
+    }
+
+    .org-selected-demographics b {
+      color: #1769aa;
+      font-weight: 800;
     }
 
     .org-graph-controls .mat-mdc-icon-button {
@@ -279,6 +556,23 @@ interface OrgGraphNodeData extends OrgChartNode {
       color: #1d4ed8;
     }
 
+    .org-node-card.direct-subordinate {
+      border: 2px solid #0d9488;
+      background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 88%);
+      box-shadow:
+        0 0 0 4px rgba(13, 148, 136, 0.14),
+        0 16px 30px rgba(13, 148, 136, 0.18);
+    }
+
+    .org-node-card.direct-subordinate::before {
+      width: 8px;
+      background: #0d9488;
+    }
+
+    .org-node-card.direct-subordinate .org-node-name {
+      color: #0f766e;
+    }
+
     .org-node-name {
       font-size: 1rem;
       font-weight: 700;
@@ -329,6 +623,44 @@ interface OrgGraphNodeData extends OrgChartNode {
       border-top: 1px solid #dde7f0;
     }
 
+    :host-context(.dark) .org-filter-panel,
+    :host-context(.dark) .org-navigation-toolbar {
+      border-color: #30394a;
+      background: #151a24;
+      box-shadow: none;
+    }
+
+    :host-context(.dark) .org-filter-item,
+    :host-context(.dark) .org-selected-demographics > span {
+      border-color: #354052;
+      background: #1c2330;
+    }
+
+    :host-context(.dark) .org-selected-identity strong {
+      color: #edf2f8;
+    }
+
+    :host-context(.dark) .org-selected-identity span,
+    :host-context(.dark) .org-selected-details,
+    :host-context(.dark) .org-selected-details mat-icon,
+    :host-context(.dark) .org-selected-demographics > span {
+      color: #a9b5c7;
+    }
+
+    :host-context(.dark) .org-search-results {
+      border-color: #354052;
+      background: #171d27;
+    }
+
+    :host-context(.dark) .org-search-result {
+      color: #edf2f8;
+    }
+
+    :host-context(.dark) .org-search-result:hover,
+    :host-context(.dark) .org-search-result:focus-visible {
+      background: #222b39;
+    }
+
     @media (max-width: 991.98px) {
       .org-graph-shell {
         min-height: 620px;
@@ -336,6 +668,53 @@ interface OrgGraphNodeData extends OrgChartNode {
 
       .org-graph-controls {
         justify-content: flex-start;
+      }
+
+      .org-navigation-toolbar {
+        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .org-employee-search {
+        width: auto;
+      }
+
+      .org-selected-employee {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .org-navigation-toolbar > .org-graph-controls {
+        grid-column: 2;
+      }
+
+      .org-filter-panel {
+        grid-template-columns: 1fr auto;
+      }
+
+      .org-filter-list {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .org-navigation-toolbar,
+      .org-filter-panel {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .org-graph-controls,
+      .org-filter-actions {
+        justify-content: flex-end;
+      }
+
+      .org-graph-controls,
+      .org-selected-employee,
+      .org-filter-list,
+      .org-filter-actions {
+        grid-column: 1;
+        grid-row: auto;
       }
     }
   `],
@@ -363,12 +742,16 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   public graphView: [number, number] = [1200, 760];
   public isLoadingOrganizations = false;
   public isLoadingChart = false;
+  public employeeSearchTerm = '';
+  public isEmployeeSearchOpen = false;
   public layoutOrientation: Orientation = Orientation.LEFT_TO_RIGHT;
   public layoutSettings = this.buildLayoutSettings();
   public selectedGraphNode: Node | null = null;
   public readonly updateGraph$ = new Subject<void>();
   public readonly centerGraph$ = new Subject<void>();
   public readonly zoomToFitGraph$ = new Subject<NgxGraphZoomOptions>();
+  public readonly panToNode$ = new Subject<string>();
+  public directSubordinateEmployeeIds = new Set<number>();
   private resizeObserver: ResizeObserver | null = null;
   private graphRefreshTimer: number | null = null;
   private selectedOrganizationSubscription?: Subscription;
@@ -395,6 +778,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     this.updateGraph$.complete();
     this.centerGraph$.complete();
     this.zoomToFitGraph$.complete();
+    this.panToNode$.complete();
   }
 
   private setupSelectedOrganizationListener(): void {
@@ -458,6 +842,29 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     return data && typeof data === 'object' ? (data as OrgGraphNodeData) : null;
   }
 
+  get employeeSearchResults(): Node[] {
+    const search = this.normalizeSearchText(this.employeeSearchTerm);
+    if (!search) {
+      return [];
+    }
+
+    return this.graphNodes
+      .filter((node) => {
+        const data = node.data as OrgGraphNodeData | undefined;
+        return data?.idEmpleado !== null &&
+          data?.idEmpleado !== undefined &&
+          this.normalizeSearchText(data.nombreCompleto).includes(search);
+      })
+      .sort((left, right) =>
+        String(left.data?.nombreCompleto ?? '').localeCompare(
+          String(right.data?.nombreCompleto ?? ''),
+          'es',
+          { sensitivity: 'base' }
+        )
+      )
+      .slice(0, 10);
+  }
+
   onOrganizationChange(value: any): void {
     this.selectedOrganizationId = this.toPositiveInteger(value);
     this.loadOrgChart();
@@ -516,8 +923,36 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
 
   onGraphSelect(entry: any): void {
     if (entry?.data?.nombreCompleto) {
-      this.selectedGraphNode = entry as Node;
+      this.selectGraphNode(entry as Node, false);
     }
+  }
+
+  onEmployeeSearchChange(): void {
+    this.isEmployeeSearchOpen = this.employeeSearchTerm.trim().length > 0;
+  }
+
+  openEmployeeSearchResults(): void {
+    this.isEmployeeSearchOpen = this.employeeSearchTerm.trim().length > 0;
+  }
+
+  closeEmployeeSearchResults(): void {
+    this.isEmployeeSearchOpen = false;
+  }
+
+  clearEmployeeSearch(): void {
+    this.employeeSearchTerm = '';
+    this.isEmployeeSearchOpen = false;
+  }
+
+  selectEmployeeSearchResult(node: Node): void {
+    this.employeeSearchTerm = String(node.data?.nombreCompleto ?? node.label ?? '').trim();
+    this.isEmployeeSearchOpen = false;
+    this.selectGraphNode(node, true);
+  }
+
+  isDirectSubordinateNode(node: Node | null | undefined): boolean {
+    const employeeId = this.toPositiveInteger(node?.data?.idEmpleado);
+    return employeeId !== null && this.directSubordinateEmployeeIds.has(employeeId);
   }
 
   getSelectedNodeSubtitle(node: OrgGraphNodeData): string {
@@ -546,7 +981,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       return nodes.filter((item) =>
         item.idEmpleado !== null &&
         item.idEmpleado !== employeeId &&
-        item.idEmpleadosJefe.includes(employeeId)
+        item.idEmpleadoJefe === employeeId
       ).length;
     }
 
@@ -616,10 +1051,16 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.graphNodes = [];
       this.graphLinks = [];
       this.selectedGraphNode = null;
+      this.employeeSearchTerm = '';
+      this.isEmployeeSearchOpen = false;
+      this.directSubordinateEmployeeIds.clear();
       return;
     }
 
     this.isLoadingChart = true;
+    this.employeeSearchTerm = '';
+    this.isEmployeeSearchOpen = false;
+    this.directSubordinateEmployeeIds.clear();
 
     try {
       const response = await this.organizacionService.getDesempenoOrganigrama(this.selectedOrganization.Id);
@@ -638,6 +1079,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.graphNodes = [];
       this.graphLinks = [];
       this.selectedGraphNode = null;
+      this.directSubordinateEmployeeIds.clear();
       this.chartMessage = '';
       this.availableDemographicFilters = [];
       this.pendingDemographicKeys = [];
@@ -769,6 +1211,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.graphNodes = [];
       this.graphLinks = [];
       this.selectedGraphNode = null;
+      this.directSubordinateEmployeeIds.clear();
       return;
     }
 
@@ -804,6 +1247,58 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.graphNodes.find((node) => node.data?.idEmpleado !== null && node.data?.idEmpleado !== undefined) ??
       this.graphNodes[0] ??
       null;
+    this.updateDirectSubordinateSelection();
+  }
+
+  private selectGraphNode(node: Node, panToNode: boolean): void {
+    this.selectedGraphNode = node;
+    this.updateDirectSubordinateSelection();
+
+    if (panToNode) {
+      window.setTimeout(() => this.panToNode$.next(node.id), 80);
+    }
+  }
+
+  private updateDirectSubordinateSelection(): void {
+    this.directSubordinateEmployeeIds = this.getDirectSubordinateEmployeeIds(
+      this.selectedNodeData
+    );
+  }
+
+  private getDirectSubordinateEmployeeIds(
+    selectedNode: OrgGraphNodeData | null
+  ): Set<number> {
+    const selectedEmployeeId = selectedNode?.idEmpleado;
+    if (!selectedEmployeeId) {
+      return new Set<number>();
+    }
+
+    const nodes = this.flattenForest(this.chartRoots);
+    const hasManagerData = nodes.some((node) => node.idEmpleadosJefe.length > 0);
+
+    if (hasManagerData) {
+      return new Set(
+        nodes
+          .filter((node) =>
+            node.idEmpleado !== null &&
+            node.idEmpleado !== selectedEmployeeId &&
+            node.idEmpleadoJefe === selectedEmployeeId
+          )
+          .map((node) => node.idEmpleado as number)
+      );
+    }
+
+    return new Set(this.collectFirstEmployeeDescendantIds(selectedNode.children));
+  }
+
+  private collectFirstEmployeeDescendantIds(nodes: OrgChartNode[]): number[] {
+    return nodes.flatMap((node) => {
+      if (node.idEmpleado !== null) {
+        return [node.idEmpleado];
+      }
+
+      return this.collectFirstEmployeeDescendantIds(node.children);
+    });
   }
 
   private toGraphNodeData(node: OrgChartNode): OrgGraphNodeData {
@@ -940,14 +1435,14 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
 
   private normalizeManagerIds(node: any): number[] {
     const values = [
-      node?.idEmpleadosJefe,
-      node?.IdEmpleadosJefe,
       node?.idEmpleadoJefe,
       node?.IdEmpleadoJefe,
       node?.idJefe,
       node?.IdJefe,
       node?.idJefeEmpleado,
       node?.IdJefeEmpleado,
+      node?.idEmpleadosJefe,
+      node?.IdEmpleadosJefe,
       node?.jefes,
       node?.Jefes,
     ];
@@ -1022,6 +1517,14 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       .toUpperCase()
       .replace(/-/g, '_')
       .replace(/\s+/g, '_');
+  }
+
+  private normalizeSearchText(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLocaleLowerCase('es');
   }
 
   private flattenTree(root: OrgChartNode): OrgChartNode[] {

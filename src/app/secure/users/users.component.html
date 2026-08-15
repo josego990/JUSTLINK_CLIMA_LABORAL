@@ -56,14 +56,6 @@
                     </button>
                   </div>
                 </li>
-                <li class="tbl-header-btn">
-                  <div class="m-l-10" [hidden]=!selection.hasValue()>
-                    <button mat-icon-button [hidden]=!selection.hasValue() (click)="removeSelectedRows()"
-                      class="col-red" matTooltip="Delete">
-                      <mat-icon>delete_outline</mat-icon>
-                    </button>
-                  </div>
-                </li>
                 <li>
                   <div class="export-button m-l-10">
                     <button mat-icon-button (click)="exportExcel()" class="col-blue" matTooltip="Xlsx Download">
@@ -74,25 +66,9 @@
               </ul>
             </div>
           </div>
-          <div class="body overflow-auto">
-            <div class="responsive_table">
-              <table mat-table [dataSource]="dataSource" matSort class="mat-cell advance-table">
-                <!-- Checkbox Column -->
-                <ng-container matColumnDef="select">
-                  <mat-header-cell *matHeaderCellDef>
-                    <mat-checkbox (change)="$event ? masterToggle() : null"
-                      [checked]="selection.hasValue() && isAllSelected()" color="primary"
-                      [indeterminate]="selection.hasValue() && !isAllSelected()" [ngClass]="'tbl-checkbox'">
-                    </mat-checkbox>
-                  </mat-header-cell>
-                  <mat-cell *matCellDef="let row">
-                    <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null"
-                      [checked]="selection.isSelected(row)" [ngClass]="'tbl-checkbox'" color="primary">
-                    </mat-checkbox>
-                  </mat-cell>
-                </ng-container>
-
-
+          <div class="body users-table-body">
+            <div class="responsive_table users-table-scroll">
+              <table mat-table [dataSource]="dataSource" matSort class="mat-cell advance-table users-table">
                 @for (column of columnDefinitions; track column) {
                   <!-- Omitir columnas de selección y acciones -->
                   @if (column.type === 'check' || column.type === 'actionBtn') {
@@ -149,7 +125,9 @@
                         </mat-header-cell>
                         <mat-cell *matCellDef="let row">
                           <span class="mobile-label">{{ column.label }}:</span>
-                          <span class="truncate-text">{{ row.createdAt | date:'MM/dd/yyyy HH:mm' }}</span>
+                          <span class="truncate-text" [title]="(row.createdAt | date:'MM/dd/yyyy HH:mm') || ''">
+                            {{ row.createdAt | date:'MM/dd/yyyy HH:mm' }}
+                          </span>
                         </mat-cell>
                       </ng-container>
                     } 
@@ -174,7 +152,7 @@
                         <mat-cell *matCellDef="let row">
                           <span class="mobile-label">{{ column.label }}:</span>
                           <mat-icon class="tbl-icon material-icons-outlined col-green">call</mat-icon>
-                          <span class="truncate-text">{{ row.telefono }}</span>
+                          <span class="truncate-text" [title]="row.telefono">{{ row.telefono }}</span>
                         </mat-cell>
                       </ng-container>
                     } 
@@ -186,7 +164,11 @@
                         </mat-header-cell>
                         <mat-cell *matCellDef="let row">
                           <span class="mobile-label">{{ column.label }}:</span>
-                          <img [src]="'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/' + row.imagenUrl" class="table-img" alt="avatar"/>
+                          <img
+                            [src]="getProfileImageUrl(row.imagenUrl)"
+                            class="table-img"
+                            alt="Imagen de perfil"
+                            (error)="onProfileImageError($event)" />
                                        
                         </mat-cell>
                       </ng-container> 
@@ -314,10 +296,10 @@
             </mat-menu>
        
             <!-- context menu end -->
-            @if (isLoading) {
-            <div class="no-results" [style.display]="dataSource.data.length === 0 ? '' : 'none'">
-              No results
-            </div>
+            @if (!isLoading && dataSource.data.length === 0) {
+              <div class="no-results users-empty-state">
+                No se encontraron usuarios para la organización seleccionada.
+              </div>
             }
             <mat-paginator #paginator [length]="dataSource.filteredData.length" [pageIndex]="0" [pageSize]="10"
               [pageSizeOptions]="[5, 10, 25, 100]">

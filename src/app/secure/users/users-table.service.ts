@@ -17,8 +17,8 @@ export class AdvanceTableService {
   constructor(private organizationService: OrganizacionService) {}
 
   /** GET: Fetch all advance tables */
-  getAllAdvanceTables(): Observable<UserModel[]> {
-    return from(this.organizationService.getUsers())
+  getAllAdvanceTables(idOrganization: number): Observable<UserModel[]> {
+    return from(this.organizationService.getUsers(idOrganization))
       .pipe(map((response: any) => response?.data ?? []))
       .pipe(catchError(this.handleError));
   }

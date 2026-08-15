@@ -19,6 +19,10 @@ import Swal from 'sweetalert2';
 
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import {
+  performanceGapToPercent,
+  performanceScoreToPercent,
+} from '../shared/performance-score.utils';
 
 type FollowTone = 'above' | 'expected' | 'below' | 'neutral';
 type PlanStatus = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
@@ -520,11 +524,8 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
   }
 
   getScorePercent(value: number | null): number {
-    if (value === null) {
-      return 0;
-    }
-
-    return Math.max(0, Math.min(100, (value / 5) * 100));
+    const percentage = performanceScoreToPercent(value);
+    return percentage === null ? 0 : Math.max(0, Math.min(100, percentage));
   }
 
   getScoreTone(value: number | null): string {
@@ -557,13 +558,21 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
   }
 
   formatScore(value: number | null): string {
-    return value === null ? '-' : this.round(value, 2).toFixed(2);
+    return this.formatPercentageValue(performanceScoreToPercent(value));
   }
 
   formatGap(value: number | null): string {
+    const percentage = performanceGapToPercent(value);
+    if (percentage === null) return '-';
+    return `${percentage > 0 ? '+' : ''}${this.formatPercentageValue(percentage)}`;
+  }
+
+  private formatPercentageValue(value: number | null): string {
     if (value === null) return '-';
-    const rounded = this.round(value, 2);
-    return `${rounded > 0 ? '+' : ''}${rounded.toFixed(2)}`;
+    return `${this.round(value, 1).toLocaleString('es-GT', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    })}%`;
   }
 
   formatDate(value: string | null | undefined): string {

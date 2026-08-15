@@ -109,6 +109,7 @@
           [disabled]="!!blockedMessage"
           [isSavingDraft]="isSavingDraft"
           [isFinalizing]="isFinalizing"
+          [canSaveDraft]="!!turnstileToken"
           [canFinalize]="!!turnstileToken"
           (draftSaveRequested)="saveDraft($event)"
           (finalizeRequested)="finalize($event)">

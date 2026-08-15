@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { requiredRatingPercentToScale } from '../shared/performance-score.utils';
 
 export type DesEvaluationExcelScenarioKey =
   | 'BOSS_TO_EMPLOYEE'
@@ -100,7 +101,7 @@ export const DES_EVALUATION_EXCEL_HEADERS: Record<ExcelColumnKey, string> = {
   criterionName: 'Criterio *',
   criterionDescription: 'Descripción criterio',
   criterionWeight: 'Ponderación criterio (%) *',
-  requiredRatingLevel: 'Nivel exigencia (1-5) *',
+  requiredRatingLevel: 'Nivel exigencia (%) *',
   itemCode: 'Código ítem',
   itemText: 'Ítem evaluativo *',
   itemType: 'Tipo de ítem *',
@@ -137,6 +138,8 @@ const COLUMN_ALIASES: Record<ExcelColumnKey, string[]> = {
   ],
   requiredRatingLevel: [
     'nivel exigencia',
+    'nivel exigencia %',
+    'nivel exigencia 1 100',
     'nivel exigencia 1 5',
     'nivel de exigencia',
     'required rating level',
@@ -297,6 +300,8 @@ export function parseDesEvaluationExcelWorkbook(
 
     const headers = Object.keys(rawRows[0] ?? {});
     const columnMap = getColumnMap(headers);
+    const requiredRatingHeader = columnMap.get('requiredRatingLevel') ?? '';
+    const usesLegacyRequiredRatingScale = normalize(requiredRatingHeader).includes('1 5');
     const missingHeaders = REQUIRED_COLUMNS
       .filter((key) => !columnMap.has(key))
       .map((key) => DES_EVALUATION_EXCEL_HEADERS[key]);
@@ -413,7 +418,7 @@ export function parseDesEvaluationExcelWorkbook(
         requiredRatingLevel === null ||
         !Number.isInteger(requiredRatingLevel) ||
         requiredRatingLevel < 1 ||
-        requiredRatingLevel > 5
+        requiredRatingLevel > (usesLegacyRequiredRatingScale ? 5 : 100)
       ) {
         rowErrors.push(t('INVALID_REQUIRED_LEVEL', {
           sheet: sheetName,
@@ -518,7 +523,9 @@ export function parseDesEvaluationExcelWorkbook(
         criterionName: text(get('criterionName')),
         criterionDescription: text(get('criterionDescription')),
         criterionWeight: criterionWeight!,
-        requiredRatingLevel: requiredRatingLevel!,
+        requiredRatingLevel: usesLegacyRequiredRatingScale
+          ? requiredRatingLevel!
+          : requiredRatingPercentToScale(requiredRatingLevel!),
         itemCode,
         itemText: text(get('itemText')),
         itemType: itemType!,

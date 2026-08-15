@@ -16,7 +16,7 @@
               <div class="org-filter-copy">
                 <div class="org-filter-title">Campos para el organigrama</div>
                 <div class="org-filter-help">
-                  Selecciona qué demográficos quieres usar para etiquetar y filtrar la información mostrada.
+                  {{ pendingDemographicKeys.length }} de {{ availableDemographicFilters.length }} demográficos seleccionados
                 </div>
               </div>
 
@@ -45,95 +45,143 @@
               </div>
             </div>
 
-            <div class="org-panel" *ngIf="selectedNodeData as selected">
-              <div class="org-panel-title">{{ selected.nombreCompleto }}</div>
-              <div class="org-panel-role">{{ getSelectedNodeSubtitle(selected) }}</div>
+            <div class="org-navigation-toolbar" *ngIf="graphNodes.length > 0 && !isLoadingChart">
+              <div class="org-employee-search">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Buscar empleado</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="employeeSearchTerm"
+                    autocomplete="off"
+                    placeholder="Nombre o apellido"
+                    (focus)="openEmployeeSearchResults()"
+                    (blur)="closeEmployeeSearchResults()"
+                    (ngModelChange)="onEmployeeSearchChange()"
+                    (keydown.escape)="closeEmployeeSearchResults()"
+                  />
+                  <mat-icon matPrefix>person_search</mat-icon>
+                  <button
+                    *ngIf="employeeSearchTerm"
+                    mat-icon-button
+                    matSuffix
+                    type="button"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="clearEmployeeSearch()"
+                    matTooltip="Limpiar búsqueda"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </mat-form-field>
 
-              <div class="org-panel-grid">
-                <div class="org-panel-cell">
-                  <div class="org-meta">Empleado</div>
-                  <div>{{ selected.idEmpleado || '-' }}</div>
-                </div>
+                <div class="org-search-results" *ngIf="isEmployeeSearchOpen">
+                  <button
+                    class="org-search-result"
+                    type="button"
+                    *ngFor="let node of employeeSearchResults"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectEmployeeSearchResult(node)"
+                  >
+                    <mat-icon>person</mat-icon>
+                    <span>
+                      <strong>{{ node.data?.nombreCompleto }}</strong>
+                      <small>{{ node.data?.cargo || 'Sin puesto' }}</small>
+                    </span>
+                  </button>
 
-                <div class="org-panel-cell">
-                  <div class="org-meta">Puesto</div>
-                  <div>{{ selected.cargo || '-' }}</div>
-                </div>
-
-                <div class="org-panel-cell">
-                  <div class="org-meta">Correo</div>
-                  <div>{{ selected.correo || '-' }}</div>
-                </div>
-
-                <div class="org-panel-cell">
-                  <div class="org-meta">Teléfono</div>
-                  <div>{{ selected.telefono || '-' }}</div>
-                </div>
-
-                <div class="org-panel-cell">
-                  <div class="org-meta">Subordinados</div>
-                  <div>{{ getSubordinateCount(selected) }}</div>
-                </div>
-
-                <div class="org-panel-cell">
-                  <div class="org-meta">Subordinados directos</div>
-                  <div>{{ getDirectSubordinateCount(selected) }}</div>
+                  <div class="org-search-empty" *ngIf="employeeSearchResults.length === 0">
+                    No se encontraron empleados con ese nombre.
+                  </div>
                 </div>
               </div>
 
-              <div class="org-tag-list" *ngIf="selected.demographicEntries.length > 0">
-                <span class="org-tag" *ngFor="let entry of selected.demographicEntries">
-                  {{ entry.label }}: {{ entry.value }}
-                </span>
+              <div class="org-selected-employee" *ngIf="selectedNodeData as selected">
+                <div class="org-selected-avatar" aria-hidden="true">
+                  <mat-icon>badge</mat-icon>
+                </div>
+
+                <div class="org-selected-copy">
+                  <div class="org-selected-identity">
+                    <strong>{{ selected.nombreCompleto }}</strong>
+                    <span>{{ getSelectedNodeSubtitle(selected) }}</span>
+                  </div>
+
+                  <div class="org-selected-details">
+                    <span [matTooltip]="'Empleado #' + (selected.idEmpleado || '-')">
+                      <mat-icon>tag</mat-icon>
+                      #{{ selected.idEmpleado || '-' }}
+                    </span>
+                    <span [matTooltip]="selected.correo || 'Sin correo'">
+                      <mat-icon>mail_outline</mat-icon>
+                      {{ selected.correo || 'Sin correo' }}
+                    </span>
+                    <span [matTooltip]="selected.telefono || 'Sin teléfono'">
+                      <mat-icon>phone</mat-icon>
+                      {{ selected.telefono || 'Sin teléfono' }}
+                    </span>
+                    <span
+                      [matTooltip]="getDirectSubordinateCount(selected) + ' subordinados directos de ' + getSubordinateCount(selected) + ' en total'">
+                      <mat-icon>account_tree</mat-icon>
+                      {{ getDirectSubordinateCount(selected) }} directos / {{ getSubordinateCount(selected) }} total
+                    </span>
+                  </div>
+
+                  <div class="org-selected-demographics" *ngIf="selected.demographicEntries.length > 0">
+                    <span *ngFor="let entry of selected.demographicEntries" [matTooltip]="entry.label + ': ' + entry.value">
+                      <b>{{ entry.label }}</b>
+                      {{ entry.value }}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="org-graph-controls" *ngIf="graphNodes.length > 0 && !isLoadingChart">
-              <button
-                mat-icon-button
-                type="button"
-                [class.active]="layoutOrientation === Orientation.LEFT_TO_RIGHT"
-                [disabled]="isLoadingChart"
-                (click)="setOrientation(Orientation.LEFT_TO_RIGHT)"
-                matTooltip="Vista horizontal"
-                aria-label="Vista horizontal"
-              >
-                <mat-icon>swap_horiz</mat-icon>
-              </button>
+              <div class="org-graph-controls">
+                <button
+                  mat-icon-button
+                  type="button"
+                  [class.active]="layoutOrientation === Orientation.LEFT_TO_RIGHT"
+                  [disabled]="isLoadingChart"
+                  (click)="setOrientation(Orientation.LEFT_TO_RIGHT)"
+                  matTooltip="Vista horizontal"
+                  aria-label="Vista horizontal"
+                >
+                  <mat-icon>swap_horiz</mat-icon>
+                </button>
 
-              <button
-                mat-icon-button
-                type="button"
-                [class.active]="layoutOrientation === Orientation.TOP_TO_BOTTOM"
-                [disabled]="isLoadingChart"
-                (click)="setOrientation(Orientation.TOP_TO_BOTTOM)"
-                matTooltip="Vista vertical"
-                aria-label="Vista vertical"
-              >
-                <mat-icon>swap_vert</mat-icon>
-              </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [class.active]="layoutOrientation === Orientation.TOP_TO_BOTTOM"
+                  [disabled]="isLoadingChart"
+                  (click)="setOrientation(Orientation.TOP_TO_BOTTOM)"
+                  matTooltip="Vista vertical"
+                  aria-label="Vista vertical"
+                >
+                  <mat-icon>swap_vert</mat-icon>
+                </button>
 
-              <button
-                mat-icon-button
-                type="button"
-                [disabled]="!graphNodes.length"
-                (click)="centerGraph()"
-                matTooltip="Centrar"
-                aria-label="Centrar"
-              >
-                <mat-icon>center_focus_strong</mat-icon>
-              </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="!graphNodes.length"
+                  (click)="centerGraph()"
+                  matTooltip="Centrar"
+                  aria-label="Centrar"
+                >
+                  <mat-icon>center_focus_strong</mat-icon>
+                </button>
 
-              <button
-                mat-icon-button
-                type="button"
-                [disabled]="!graphNodes.length"
-                (click)="fitGraph()"
-                matTooltip="Ajustar vista"
-                aria-label="Ajustar vista"
-              >
-                <mat-icon>fit_screen</mat-icon>
-              </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="!graphNodes.length"
+                  (click)="fitGraph()"
+                  matTooltip="Ajustar vista"
+                  aria-label="Ajustar vista"
+                >
+                  <mat-icon>fit_screen</mat-icon>
+                </button>
+              </div>
             </div>
 
             <div class="org-graph-shell" #graphViewport>
@@ -173,6 +221,7 @@
                 [miniMapPosition]="miniMapPosition"
                 [zoomToFit$]="zoomToFitGraph$"
                 [center$]="centerGraph$"
+                [panToNode$]="panToNode$"
                 [update$]="updateGraph$"
                 [enableTrackpadSupport]="true"
                 [deferDisplayUntilPosition]="true"
@@ -196,7 +245,11 @@
                       <div xmlns="http://www.w3.org/1999/xhtml" class="org-node-wrap">
                         <div
                           class="org-node-card"
-                          [ngClass]="[getLevelClass(node.data?.nivel || ''), selectedGraphNode?.id === node.id ? 'selected' : '']"
+                          [ngClass]="[
+                            getLevelClass(node.data?.nivel || ''),
+                            selectedGraphNode?.id === node.id ? 'selected' : '',
+                            isDirectSubordinateNode(node) ? 'direct-subordinate' : ''
+                          ]"
                         >
                          <div class="org-node-path">{{ node.data?.pathLabel || 'Sin clasificación demográfica' }}</div>
                           

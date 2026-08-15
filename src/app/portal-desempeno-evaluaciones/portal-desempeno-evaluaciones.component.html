@@ -1,0 +1,244 @@
+<main class="evaluation-portal">
+  <div class="portal-toolbar" role="banner">
+    <div class="portal-toolbar__content">
+      <img src="assets/images/Justlink-360.png" alt="Justlink-360" class="brand-logo" />
+      <div class="portal-toolbar__label">
+        <mat-icon>fact_check</mat-icon>
+        <span>Centro de evaluaciones</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-content">
+    <section class="portal-state" *ngIf="isLoading" aria-live="polite">
+      <mat-spinner diameter="38" strokeWidth="4"></mat-spinner>
+      <h1>Consultando tus evaluaciones</h1>
+      <p>Estamos recuperando tus asignaciones y su avance.</p>
+    </section>
+
+    <section class="portal-state portal-state--error" *ngIf="!isLoading && !employee">
+      <div class="portal-state__icon">
+        <mat-icon>link_off</mat-icon>
+      </div>
+      <h1>No pudimos abrir el centro de evaluaciones</h1>
+      <p>{{ loadError }}</p>
+      <button mat-stroked-button type="button" *ngIf="accessCode" (click)="retryLoad()">
+        <mat-icon>refresh</mat-icon>
+        Intentar de nuevo
+      </button>
+    </section>
+
+    <ng-container *ngIf="!isLoading && employee as currentEmployee">
+      <section class="employee-header">
+        <div class="employee-identity">
+          <div class="employee-avatar" aria-hidden="true">
+            {{ currentEmployee.initials }}
+          </div>
+          <div class="employee-copy">
+            <span class="employee-eyebrow">Evaluaciones asignadas</span>
+            <h1>{{ currentEmployee.fullName }}</h1>
+            <p>
+              {{ currentEmployee.position }}
+              <ng-container *ngIf="model?.name"> · {{ model?.name }}</ng-container>
+            </p>
+          </div>
+        </div>
+
+        <div class="employee-meta">
+          <div>
+            <mat-icon>domain</mat-icon>
+            <span>
+              <small>Organización</small>
+              <strong>{{ currentEmployee.organization }}</strong>
+            </span>
+          </div>
+          <div>
+            <mat-icon>mail_outline</mat-icon>
+            <span>
+              <small>Correo</small>
+              <strong>{{ currentEmployee.email }}</strong>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <div class="context-warning context-warning--error" *ngIf="loadError">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ loadError }} Los datos mostrados corresponden a la última consulta exitosa.</span>
+      </div>
+
+      <section class="portal-overview">
+        <div class="overview-copy">
+          <span class="section-eyebrow">Tu avance</span>
+          <h2>Estado de evaluaciones</h2>
+          <p>Consulta tus asignaciones y continúa las evaluaciones que todavía requieren respuesta.</p>
+        </div>
+
+        <div class="overview-progress" [attr.aria-label]="completionPercentage + '% completado'">
+          <div class="progress-ring" [style.--progress]="completionPercentage">
+            <span>{{ completionPercentage }}%</span>
+          </div>
+          <div>
+            <strong>{{ completedCount }} de {{ totalEvaluations }}</strong>
+            <small>evaluaciones completadas</small>
+          </div>
+        </div>
+
+        <div class="overview-stats">
+          <div class="overview-stat pending">
+            <mat-icon>schedule</mat-icon>
+            <span><strong>{{ pendingCount }}</strong><small>Pendientes</small></span>
+          </div>
+          <div class="overview-stat in-progress">
+            <mat-icon>edit_note</mat-icon>
+            <span><strong>{{ inProgressCount }}</strong><small>En progreso</small></span>
+          </div>
+          <div class="overview-stat completed">
+            <mat-icon>task_alt</mat-icon>
+            <span><strong>{{ completedCount }}</strong><small>Completadas</small></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="assignments-section">
+        <div class="assignments-header">
+          <div>
+            <h2>Mis evaluaciones</h2>
+            <p>{{ getFilterCount(selectedFilter) }} asignaciones en esta vista</p>
+          </div>
+
+          <div class="assignments-controls">
+            <mat-button-toggle-group
+              [(ngModel)]="selectedFilter"
+              aria-label="Filtrar evaluaciones"
+              hideSingleSelectionIndicator>
+              <mat-button-toggle value="TODAS">Todas</mat-button-toggle>
+              <mat-button-toggle value="PENDIENTES">Pendientes</mat-button-toggle>
+              <mat-button-toggle value="COMPLETADAS">Completadas</mat-button-toggle>
+            </mat-button-toggle-group>
+
+            <button
+              mat-icon-button
+              type="button"
+              class="refresh-button"
+              [disabled]="isRefreshing"
+              [matTooltip]="isRefreshing ? 'Actualizando evaluaciones' : 'Actualizar evaluaciones'"
+              aria-label="Actualizar evaluaciones"
+              (click)="refreshEvaluations()">
+              <mat-spinner *ngIf="isRefreshing; else refreshIcon" diameter="20" strokeWidth="3"></mat-spinner>
+              <ng-template #refreshIcon>
+                <mat-icon>refresh</mat-icon>
+              </ng-template>
+            </button>
+            <span class="refresh-status" aria-live="polite">
+              {{ isRefreshing ? 'Actualizando evaluaciones' : '' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="evaluation-list" *ngIf="filteredEvaluations.length; else emptyEvaluations">
+          <article
+            class="evaluation-card"
+            *ngFor="let evaluation of filteredEvaluations; trackBy: trackByEvaluationId"
+            [class.is-completed]="evaluation.status === 'COMPLETADA'">
+            <div class="evaluation-card__accent" [attr.data-status]="evaluation.status"></div>
+
+            <div class="evaluation-card__main">
+              <div class="evaluation-card__heading">
+                <div class="scenario-icon" [attr.data-status]="evaluation.status">
+                  <mat-icon>{{ getStatusIcon(evaluation.status) }}</mat-icon>
+                </div>
+                <div>
+                  <span class="scenario-label">{{ evaluation.scenario }}</span>
+                  <h3>{{ evaluation.name }}</h3>
+                </div>
+                <span class="status-chip" [attr.data-status]="evaluation.status">
+                  <mat-icon>{{ getStatusIcon(evaluation.status) }}</mat-icon>
+                  {{ getStatusLabel(evaluation) }}
+                </span>
+              </div>
+
+              <div class="evaluatee-row">
+                <div class="evaluatee-avatar">{{ evaluation.evaluatedEmployee.charAt(0) }}</div>
+                <div>
+                  <small>Persona a evaluar</small>
+                  <strong>{{ evaluation.evaluatedEmployee }}</strong>
+                  <span>{{ evaluation.evaluatedPosition }}</span>
+                </div>
+              </div>
+
+              <div class="evaluation-meta">
+                <span>
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ getEvaluationDateLabel(evaluation) }}
+                </span>
+                <span>
+                  <mat-icon>account_tree</mat-icon>
+                  {{ evaluation.dimensions }} dimensiones
+                </span>
+                <span>
+                  <mat-icon>checklist</mat-icon>
+                  {{ evaluation.items }} ítems
+                </span>
+                <span *ngIf="evaluation.estimatedMinutes > 0">
+                  <mat-icon>timer</mat-icon>
+                  {{ evaluation.estimatedMinutes }} min aprox.
+                </span>
+              </div>
+            </div>
+
+            <div class="evaluation-card__action">
+              <div class="card-progress">
+                <div>
+                  <span>Avance</span>
+                  <strong>{{ evaluation.progress }}%</strong>
+                </div>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="evaluation.progress"
+                  [attr.data-status]="evaluation.status">
+                </mat-progress-bar>
+              </div>
+
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                *ngIf="evaluation.status !== 'COMPLETADA' && evaluation.canRespond; else readonlyAction"
+                (click)="openEvaluation(evaluation)">
+                <span>{{ getActionLabel(evaluation.status) }}</span>
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+
+              <ng-template #readonlyAction>
+                <div
+                  class="readonly-action"
+                  [class.readonly-action--completed]="evaluation.status === 'COMPLETADA'">
+                  <mat-icon>{{ evaluation.status === 'COMPLETADA' ? 'verified' : 'lock_outline' }}</mat-icon>
+                  {{ evaluation.status === 'COMPLETADA' ? 'Respuestas registradas' : 'No disponible para responder' }}
+                </div>
+              </ng-template>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #emptyEvaluations>
+          <div class="empty-state">
+            <mat-icon>assignment_turned_in</mat-icon>
+            <h3>{{ evaluations.length ? 'No hay evaluaciones en esta vista' : 'No tienes evaluaciones asignadas' }}</h3>
+            <p>
+              {{ evaluations.length
+                ? 'Cambia el filtro para consultar las demás asignaciones.'
+                : 'No se encontraron asignaciones para el empleado y modelo indicados.' }}
+            </p>
+          </div>
+        </ng-template>
+      </section>
+
+      <div class="privacy-footer">
+        <mat-icon>shield</mat-icon>
+        <span>Tu acceso es personal. Las respuestas se almacenan de forma segura y confidencial.</span>
+      </div>
+    </ng-container>
+  </div>
+</main>

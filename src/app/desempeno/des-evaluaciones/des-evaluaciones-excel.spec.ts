@@ -50,7 +50,7 @@ describe('des-evaluaciones Excel import', () => {
       [DES_EVALUATION_EXCEL_HEADERS.criterionName]: criterion,
       [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: `${criterion} descripción`,
       [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
-      [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 4,
+      [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 80,
       [DES_EVALUATION_EXCEL_HEADERS.itemCode]: `${criterionCode}_1`,
       [DES_EVALUATION_EXCEL_HEADERS.itemText]: item,
       [DES_EVALUATION_EXCEL_HEADERS.itemType]: 'Likert de 5 niveles',
@@ -72,6 +72,7 @@ describe('des-evaluaciones Excel import', () => {
     expect(result.dimensionCount).toBe(3);
     expect(result.criterionCount).toBe(3);
     expect(result.itemCount).toBe(3);
+    expect(result.rows[0].requiredRatingLevel).toBe(4);
   });
 
   it('preserves open questions without a scale or Likert options', () => {
@@ -86,6 +87,19 @@ describe('des-evaluaciones Excel import', () => {
     expect(openQuestion.itemType).toBe('ABIERTA');
     expect(openQuestion.scaleId).toBeNull();
     expect(openQuestion.options).toEqual([]);
+  });
+
+  it('keeps compatibility with templates that used the legacy 1-to-5 header', () => {
+    const rows = validRows().map((row) => {
+      const legacyRow = { ...row };
+      delete legacyRow[DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel];
+      legacyRow['Nivel exigencia (1-5) *'] = 4;
+      return legacyRow;
+    });
+
+    const result = parseDesEvaluationExcelWorkbook(workbook(rows), context);
+
+    expect(result.rows[0].requiredRatingLevel).toBe(4);
   });
 
   it('rejects a position that does not exist in the organization', () => {
@@ -147,7 +161,7 @@ describe('des-evaluaciones Excel import', () => {
 
   it('rejects decimal required levels and options that differ from the selected scale', () => {
     const rows = validRows();
-    rows[0][DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel] = 4.5;
+    rows[0][DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel] = 80.5;
     rows[1][DES_EVALUATION_EXCEL_HEADERS.options] = 'Nunca | A veces | Siempre | Casi siempre | Siempre';
 
     try {

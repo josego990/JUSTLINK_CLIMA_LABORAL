@@ -165,7 +165,7 @@
                 </div>
                 <div class="position-chart">
                   <div class="chart-scale">
-                    <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span>
+                    <span>100%</span><span>80%</span><span>60%</span><span>40%</span><span>20%</span><span>0%</span>
                   </div>
                   <div class="position-bars">
                     <div class="position-bar-item" *ngFor="let position of positionGroupRows; trackBy: trackById">
@@ -414,7 +414,6 @@
                   <h3><span class="dot blue"></span>{{ getDimensionDisplayName(dimension) }}</h3>
                   <div class="big-score" [ngClass]="getScoreTone(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado']))">
                     {{ formatScore(getNumber(dimension, ['calificacionPromedio', 'resultadoPromedio', 'resultado'])) }}
-                    <small>/5.00</small>
                   </div>
                   <div class="dimension-list compact">
                     <div class="dimension-row" *ngFor="let employee of dimensionEmployeeRows; trackBy: trackById">

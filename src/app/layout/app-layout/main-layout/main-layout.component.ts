@@ -7,6 +7,7 @@ import { RouterOutlet } from '@angular/router';
 import { RightSidebarComponent } from '../../right-sidebar/right-sidebar.component';
 import { SidebarComponent } from '../../sidebar/sidebar.component';
 import { HeaderComponent } from '../../header/header.component';
+import { AiAssistantPanelComponent } from '../../ai-assistant-panel/ai-assistant-panel.component';
 
 @Component({
     selector: 'app-main-layout',
@@ -16,6 +17,7 @@ import { HeaderComponent } from '../../header/header.component';
         HeaderComponent,
         SidebarComponent,
         RightSidebarComponent,
+        AiAssistantPanelComponent,
         BidiModule,
         RouterOutlet,
     ],

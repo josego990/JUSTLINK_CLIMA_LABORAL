@@ -15,9 +15,18 @@
             
           </div>
           <div class="body">
-          
-      
-            <mat-accordion>
+            <div
+              *ngIf="isLoadingRoles"
+              class="roles-loading-state"
+              role="status"
+              [attr.aria-label]="'MENUITEMS.SECURE.LOADING_ROLES' | translate">
+              <mat-progress-spinner
+                mode="indeterminate"
+                [diameter]="42">
+              </mat-progress-spinner>
+            </div>
+
+            <mat-accordion *ngIf="!isLoadingRoles">
               
               <mat-expansion-panel *ngFor="let role of rolesAccess">
                 <mat-expansion-panel-header>

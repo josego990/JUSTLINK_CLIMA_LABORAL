@@ -1,229 +1,295 @@
-<div class="dialogContainer">
-  <div class="modalHeader">
-    <div class="avatarDetails">
-      <label class="hoverable">
-        <img [src]="url ? url : 'https://justlink-objects.s3.us-east-1.amazonaws.com/' +  user.imagenUrl" alt="image">
-        <div class="hover-text">Upload</div>
-        <div class="background"></div>
-      </label>
-      <input id="tableFileInput" type='file' (change)="onSelectFile($event)">
-      <div class="modalTitle">
-        {{dialogTitle}}
-      </div>
+<div class="user-dialog-shell">
+  <div class="user-dialog-header">
+    <label class="user-avatar" for="tableFileInput" matTooltip="Cambiar fotografía">
+      <img
+        [src]="avatarUrl"
+        alt="Fotografía del usuario"
+        (error)="onAvatarError($event)" />
+      <span class="user-avatar-action" aria-hidden="true">
+        <mat-icon>photo_camera</mat-icon>
+      </span>
+    </label>
+    <input
+      id="tableFileInput"
+      type="file"
+      accept="image/*"
+      (change)="onSelectFile($event)" />
+
+    <div class="user-dialog-heading">
+      <h2>{{ dialogTitle }}</h2>
+      <p>
+        <mat-icon aria-hidden="true">business</mat-icon>
+        {{ organizationName }}
+      </p>
     </div>
-    <button mat-icon-button mat-dialog-close class="modal-close-button" aria-label="Close dialog" type="button">
+
+    <button
+      mat-icon-button
+      type="button"
+      class="user-dialog-close"
+      [disabled]="loading"
+      aria-label="Cerrar diálogo"
+      (click)="onNoClick()">
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <div mat-dialog-content >
-    <div class="card">
-      <form class="form-field-full" [formGroup]="userForm" (ngSubmit)="submit()">
-        <div class="card-loader" *ngIf="loading">
-          <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-        </div>
-        <div class="row m-b-25">
-          <!-- Username -->
-          <div class="col-sm-2">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Usuario</mat-label>
-              <input matInput formControlName="username" />
-              <mat-icon matSuffix>person</mat-icon>
-              <mat-error *ngIf="userForm.get('username')?.hasError('required')">
-                Usuario es requerido
-              </mat-error>
-            </mat-form-field>
-          </div>
-          <!-- Nombres -->
-          <div class="col-sm-3">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Nombres</mat-label>
-              <input matInput formControlName="nombres" />
-              <mat-icon matSuffix>face</mat-icon>
-              <mat-error *ngIf="userForm.get('nombres')?.hasError('required')">
-                Nombres es requerido
-              </mat-error>
-            </mat-form-field>
-          </div>
-          <!-- Apellidos -->
-          <div class="col-sm-3">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Apellidos</mat-label>
-              <input matInput formControlName="apellidos" />
-              <mat-icon matSuffix>face</mat-icon>
-              <mat-error *ngIf="userForm.get('apellidos')?.hasError('required')">
-                Apellidos es requerido
-              </mat-error>
-            </mat-form-field>
-          </div>
 
-          <!-- Email -->
-          <div class="col-sm-4">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Correo</mat-label>
-              <input matInput formControlName="email" />
-              <mat-icon matSuffix>email</mat-icon>
-              <mat-error *ngIf="userForm.get('email')?.hasError('email')">
-                Ingresar un Email válido
-              </mat-error>
-            </mat-form-field>
+  <form [formGroup]="userForm" (ngSubmit)="submit()">
+    <div mat-dialog-content class="user-dialog-content">
+      <section class="user-form-section">
+        <div class="section-heading">
+          <span class="section-icon section-icon-blue">
+            <mat-icon>badge</mat-icon>
+          </span>
+          <div>
+            <h3>Datos de identificación</h3>
+            <p>Información principal y credenciales del usuario.</p>
           </div>
-
         </div>
 
-
-        <div class="row m-b-25" >
-
-          <div *ngIf="action === 'edit'" class="col-sm-4">
-            <mat-slide-toggle [checked]="changePass" (change)="switchChangePass($event)"  formControlName="changePass">Cambiar Contraseña</mat-slide-toggle>
+        <div class="profile-photo-panel">
+          <img
+            [src]="avatarUrl"
+            alt="Vista previa de la imagen de perfil"
+            (error)="onAvatarError($event)" />
+          <div class="profile-photo-copy">
+            <strong>Imagen de perfil</strong>
+            <small *ngIf="!fileChange">
+              {{ user.imagenUrl ? 'Puedes reemplazar la imagen actual.' : 'Agrega una fotografía para identificar al usuario.' }}
+            </small>
+            <small *ngIf="fileChange" class="profile-photo-selected">
+              {{ fileName }}
+            </small>
+            <small *ngIf="imageUploadError" class="profile-photo-error">
+              {{ imageUploadError }}
+            </small>
           </div>
-
-          <div   [class.col-sm-4]="action === 'edit'"
-                [class.col-sm-6]="action === 'add'" >
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Password</mat-label>
-              <input matInput type="password" formControlName="passwordPlain" />
-              <mat-icon matSuffix>lock</mat-icon>
-              <mat-error *ngIf="userForm.get('passwordPlain')?.hasError('required')">
-                Password es requerido
-              </mat-error>
-            </mat-form-field>
-          </div>
-
-
-          <div   [class.col-sm-4]="action === 'edit'"
-                [class.col-sm-6]="action === 'add'" >
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Confirma Password</mat-label>
-              <input matInput type="password" formControlName="passwordPlainConfirm" />
-              <mat-icon matSuffix>lock</mat-icon>
-              <mat-error *ngIf="userForm.get('passwordPlainConfirm')?.hasError('required')">
-                Password es requerido
-              </mat-error>
-              <mat-error *ngIf="userForm.hasError('passwordMismatch')">
-                Las contraseñas no coinciden
-              </mat-error>
-            </mat-form-field>
-          </div>
-        
-        
+          <label class="profile-photo-button" for="tableFileInput">
+            <mat-icon>upload</mat-icon>
+            <span>{{ user.imagenUrl || fileChange ? 'Cambiar imagen' : 'Seleccionar imagen' }}</span>
+          </label>
         </div>
 
-        <div class="row m-b-25">
-            <!-- Género -->
-          <div class="col-sm-4">
-            <label>Género</label>
-            <mat-radio-group formControlName="genero">
-              <mat-radio-button value="M" color="primary">M</mat-radio-button>
-              <mat-radio-button value="F" color="primary">F</mat-radio-button>
+        <div class="user-form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Usuario</mat-label>
+            <input matInput formControlName="username" autocomplete="username" />
+            <mat-icon matSuffix>person</mat-icon>
+            <mat-error *ngIf="userForm.get('username')?.hasError('required')">
+              Usuario es requerido
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Nombres</mat-label>
+            <input matInput formControlName="nombres" autocomplete="given-name" />
+            <mat-icon matSuffix>account_circle</mat-icon>
+            <mat-error *ngIf="userForm.get('nombres')?.hasError('required')">
+              Nombres es requerido
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Apellidos</mat-label>
+            <input matInput formControlName="apellidos" autocomplete="family-name" />
+            <mat-icon matSuffix>account_circle</mat-icon>
+            <mat-error *ngIf="userForm.get('apellidos')?.hasError('required')">
+              Apellidos es requerido
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Correo electrónico</mat-label>
+            <input matInput type="email" formControlName="email" autocomplete="email" />
+            <mat-icon matSuffix>email</mat-icon>
+            <mat-error *ngIf="userForm.get('email')?.hasError('required')">
+              Correo es requerido
+            </mat-error>
+            <mat-error *ngIf="userForm.get('email')?.hasError('email')">
+              Ingresa un correo válido
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="user-form-section">
+        <div class="section-heading">
+          <span class="section-icon section-icon-orange">
+            <mat-icon>admin_panel_settings</mat-icon>
+          </span>
+          <div>
+            <h3>Perfil y acceso</h3>
+            <p>Rol, posición y estado dentro de la organización.</p>
+          </div>
+        </div>
+
+        <div class="user-form-grid access-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Rol</mat-label>
+            <mat-select formControlName="roleId">
+              <mat-option *ngIf="rolesLoading" disabled>
+                Cargando roles...
+              </mat-option>
+              <mat-option *ngFor="let role of roles" [value]="role.roleId">
+                {{ role.roleName }}<span *ngIf="role.description"> - {{ role.description }}</span>
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>verified_user</mat-icon>
+            <mat-error *ngIf="userForm.get('roleId')?.hasError('required')">
+              Selecciona un rol
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Cargo</mat-label>
+            <input matInput formControlName="cargo" />
+            <mat-icon matSuffix>work</mat-icon>
+            <mat-error *ngIf="userForm.get('cargo')?.hasError('required')">
+              Cargo es requerido
+            </mat-error>
+          </mat-form-field>
+
+          <div class="field-panel gender-panel">
+            <span class="field-panel-label">Género</span>
+            <mat-radio-group formControlName="genero" aria-label="Género">
+              <mat-radio-button value="M" color="primary">Masculino</mat-radio-button>
+              <mat-radio-button value="F" color="primary">Femenino</mat-radio-button>
             </mat-radio-group>
-            <mat-error *ngIf="userForm.get('genero')?.hasError('required')">
+            <mat-error *ngIf="userForm.get('genero')?.touched && userForm.get('genero')?.hasError('required')">
               Género es requerido
             </mat-error>
           </div>
-        
-          <!-- Teléfono -->
-          <div class="col-sm-3">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Teléfono</mat-label>
-                <span matPrefix>
-                  <mat-icon class="m-2">phone</mat-icon>
-                </span>
-                <input formControlName="telefono"  matInput placeholder="EX: (435) 345 34 54" 
-                mask="0000-0000" [showMaskTyped]="true" />
-            </mat-form-field>
-          </div>
 
-          <!-- Ciudad -->
-          <div class="col-sm-5">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Cuidad</mat-label>
-              <input matInput formControlName="ciudad" />
-              <mat-icon matSuffix>location_city</mat-icon>
-              <mat-error *ngIf="userForm.get('ciudad')?.hasError('required')">
-                Ciudad es requerido
-              </mat-error>
-            </mat-form-field>
+          <div class="field-panel status-panel" *ngIf="action === 'edit'">
+            <div>
+              <span class="field-panel-label">Estado del usuario</span>
+              <small>{{ userForm.get('isActive')?.value ? 'Acceso habilitado' : 'Acceso deshabilitado' }}</small>
+            </div>
+            <mat-slide-toggle formControlName="isActive" aria-label="Estado del usuario"></mat-slide-toggle>
+          </div>
+        </div>
+      </section>
+
+      <section class="user-form-section">
+        <div class="section-heading">
+          <span class="section-icon section-icon-green">
+            <mat-icon>contact_phone</mat-icon>
+          </span>
+          <div>
+            <h3>Información de contacto</h3>
+            <p>Datos para comunicación y ubicación.</p>
           </div>
         </div>
 
-        <div class="row ">
-          
-          <!-- Organización -->
-          <div class="col-sm-4">
-            <mat-form-field appearance="outline" class="w-100" > 
-                <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
-                <mat-select formControlName="organizacionId" (selectionChange)="onOrganizationChange($event.value)">
-                  <mat-option
-                    *ngFor="let organization of dataSourceOrganizations"
-                    [value]="organization.Id"
-                  >
-                    {{ organization.Nombre }}
-                  </mat-option> 
-                </mat-select>
-              </mat-form-field>
+        <div class="user-form-grid user-contact-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>País / código</mat-label>
+            <mat-select formControlName="PhoneCountryIso" (selectionChange)="onPhoneCountryChange()">
+              <mat-option *ngFor="let country of phoneCountries" [value]="country.isoCode">
+                {{ getPhoneCountryLabel(country) }} ({{ country.dialCode }})
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>public</mat-icon>
+            <mat-error *ngIf="userForm.get('PhoneCountryIso')?.hasError('phoneCountryRequired')">
+              Selecciona el país del teléfono
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Teléfono</mat-label>
+            <span matTextPrefix *ngIf="selectedPhoneCountry">
+              {{ selectedPhoneCountry.dialCode }}&nbsp;
+            </span>
+            <input
+              matInput
+              formControlName="telefono"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              [maxlength]="selectedPhoneCountry?.maxDigits || maxPhoneLocalDigits"
+              (input)="onPhoneInput()" />
+            <mat-icon matSuffix>phone</mat-icon>
+            <mat-hint>{{ phoneDigitsHint }} dígitos</mat-hint>
+            <mat-hint align="end" *ngIf="phonePreview">{{ phonePreview }}</mat-hint>
+            <mat-error *ngIf="userForm.get('telefono')?.hasError('required')">
+              Teléfono es requerido
+            </mat-error>
+            <mat-error *ngIf="userForm.get('telefono')?.hasError('phoneLength')">
+              Ingresa {{ phoneDigitsHint }} dígitos para {{ getPhoneCountryLabel(selectedPhoneCountry) }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Ciudad</mat-label>
+            <input matInput formControlName="ciudad" autocomplete="address-level2" />
+            <mat-icon matSuffix>location_city</mat-icon>
+            <mat-error *ngIf="userForm.get('ciudad')?.hasError('required')">
+              Ciudad es requerida
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="user-form-section security-section">
+        <div class="section-heading security-heading">
+          <span class="section-icon section-icon-purple">
+            <mat-icon>lock</mat-icon>
+          </span>
+          <div>
+            <h3>Seguridad</h3>
+            <p>{{ action === 'add' ? 'Define la contraseña inicial.' : 'Actualiza la contraseña solo cuando sea necesario.' }}</p>
           </div>
-
-          <!-- Cargo -->
-          <div class="col-sm-4">
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>Posición</mat-label>
-              <input matInput formControlName="cargo" />
-              <mat-icon matSuffix>work</mat-icon>
-            </mat-form-field>
-          </div>
-
-          <!-- Role -->
-          <div class="col-sm-4" >
-            <mat-form-field class="example-full-width" appearance="outline">
-              <mat-label>{{'MENUITEMS.ORGANIZATION.ROLE' | translate}}</mat-label>
-              <mat-select formControlName="roleId">
-                <mat-option *ngFor="let r of roles" [value]="r.roleId">
-                  {{ r.roleName }} ({{r.description}})
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-
-
+          <mat-slide-toggle
+            *ngIf="action === 'edit'"
+            [checked]="changePass"
+            formControlName="changePass"
+            (change)="switchChangePass($event)">
+            Cambiar contraseña
+          </mat-slide-toggle>
         </div>
 
-        <div class="row m-b-25">
-        
+        <div class="user-form-grid password-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Contraseña</mat-label>
+            <input matInput type="password" formControlName="passwordPlain" autocomplete="new-password" />
+            <mat-icon matSuffix>password</mat-icon>
+            <mat-error *ngIf="userForm.get('passwordPlain')?.hasError('required')">
+              Contraseña es requerida
+            </mat-error>
+            <mat-error *ngIf="userForm.get('passwordPlain')?.hasError('minlength')">
+              Utiliza al menos 6 caracteres
+            </mat-error>
+          </mat-form-field>
 
+          <mat-form-field appearance="outline">
+            <mat-label>Confirmar contraseña</mat-label>
+            <input matInput type="password" formControlName="passwordPlainConfirm" autocomplete="new-password" />
+            <mat-icon matSuffix>password</mat-icon>
+            <mat-error *ngIf="userForm.get('passwordPlainConfirm')?.hasError('required')">
+              Confirma la contraseña
+            </mat-error>
+            <mat-error *ngIf="userForm.hasError('passwordMismatch')">
+              Las contraseñas no coinciden
+            </mat-error>
+          </mat-form-field>
         </div>
-
-        <div class="row m-b-25">
-          <!-- Imagen URL -->
-          <div class="col-sm-6">
-            <label>Avatar </label>
-            <input style="margin-left: 10px" type="file" (change)="onSelectFile($event)"  />
-
-          </div>
-
-          <div class="col-sm-6">
-            <img *ngIf="url" [src]="url" class="table-img mt-2" />
-          </div>
-
-
-        </div>
-
-        <div class="row m-b-25" *ngIf="action === 'edit'">
-        
-          <!-- Is Active -->
-          <div class="col-sm-6">
-            <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
-          </div>
-        </div>
-
-        <div class="row m-b-25">
-          <div class="col-sm-12 text-end">
-            <button mat-flat-button color="primary" [disabled]="!userForm.valid" type="submit">
-              Guardar
-            </button>
-            <button style="margin-left: 10px" mat-flat-button mat-dialog-close color="warn">Cancelar</button>
-          </div>
-        </div>
-      </form>
+      </section>
     </div>
-  </div>
+
+    <footer mat-dialog-actions class="user-dialog-actions">
+      <button mat-button type="button" [disabled]="loading" (click)="onNoClick()">
+        Cancelar
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="submit"
+        [disabled]="userForm.invalid || rolesLoading || idOrganization <= 0 || loading">
+        <mat-progress-spinner *ngIf="loading" mode="indeterminate" diameter="18"></mat-progress-spinner>
+        <mat-icon *ngIf="!loading">save</mat-icon>
+        {{ loading ? 'Guardando...' : 'Guardar usuario' }}
+      </button>
+    </footer>
+  </form>
+
+  <div class="user-dialog-loading" *ngIf="loading" aria-hidden="true"></div>
 </div>

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormsModule,
   ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,
  } from '@angular/forms';
@@ -37,13 +37,15 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { DialogformComponent } from './dialogform/dialogform.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { AuthService } from '@core';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-crear-organizacion',
   templateUrl: './access.component.html',
-  //styleUrls: ['./create.component.scss'],
+  styleUrls: ['./access.component.scss'],
   providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
   imports: [
     BreadcrumbComponent,TranslateModule,
@@ -59,18 +61,22 @@ import { AuthService } from '@core';
     MatInputModule,
     MatSelectModule,
     CommonModule,
-    MatButtonModule
+    MatButtonModule,
+    MatProgressSpinnerModule
     
 
     ],
   
 })
-export class AccessComponent implements OnInit {
+export class AccessComponent implements OnDestroy, OnInit {
   public dialogRef?: MatDialogRef<AccessComponent> 
 
   public rolesAccess:any = [];
+  public isLoadingRoles = false;
 
   langStoreValue?: string;
+  private selectedOrganizationSubscription?: Subscription;
+  private rolesAccessRequestId = 0;
 
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
@@ -119,8 +125,21 @@ export class AccessComponent implements OnInit {
     //this.getRolesAccess();
 
     if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
+      this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$
+        .subscribe((organization) => {
+          const idOrganization = Number(
+            organization?.Id ?? this.authService.currentUserValue?.idOrganization
+          );
 
-      this.getRolesAccess();
+          if (Number.isInteger(idOrganization) && idOrganization > 0) {
+            this.getRolesAccess(idOrganization);
+            return;
+          }
+
+          ++this.rolesAccessRequestId;
+          this.rolesAccess = [];
+          this.isLoadingRoles = false;
+        });
 
     }
     else {
@@ -158,37 +177,95 @@ export class AccessComponent implements OnInit {
     
   }
 
-  getRolesAccess(): void {
-    this.organizacionService.getRolesAccess()
+  ngOnDestroy(): void {
+    this.selectedOrganizationSubscription?.unsubscribe();
+  }
+
+  getRolesAccess(idOrganization?: number): void {
+    const requestId = ++this.rolesAccessRequestId;
+    this.rolesAccess = [];
+    this.isLoadingRoles = true;
+
+    const organizationId = Number(
+      idOrganization ??
+      this.organizacionService.selectedOrganizationSnapshot?.Id ??
+      this.authService.currentUserValue?.idOrganization
+    );
+
+    if (!Number.isInteger(organizationId) || organizationId <= 0) {
+      this.isLoadingRoles = false;
+      return;
+    }
+
+    this.organizacionService.getRolesAccess(organizationId)
         .then((response:any) => {
-          //console.log('RolesAccesos:', JSON.stringify(response.data));
-          
-          this.rolesAccess = response.data;
+          if (requestId !== this.rolesAccessRequestId) {
+            return;
+          }
+
+          this.rolesAccess = Array.isArray(response?.data) ? response.data : [];
+          this.isLoadingRoles = false;
         })
         .catch((error:any) => {
+          if (requestId === this.rolesAccessRequestId) {
+            this.rolesAccess = [];
+            this.isLoadingRoles = false;
+          }
           console.error('Error al obtener organizaciones:', error);
         });
   }
 
   getRolesAccessByIdOrg(idOrganization:any): void {
+    const requestId = ++this.rolesAccessRequestId;
+    this.rolesAccess = [];
+    this.isLoadingRoles = true;
 
-    this.organizacionService.getRolesAccessByIdOrg(idOrganization)
+    const organizationId = Number(idOrganization);
+
+    if (!Number.isInteger(organizationId) || organizationId <= 0) {
+      this.isLoadingRoles = false;
+      return;
+    }
+
+    this.organizacionService.getRolesAccessByIdOrg(organizationId)
         .then((response:any) => {
-          //console.log('RolesAccesos:', JSON.stringify(response.data));
-          
-          this.rolesAccess = response.data;
+          if (requestId !== this.rolesAccessRequestId) {
+            return;
+          }
+
+          this.rolesAccess = Array.isArray(response?.data) ? response.data : [];
+          this.isLoadingRoles = false;
         })
         .catch((error:any) => {
+          if (requestId === this.rolesAccessRequestId) {
+            this.rolesAccess = [];
+            this.isLoadingRoles = false;
+          }
           console.error('Error al obtener organizaciones:', error);
         });
   }
 
   openDialogNewRol(): void {
+      const selectedOrganization = this.organizacionService.selectedOrganizationSnapshot;
+
+      if (!selectedOrganization?.Id) {
+        void Swal.fire(
+          this.translate.instant('MENUITEMS.SECURE.ROLE_ORGANIZATION_REQUIRED_TITLE'),
+          this.translate.instant('MENUITEMS.SECURE.ROLE_ORGANIZATION_REQUIRED_TEXT'),
+          'warning'
+        );
+        return;
+      }
+
       const dialogRef = this.dialogModel.open(DialogformComponent, {
-        width:  '95vw',
-        maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
-        height: 'auto', 
-        disableClose: false
+        width: '720px',
+        maxWidth: '95vw',
+        height: 'auto',
+        disableClose: false,
+        data: {
+          idOrganization: selectedOrganization.Id,
+          organizationName: selectedOrganization.Nombre,
+        },
       });
       
       dialogRef.afterClosed().subscribe(result => {
@@ -197,12 +274,12 @@ export class AccessComponent implements OnInit {
             
           if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
 
-            this.getRolesAccess();
+            this.getRolesAccess(selectedOrganization.Id);
 
           }
           else {
 
-            this.getRolesAccessByIdOrg(this.authService.currentUserValue?.idOrganization)
+            this.getRolesAccessByIdOrg(selectedOrganization.Id)
           }
         }
       });

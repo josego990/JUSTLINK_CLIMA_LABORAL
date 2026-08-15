@@ -55,6 +55,7 @@ export class DynamicDesempenoFormComponent implements OnChanges {
   @Input() disabled = false;
   @Input() isSavingDraft = false;
   @Input() isFinalizing = false;
+  @Input() canSaveDraft = true;
   @Input() canFinalize = true;
   @Output() draftSaveRequested = new EventEmitter<DesempenoAnswerPayload>();
   @Output() finalizeRequested = new EventEmitter<DesempenoAnswerPayload>();
@@ -152,7 +153,7 @@ export class DynamicDesempenoFormComponent implements OnChanges {
   }
 
   saveDraft(): void {
-    if (this.disabled || this.isSavingDraft || this.isFinalizing) {
+    if (this.disabled || this.isSavingDraft || this.isFinalizing || !this.canSaveDraft) {
       return;
     }
 

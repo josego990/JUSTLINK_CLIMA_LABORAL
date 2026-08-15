@@ -1,0 +1,99 @@
+.users-table-body {
+  overflow: hidden;
+}
+
+.users-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.users-table {
+  min-width: 1980px;
+}
+
+.users-table .mat-mdc-header-cell,
+.users-table .mat-mdc-cell {
+  min-width: 0;
+  padding-inline: 12px;
+}
+
+.users-table .truncate-text {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.users-table .mat-column-username {
+  flex: 0 0 150px;
+}
+
+.users-table .mat-column-email {
+  flex: 0 0 270px;
+}
+
+.users-table .mat-column-isActive {
+  flex: 0 0 90px;
+}
+
+.users-table .mat-column-createdAt {
+  flex: 0 0 175px;
+}
+
+.users-table .mat-column-nombres,
+.users-table .mat-column-apellidos {
+  flex: 0 0 170px;
+}
+
+.users-table .mat-column-telefono {
+  flex: 0 0 145px;
+}
+
+.users-table .mat-column-imagenUrl {
+  flex: 0 0 90px;
+  justify-content: center;
+}
+
+.users-table .mat-column-cargo {
+  flex: 0 0 220px;
+}
+
+.users-table .mat-column-organizacion {
+  flex: 0 0 190px;
+}
+
+.users-table .mat-column-genero {
+  flex: 0 0 90px;
+}
+
+.users-table .mat-column-ciudad {
+  flex: 0 0 145px;
+}
+
+.users-table .mat-column-roleName {
+  flex: 0 0 220px;
+}
+
+.users-table .mat-column-actions {
+  flex: 0 0 110px;
+  justify-content: center;
+}
+
+.users-empty-state {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  padding: 24px;
+  color: #748290;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .users-table {
+    min-width: 100%;
+  }
+}

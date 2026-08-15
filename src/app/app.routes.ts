@@ -148,6 +148,13 @@ export const APP_ROUTE: Route[] = [
                 (m) => m.COMPLETE_DESEMPENO_ROUTE
             ),
     },
+    {
+        path: 'portal-desempeno/evaluaciones',
+        loadChildren: () =>
+            import('./portal-desempeno-evaluaciones/portal-desempeno-evaluaciones.routes').then(
+                (m) => m.PORTAL_DESEMPENO_EVALUACIONES_ROUTE
+            ),
+    },
     
     {
         path: 'authentication',

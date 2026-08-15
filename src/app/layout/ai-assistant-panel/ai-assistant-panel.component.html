@@ -1,0 +1,126 @@
+<div
+  class="assistant-backdrop"
+  [class.assistant-backdrop--visible]="isOpen"
+  (click)="closePanel()"
+  aria-hidden="true">
+</div>
+
+<aside
+  id="ai-assistant-panel"
+  class="assistant-panel"
+  [class.assistant-panel--open]="isOpen">
+  <button
+    mat-icon-button
+    type="button"
+    class="assistant-toggle"
+    [attr.aria-expanded]="isOpen"
+    aria-controls="ai-assistant-panel"
+    aria-label="Abrir asistente IA"
+    matTooltip="Asistente IA"
+    matTooltipPosition="left"
+    (click)="togglePanel()">
+    <mat-icon>{{ isOpen ? 'close' : 'auto_awesome' }}</mat-icon>
+  </button>
+
+  <div class="assistant-header">
+    <div class="assistant-identity">
+      <span class="assistant-mark" aria-hidden="true">
+        <mat-icon>auto_awesome</mat-icon>
+      </span>
+      <div>
+        <h2>Asistente IA</h2>
+        <p>Clima y desempeño</p>
+      </div>
+    </div>
+
+    <div class="assistant-header-actions">
+      <button
+        mat-icon-button
+        type="button"
+        class="assistant-action"
+        aria-label="Iniciar una conversación nueva"
+        matTooltip="Nueva conversación"
+        [disabled]="!isOpen || isBusy"
+        (click)="startNewConversation()">
+        <mat-icon>add_comment</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        type="button"
+        class="assistant-action"
+        aria-label="Cerrar asistente IA"
+        matTooltip="Cerrar"
+        [disabled]="!isOpen"
+        (click)="closePanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div #conversation class="assistant-conversation" aria-live="polite">
+    <div
+      *ngFor="let message of messages; trackBy: trackMessage"
+      class="assistant-message-row"
+      [class.assistant-message-row--user]="message.role === 'user'">
+      <span
+        *ngIf="message.role === 'assistant'"
+        class="assistant-avatar"
+        aria-hidden="true">
+        <mat-icon>auto_awesome</mat-icon>
+      </span>
+
+      <div
+        class="assistant-message"
+        [class.assistant-message--user]="message.role === 'user'"
+        [class.assistant-message--premium]="message.tone === 'premium'"
+        [class.assistant-message--warning]="message.tone === 'warning'"
+        [class.assistant-message--error]="message.tone === 'error'">
+        <span *ngIf="message.label" class="message-label">
+          <mat-icon>{{ message.tone === 'premium' ? 'workspace_premium' : (message.tone === 'warning' ? 'info' : 'error_outline') }}</mat-icon>
+          {{ message.label }}
+        </span>
+        <div
+          *ngIf="message.html !== undefined; else plainAssistantText"
+          class="assistant-rich-response"
+          [innerHTML]="message.html">
+        </div>
+        <ng-template #plainAssistantText>
+          <p>{{ message.text }}</p>
+        </ng-template>
+        <span *ngIf="message.isTyping" class="typing-cursor" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <div *ngIf="showLoadingStatus" class="assistant-loading" role="status">
+      <mat-spinner diameter="18"></mat-spinner>
+      <span>
+        {{ isLoadingHistory ? 'Recuperando conversación...' : (isArchiving ? 'Iniciando conversación...' : 'Analizando tu consulta...') }}
+      </span>
+    </div>
+  </div>
+
+  <footer class="assistant-composer">
+    <div class="composer-shell">
+      <textarea
+        [(ngModel)]="messageText"
+        rows="1"
+        [maxlength]="maxMessageLength"
+        [disabled]="!isOpen || isBusy"
+        aria-label="Escribe tu consulta para el asistente IA"
+        placeholder="Escribe tu consulta..."
+        (keydown)="handleComposerKeydown($event)">
+      </textarea>
+      <button
+        mat-icon-button
+        color="primary"
+        type="button"
+        class="send-button"
+        aria-label="Enviar consulta"
+        matTooltip="Enviar"
+        [disabled]="!isOpen || isBusy || !messageText.trim()"
+        (click)="sendMessage()">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+  </footer>
+</aside>

@@ -179,23 +179,36 @@ export class CompletedesempenoaloneComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.turnstileToken) {
+      void Swal.fire(
+        'Verificación de seguridad',
+        'Completa la verificación de seguridad antes de guardar las respuestas.',
+        'warning'
+      );
+      return;
+    }
+
     if (this.isSavingDraft || this.isFinalizing || this.blockedMessage) {
       return;
     }
 
     this.isSavingDraft = true;
     this.organizationService
-      .saveDesempenoResponseDraft(token, payload)
+      .saveDesempenoResponseDraft(token, payload, this.turnstileToken)
       .subscribe({
         next: async (response: any) => {
           this.responseResult = this.normalizeResponseResult(response);
+          this.resetTurnstile();
           await Swal.fire(
             'Borrador guardado',
             'Tus respuestas se guardaron correctamente.',
             'success'
           );
         },
-        error: (error: any) => this.handleResponseError(error),
+        error: (error: any) => {
+          this.resetTurnstile();
+          void this.handleResponseError(error);
+        },
       })
       .add(() => {
         this.isSavingDraft = false;

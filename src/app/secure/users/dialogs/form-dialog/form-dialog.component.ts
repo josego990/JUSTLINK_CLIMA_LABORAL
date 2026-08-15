@@ -1,10 +1,9 @@
 import {
   MAT_DIALOG_DATA,
+  MatDialogActions,
   MatDialogRef,
   MatDialogContent,
-  MatDialogClose,
 } from '@angular/material/dialog';
-import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { Component, Inject, OnInit } from '@angular/core';
 import { AdvanceTableService } from '../../users-table.service';
 import {
@@ -41,39 +40,57 @@ import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '@core';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AuthService } from '@core';
-
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  buildFullPhoneNumber,
+  DEFAULT_PHONE_COUNTRY_ISO,
+  getPhoneCountryByIso,
+  getPhoneCountryDisplayName,
+  getPhoneDigitsRangeLabel,
+  isPhoneLengthValid,
+  MAX_PHONE_LOCAL_DIGITS,
+  normalizeLocalPhoneNumber,
+  normalizePhoneDigits,
+  PHONE_COUNTRY_OPTIONS,
+  PhoneCountryOption,
+  splitPhoneNumberByCountry,
+} from '@shared/phone-country.utils';
 
-export interface DialogData {
-  id: number;
-  action: string;
-  advanceTable: UserModel;
+export interface UserDialogData {
+  action: 'add' | 'edit';
+  user?: UserModel;
+  idOrganization: number;
+  organizationName: string;
 }
 
 @Component({
     selector: 'app-form-dialog',
     templateUrl: './form-dialog.component.html',
     styleUrls: ['./form-dialog.component.scss'],
-    providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }, provideNgxMask()],
+    providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
     imports: [
         MatButtonModule,TranslateModule,
         MatIconModule,
-        MatDialogContent,CommonModule,
+        MatDialogContent,MatDialogActions,CommonModule,
         FormsModule,MatSlideToggleModule,
         ReactiveFormsModule,
-        MatFormFieldModule,NgxMaskDirective,
+        MatFormFieldModule,
         MatInputModule, MatProgressSpinnerModule,
         MatRadioModule,
         MatDatepickerModule,
         MatSelectModule,
         MatOptionModule,
-        MatDialogClose,
         MatNativeDateModule,
         MatMomentDateModule,
+        MatTooltipModule,
     ]
 })
 export class FormDialogComponent implements OnInit{
+  private readonly profileImageBucketUrl =
+    'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/';
+  private readonly fallbackAvatarUrl = 'assets/images/user/usrbig3.jpg';
+  private readonly profileImageCacheVersion = Date.now();
   action: string;
   dialogTitle: string;
   userForm: UntypedFormGroup;
@@ -81,9 +98,14 @@ export class FormDialogComponent implements OnInit{
   url: string | null = null;
 
   public idOrganization =  0;
-   public dataSourceOrganizations:any = []; 
+  public organizationName = '';
   roles:any = [];
+  rolesLoading = false;
   changePass = false;
+  readonly phoneCountries = PHONE_COUNTRY_OPTIONS;
+  readonly maxPhoneLocalDigits = MAX_PHONE_LOCAL_DIGITS;
+  private initialPhoneCountryIso = DEFAULT_PHONE_COUNTRY_ISO;
+  private initialPhoneLocalNumber = '';
 
   langStoreValue?: string;
 
@@ -91,35 +113,43 @@ export class FormDialogComponent implements OnInit{
   fileName = '';
 
   fileChange = false;
+  imageUploadError = '';
 
   loading = false;
 
   constructor(
     private languageService: LanguageService,private translate: TranslateService,
-    private organizationService: OrganizacionService,private authService: AuthService,
+    private organizationService: OrganizacionService,
     public dialogRef: MatDialogRef<FormDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { action: string; user: UserModel },
+    @Inject(MAT_DIALOG_DATA) public data: UserDialogData,
     private fb: FormBuilder,
     private userService: AdvanceTableService  // asumiendo que maneja UserModel
   ) {
 
     this.action = data.action;
+    this.idOrganization = Number(data.idOrganization ?? 0);
+    this.organizationName = String(data.organizationName ?? '').trim();
 
     if (this.action === 'edit') { //editar
 
       //console.log('dataxx:: ', data);
-      this.dialogTitle = `${data.user.nombres} ${data.user.apellidos}`;
-      this.user = data.user;
+      this.dialogTitle = 'Editar usuario';
+      this.user = data.user ?? new UserModel();
      //console.log('this.user:: ', this.user);
-      this.url = 'https://justlink-objects.s3.us-east-1.amazonaws.com/' + this.user.imagenUrl;
+      this.url = this.user.imagenUrl
+        ? this.getStoredProfileImageUrl(this.user.imagenUrl)
+        : null;
       this.fileName = this.user.imagenUrl;
 
     } else { //insertar nuevo
 
-      this.dialogTitle = 'Nuevo Usuario';
+      this.dialogTitle = 'Nuevo usuario';
       this.user = new UserModel();
-      
     }
+
+    const parsedPhone = splitPhoneNumberByCountry(this.user.telefono);
+    this.initialPhoneCountryIso = parsedPhone.countryIso;
+    this.initialPhoneLocalNumber = parsedPhone.localNumber;
 
     this.userForm = this.createUserForm();
 
@@ -134,7 +164,8 @@ export class FormDialogComponent implements OnInit{
     }
 
     this.userForm.patchValue({
-      roleId:       this.user.roleId
+      roleId: this.user.roleId,
+      organizacionId: this.idOrganization,
     });
 
    
@@ -152,80 +183,60 @@ export class FormDialogComponent implements OnInit{
       this.translate.use(lang);
     });
 
-    if(this.authService.currentUserValue?.roles[0].roleName === 'admin'){
-
-      this.getOrganizations();
-
-      this.organizationService.getRoles().then((resulex)=>{
-        if(resulex.data){
-        //console.log(resulex.data);
-          this.roles = resulex.data;
-        }
-        
-      });
-    }
-    else {
-
-      console.log('this.authService.currentUserValue?.idOrganization: ', this.authService.currentUserValue?.idOrganization);
-
-      this.getOrganizationById(this.authService.currentUserValue?.idOrganization);
-
-      this.organizationService.getRolesByIdOrg(this.authService.currentUserValue?.idOrganization).then((resulex)=>{
-        if(resulex.data){
-        //console.log(resulex.data);
-          this.roles = resulex.data;
-          
-        }
-        
-      });
-
-    }
-
+    this.loadOrganizationRoles();
   }
 
-  getOrganizations(): void {
-    this.organizationService.getOrganizations()
-        .then((response:any) => {
-          //console.log('Organizaciones:', JSON.stringify(response.data));
-          
-          this.dataSourceOrganizations = response.data;
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener organizaciones:', error);
-        });
-  }
+  private loadOrganizationRoles(): void {
+    this.roles = [];
 
-  getOrganizationById(idOrganization:any): void {
-    this.organizationService.getOrganizationById(idOrganization)
-      .then((response:any) => {
-        ////console.log('Organizaciones:', JSON.stringify(response.data));
-        
-        this.dataSourceOrganizations = response.data;
+    if (!Number.isInteger(this.idOrganization) || this.idOrganization <= 0) {
+      return;
+    }
 
-        this.idOrganization = idOrganization;
-      
-        this.userForm.patchValue({ organizacionId: idOrganization });
-
-        //this.getEmployeesByOrg();
-        
-
+    this.rolesLoading = true;
+    this.organizationService.getRolesByIdOrg(this.idOrganization)
+      .then((response) => {
+        this.roles = Array.isArray(response?.data) ? response.data : [];
       })
-      .catch((error:any) => {
-        console.error('Error al obtener organizaciones:', error);
+      .catch((error) => {
+        this.roles = [];
+        console.error('Error al obtener roles de la organización:', error);
+      })
+      .finally(() => {
+        this.rolesLoading = false;
       });
   }
 
-  onOrganizationChange(selectedId: number) {
-   //console.log('Se seleccionó el la organización con Id:', selectedId);
-    // Aquí haces lo que necesites con el ID
-    
-    if(selectedId > 0){
-      this.idOrganization = selectedId;
-     
-      
+  get selectedPhoneCountry(): PhoneCountryOption | undefined {
+    return getPhoneCountryByIso(this.userForm.get('PhoneCountryIso')?.value);
+  }
 
-    }
-    
+  get phoneDigitsHint(): string {
+    return this.selectedPhoneCountry
+      ? getPhoneDigitsRangeLabel(this.selectedPhoneCountry)
+      : `${this.maxPhoneLocalDigits}`;
+  }
+
+  get phonePreview(): string {
+    return buildFullPhoneNumber(
+      this.userForm.get('PhoneCountryIso')?.value,
+      this.userForm.get('telefono')?.value,
+    );
+  }
+
+  getPhoneCountryLabel(country: PhoneCountryOption | undefined): string {
+    const language = this.translate.currentLang || this.langStoreValue || 'es';
+    return getPhoneCountryDisplayName(country, language);
+  }
+
+  onPhoneCountryChange(): void {
+    this.normalizePhoneControlValue();
+    this.applyPhoneControlValidation();
+  }
+
+  onPhoneInput(): void {
+    this.normalizePhoneControlValue();
+    this.applyPhoneControlValidation();
   }
 
   formControl = new UntypedFormControl('', [Validators.required]);
@@ -256,10 +267,11 @@ export class FormDialogComponent implements OnInit{
       apellidos:    [this.user.apellidos, [Validators.required]],
       genero:       [this.user.genero, [Validators.required]],
       //birthDate:    [formatDate(this.user.createdAt, 'dd-MM-yyyy', 'en'),[Validators.required]],
-      telefono:     [this.user.telefono, [Validators.required]],
+      PhoneCountryIso: [this.initialPhoneCountryIso],
+      telefono:     [this.initialPhoneLocalNumber, [Validators.required]],
       imagenUrl:    [this.user.imagenUrl],
       cargo:        [this.user.cargo, [Validators.required]],
-      organizacionId: [this.user.idOrganizacion, [Validators.required]],
+      organizacionId: [this.idOrganization, [Validators.required]],
       ciudad:       [this.user.ciudad, [Validators.required]],
       roleId:       [this.user.roleId, [Validators.required]],
       roleName:     [this.user.roleName],
@@ -289,6 +301,60 @@ export class FormDialogComponent implements OnInit{
         ? null
         : { passwordMismatch: true };
     };
+  }
+
+  private normalizePhoneControlValue(): void {
+    const phoneControl = this.userForm.get('telefono');
+    const normalizedValue = normalizeLocalPhoneNumber(
+      phoneControl?.value,
+      this.selectedPhoneCountry,
+    );
+
+    if (phoneControl && normalizedValue !== phoneControl.value) {
+      phoneControl.setValue(normalizedValue, { emitEvent: false });
+    }
+  }
+
+  private setCustomControlError(
+    control: AbstractControl | null,
+    errorKey: string,
+    shouldSet: boolean,
+  ): void {
+    if (!control) {
+      return;
+    }
+
+    const currentErrors = { ...(control.errors ?? {}) };
+
+    if (shouldSet) {
+      currentErrors[errorKey] = true;
+    } else {
+      delete currentErrors[errorKey];
+    }
+
+    control.setErrors(Object.keys(currentErrors).length ? currentErrors : null);
+  }
+
+  private applyPhoneControlValidation(): boolean {
+    const phoneControl = this.userForm.get('telefono');
+    const countryControl = this.userForm.get('PhoneCountryIso');
+    const phoneDigits = normalizePhoneDigits(phoneControl?.value);
+    const country = this.selectedPhoneCountry;
+    const hasPhoneValue = phoneDigits.length > 0;
+
+    this.setCustomControlError(
+      countryControl,
+      'phoneCountryRequired',
+      hasPhoneValue && !country,
+    );
+    this.setCustomControlError(
+      phoneControl,
+      'phoneLength',
+      hasPhoneValue && !!country && !isPhoneLengthValid(phoneDigits, country),
+    );
+
+    return !countryControl?.hasError('phoneCountryRequired') &&
+      !phoneControl?.hasError('phoneLength');
   }
 
   onNoClick(): void {
@@ -321,72 +387,94 @@ export class FormDialogComponent implements OnInit{
   }
 
   submit() {
-    this.loading = true;
+    this.normalizePhoneControlValue();
+    this.applyPhoneControlValidation();
+    this.userForm.markAllAsTouched();
 
-    if (this.userForm.invalid) {
+    if (this.userForm.invalid || this.idOrganization <= 0 || this.loading) {
       // chequea el error de mismatch
       if (this.userForm.hasError('passwordMismatch')) {
         // muestra un mensaje global o marca el campo confirm
       }
-      this.loading = false;
       return;
     }
 
-    const formData = this.userForm.getRawValue();
+    this.loading = true;
+    const rawValue = this.userForm.getRawValue();
+    const { PhoneCountryIso, ...formData } = rawValue;
 
     formData.imagenUrl = this.fileName;
+    formData.organizacionId = this.idOrganization;
+    formData.telefono = buildFullPhoneNumber(PhoneCountryIso, rawValue.telefono);
 
-    if (this.action === 'edit') {
-    
-     //console.log(formData);
+    const persistUser = () => {
+      const request = this.action === 'edit'
+        ? this.userService.updateUserTable(formData)
+        : this.userService.addUserTable(formData);
 
-      this.userService.updateUserTable(formData).subscribe({
-        next: (response) => {
-
-         //console.log('response:: ', response);
-          if(this.fileChange){
-
-            axios.post('https://api.justlink360.net/upload-file-v2', this.formFileData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-
-              onUploadProgress: (e) => {
-                const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-
-              }
-            })
-            .then(() => console.log('Archivo subido'))
-            .catch(err => {console.error(err); this.loading = false;  } );
-          }
-          
-          
-          this.dialogRef.close(response)
+      request.subscribe({
+        next: (response) => this.dialogRef.close(response),
+        error: (error) => {
+          this.loading = false;
+          console.error('User save error:', error);
         },
-        error: (err) => console.error('Update Error:', err)
-        
       });
+    };
 
-    } else {
+    if (!this.fileChange) {
+      persistUser();
+      return;
+    }
 
-      this.userService.addUserTable(formData).subscribe({
-        next: (response) => {
-         //console.log('response gfuardado:: ', response);
-          // Si necesitas token/bearer agrégalo en headers
-                    //http://98.88.117.108:3030
-          axios.post('https://api.justlink360.net/upload-file-v2', this.formFileData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            onUploadProgress: (e) => {
-              const pct = Math.round((e.loaded * 100) / (e.total ?? 1));
-             //console.log(`Progreso: ${pct}%`);
-            }
-          })
-          .then(() => console.log('Archivo subido'))
-          .catch(err => console.error(err));
-          
-          this.dialogRef.close(response)
-        },
-        error: (err) => console.error('Add Error:', err)
+    this.imageUploadError = '';
+    this.uploadSelectedImage()
+      .then(persistUser)
+      .catch((error) => {
+        this.loading = false;
+        this.imageUploadError =
+          'No se pudo cargar la imagen. Intenta seleccionarla nuevamente.';
+        console.error('Profile image upload error:', error);
       });
-      
+  }
+
+  private async uploadSelectedImage(): Promise<void> {
+    const response = await axios.post(
+      'https://api.justlink360.net/upload-file-v2',
+      this.formFileData,
+      { timeout: 30000 },
+    );
+
+    if (String(response.data ?? '').trim().toUpperCase() !== 'SUCCESS') {
+      throw new Error('El servicio de archivos no confirmó la carga.');
+    }
+  }
+
+  private getStoredProfileImageUrl(fileName: string): string {
+    const encodedKey = String(fileName)
+      .trim()
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
+    return `${this.profileImageBucketUrl}${encodedKey}?v=${this.profileImageCacheVersion}`;
+  }
+
+  get avatarUrl(): string {
+    if (this.url) {
+      return this.url;
+    }
+
+    if (this.user.imagenUrl) {
+      return this.getStoredProfileImageUrl(this.user.imagenUrl);
+    }
+
+    return this.fallbackAvatarUrl;
+  }
+
+  onAvatarError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    if (!image.src.endsWith(this.fallbackAvatarUrl)) {
+      image.src = this.fallbackAvatarUrl;
     }
   }
 
@@ -396,6 +484,14 @@ export class FormDialogComponent implements OnInit{
     if (!input.files?.length) { return; }
 
     const file = input.files[0];
+
+    if (!file.type.startsWith('image/')) {
+      this.imageUploadError = 'Selecciona un archivo de imagen válido.';
+      input.value = '';
+      return;
+    }
+
+    this.imageUploadError = '';
 
     /* 1) Vista previa (lo que ya haces) */
     const reader = new FileReader();
@@ -409,9 +505,13 @@ export class FormDialogComponent implements OnInit{
     /* 2) Envío al backend */
     const formData = new FormData();
     // El nombre **file** debe coincidir con .array('file', 1) en tu ruta Express
-    formData.append('file', file, file.name);
-
-    this.fileName = file.name;
+    const safeOriginalName = file.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '-')
+      .replace(/-+/g, '-');
+    this.fileName = `user-${Date.now()}-${safeOriginalName}`;
+    formData.append('file', file, this.fileName);
 
     this.formFileData = formData;
     

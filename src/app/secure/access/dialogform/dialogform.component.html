@@ -1,51 +1,49 @@
-<div>
-  <h2 mat-dialog-title>Crear Nuevo Rol</h2>
-  <div mat-dialog-content>
+<div class="create-role-dialog">
+  <div class="role-dialog-header">
+    <span class="role-dialog-icon" aria-hidden="true">
+      <mat-icon>admin_panel_settings</mat-icon>
+    </span>
 
-        
-        <form style="margin-top: 5px" [formGroup]="addCusForm!" (ngSubmit)="onSubmitClick()"> 
+    <div class="role-dialog-title">
+      <h2>{{ 'MENUITEMS.SECURE.CREATEROL' | translate }}</h2>
+      <p>{{ 'MENUITEMS.SECURE.ROLE_ASSIGNED_TO' | translate: { organization: organizationName } }}</p>
+    </div>
 
-          <div class="row">
-
-            <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 mb-2">
-                <mat-form-field appearance="outline" class="w-100">
-                  <mat-label>{{'MENUITEMS.ORGANIZATION.TEXT' | translate}}</mat-label>
-                  <mat-select formControlName="IdOrganization" >
-                    <mat-option
-                      *ngFor="let organization of dataSourceOrganizations"
-                      [value]="organization.Id"
-                    >
-                      {{ organization.Nombre }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>             
-              </div>
-      
-            <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 mb-2">
-              <div class="text-inside">
-                <mat-form-field appearance="fill" class="w-100">
-                  <mat-label>{{'MENUITEMS.SECURE.ROLE_NAME' | translate}}</mat-label>
-                  <input matInput formControlName="Nombre" required />
-                </mat-form-field>
-              </div>
-            </div>
-            
-              <div class="col-xl-4 col-lg-4 col-md-4 col-sm-12 mb-2">
-              <mat-form-field appearance="fill" class="w-100">
-                <mat-label>{{'MENUITEMS.SECURE.ROLE_DESC' | translate}}</mat-label>
-                <input matInput formControlName="Descripcion" required />
-              </mat-form-field>
-            </div>
-
-          </div>
-    
-          
-          <div class="btn-sec">
-            <button type="submit" style="border-radius: 8px;" class="btn-space" mat-raised-button color="primary">Guardar</button>
-            <button style="color:#91a1a4; border-radius: 8px;" type="button" mat-button (click)="closeDialog()">Cancelar</button>
-          </div>
-        </form>
-
-
+    <button
+      mat-icon-button
+      type="button"
+      [disabled]="isSaving"
+      [attr.aria-label]="'MENUITEMS.SECURE.CANCEL' | translate"
+      (click)="closeDialog()">
+      <mat-icon>close</mat-icon>
+    </button>
   </div>
+
+  <form [formGroup]="addCusForm" (ngSubmit)="onSubmitClick()">
+    <div mat-dialog-content class="role-dialog-content">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'MENUITEMS.SECURE.ROLE_NAME' | translate }}</mat-label>
+        <input matInput formControlName="Nombre" required />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'MENUITEMS.SECURE.ROLE_DESC' | translate }}</mat-label>
+        <input matInput formControlName="Descripcion" required />
+      </mat-form-field>
+    </div>
+
+    <div mat-dialog-actions align="end" class="role-dialog-actions">
+      <button type="button" mat-button [disabled]="isSaving" (click)="closeDialog()">
+        {{ 'MENUITEMS.SECURE.CANCEL' | translate }}
+      </button>
+      <button
+        type="submit"
+        mat-raised-button
+        color="primary"
+        [disabled]="addCusForm.invalid || idOrganization <= 0 || isSaving">
+        <mat-icon>{{ isSaving ? 'sync' : 'save' }}</mat-icon>
+        {{ 'MENUITEMS.SECURE.SAVE' | translate }}
+      </button>
+    </div>
+  </form>
 </div>

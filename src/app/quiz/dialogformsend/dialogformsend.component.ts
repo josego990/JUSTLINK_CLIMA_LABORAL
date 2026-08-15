@@ -97,6 +97,7 @@ export class DialogformSendComponent implements OnInit {
     'CodigoEncuestaEmpleado'
   ];
 
+  readonly hiddenDisplayedColumns = new Set(['FechaInicio']);
   readonly trailingDisplayedColumns = ['Reenvio'];
 
   readonly estadoSummaryCards = [
@@ -151,7 +152,10 @@ export class DialogformSendComponent implements OnInit {
   public selectedTipoEnvioFilter: number | 'ALL' = 'ALL';
   public selectedEstadoFilter = 'ALL';
   public estadoFilterOptions = [...this.baseEstadoFilterOptions];
-  displayedColumns: string[] = [...this.baseDisplayedColumns, ...this.trailingDisplayedColumns];
+  displayedColumns: string[] = [
+    ...this.baseDisplayedColumns.filter((column) => !this.hiddenDisplayedColumns.has(column)),
+    ...this.trailingDisplayedColumns
+  ];
 
  
 
@@ -1579,7 +1583,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
   private updateDisplayedColumns(): void {
     this.displayedColumns = [
-      ...this.baseDisplayedColumns,
+      ...this.baseDisplayedColumns.filter((column) => !this.hiddenDisplayedColumns.has(column)),
       ...(this.showDynamicDemographicColumns ? this.dynamicDemographicColumns : []),
       ...this.trailingDisplayedColumns
     ];

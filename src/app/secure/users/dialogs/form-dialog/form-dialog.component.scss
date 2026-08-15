@@ -1,53 +1,492 @@
-.hoverable {
+:host {
+  display: block;
+}
+
+.user-dialog-shell {
   position: relative;
-  display: block;
-  cursor: pointer;
-  height: 36px;
-  width: 36px;
-  border-radius: 50%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: #263442;
+  background: #fff;
 }
-.hoverable .hover-text {
-  position: absolute;
-  display: none;
-  top: 50%;
-  left: 50%;
-  font-size: 10px;
-  transform: translate(-50%, -50%);
-  z-index: 2;
+
+.user-dialog-shell form {
+  width: 100%;
+  min-width: 0;
 }
-.hoverable .background {
-  position: absolute;
-  display: none;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background-color: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-  border-radius: 50%;
-  z-index: 1;
-}
-.hoverable:hover .hover-text {
-  display: block;
-}
-.hoverable:hover .background {
-  display: block;
+
+.user-dialog-header {
+  display: flex;
+  width: 100%;
+  height: 62px;
+  min-height: 62px;
+  max-height: 62px;
+  align-items: center;
+  gap: 13px;
+  padding: 7px 10px 7px 16px;
+  border-bottom: 1px solid #dce4eb;
+  background: #edf5fa;
+  line-height: normal;
+  text-align: left;
 }
 
 #tableFileInput {
   display: none;
 }
 
-form.form-field-full {
-  position: relative;          /* referencia para el absolute */
+.user-avatar {
+  position: relative;
+  display: block;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  cursor: pointer;
 }
 
-/* Overlay centrado */
-.card-loader {
-  position: absolute; inset: 0;
-  display: grid; place-items: center;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(2px);
-  z-index: 10;
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(27, 55, 76, 0.18);
 }
 
+.user-avatar-action {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 2px solid #edf5fa;
+  border-radius: 50%;
+  color: #fff;
+  background: #1976d2;
+}
+
+.user-avatar-action mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+.user-dialog-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-dialog-heading h2,
+.user-dialog-heading p {
+  margin: 0;
+}
+
+.user-dialog-heading h2 {
+  overflow: hidden;
+  font-size: 1.12rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dialog-heading p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #657788;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dialog-heading p mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+}
+
+.user-dialog-close {
+  flex: 0 0 auto;
+}
+
+.user-dialog-content {
+  max-height: calc(92vh - 132px);
+  overflow-x: hidden;
+  padding: 8px 22px 4px !important;
+  background: #fff;
+}
+
+.user-form-section {
+  clear: both;
+  width: 100%;
+  min-width: 0;
+  padding: 15px 0 5px;
+  border-bottom: 1px solid #e5ebf0;
+}
+
+.user-form-section:last-child {
+  border-bottom: 0;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+
+.section-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.section-heading h3,
+.section-heading p {
+  margin: 0;
+}
+
+.section-heading h3 {
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.section-heading p {
+  margin-top: 1px;
+  color: #7b8995;
+  font-size: 0.75rem;
+}
+
+.section-icon {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.section-icon mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+}
+
+.section-icon-blue {
+  color: #1769aa;
+  background: #e4f1fb;
+}
+
+.section-icon-orange {
+  color: #b9650e;
+  background: #fff0de;
+}
+
+.section-icon-green {
+  color: #187454;
+  background: #e2f4ed;
+}
+
+.section-icon-purple {
+  color: #6952a3;
+  background: #eee9fa;
+}
+
+.profile-photo-panel {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d6e0e8;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.profile-photo-panel > img {
+  flex: 0 0 50px;
+  width: 50px;
+  height: 50px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(27, 55, 76, 0.16);
+}
+
+.profile-photo-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-photo-copy strong,
+.profile-photo-copy small {
+  display: block;
+}
+
+.profile-photo-copy strong {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.profile-photo-copy small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: #738392;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-photo-copy .profile-photo-selected {
+  color: #1769aa;
+}
+
+.profile-photo-copy .profile-photo-error {
+  color: #c62828;
+  white-space: normal;
+}
+
+.profile-photo-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid #1976d2;
+  border-radius: 5px;
+  color: #0d62ad;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-photo-button:hover {
+  background: #eef6fd;
+}
+
+.profile-photo-button mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.user-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 16px;
+}
+
+.user-form-grid mat-form-field {
+  min-width: 0;
+  width: 100%;
+}
+
+.user-contact-grid {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.field-panel {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 8px 13px;
+  border: 1px solid #c9d3dc;
+  border-radius: 5px;
+}
+
+.field-panel-label {
+  display: block;
+  color: #536574;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.gender-panel {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.gender-panel mat-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.status-panel small {
+  display: block;
+  margin-top: 2px;
+  color: #7b8995;
+}
+
+.security-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.security-heading > mat-slide-toggle {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.user-dialog-actions {
+  min-height: 62px;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 20px !important;
+  border-top: 1px solid #dce4eb;
+  background: #fff;
+}
+
+.user-dialog-actions button[mat-raised-button] {
+  min-width: 150px;
+}
+
+.user-dialog-actions button mat-progress-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.user-dialog-loading {
+  position: absolute;
+  z-index: 3;
+  inset: 62px 0 62px;
+  pointer-events: all;
+  background: rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(1px);
+}
+
+@media (max-width: 720px) {
+  .user-dialog-content {
+    padding-inline: 15px !important;
+  }
+
+  .user-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-photo-panel {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .profile-photo-copy {
+    min-width: calc(100% - 62px);
+  }
+
+  .profile-photo-button {
+    width: 100%;
+  }
+
+  .security-heading {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .security-heading > mat-slide-toggle {
+    grid-column: 2;
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+::ng-deep .user-form-dialog-panel .mat-mdc-dialog-surface {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+::ng-deep .dark .user-form-dialog-panel .mat-mdc-dialog-surface,
+::ng-deep .dark-theme .user-form-dialog-panel .mat-mdc-dialog-surface,
+::ng-deep .dark .user-form-dialog-panel .user-dialog-shell,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-shell,
+::ng-deep .dark .user-form-dialog-panel .user-dialog-content,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-content,
+::ng-deep .dark .user-form-dialog-panel .user-dialog-actions,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-actions {
+  color: #e5ebf2;
+  background: #111722;
+}
+
+::ng-deep .dark .user-form-dialog-panel .user-dialog-header,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-header {
+  border-color: #303947;
+  background: #1a2532;
+}
+
+::ng-deep .dark .user-form-dialog-panel .user-dialog-header p,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-header p,
+::ng-deep .dark .user-form-dialog-panel .section-heading p,
+::ng-deep .dark-theme .user-form-dialog-panel .section-heading p,
+::ng-deep .dark .user-form-dialog-panel .status-panel small,
+::ng-deep .dark-theme .user-form-dialog-panel .status-panel small {
+  color: #9eabba;
+}
+
+::ng-deep .dark .user-form-dialog-panel .user-form-section,
+::ng-deep .dark-theme .user-form-dialog-panel .user-form-section,
+::ng-deep .dark .user-form-dialog-panel .user-dialog-actions,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-actions {
+  border-color: #303947;
+}
+
+::ng-deep .dark .user-form-dialog-panel .field-panel,
+::ng-deep .dark-theme .user-form-dialog-panel .field-panel,
+::ng-deep .dark .user-form-dialog-panel .profile-photo-panel,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-panel {
+  border-color: #46515f;
+  background: #181f2a;
+}
+
+::ng-deep .dark .user-form-dialog-panel .field-panel-label,
+::ng-deep .dark-theme .user-form-dialog-panel .field-panel-label {
+  color: #bec8d3;
+}
+
+::ng-deep .dark .user-form-dialog-panel .profile-photo-copy small,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-copy small {
+  color: #9eabba;
+}
+
+::ng-deep .dark .user-form-dialog-panel .profile-photo-copy .profile-photo-selected,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-copy .profile-photo-selected {
+  color: #74b8f1;
+}
+
+::ng-deep .dark .user-form-dialog-panel .profile-photo-copy .profile-photo-error,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-copy .profile-photo-error {
+  color: #ff8a80;
+}
+
+::ng-deep .dark .user-form-dialog-panel .profile-photo-button,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-button {
+  border-color: #5aa6e8;
+  color: #8bc5f5;
+  background: #111722;
+}
+
+::ng-deep .dark .user-form-dialog-panel .profile-photo-button:hover,
+::ng-deep .dark-theme .user-form-dialog-panel .profile-photo-button:hover {
+  background: #1d2b3a;
+}
+
+::ng-deep .dark .user-form-dialog-panel .user-dialog-loading,
+::ng-deep .dark-theme .user-form-dialog-panel .user-dialog-loading {
+  background: rgba(17, 23, 34, 0.62);
+}

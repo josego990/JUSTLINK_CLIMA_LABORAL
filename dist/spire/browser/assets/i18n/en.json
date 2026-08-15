@@ -17,8 +17,31 @@
       "POST": "Manager"
     },
     "MAIN": {
-      "TEXT": "Main"
+      "TEXT": "CLIMATE"
     },
+
+     "MAINPLNESCLIMA": {
+      "TEXT": "Actions plans"
+    },
+
+
+    "MAINDESEMPENIO": {
+      "TEXT": "PERFORMANCE EVALUATIONS"
+    },
+    "DASHBOARDDESEMPENIO": {
+      "TEXT": "DASHBOARD"
+    },
+
+     "DASHBOARDDESEMPENIOTEXT": {
+      "TEXT": "Performance Dashboard"
+    },
+
+      "DESEMPENIO": {
+      "TEXT": "PERFORMANCE",
+      "ORGANIGRAMA": "Organigrama",
+      "ADMINISTRAR": "Manage"
+    },
+
     "DASHBOARD": {
       "TEXT": "Dashboard",
       "LIST": {
@@ -264,7 +287,7 @@
       "STRUCTURE": {
         "TITLE": "Assessment structure",
         "GRAND_FACTORS": "main factors",
-        "FACTORS": "factors",
+        "FACTORS": "factors", 
         "QUESTIONS": "questions",
         "NO_QUESTIONS": "This factor has no questions."
       },
@@ -285,6 +308,12 @@
       "CONFIGS_TITTLE": "Global System Variables",
       "CONFIGS": "Global Variables",
       "CREATEROL": "Create New Role",
+      "ROLE_ASSIGNED_TO": "Assigned to {{organization}}",
+      "ROLE_ORGANIZATION_REQUIRED_TITLE": "Company required",
+      "ROLE_ORGANIZATION_REQUIRED_TEXT": "Select a company in the header before creating a role.",
+      "LOADING_ROLES": "Loading roles and permissions",
+      "SAVE": "Save",
+      "CANCEL": "Cancel",
       "ACCESSDATA": {
         "ACCESSDASHBOARD": "View the Dashboard module",
         "ACCESSDASHBOARDDESC": "Allows viewing this module.",
@@ -346,7 +375,9 @@
     },
     "USERS": {
       "TEXT": "USERS",
-      "ACCESS": "ACCESS"
+      "ACCESS": "ACCESS",
+      "ORGANIZATION_REQUIRED_TITLE": "Company required",
+      "ORGANIZATION_REQUIRED_TEXT": "Select a company in the header before managing users."
     },
 
     "LOGIN": {
@@ -616,6 +647,31 @@
       "MAIN": {
         "TEXT": "PERFORMANCE EVALUATION"
       },
+
+      "MAINPLNESCLIMA": {
+        "TEXT": "Planes de acción"
+      },
+
+      "MAINDESEMPENIO": {
+      "TEXT": "EVALUACIONES DE DESEMPEÑO"
+    },
+    "DASHBOARDDESEMPENIO": {
+      "TEXT": "DASHBOARD"
+    },
+
+     "DASHBOARDDESEMPENIOTEXT": {
+      "TEXT": "Dashboard Desempeño"
+    },
+
+      "DESEMPENIO": {
+      "TEXT": "DESEMPEÑO",
+      "ORGANIGRAMA": "Organigrama",
+      "ADMINISTRAR": "Administrar"
+    },
+
+
+
+
       "DASHBOARD": {
         "TEXT": "Dashboard",
         "BREADCRUMB_HOME": "Home",
@@ -793,6 +849,14 @@
         "MODEL_CATALOG_SEARCH_HELP": "Local simulation: later this list will come from the backend to load the full model.",
         "NO_MODEL_CATALOG_RESULTS": "No models matched that search.",
         "DESCRIPTION": "Description",
+        "MODEL_IMAGE": "Model image",
+        "MODEL_IMAGE_ALT": "Evaluation model image",
+        "MODEL_IMAGE_HELP": "Visually identifies the model in the header and evaluation list. PNG, JPG, or WebP up to 5 MB.",
+        "MODEL_IMAGE_SELECT": "Select image",
+        "MODEL_IMAGE_INVALID": "Select a valid PNG, JPG, or WebP image.",
+        "MODEL_IMAGE_TOO_LARGE": "The image cannot exceed 5 MB.",
+        "MODEL_IMAGE_READ_ERROR": "The image preview could not be prepared.",
+        "MODEL_IMAGE_UPLOAD_ERROR": "The model image could not be uploaded.",
         "TYPE": "Type",
         "MODEL_STATE": "Model status",
         "SCALE": "Scale",
@@ -851,6 +915,7 @@
         "POSITION_MODELS_EMPTY": "Select at least one position to configure its dimensions, evaluation criteria, and evaluative items.",
         "POSITION_QUESTION_COUNT": "{{count}} evaluative items",
         "SCENARIO_NOT_APPLICABLE": "Not applicable",
+        "PEER_SCENARIO_NOT_APPLICABLE": "No peers available in the selected reporting line",
         "NO_POSITION_QUESTIONS": "This position does not have evaluative items in this evaluation criterion yet.",
         "NO_COMPETENCIES": "This dimension does not have evaluation criteria yet.",
         "NO_DIMENSIONS": "Add a dimension to start building the model.",
@@ -865,13 +930,26 @@
         "SCENARIO_ACTIVE": "Active",
         "WEIGHT": "Weight",
         "ACTIVE_SCENARIOS_COUNT": "Active scenarios: {{count}}",
+        "SCENARIO_WEIGHT_TOTAL": "Total weighting: {{total}}%",
         "WEIGHT_INCOMPLETE": "Weighting pending",
         "POSITION_WEIGHT_WARNING": "Review the dimension, scenario, and criterion weights for this position. Each configured group must total 100%.",
         "SCENARIO_WEIGHT_WARNING": "Review the dimension and criterion weights for this scenario. Each configured group must total 100%.",
         "REQUIRED_RATING_LEVEL": "Required rating level",
-        "REQUIRED_RATING_LEVEL_HINT": "Desired rating from 1 to 5",
-        "REQUIRED_RATING_LEVEL_VALUE": "Required: {{level}}/5",
+        "REQUIRED_RATING_LEVEL_HINT": "Expected percentage from 1 to 100",
+        "REQUIRED_RATING_LEVEL_VALUE": "Required: {{level}}%",
         "ONLY_ACTIVE": "Only active employees",
+        "DEMOGRAPHIC_FILTERS": "Demographic filters",
+        "DEMOGRAPHIC_FILTERS_HELP": "Define the population first; available positions will update to match the selected employees.",
+        "CLEAR_DEMOGRAPHIC_FILTERS": "Clear filters",
+        "ALL_DEMOGRAPHIC_VALUES": "All values",
+        "NO_APPLICABLE_DEMOGRAPHIC_VALUES": "No applicable values",
+        "DEMOGRAPHIC_VALUES_SELECTED": "{{count}} values selected",
+        "DEMOGRAPHIC_VALUES_PICKER_TITLE": "Values for {{field}}",
+        "SEARCH_DEMOGRAPHIC_VALUES": "Search values",
+        "SEARCH_DEMOGRAPHIC_VALUES_PLACEHOLDER": "Type to filter the available values",
+        "SELECT_SUBORDINATES": "Select subordinates",
+        "SELECT_SUBORDINATES_HELP": "Adds subordinate positions and employees at every level linked to managers in the selected position.",
+        "SUBORDINATE_POSITION": "Subordinate position",
         "POSITIONS": "Positions",
         "DUPLICATE_CRITERION_DIALOG_TITLE": "Duplicate evaluation criterion",
         "DUPLICATE_ITEM_DIALOG_TITLE": "Duplicate evaluative item",
@@ -939,7 +1017,7 @@
           "REQUIRED_VALUE": "Sheet \"{{sheet}}\", row {{row}}: {{field}} is required.",
           "INVALID_SCENARIO": "Sheet \"{{sheet}}\", row {{row}}: scenario \"{{value}}\" does not exist or is not valid for the model type.",
           "INVALID_WEIGHT": "Sheet \"{{sheet}}\", row {{row}}: {{field}} must be a number from 0 to 100.",
-          "INVALID_REQUIRED_LEVEL": "Sheet \"{{sheet}}\", row {{row}}: the required rating level must be from 1 to 5.",
+          "INVALID_REQUIRED_LEVEL": "Sheet \"{{sheet}}\", row {{row}}: the required rating level must be an integer percentage from 1 to 100.",
           "INVALID_ITEM_TYPE": "Sheet \"{{sheet}}\", row {{row}}: type \"{{value}}\" is not allowed. Use 5-level Likert or Open question.",
           "INVALID_CODE": "Sheet \"{{sheet}}\", row {{row}}: {{field}} only accepts letters, numbers, hyphens, and underscores, up to 50 characters.",
           "INVALID_SCALE": "Sheet \"{{sheet}}\", row {{row}}: scale \"{{value}}\" does not exist or is unavailable.",
@@ -1161,7 +1239,60 @@
             "INTEGRITY": "Acts ethically and transparently."
           }
         },
-        "SEND_PREVIEW": {
+      "GUIDE": {
+        "BUTTON": "Module guide",
+        "LIST": {
+          "OVERVIEW_TITLE": "Evaluation models",
+          "OVERVIEW_TEXT": "Use this page to review and manage the selected organization's performance evaluation models.",
+          "CREATE_TITLE": "New evaluation",
+          "CREATE_TEXT": "Create a model and define its general information, participants, scenarios, dimensions, criteria, and evaluative items.",
+          "CARDS_TITLE": "Model summary",
+          "CARDS_TEXT": "Each card displays the model status, scale, type, period, progress, and main structure.",
+          "ACTIONS_TITLE": "Model actions",
+          "ACTIONS_TEXT": "Edit the survey, manage deliveries, review the evaluation diagram, or duplicate the model from this area.",
+          "CARD_IDENTITY_TITLE": "Model identification",
+          "CARD_IDENTITY_TEXT": "The header identifies the evaluation, its organization, and the catalog model used as its configuration base.",
+          "CARD_STATUS_TITLE": "Status, scale, and evaluation type",
+          "CARD_STATUS_TEXT": "These indicators show the current model status, the response scale, and whether the evaluation is 90°, 180°, 360°, self-assessment, or mixed.",
+          "CARD_METRICS_TITLE": "Model indicators",
+          "CARD_METRICS_TEXT": "Review the number of active participants, configured dimensions, completed evaluations, and overall response progress.",
+          "CARD_DIMENSIONS_TITLE": "Evaluation dimensions",
+          "CARD_DIMENSIONS_TEXT": "Each section is a model dimension, such as Objectives, Competencies, or Values. The percentage indicates its weighting in the final result.",
+          "CARD_CRITERIA_TITLE": "Criteria and evaluative items",
+          "CARD_CRITERIA_TEXT": "The chips list the criteria included in the dimension. The number in parentheses indicates how many evaluative items or questions belong to each criterion.",
+          "EDIT_ACTION_TITLE": "Edit survey",
+          "EDIT_ACTION_TEXT": "Open the complete model configuration to update general information, participants, scenarios, dimensions, criteria, items, and weightings.",
+          "SEND_ACTION_TITLE": "Evaluation deliveries",
+          "SEND_ACTION_TEXT": "Prepare assignments, review evaluators and evaluatees, choose the delivery channel, preview messages, and send evaluations.",
+          "DIAGRAM_ACTION_TITLE": "Evaluation diagram",
+          "DIAGRAM_ACTION_TEXT": "Display the evaluator-to-evaluatee relationships as a diagram to verify that the model scenarios and assignments are correct.",
+          "DUPLICATE_ACTION_TITLE": "Duplicate model",
+          "DUPLICATE_ACTION_TEXT": "Create a new model with the same configuration, participants, scenarios, dimensions, criteria, and items, using a different name."
+        },
+        "EDITOR": {
+          "OVERVIEW_TITLE": "Evaluation settings",
+          "OVERVIEW_TEXT": "This dialog contains the complete model configuration. Use the tabs to move through the catalog, participants, scenarios, criteria, and items.",
+          "GENERAL_TITLE": "General information",
+          "GENERAL_TEXT": "Enter the evaluation name, description, type, status, scale, and application period.",
+          "EXCEL_TITLE": "Excel import",
+          "EXCEL_TEXT": "Download the template or upload a validated workbook to add positions, scenarios, dimensions, criteria, and items without duplicating existing information.",
+          "DIMENSIONS_TITLE": "Dimensions and weighting",
+          "DIMENSIONS_TEXT": "Define the model dimensions and make sure their weights total 100% before saving.",
+          "SAVE_TITLE": "Save evaluation",
+          "SAVE_TEXT": "Save the current model progress. You can continue configuring it later from its evaluation card."
+        },
+        "SEND": {
+          "OVERVIEW_TITLE": "Evaluation deliveries",
+          "OVERVIEW_TEXT": "Use this dialog to prepare, review, and send the evaluations assigned to each evaluator.",
+          "ACTIONS_TITLE": "Prepare assignments",
+          "ACTIONS_TEXT": "Review evaluator and evaluatee relationships, then create the delivery records before sending communications.",
+          "SUMMARY_TITLE": "Delivery summary",
+          "SUMMARY_TEXT": "These indicators show the total evaluators and assignments generated for the model.",
+          "TABLE_TITLE": "Evaluator matrix",
+          "TABLE_TEXT": "Review contact details, position, evaluatees, channel, date, and status. The actions let you create, preview, or send each evaluation."
+        }
+      },
+      "SEND_PREVIEW": {
           "CREATED": "Created",
           "SENT": "Sent",
           "PENDING": "Pending"
@@ -1186,6 +1317,8 @@
           "DIMENSION_NAME_TEXT": "Enter the dimension name.",
           "COMPETENCY_NAME_TITLE": "Name required",
           "COMPETENCY_NAME_TEXT": "Enter the evaluation criterion name.",
+          "REQUIRED_RATING_PERCENT_TITLE": "Invalid required rating level",
+          "REQUIRED_RATING_PERCENT_TEXT": "Enter an integer percentage from 1 to 100.",
           "QUESTION_REQUIRED_TITLE": "Evaluative item required",
           "QUESTION_REQUIRED_TEXT": "Enter the evaluative item text.",
           "QUESTION_SCENARIO_REQUIRED_TITLE": "Scenario required",

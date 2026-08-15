@@ -66,7 +66,7 @@
           <mat-form-field
             *ngIf="shouldShowText(item)"
             appearance="outline"
-            class="answer-field">
+            class="answer-field answer-field--text">
             <mat-label>Respuesta</mat-label>
             <textarea
               matInput
@@ -123,7 +123,7 @@
         color="primary"
         type="button"
         (click)="saveDraft()"
-        [disabled]="disabled || isSavingDraft || isFinalizing">
+        [disabled]="disabled || isSavingDraft || isFinalizing || !canSaveDraft">
         <mat-icon>{{ isSavingDraft ? 'sync' : 'save' }}</mat-icon>
         Guardar borrador
       </button>

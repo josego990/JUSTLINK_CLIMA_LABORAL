@@ -11,7 +11,9 @@
     <div class="row">
       <div class="col-12">
         <div class="evaluaciones-shell">
-          <div class="evaluaciones-toolbar">
+          <div
+            class="evaluaciones-toolbar"
+            data-performance-guide="performance-list-overview">
             <div class="evaluaciones-toolbar-left">
               <div class="toolbar-summary">
                 <span class="summary-pill">
@@ -27,8 +29,18 @@
 
             <div class="evaluaciones-toolbar-actions">
               <button
+                mat-icon-button
+                type="button"
+                class="performance-guide-button"
+                (click)="startEvaluationsGuide()"
+                [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate"
+                [attr.aria-label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate">
+                <mat-icon>help_outline</mat-icon>
+              </button>
+              <button
                 mat-raised-button
                 color="primary"
+                data-performance-guide="performance-list-create"
                 (click)="openCreateDialog()"
                 [disabled]="
                   !hasSelectedOrganization ||
@@ -65,13 +77,19 @@
 
           <div
             class="cards-grid"
+            data-performance-guide="performance-list-cards"
             *ngIf="!isLoadingOrganizations && !isLoadingModels && hasSelectedOrganization">
-            <mat-card class="evaluation-card" *ngFor="let card of visibleEvaluations; trackBy: trackByAnyId">
-              <mat-card-header>
+            <mat-card
+              class="evaluation-card"
+              *ngFor="let card of visibleEvaluations; let firstCard = first; trackBy: trackByAnyId">
+              <mat-card-header
+                [attr.data-performance-guide]="firstCard ? 'performance-card-identity' : null">
                 <img
                   mat-card-avatar
+                  class="evaluation-model-avatar"
                   [src]="card.avatarSrc"
                   [alt]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CARD_ALT' | translate"
+                  (error)="onModelImageError($event)"
                 />
                 <mat-card-title>{{ card.name }}</mat-card-title>
                 <mat-card-subtitle>{{ currentOrganizationName }} · {{ card.modelName }}</mat-card-subtitle>
@@ -80,7 +98,9 @@
               <mat-card-content>
                 <p class="card-description">{{ card.description }}</p>
 
-                <div class="status-row">
+                <div
+                  class="status-row"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-status' : null">
                   <span class="status-pill" [ngClass]="getStatusClass(card.status)">{{ getPeriodStateLabel(card.status) }}</span>
                   <span class="mini-pill">
                     <mat-icon>fact_check</mat-icon>
@@ -92,7 +112,9 @@
                   </span>
                 </div>
 
-                <div class="stats-panel">
+                <div
+                  class="stats-panel"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-metrics' : null">
                   <div class="stat-item">
                     <span class="material-icons">group</span>
                     <div>
@@ -130,13 +152,21 @@
                   </div>
                 </div>
 
-                <div class="big-factor-list">
-                  <div class="big-factor-card" *ngFor="let bigFactor of card.bigFactors; trackBy: trackByAnyId">
-                    <div class="big-factor-head">
+                <div
+                  class="big-factor-list"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-dimensions' : null">
+                  <div
+                    class="big-factor-card"
+                    *ngFor="let bigFactor of card.bigFactors; let firstDimension = first; trackBy: trackByAnyId">
+                    <div
+                      class="big-factor-head"
+                      [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-dimension' : null">
                       <strong>{{ bigFactor.name }}</strong>
                       <span>{{ bigFactor.weight }}%</span>
                     </div>
-                    <div class="factor-chip-list">
+                    <div
+                      class="factor-chip-list"
+                      [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-criteria' : null">
                       <span
                         class="factor-chip"
                         *ngFor="let factor of getDistinctFactorSummaries(bigFactor); trackBy: trackByFactorSummary">
@@ -149,13 +179,19 @@
 
               <mat-divider></mat-divider>
 
-              <mat-card-actions>
-                <button mat-raised-button color="primary" (click)="openEditDialog(card)">
+              <mat-card-actions
+                [attr.data-performance-guide]="firstCard ? 'performance-card-actions' : null">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-edit' : null"
+                  (click)="openEditDialog(card)">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_SURVEY' | translate }}
                 </button>
                 <button
                   mat-raised-button
                   color="primary"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-send' : null"
                   (click)="openSendDialog(card)"
                   [disabled]="isLoadingSendDialog">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SENDS' | translate }}
@@ -163,6 +199,7 @@
                 <button
                   mat-stroked-button
                   color="primary"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-diagram' : null"
                   (click)="openModelDialog(card)"
                   [disabled]="isLoadingModelDiagram">
                   <mat-icon>{{ isLoadingModelDiagram ? 'sync' : 'account_tree' }}</mat-icon>
@@ -172,6 +209,7 @@
                   mat-stroked-button
                   color="primary"
                   type="button"
+                  [attr.data-performance-guide]="firstCard ? 'performance-card-duplicate' : null"
                   (click)="openDuplicateModelDialog(card)"
                   [disabled]="isDuplicatingModel || isDemoPerformanceModelLimitReached"
                   [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DUPLICATE_MODEL_HELP' | translate">
@@ -203,26 +241,110 @@
   </div>
 </section>
 
-<ng-template #editorDialogTemplate>
-  <div class="editor-dialog" *ngIf="draftEvaluation">
-    <div class="editor-header">
-      <div>
-        <h2>
-          {{ editingEvaluation
-            ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_TITLE' | translate)
-            : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CREATE_TITLE' | translate) }}
-        </h2>
-        <p>{{ currentOrganizationName }}</p>
-      </div>
-      <button mat-icon-button type="button" (click)="closeEditorDialog()">
-        <mat-icon>close</mat-icon>
+<div
+  class="performance-guide-layer"
+  *ngIf="isPerformanceGuideVisible"
+  role="presentation">
+  <div class="performance-guide-backdrop"></div>
+  <div
+    class="performance-guide-focus"
+    [ngStyle]="performanceGuideFocusStyle"
+    aria-hidden="true"></div>
+  <aside
+    #performanceGuidePopover
+    class="performance-guide-popover"
+    [class.is-above]="performanceGuidePlacement === 'above'"
+    [class.is-below]="performanceGuidePlacement === 'below'"
+    [class.is-centered]="performanceGuidePlacement === 'center'"
+    [ngStyle]="performanceGuidePopoverStyle"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="activePerformanceGuideTitle">
+    <button
+      mat-icon-button
+      type="button"
+      class="performance-guide-close"
+      (click)="closePerformanceGuide()"
+      [attr.aria-label]="'MENUITEMS.TOUR.NAV.CLOSE' | translate">
+      <mat-icon>close</mat-icon>
+    </button>
+    <div class="performance-guide-eyebrow">
+      <mat-icon>help_outline</mat-icon>
+      <span>{{ performanceGuideCounter }}</span>
+    </div>
+    <h3>{{ activePerformanceGuideTitle }}</h3>
+    <p>{{ activePerformanceGuideText }}</p>
+    <div class="performance-guide-actions">
+      <button
+        mat-button
+        type="button"
+        *ngIf="performanceGuideStepIndex > 0"
+        (click)="previousPerformanceGuideStep()">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'MENUITEMS.TOUR.NAV.PREV' | translate }}
+      </button>
+      <span></span>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        (click)="nextPerformanceGuideStep()">
+        {{ (isLastPerformanceGuideStep ? 'MENUITEMS.TOUR.NAV.DONE' : 'MENUITEMS.TOUR.NAV.NEXT') | translate }}
+        <mat-icon>{{ isLastPerformanceGuideStep ? 'check' : 'arrow_forward' }}</mat-icon>
       </button>
     </div>
+  </aside>
+</div>
 
-    <mat-tab-group [(selectedIndex)]="activeEditorTabIndex" animationDuration="0ms">
+<ng-template #editorDialogTemplate>
+  <div class="editor-dialog" *ngIf="draftEvaluation">
+    <div
+      class="editor-header"
+      data-performance-guide="performance-editor-overview">
+      <div class="editor-header-identity">
+        <img
+          class="editor-model-avatar"
+          [src]="draftEvaluation.avatarSrc"
+          [alt]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_ALT' | translate"
+          (error)="onModelImageError($event)" />
+        <div>
+          <h2>
+            {{ editingEvaluation
+              ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EDIT_TITLE' | translate)
+              : ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CREATE_TITLE' | translate) }}
+          </h2>
+          <p>{{ currentOrganizationName }} · {{ draftEvaluation.name }}</p>
+        </div>
+      </div>
+      <div class="dialog-header-actions">
+        <button
+          mat-icon-button
+          type="button"
+          class="performance-guide-button"
+          (click)="startEvaluationEditorGuide()"
+          [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate"
+          [attr.aria-label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate">
+          <mat-icon>help_outline</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          (click)="closeEditorDialog()"
+          [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <mat-tab-group
+      [(selectedIndex)]="activeEditorTabIndex"
+      (selectedIndexChange)="onEditorTabChange($event)"
+      animationDuration="0ms">
       <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_MODEL_CATALOG' | translate">
         <div class="tab-body">
-          <div class="row g-3">
+          <div
+            class="row g-3"
+            data-performance-guide="performance-editor-general">
             <div class="col-lg-6 col-md-12">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATION_NAME' | translate }}</mat-label>
@@ -301,9 +423,40 @@
                 </mat-error>
               </mat-form-field>
             </div>
+            <div class="col-12">
+              <div class="model-image-field">
+                <img
+                  [src]="draftEvaluation.avatarSrc"
+                  [alt]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_ALT' | translate"
+                  (error)="onModelImageError($event)" />
+                <div class="model-image-copy">
+                  <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE' | translate }}</strong>
+                  <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_HELP' | translate }}</small>
+                  <small class="model-image-file" *ngIf="modelImageFileName">
+                    {{ modelImageFileName }}
+                  </small>
+                  <small class="model-image-error" *ngIf="modelImageUploadError">
+                    {{ modelImageUploadError }}
+                  </small>
+                </div>
+                <label
+                  class="model-image-select-button"
+                  [class.is-disabled]="isSavingModel">
+                  <mat-icon>add_a_photo</mat-icon>
+                  <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_IMAGE_SELECT' | translate }}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    [disabled]="isSavingModel"
+                    (change)="onModelImageSelected($event)" />
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div class="model-excel-import-bar">
+          <div
+            class="model-excel-import-bar"
+            data-performance-guide="performance-editor-excel">
             <div class="model-excel-import-title">
               <span class="model-excel-import-icon"><mat-icon>table_view</mat-icon></span>
               <div>
@@ -353,7 +506,9 @@
             </div>
           </div>
 
-          <div class="editor-section catalog-dimensions-section">
+          <div
+            class="editor-section catalog-dimensions-section"
+            data-performance-guide="performance-editor-dimensions">
             <div class="section-title">
               <div>
                 <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS' | translate }}</h3>
@@ -421,15 +576,73 @@
         <div class="tab-body participants-tab-body">
           <div class="soft-panel participants-config-panel">
             <div class="row g-3">
-              <div class="col-12">
+              <div class="col-12 participant-mode-options">
                 <mat-checkbox
                   [ngModel]="draftEvaluation.participants.onlyActive"
                   (ngModelChange)="onParticipantOnlyActiveChange($event)">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ONLY_ACTIVE' | translate }}
                 </mat-checkbox>
+                <mat-checkbox
+                  [ngModel]="draftEvaluation.participants.selectSubordinates"
+                  (ngModelChange)="onParticipantSelectSubordinatesChange($event)"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES_HELP' | translate">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES' | translate }}
+                </mat-checkbox>
               </div>
               <div class="col-12">
                 <div class="participant-selection-card">
+                  <div
+                    class="participant-demographic-section participant-demographic-primary"
+                    *ngIf="getParticipantDemographicFields().length > 0">
+                    <div class="participant-demographic-head">
+                      <div>
+                        <h5>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEMOGRAPHIC_FILTERS' | translate }}</h5>
+                        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEMOGRAPHIC_FILTERS_HELP' | translate }}</p>
+                      </div>
+                      <button
+                        *ngIf="getActiveParticipantDemographicFilterCount() > 0"
+                        mat-button
+                        type="button"
+                        (click)="clearAllParticipantDemographicFilters()">
+                        <mat-icon>filter_alt_off</mat-icon>
+                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_DEMOGRAPHIC_FILTERS' | translate }}
+                      </button>
+                    </div>
+
+                    <div class="participant-demographic-grid">
+                      <button
+                        class="participant-demographic-trigger"
+                        [class.active]="isParticipantDemographicFieldRestricted(field.name)"
+                        [disabled]="getParticipantDemographicApplicableValues(field.name).length === 0"
+                        type="button"
+                        *ngFor="let field of getParticipantDemographicFields(); trackBy: trackByDemographicField"
+                        (click)="openParticipantDemographicValuesDialog(field)">
+                        <mat-icon>filter_alt</mat-icon>
+                        <span>
+                          <strong>{{ field.name }}</strong>
+                          <small *ngIf="getParticipantDemographicApplicableValues(field.name).length === 0">
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_APPLICABLE_DEMOGRAPHIC_VALUES' | translate }}
+                          </small>
+                          <small *ngIf="
+                            getParticipantDemographicApplicableValues(field.name).length > 0 &&
+                            !isParticipantDemographicFieldRestricted(field.name)
+                          ">
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ALL_DEMOGRAPHIC_VALUES' | translate }}
+                          </small>
+                          <small *ngIf="
+                            getParticipantDemographicApplicableValues(field.name).length > 0 &&
+                            isParticipantDemographicFieldRestricted(field.name)
+                          ">
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEMOGRAPHIC_VALUES_SELECTED' | translate: {
+                              count: getParticipantDemographicSelectedCount(field.name)
+                            } }}
+                          </small>
+                        </span>
+                        <mat-icon>chevron_right</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
                   <div class="participant-selection-head">
                     <div>
                       <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITIONS' | translate }}</h4>
@@ -448,7 +661,13 @@
                   <div class="selection-chip-box" [class.empty]="draftEvaluation.participants.positions.length === 0">
                     <span
                       class="selection-chip"
+                      [class.auto-subordinate]="isAutoSelectedSubordinatePosition(position)"
                       *ngFor="let position of draftEvaluation.participants.positions; trackBy: trackByPosition">
+                      <mat-icon
+                        *ngIf="isAutoSelectedSubordinatePosition(position)"
+                        [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SUBORDINATE_POSITION' | translate">
+                        account_tree
+                      </mat-icon>
                       {{ position }}
                       <button
                         mat-icon-button
@@ -462,6 +681,7 @@
                       {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_POSITIONS_SELECTED' | translate }}
                     </span>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -485,7 +705,8 @@
                     <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_EMPLOYEES' | translate }}</mat-label>
                     <input
                       matInput
-                      [(ngModel)]="participantEmployeeSearchTerm"
+                      [ngModel]="participantEmployeeSearchTerm"
+                      (ngModelChange)="onParticipantEmployeeSearchChange($event)"
                       autocomplete="off"
                       [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_EMPLOYEES_PLACEHOLDER' | translate"
                     />
@@ -505,7 +726,7 @@
 
                 <div
                   class="participant-picker-table-wrap specific-employees-table-wrap"
-                  *ngIf="getFilteredParticipantEmployees().length; else noInlineEmployees">
+                  *ngIf="participantEmployeeResultCount > 0; else noInlineEmployees">
                   <table class="participant-picker-table employee-picker-table">
                     <thead>
                       <tr>
@@ -517,7 +738,7 @@
                     </thead>
                     <tbody>
                       <tr
-                        *ngFor="let employee of getFilteredParticipantEmployees(); trackBy: trackByAnyId"
+                        *ngFor="let employee of visibleParticipantEmployees; trackBy: trackByAnyId"
                         [class.is-selected]="isParticipantEmployeeSelected(employee.id)"
                         (click)="toggleParticipantEmployee(employee)">
                         <td class="participant-check-cell">
@@ -534,6 +755,16 @@
                     </tbody>
                   </table>
                 </div>
+
+                <mat-paginator
+                  *ngIf="participantEmployeeResultCount > participantEmployeePageSizeOptions[0]"
+                  [length]="participantEmployeeResultCount"
+                  [pageIndex]="participantEmployeePageIndex"
+                  [pageSize]="participantEmployeePageSize"
+                  [pageSizeOptions]="participantEmployeePageSizeOptions"
+                  showFirstLastButtons
+                  (page)="onParticipantEmployeePageChange($event)">
+                </mat-paginator>
 
                 <ng-template #noInlineEmployees>
                   <div class="participant-picker-empty">
@@ -578,73 +809,88 @@
                       {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
                     </ng-container>
                     <ng-template #activePositionScenarios>
-                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ACTIVE_SCENARIOS_COUNT' | translate: {
-                        count: getActivePositionScenarios(position).length
-                      } }}
+                      <span class="position-scenario-summary">
+                        <span>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ACTIVE_SCENARIOS_COUNT' | translate: {
+                            count: getActivePositionScenarios(position).length
+                          } }}
+                        </span>
+                        <span
+                          class="scenario-weight-total"
+                          [class.invalid]="isPositionScenarioWeightInvalid(position)">
+                          <mat-icon *ngIf="isPositionScenarioWeightInvalid(position)">error_outline</mat-icon>
+                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_WEIGHT_TOTAL' | translate: {
+                            total: getPositionScenarioWeightTotal(position)
+                          } }}
+                        </span>
+                      </span>
                     </ng-template>
                   </mat-panel-description>
                 </mat-expansion-panel-header>
 
-                <mat-checkbox
-                  class="position-evaluator-only-toggle"
-                  [ngModel]="isPositionEvaluatorOnly(position)"
-                  [disabled]="isPositionAutomaticallyEvaluatorOnly(position)"
-                  [matTooltip]="isPositionAutomaticallyEvaluatorOnly(position)
-                    ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate)
-                    : ''"
-                  (ngModelChange)="setPositionEvaluatorOnly(position, $event)">
-                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
-                </mat-checkbox>
-
-                <div
-                  class="position-auto-evaluator-note"
-                  *ngIf="isPositionAutomaticallyEvaluatorOnly(position)">
-                  <mat-icon>info</mat-icon>
-                  <span>
-                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate }}
-                  </span>
-                </div>
-
-                <div class="position-scenario-help">
-                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_HELP' | translate }}
-                </div>
-
-                <div
-                  class="scenario-row"
-                  [class.inactive]="!isPositionScenarioSelected(position, scenario.key)"
-                  [class.not-applicable]="!isPositionScenarioStructurallyApplicable(position, scenario.key)"
-                  *ngFor="let scenario of getPositionScenarioOptions(position); trackBy: trackByEvaluationScenario">
+                <ng-template matExpansionPanelContent>
                   <mat-checkbox
-                    [ngModel]="isPositionScenarioSelected(position, scenario.key)"
-                    (ngModelChange)="setPositionScenarioSelected(position, scenario.key, $event)"
-                    [disabled]="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
-                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_ACTIVE' | translate }}
+                    class="position-evaluator-only-toggle"
+                    [ngModel]="isPositionEvaluatorOnly(position)"
+                    [disabled]="isPositionAutomaticallyEvaluatorOnly(position)"
+                    [matTooltip]="isPositionAutomaticallyEvaluatorOnly(position)
+                      ? ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate)
+                      : ''"
+                    (ngModelChange)="setPositionEvaluatorOnly(position, $event)">
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
                   </mat-checkbox>
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO' | translate }}</mat-label>
-                    <input matInput [ngModel]="scenario.name" readonly />
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
-                    <input
-                      matInput
-                      type="number"
-                      min="0"
-                      max="100"
-                      [disabled]="
-                        !isPositionScenarioSelected(position, scenario.key) ||
-                        !isPositionScenarioStructurallyApplicable(position, scenario.key)
-                      "
-                      [ngModel]="scenario.weight"
-                      (ngModelChange)="setPositionScenarioWeight(position, scenario.key, $event)" />
-                  </mat-form-field>
-                  <span
-                    class="scenario-not-applicable"
-                    *ngIf="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
-                    <mat-icon>block</mat-icon>
-                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_NOT_APPLICABLE' | translate }}
-                  </span>
-                </div>
+
+                  <div
+                    class="position-auto-evaluator-note"
+                    *ngIf="isPositionAutomaticallyEvaluatorOnly(position)">
+                    <mat-icon>info</mat-icon>
+                    <span>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY_NO_MANAGER' | translate }}
+                    </span>
+                  </div>
+
+                  <div class="position-scenario-help">
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_HELP' | translate }}
+                  </div>
+
+                  <div
+                    class="scenario-row"
+                    [class.inactive]="!isPositionScenarioSelected(position, scenario.key)"
+                    [class.not-applicable]="!isPositionScenarioStructurallyApplicable(position, scenario.key)"
+                    *ngFor="let scenario of getPositionScenarioOptions(position); trackBy: trackByEvaluationScenario">
+                    <mat-checkbox
+                      [ngModel]="isPositionScenarioSelected(position, scenario.key)"
+                      (ngModelChange)="setPositionScenarioSelected(position, scenario.key, $event)"
+                      [disabled]="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_ACTIVE' | translate }}
+                    </mat-checkbox>
+                    <mat-form-field appearance="outline">
+                      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO' | translate }}</mat-label>
+                      <input matInput [ngModel]="scenario.name" readonly />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        [disabled]="
+                          !isPositionScenarioSelected(position, scenario.key) ||
+                          !isPositionScenarioStructurallyApplicable(position, scenario.key)
+                        "
+                        [ngModel]="scenario.weight"
+                        (ngModelChange)="setPositionScenarioWeight(position, scenario.key, $event)" />
+                    </mat-form-field>
+                    <span
+                      class="scenario-not-applicable"
+                      *ngIf="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                      <mat-icon>block</mat-icon>
+                      {{ getScenarioNotApplicableTranslationKey(scenario.key) | translate }}
+                    </span>
+                  </div>
+                </ng-template>
               </mat-expansion-panel>
             </mat-accordion>
           </div>
@@ -705,7 +951,8 @@
                 </mat-panel-description>
               </mat-expansion-panel-header>
 
-              <mat-accordion class="position-scenarios" multi>
+              <ng-template matExpansionPanelContent>
+                <mat-accordion class="position-scenarios" multi>
                 <mat-expansion-panel
                   class="position-scenario-panel"
                   [class.not-applicable]="!isPositionScenarioApplicable(position, scenario.key)"
@@ -792,7 +1039,7 @@
                               <span>{{ factorItem.factor.weight }}%</span>
                               <span class="required-level-chip">
                                 {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL_VALUE' | translate: {
-                                  level: getFactorRequiredRatingLevel(factorItem.factor)
+                                  level: getFactorRequiredRatingPercentage(factorItem.factor)
                                 } }}
                               </span>
                               <button
@@ -899,17 +1146,19 @@
                     </mat-expansion-panel>
                   </mat-accordion>
                 </mat-expansion-panel>
-              </mat-accordion>
+                </mat-accordion>
 
-              <div class="position-question-empty" *ngIf="draftEvaluation.bigFactors.length === 0">
-                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DIMENSIONS' | translate }}
-              </div>
+                <div class="position-question-empty" *ngIf="draftEvaluation.bigFactors.length === 0">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DIMENSIONS' | translate }}
+                </div>
+              </ng-template>
               </mat-expansion-panel>
             </div>
           </mat-accordion>
         </div>
       </mat-tab>
 
+      <!-- Pestaña JSON conservada para una posible reactivación futura.
       <mat-tab [label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TAB_SAMPLE_JSON' | translate">
         <div class="tab-body json-tab-body">
           <div class="soft-panel json-panel">
@@ -919,9 +1168,12 @@
           </div>
         </div>
       </mat-tab>
+      -->
     </mat-tab-group>
 
-    <div class="editor-footer">
+    <div
+      class="editor-footer"
+      data-performance-guide="performance-editor-save">
       <button mat-button type="button" (click)="closeEditorDialog()" [disabled]="isSavingModel || isImportingModelExcel">
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
       </button>
@@ -1111,6 +1363,7 @@
             <tr
               *ngFor="let position of getFilteredParticipantPositions(); trackBy: trackByPosition"
               [class.is-selected]="isParticipantPositionSelected(position)"
+              [class.is-auto-subordinate]="isAutoSelectedSubordinatePosition(position)"
               (click)="toggleParticipantPosition(position)">
               <td class="participant-check-cell">
                 <mat-checkbox
@@ -1119,13 +1372,115 @@
                   (click)="$event.stopPropagation()">
                 </mat-checkbox>
               </td>
-              <td>{{ position }}</td>
+              <td>
+                {{ position }}
+                <span class="subordinate-position-label" *ngIf="isAutoSelectedSubordinatePosition(position)">
+                  <mat-icon>account_tree</mat-icon>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SUBORDINATE_POSITION' | translate }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <ng-template #noPositionsToShow>
+        <div class="participant-picker-empty">
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_PICKER_RESULTS' | translate }}
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="simple-dialog-footer">
+      <button mat-raised-button color="primary" mat-dialog-close>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #participantDemographicValuesDialogTemplate>
+  <div
+    class="participant-picker-dialog"
+    *ngIf="draftEvaluation && activeParticipantDemographicField as demographicField">
+    <div class="simple-dialog-header">
+      <div>
+        <h2>
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEMOGRAPHIC_VALUES_PICKER_TITLE' | translate: {
+            field: demographicField.name
+          } }}
+        </h2>
+        <p>
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECTED_COUNT' | translate: {
+            count: getParticipantDemographicSelectedCount(demographicField.name)
+          } }}
+        </p>
+      </div>
+      <button mat-icon-button mat-dialog-close>
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="simple-dialog-body participant-picker-body">
+      <div class="participant-picker-toolbar">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_DEMOGRAPHIC_VALUES' | translate }}</mat-label>
+          <input
+            matInput
+            [(ngModel)]="participantDemographicSearchTerm"
+            autocomplete="off"
+            [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_DEMOGRAPHIC_VALUES_PLACEHOLDER' | translate"
+          />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <div class="participant-picker-toolbar-actions">
+          <button
+            mat-stroked-button
+            color="primary"
+            type="button"
+            (click)="selectAllFilteredParticipantDemographicValues()">
+            <mat-icon>done_all</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+          </button>
+          <button
+            mat-button
+            type="button"
+            (click)="clearParticipantDemographicField(demographicField.name)">
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div
+        class="participant-picker-table-wrap"
+        *ngIf="getFilteredParticipantDemographicValues().length; else noDemographicValuesToShow">
+        <table class="participant-picker-table demographic-values-picker-table">
+          <thead>
+            <tr>
+              <th class="participant-check-cell"></th>
+              <th>{{ demographicField.name }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let value of getFilteredParticipantDemographicValues(); trackBy: trackByPosition"
+              [class.is-selected]="isParticipantDemographicValueSelected(demographicField.name, value)"
+              (click)="toggleParticipantDemographicValue(demographicField.name, value)">
+              <td class="participant-check-cell">
+                <mat-checkbox
+                  [ngModel]="isParticipantDemographicValueSelected(demographicField.name, value)"
+                  (ngModelChange)="setParticipantDemographicValueSelected(demographicField.name, value, $event)"
+                  (click)="$event.stopPropagation()">
+                </mat-checkbox>
+              </td>
+              <td><strong>{{ value }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noDemographicValuesToShow>
         <div class="participant-picker-empty">
           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_PICKER_RESULTS' | translate }}
         </div>
@@ -1259,7 +1614,9 @@
   <div
     class="simple-dialog send-dialog"
     *ngIf="sendPreviewEvaluation">
-    <div class="simple-dialog-header send-dialog-header">
+    <div
+      class="simple-dialog-header send-dialog-header"
+      data-performance-guide="performance-send-overview">
       <div class="send-dialog-title">
         <span class="send-dialog-title-icon" aria-hidden="true">
           <mat-icon>outgoing_mail</mat-icon>
@@ -1269,16 +1626,29 @@
           <p>{{ sendPreviewEvaluation.name }}</p>
         </div>
       </div>
-      <button
-        mat-icon-button
-        mat-dialog-close
-        [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate">
-        <mat-icon>close</mat-icon>
-      </button>
+      <div class="dialog-header-actions">
+        <button
+          mat-icon-button
+          type="button"
+          class="performance-guide-button"
+          (click)="startEvaluationSendGuide()"
+          [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate"
+          [attr.aria-label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.BUTTON' | translate">
+          <mat-icon>help_outline</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          mat-dialog-close
+          [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </div>
 
     <div class="simple-dialog-body send-dialog-body">
-      <div class="send-actions-bar">
+      <div
+        class="send-actions-bar"
+        data-performance-guide="performance-send-actions">
         <div class="send-actions-copy">
           <h4>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_ASSIGNMENTS_TITLE' | translate }}</h4>
           <p>
@@ -1290,7 +1660,9 @@
         </div>
 
         <div class="send-actions-tools">
-          <div class="send-summary-grid">
+          <div
+            class="send-summary-grid"
+            data-performance-guide="performance-send-summary">
             <div class="send-summary-card">
               <mat-icon aria-hidden="true">groups</mat-icon>
               <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_SUMMARY_EVALUATORS' | translate }}</span>
@@ -1317,6 +1689,7 @@
 
       <div
         class="send-table-wrapper"
+        data-performance-guide="performance-send-table"
         *ngIf="sendAssignments.length; else noSendAssignments">
         <table class="send-assignment-table">
           <thead>
@@ -1781,34 +2154,25 @@
       <textarea matInput rows="3" [(ngModel)]="factorDraft.description"></textarea>
     </mat-form-field>
     <div class="row g-3">
-      <div class="col-md-4">
+      <div class="col-md-6">
         <mat-form-field appearance="outline" class="w-100">
           <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
           <input matInput type="number" min="0" max="100" [(ngModel)]="factorDraft.weight" />
         </mat-form-field>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <mat-form-field appearance="outline" class="w-100">
           <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL' | translate }}</mat-label>
           <input
             matInput
             type="number"
             min="1"
-            max="5"
-            step="0.01"
+            max="100"
+            step="1"
             [(ngModel)]="factorDraft.requiredRatingLevel"
           />
+          <span matSuffix>%</span>
           <mat-hint>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL_HINT' | translate }}</mat-hint>
-        </mat-form-field>
-      </div>
-      <div class="col-md-4">
-        <mat-form-field appearance="outline" class="w-100">
-          <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DEFAULT_QUESTION_TYPE' | translate }}</mat-label>
-          <mat-select [(ngModel)]="factorDraft.defaultQuestionType">
-            <mat-option *ngFor="let questionType of questionTypes" [value]="questionType.value">
-              {{ getQuestionTypeLabel(questionType.value) }}
-            </mat-option>
-          </mat-select>
         </mat-form-field>
       </div>
     </div>

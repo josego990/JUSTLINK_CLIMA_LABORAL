@@ -469,13 +469,27 @@ export class OrganizacionService {
     );
   }
 
-  saveDesempenoResponseDraft(token: string, payload: any) {
+  getDesempenoEvaluationCenter(codigoEncuestaEmpleado: string) {
+    return this.http.post(
+      this.getRestApiEndpoint('api/desempeno/centro-evaluaciones'),
+      { codigoEncuestaEmpleado },
+      this.getPublicRequestOptions()
+    );
+  }
+
+  saveDesempenoResponseDraft(
+    token: string,
+    payload: any,
+    turnstileToken: string
+  ) {
     return this.http.put(
       this.getRestApiEndpoint(
         `api/desempeno/respuestas/token/${encodeURIComponent(token)}`
       ),
       payload,
-      this.getPublicRequestOptions()
+      this.getPublicRequestOptions(undefined, {
+        'Turnstile-Token': turnstileToken,
+      })
     );
   }
 
@@ -1143,9 +1157,11 @@ export class OrganizacionService {
 
   }
 
-  getUsers() {
+  getUsers(idOrganization: number) {
     return axios
-      .get(this.getApiEndpoint('get-users-json'));
+      .get(this.getApiEndpoint('get-users-json'), {
+        params: { organizacionId: idOrganization }
+      });
   }
 
   getUsersByIdOrg(idOrganization:any) {
@@ -1175,10 +1191,12 @@ export class OrganizacionService {
     return axios.post(this.getApiEndpoint('update-user'), userData);
   }
 
-  getRolesAccess() {
+  getRolesAccess(idOrganization: number) {
   
     return axios
-      .get(this.getApiEndpoint('get-roles-access-json'));
+      .get(this.getApiEndpoint('get-roles-access-json'), {
+        params: { OrganizacionId: idOrganization }
+      });
 
   }
 
