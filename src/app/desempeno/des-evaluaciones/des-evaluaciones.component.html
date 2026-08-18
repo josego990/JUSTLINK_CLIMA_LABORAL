@@ -470,19 +470,28 @@
               <span><strong>{{ summary.dimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_DIMENSIONS' | translate }}</span>
               <span><strong>{{ summary.criteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_CRITERIA' | translate }}</span>
               <span><strong>{{ summary.items }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_ITEMS' | translate }}</span>
-              <span *ngIf="summary.skipped > 0"><strong>{{ summary.skipped }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_SKIPPED' | translate }}</span>
+              <span *ngIf="summary.existingDimensions > 0"><strong>{{ summary.existingDimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_DIMENSIONS' | translate }}</span>
+              <span *ngIf="summary.existingCriteria > 0"><strong>{{ summary.existingCriteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_CRITERIA' | translate }}</span>
+              <span *ngIf="summary.existingItems > 0"><strong>{{ summary.existingItems }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_ITEMS' | translate }}</span>
               <span *ngIf="summary.omittedScenarios > 0"><strong>{{ summary.omittedScenarios }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.OMITTED_SCENARIOS' | translate }}</span>
             </div>
 
             <div class="model-excel-import-actions">
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="downloadModelExcelTemplate()"
-                [disabled]="isImportingModelExcel || isSavingModel">
-                <mat-icon>download</mat-icon>
-                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE' | translate }}
-              </button>
+              <span [matTooltip]="modelExcelTemplateDownloadTooltip">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="downloadModelExcelTemplate()"
+                  [disabled]="isImportingModelExcel || isSavingModel || isGeneratingModelExcel || !canDownloadModelExcelTemplate">
+                  <mat-progress-spinner
+                    *ngIf="isGeneratingModelExcel; else downloadExcelIcon"
+                    diameter="18"
+                    mode="indeterminate">
+                  </mat-progress-spinner>
+                  <ng-template #downloadExcelIcon><mat-icon>download</mat-icon></ng-template>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE' | translate }}
+                </button>
+              </span>
               <button
                 mat-raised-button
                 color="primary"

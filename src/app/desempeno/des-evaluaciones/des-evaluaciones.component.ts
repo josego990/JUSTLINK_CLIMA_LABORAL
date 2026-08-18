@@ -18,6 +18,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 import {
   Edge,
   MiniMapPosition,
@@ -34,6 +36,7 @@ import { OrganizacionService } from '../../organization/services/organizacion.se
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import {
   DES_EVALUATION_EXCEL_HEADERS,
+  DES_EVALUATION_EXCEL_TEMPLATE_HEADERS,
   DesEvaluationExcelImport,
   DesEvaluationExcelRow,
   DesEvaluationExcelScenarioKey,
@@ -385,7 +388,9 @@ interface DesEvaluationExcelImportSummary {
   dimensions: number;
   criteria: number;
   items: number;
-  skipped: number;
+  existingDimensions: number;
+  existingCriteria: number;
+  existingItems: number;
   fileName: string;
 }
 
@@ -606,6 +611,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public isLoadingModelDiagram = false;
   public isCreatingSendAssignments = false;
   public isSavingModel = false;
+  public isGeneratingModelExcel = false;
   public modelImageUploadError = '';
   public modelImageFileName = '';
   public isImportingModelExcel = false;
@@ -1063,6 +1069,35 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   get bigFactorWeightTotal(): number {
     return this.getBigFactorWeightTotal(this.draftEvaluation);
+  }
+
+  get canDownloadModelExcelTemplate(): boolean {
+    const evaluation = this.draftEvaluation;
+    if (
+      !evaluation ||
+      evaluation.bigFactors.length === 0 ||
+      !this.isWeightTotalComplete(this.getBigFactorWeightTotal(evaluation))
+    ) {
+      return false;
+    }
+
+    const evaluablePositions = evaluation.participants.positions.filter(
+      (position) => !this.isPositionEvaluatorOnly(position, evaluation)
+    );
+
+    return evaluablePositions.length > 0 && evaluablePositions.every((position) => {
+      const activeScenarios = this.getActivePositionScenarios(position, evaluation);
+      return activeScenarios.length > 0 &&
+        this.isWeightTotalComplete(this.getPositionScenarioWeightTotal(position, evaluation));
+    });
+  }
+
+  get modelExcelTemplateDownloadTooltip(): string {
+    return this.t(
+      this.canDownloadModelExcelTemplate
+        ? 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE_READY'
+        : 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE_REQUIREMENTS'
+    );
   }
 
   get scenarioWeightTotal(): number {
@@ -1628,58 +1663,159 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
   }
 
-  downloadModelExcelTemplate(): void {
-    if (!this.draftEvaluation) {
+  async downloadModelExcelTemplate(): Promise<void> {
+    if (
+      !this.draftEvaluation ||
+      !this.canDownloadModelExcelTemplate ||
+      this.isGeneratingModelExcel
+    ) {
       return;
     }
 
-    const workbook = XLSX.utils.book_new();
-    const scenarioDefinition = this.getScenarioDefinitions(this.draftEvaluation.modelType)[0];
-    const scenarioKey = scenarioDefinition?.key ?? 'BOSS_TO_EMPLOYEE';
-    const scenarioName = this.getQuestionScenarioLabel(scenarioKey);
-    const scale = this.getScaleById(this.draftEvaluation.scaleId) ?? this.getDefaultScale();
-    const scaleName = scale ? this.getScaleLabel(scale.id) : 'Predeterminada';
-    const scaleOptions = scale?.levels.map((level) => this.getScaleLevelLabel(level)) ?? [];
-    const position = this.getModelExcelTemplatePosition();
-    const headers = Object.values(DES_EVALUATION_EXCEL_HEADERS);
-    const rows = this.buildModelExcelTemplateRows(
-      position,
-      scenarioName,
-      scaleName,
-      scaleOptions
-    );
-    const instructions = [
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TITLE')],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SHEET')],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_POSITION')],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TYPES')],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_WEIGHTS')],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ATOMIC')],
-      [],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCENARIOS')],
-      ...this.getScenarioDefinitions(this.draftEvaluation.modelType).map((scenario) => [
-        `${scenario.key}: ${this.getQuestionScenarioLabel(scenario.key)}`,
-      ]),
-      [],
-      [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCALES')],
-      ...this.scaleOptions.map((item) => [`${item.code ?? item.id}: ${this.getScaleLabel(item.id)}`]),
-    ];
-    const readmeSheet = XLSX.utils.aoa_to_sheet(instructions);
-    readmeSheet['!cols'] = [{ wch: 110 }];
-    XLSX.utils.book_append_sheet(workbook, readmeSheet, 'LEEME');
+    this.isGeneratingModelExcel = true;
+    this.ensurePositionScenarioConfigs(this.draftEvaluation);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Just-Link360';
+      workbook.created = new Date();
+      const scale = this.getScaleById(this.draftEvaluation.scaleId) ?? this.getDefaultScale();
+      const scaleName = scale ? this.getScaleLabel(scale.id) : 'Predeterminada';
+      const scaleOptions = scale?.levels.map((level) => this.getScaleLevelLabel(level)) ?? [];
+      const templatePositions = this.draftEvaluation.participants.positions.filter(
+        (position) => !this.isPositionEvaluatorOnly(position, this.draftEvaluation)
+      );
+      const headers = DES_EVALUATION_EXCEL_TEMPLATE_HEADERS;
+      const instructions = [
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TITLE')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SHEET')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_POSITION')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_CODES')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TYPES')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_WEIGHTS')],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ATOMIC')],
+        [],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCENARIOS')],
+        ...templatePositions.flatMap((position) =>
+          this.getActivePositionScenarios(position, this.draftEvaluation).map((scenario) => [
+            `${position}: ${scenario.name} (${Number(scenario.weight) || 0}%)`,
+          ])
+        ),
+        [],
+        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCALES')],
+        ...this.scaleOptions.map((item) => [
+          `${item.code ?? item.id}: ${this.getScaleLabel(item.id)}`,
+        ]),
+      ];
+      const readmeSheet = workbook.addWorksheet('LEEME');
+      readmeSheet.getColumn(1).width = 110;
+      instructions.forEach((instruction) => readmeSheet.addRow(instruction));
+      readmeSheet.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF243447' } };
+      readmeSheet.eachRow((row) => {
+        row.alignment = { vertical: 'top', wrapText: true };
+      });
 
-    const dataSheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-    dataSheet['!cols'] = headers.map((header) => ({
-      wch: Math.min(54, Math.max(18, header.length + 2)),
-    }));
-    dataSheet['!autofilter'] = { ref: dataSheet['!ref'] ?? `A1:P${rows.length + 1}` };
-    XLSX.utils.book_append_sheet(
-      workbook,
-      dataSheet,
-      this.getModelExcelWorksheetName(position)
-    );
+      const usedSheetNames = new Set<string>([
+        'LEEME',
+        'README',
+        'INSTRUCCIONES',
+        'CATALOGOS',
+        '_CONFIG',
+      ]);
+      const positionMappings: Array<{ sheetName: string; position: string }> = [];
+      templatePositions.forEach((position) => {
+        const rows = this.buildModelExcelTemplateRows(position, scaleName, scaleOptions);
+        const sheetName = this.getModelExcelWorksheetName(position, usedSheetNames);
+        const worksheet = workbook.addWorksheet(sheetName, {
+          views: [{ state: 'frozen', ySplit: 1 }],
+        });
+        worksheet.columns = headers.map((header) => ({
+          width: Math.min(54, Math.max(18, header.length + 2)),
+        }));
+        const headerRow = worksheet.addRow(headers);
+        headerRow.height = 28;
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF455568' },
+        };
+        headerRow.alignment = { vertical: 'middle', wrapText: true };
 
-    XLSX.writeFile(workbook, 'Plantilla_Evaluacion_Desempeno.xlsx');
+        let criterionGroupIndex = -1;
+        let previousCriterionKey = '';
+        rows.forEach((data, rowIndex) => {
+          const criterionKey = [
+            data[DES_EVALUATION_EXCEL_HEADERS.scenario],
+            data[DES_EVALUATION_EXCEL_HEADERS.dimensionName],
+            data[DES_EVALUATION_EXCEL_HEADERS.criterionName],
+          ].join('|');
+          const nextData = rows[rowIndex + 1];
+          const nextCriterionKey = nextData
+            ? [
+                nextData[DES_EVALUATION_EXCEL_HEADERS.scenario],
+                nextData[DES_EVALUATION_EXCEL_HEADERS.dimensionName],
+                nextData[DES_EVALUATION_EXCEL_HEADERS.criterionName],
+              ].join('|')
+            : '';
+          const startsCriterion = criterionKey !== previousCriterionKey;
+          const endsCriterion = criterionKey !== nextCriterionKey;
+          if (startsCriterion) {
+            criterionGroupIndex++;
+          }
+
+          const excelRow = worksheet.addRow(headers.map((header) => data[header] ?? ''));
+          excelRow.height = 34;
+          excelRow.alignment = { vertical: 'top', wrapText: true };
+          excelRow.eachCell({ includeEmpty: true }, (cell) => {
+            if (criterionGroupIndex % 2 === 0) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF3F4F6' },
+              };
+            }
+            cell.border = {
+              top: startsCriterion
+                ? { style: 'thin', color: { argb: 'FFB8C0CA' } }
+                : undefined,
+              bottom: endsCriterion
+                ? { style: 'thin', color: { argb: 'FFB8C0CA' } }
+                : undefined,
+            };
+          });
+          previousCriterionKey = criterionKey;
+        });
+        worksheet.autoFilter = {
+          from: { row: 1, column: 1 },
+          to: { row: 1, column: headers.length },
+        };
+        positionMappings.push({ sheetName, position });
+      });
+
+      const configSheet = workbook.addWorksheet('_CONFIG', { state: 'veryHidden' });
+      configSheet.columns = [{ width: 34 }, { width: 70 }];
+      configSheet.addRow(['Hoja', 'Puesto']);
+      positionMappings.forEach((mapping) => {
+        configSheet.addRow([mapping.sheetName, mapping.position]);
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(
+        new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        'Plantilla_Evaluacion_Desempeno.xlsx'
+      );
+    } catch (error) {
+      console.error('Error al generar la plantilla de desempeño:', error);
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.ERROR_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.UNEXPECTED_ERROR'),
+        'error'
+      );
+    } finally {
+      this.isGeneratingModelExcel = false;
+    }
   }
 
   async onModelExcelSelected(event: Event): Promise<void> {
@@ -1726,12 +1862,6 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       }
 
       this.draftEvaluation = candidate;
-      const skipped =
-        mergeResult.stats.positionsSkipped +
-        mergeResult.stats.scenariosSkipped +
-        mergeResult.stats.dimensionsSkipped +
-        mergeResult.stats.criteriaSkipped +
-        mergeResult.stats.itemsSkipped;
       this.modelExcelImportSummary = {
         positions: imported.positions.length,
         scenarios: applicableImport.scenarioCount,
@@ -1739,7 +1869,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         dimensions: mergeResult.stats.dimensionsAdded,
         criteria: mergeResult.stats.criteriaAdded,
         items: mergeResult.stats.itemsAdded,
-        skipped,
+        existingDimensions: mergeResult.stats.dimensionsSkipped,
+        existingCriteria: mergeResult.stats.criteriaSkipped,
+        existingItems: mergeResult.stats.itemsSkipped,
         fileName: file.name,
       };
       this.activeEditorTabIndex = 1;
@@ -1753,7 +1885,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
           dimensions: mergeResult.stats.dimensionsAdded,
           criteria: mergeResult.stats.criteriaAdded,
           items: mergeResult.stats.itemsAdded,
-          skipped,
+          existingDimensions: mergeResult.stats.dimensionsSkipped,
+          existingCriteria: mergeResult.stats.criteriaSkipped,
+          existingItems: mergeResult.stats.itemsSkipped,
         }
       );
 
@@ -1835,9 +1969,31 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
           itemsPerCriterion: this.demoLimitsService.getLimit('maxPerformanceItemsPerCriterion'),
         }
       : undefined;
+    const configuredPositions = this.draftEvaluation?.participants.positions ?? [];
 
     return {
-      positions: this.getExcelImportPositionNames(),
+      positions: configuredPositions.length > 0
+        ? [...configuredPositions]
+        : this.getExcelImportPositionNames(),
+      dimensions: this.draftEvaluation?.bigFactors.map((dimension) => ({
+        name: dimension.name,
+        weight: Number(dimension.weight) || 0,
+      })),
+      positionScenarios: this.draftEvaluation
+        ? configuredPositions
+            .filter((position) => !this.isPositionEvaluatorOnly(position, this.draftEvaluation))
+            .map((position) => ({
+              position,
+              scenarios: this.getActivePositionScenarios(position, this.draftEvaluation)
+                .filter((scenario): scenario is DesEvaluationScenario & {
+                  key: DesEvaluationScenarioKey;
+                } => !!scenario.key)
+                .map((scenario) => ({
+                  key: scenario.key,
+                  weight: Number(scenario.weight) || 0,
+                })),
+            }))
+        : undefined,
       scenarios: Array.from(allowedScenarioKeys).map((key) => {
         const catalog = this.scenarioCatalogOptions.find(
           (scenario) => this.toScenarioKey(scenario.code) === key
@@ -1927,14 +2083,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
     imported.rows.forEach((row) => {
       const importedItemType = this.toFrontendItemTypeCode(row.itemType);
-      const dimensionKey = this.getExcelEntityKey(row.dimensionCode, row.dimensionName);
+      const dimensionKey = this.normalizeSearchText(row.dimensionName);
       let dimension = dimensions.get(dimensionKey);
       if (!dimension) {
         dimension = this.findExcelDimension(candidate, row);
         if (!dimension) {
           dimension = {
             id: this.generateId(),
-            code: row.dimensionCode ?? undefined,
+            code: row.dimensionCode ?? this.buildEntityCode('DIM', row.dimensionName),
             name: row.dimensionName,
             description: row.dimensionDescription,
             weight: row.dimensionWeight,
@@ -1953,7 +2109,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         this.normalizeSearchText(row.position),
         row.scenarioKey,
         dimensionKey,
-        this.getExcelEntityKey(row.criterionCode, row.criterionName),
+        this.normalizeSearchText(row.criterionName),
       ].join('|');
       let criterion = criteria.get(criterionKey);
       if (!criterion) {
@@ -1961,7 +2117,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         if (!criterion) {
           criterion = {
             id: this.generateId(),
-            code: row.criterionCode ?? undefined,
+            code: row.criterionCode ?? this.buildEntityCode('CRI', row.criterionName),
             name: row.criterionName,
             description: row.criterionDescription,
             weight: row.criterionWeight,
@@ -1988,7 +2144,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
       criterion.questions.push({
         id: this.generateId(),
-        code: row.itemCode ?? undefined,
+        code: row.itemCode ?? this.buildEntityCode('ITE', row.itemText),
         label: row.itemText,
         type: importedItemType,
         required: true,
@@ -2068,10 +2224,6 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     });
 
     return { evaluation: candidate, stats };
-  }
-
-  private getExcelEntityKey(code: string | null, name: string): string {
-    return this.normalizeSearchText(code || name);
   }
 
   private excelEntityMatches(
@@ -2291,86 +2443,58 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   private buildModelExcelTemplateRows(
     position: string,
-    scenario: string,
     scale: string,
     scaleOptions: string[]
   ): Array<Record<string, string | number>> {
-    const definitions = [
-      {
-        dimensionCode: 'OBJETIVOS',
-        dimensionName: 'Objetivos',
-        dimensionDescription: 'Cumplimiento de metas y entregables acordados.',
-        dimensionWeight: 45,
-        criterionCode: 'CUMPLIMIENTO_ENTREGAS',
-        criterionName: 'Cumplimiento y tiempos de entrega',
-        criterionDescription: 'Evalúa oportunidad, calidad y cumplimiento de compromisos.',
-        items: [
-          ['OBJ_ENTREGA_TIEMPO', 'Entrega su trabajo a tiempo o antes de lo planificado', 'Likert de 5 niveles'],
-          ['OBJ_MEJORA', '¿Qué podría mejorar para alcanzar sus objetivos?', 'Pregunta abierta'],
-        ],
-      },
-      {
-        dimensionCode: 'COMPETENCIAS',
-        dimensionName: 'Competencias',
-        dimensionDescription: 'Habilidades observables para desempeñar el puesto.',
-        dimensionWeight: 35,
-        criterionCode: 'COMUNICACION_COLABORACION',
-        criterionName: 'Comunicación y colaboración',
-        criterionDescription: 'Evalúa comunicación efectiva y trabajo con otras personas.',
-        items: [
-          ['COM_COMUNICA_CLARO', 'Comunica sus ideas de forma clara y oportuna', 'Likert de 5 niveles'],
-          ['COM_APOYA_EQUIPO', 'Colabora activamente con su equipo para resolver problemas', 'Likert de 5 niveles'],
-        ],
-      },
-      {
-        dimensionCode: 'VALORES',
-        dimensionName: 'Valores',
-        dimensionDescription: 'Conductas alineadas con los valores de la organización.',
-        dimensionWeight: 20,
-        criterionCode: 'INTEGRIDAD_RESPONSABILIDAD',
-        criterionName: 'Integridad y responsabilidad',
-        criterionDescription: 'Evalúa conducta ética y responsabilidad sobre los resultados.',
-        items: [
-          ['VAL_ASUME_RESPONSABILIDAD', 'Asume responsabilidad por sus decisiones y resultados', 'Likert de 5 niveles'],
-          ['VAL_CONDUCTA', 'Describa una conducta destacable observada', 'Pregunta abierta'],
-        ],
-      },
-    ];
+    if (!this.draftEvaluation) {
+      return [];
+    }
 
-    return definitions.flatMap((definition) =>
-      definition.items.map(([itemCode, itemText, itemType]) => ({
-        [DES_EVALUATION_EXCEL_HEADERS.position]: position,
-        [DES_EVALUATION_EXCEL_HEADERS.scenario]: scenario,
-        [DES_EVALUATION_EXCEL_HEADERS.scenarioWeight]: 100,
-        [DES_EVALUATION_EXCEL_HEADERS.dimensionCode]: definition.dimensionCode,
-        [DES_EVALUATION_EXCEL_HEADERS.dimensionName]: definition.dimensionName,
-        [DES_EVALUATION_EXCEL_HEADERS.dimensionDescription]: definition.dimensionDescription,
-        [DES_EVALUATION_EXCEL_HEADERS.dimensionWeight]: definition.dimensionWeight,
-        [DES_EVALUATION_EXCEL_HEADERS.criterionCode]: definition.criterionCode,
-        [DES_EVALUATION_EXCEL_HEADERS.criterionName]: definition.criterionName,
-        [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: definition.criterionDescription,
-        [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
-        [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 80,
-        [DES_EVALUATION_EXCEL_HEADERS.itemCode]: itemCode,
-        [DES_EVALUATION_EXCEL_HEADERS.itemText]: itemText,
-        [DES_EVALUATION_EXCEL_HEADERS.itemType]: itemType,
-        [DES_EVALUATION_EXCEL_HEADERS.scale]: itemType === 'Likert de 5 niveles' ? scale : '',
-        [DES_EVALUATION_EXCEL_HEADERS.options]: itemType === 'Likert de 5 niveles'
-          ? scaleOptions.join(' | ')
-          : '',
-      }))
+    return this.getActivePositionScenarios(position, this.draftEvaluation).flatMap((scenario) =>
+      this.draftEvaluation!.bigFactors.flatMap((dimension) => {
+        const criterionName = this.t(
+          'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_CRITERION',
+          { dimension: dimension.name }
+        );
+        const baseRow: Record<string, string | number> = {
+          [DES_EVALUATION_EXCEL_HEADERS.scenario]: scenario.name,
+          [DES_EVALUATION_EXCEL_HEADERS.scenarioWeight]: Number(scenario.weight) || 0,
+          [DES_EVALUATION_EXCEL_HEADERS.dimensionName]: dimension.name,
+          [DES_EVALUATION_EXCEL_HEADERS.dimensionDescription]: dimension.description,
+          [DES_EVALUATION_EXCEL_HEADERS.dimensionWeight]: Number(dimension.weight) || 0,
+          [DES_EVALUATION_EXCEL_HEADERS.criterionName]: criterionName,
+          [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: this.t(
+            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_CRITERION_DESCRIPTION',
+            { dimension: dimension.name }
+          ),
+          [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
+          [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 80,
+        };
+
+        return [
+          {
+            ...baseRow,
+            [DES_EVALUATION_EXCEL_HEADERS.itemText]: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_LIKERT_ITEM',
+              { dimension: dimension.name }
+            ),
+            [DES_EVALUATION_EXCEL_HEADERS.itemType]: 'Likert de 5 niveles',
+            [DES_EVALUATION_EXCEL_HEADERS.scale]: scale,
+            [DES_EVALUATION_EXCEL_HEADERS.options]: scaleOptions.join(' | '),
+          },
+          {
+            ...baseRow,
+            [DES_EVALUATION_EXCEL_HEADERS.itemText]: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_OPEN_ITEM',
+              { dimension: dimension.name }
+            ),
+            [DES_EVALUATION_EXCEL_HEADERS.itemType]: 'Pregunta abierta',
+            [DES_EVALUATION_EXCEL_HEADERS.scale]: '',
+            [DES_EVALUATION_EXCEL_HEADERS.options]: '',
+          },
+        ];
+      })
     );
-  }
-
-  private getModelExcelTemplatePosition(): string {
-    const selectedPositions = this.draftEvaluation?.participants.positions ?? [];
-    const candidates = [
-      ...selectedPositions,
-      ...this.positionOptions.filter((position) => position.active).map((position) => position.name),
-    ];
-    const validPosition = candidates.find((position) => !!position);
-
-    return validPosition ?? 'NOMBRE_PUESTO_EXISTENTE';
   }
 
   private getExcelImportPositionNames(): string[] {
@@ -2396,13 +2520,22 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return Array.from(unique.values());
   }
 
-  private getModelExcelWorksheetName(position: string): string {
-    const sanitized = position
+  private getModelExcelWorksheetName(position: string, usedNames: Set<string>): string {
+    const baseName = position
       .replace(/[\\/?*\[\]:]/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim();
+      .trim() || 'PUESTO';
+    let sheetName = baseName.slice(0, 31);
+    let suffixNumber = 2;
 
-    return (sanitized || 'PUESTO').slice(0, 31);
+    while (usedNames.has(this.normalizeSearchText(sheetName))) {
+      const suffix = ` (${suffixNumber++})`;
+      sheetName = `${baseName.slice(0, 31 - suffix.length)}${suffix}`;
+    }
+
+    usedNames.add(this.normalizeSearchText(sheetName));
+
+    return sheetName;
   }
 
   private async showModelExcelErrors(errors: string[]): Promise<void> {

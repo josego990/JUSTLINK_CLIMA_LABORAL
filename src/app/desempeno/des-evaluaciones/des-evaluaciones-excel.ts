@@ -18,6 +18,17 @@ export interface DesEvaluationExcelScale {
 
 export interface DesEvaluationExcelContext {
   positions: string[];
+  dimensions?: Array<{
+    name: string;
+    weight: number;
+  }>;
+  positionScenarios?: Array<{
+    position: string;
+    scenarios: Array<{
+      key: DesEvaluationExcelScenarioKey;
+      weight: number;
+    }>;
+  }>;
   scenarios: Array<{
     key: DesEvaluationExcelScenarioKey;
     names: string[];
@@ -108,6 +119,55 @@ export const DES_EVALUATION_EXCEL_HEADERS: Record<ExcelColumnKey, string> = {
   scale: 'Escala',
   options: 'Opciones Likert (separadas por |)',
 };
+
+const TEMPLATE_COLUMN_KEYS: ExcelColumnKey[] = [
+  'scenario',
+  'scenarioWeight',
+  'dimensionName',
+  'dimensionDescription',
+  'dimensionWeight',
+  'criterionName',
+  'criterionDescription',
+  'criterionWeight',
+  'requiredRatingLevel',
+  'itemText',
+  'itemType',
+  'scale',
+  'options',
+];
+
+export const DES_EVALUATION_EXCEL_TEMPLATE_HEADERS = TEMPLATE_COLUMN_KEYS.map(
+  (key) => DES_EVALUATION_EXCEL_HEADERS[key]
+);
+
+const POSITION_MAP_SHEET = '_CONFIG';
+const POSITION_MAP_SHEET_HEADER = 'Hoja';
+const POSITION_MAP_POSITION_HEADER = 'Puesto';
+
+export function appendDesEvaluationPositionMapSheet(
+  workbook: XLSX.WorkBook,
+  mappings: Array<{ sheetName: string; position: string }>
+): void {
+  const worksheet = XLSX.utils.json_to_sheet(
+    mappings.map((mapping) => ({
+      [POSITION_MAP_SHEET_HEADER]: mapping.sheetName,
+      [POSITION_MAP_POSITION_HEADER]: mapping.position,
+    }))
+  );
+  worksheet['!cols'] = [{ wch: 34 }, { wch: 70 }];
+  XLSX.utils.book_append_sheet(workbook, worksheet, POSITION_MAP_SHEET);
+
+  const workbookMetadata = (workbook as any).Workbook ?? {};
+  const currentSheetMetadata = Array.isArray(workbookMetadata.Sheets)
+    ? workbookMetadata.Sheets
+    : [];
+  workbookMetadata.Sheets = workbook.SheetNames.map((name, index) => ({
+    ...(currentSheetMetadata[index] ?? {}),
+    name,
+    Hidden: name === POSITION_MAP_SHEET ? 2 : 0,
+  }));
+  (workbook as any).Workbook = workbookMetadata;
+}
 
 const COLUMN_ALIASES: Record<ExcelColumnKey, string[]> = {
   position: ['puesto', 'nombre puesto', 'position', 'position name'],
@@ -268,6 +328,16 @@ export function parseDesEvaluationExcelWorkbook(
   const scenariosByName = new Map<string, DesEvaluationExcelScenarioKey>();
   const scalesByName = new Map<string, DesEvaluationExcelScale>();
   const sheetsByPosition = new Map<string, string>();
+  const positionBySheetName = getPositionBySheetName(workbook);
+  const configuredDimensionsByName = new Map(
+    (context.dimensions ?? []).map((dimension) => [normalize(dimension.name), dimension])
+  );
+  const configuredScenariosByPosition = new Map(
+    (context.positionScenarios ?? []).map((positionConfig) => [
+      normalize(positionConfig.position),
+      new Map(positionConfig.scenarios.map((scenario) => [scenario.key, scenario])),
+    ])
+  );
 
   context.scenarios.forEach((scenario) => {
     scenariosByName.set(normalize(scenario.key), scenario.key);
@@ -341,7 +411,7 @@ export function parseDesEvaluationExcelWorkbook(
 
     const positionValue = positionHeader
       ? declaredPositions.find((value) => !!value) ?? ''
-      : sheetName;
+      : positionBySheetName.get(normalize(sheetName)) ?? sheetName;
     if (!positionValue) {
       return;
     }
@@ -399,6 +469,29 @@ export function parseDesEvaluationExcelWorkbook(
       const dimensionWeight = parseWeight(get('dimensionWeight'));
       const criterionWeight = parseWeight(get('criterionWeight'));
       const requiredRatingLevel = parseWeight(get('requiredRatingLevel'));
+      const dimensionName = text(get('dimensionName'));
+      const configuredDimension = configuredDimensionsByName.get(normalize(dimensionName));
+      const configuredPositionScenarios = configuredScenariosByPosition.get(positionKey);
+      const configuredScenario = scenarioKey
+        ? configuredPositionScenarios?.get(scenarioKey)
+        : null;
+
+      if (context.positionScenarios && scenarioKey && !configuredScenario) {
+        rowErrors.push(t('SCENARIO_NOT_CONFIGURED', {
+          sheet: sheetName,
+          row: rowNumber,
+          scenario: scenarioValue,
+          position,
+        }));
+      }
+
+      if (context.dimensions && dimensionName && !configuredDimension) {
+        rowErrors.push(t('DIMENSION_NOT_CONFIGURED', {
+          sheet: sheetName,
+          row: rowNumber,
+          dimension: dimensionName,
+        }));
+      }
 
       ([
         ['scenarioWeight', scenarioWeight],
@@ -413,6 +506,32 @@ export function parseDesEvaluationExcelWorkbook(
           }));
         }
       });
+
+      if (
+        configuredScenario &&
+        scenarioWeight !== null &&
+        !valuesMatch(scenarioWeight, configuredScenario.weight)
+      ) {
+        rowErrors.push(t('CONFIGURED_WEIGHT_CHANGED', {
+          sheet: sheetName,
+          row: rowNumber,
+          field: DES_EVALUATION_EXCEL_HEADERS.scenarioWeight,
+          expected: configuredScenario.weight,
+        }));
+      }
+
+      if (
+        configuredDimension &&
+        dimensionWeight !== null &&
+        !valuesMatch(dimensionWeight, configuredDimension.weight)
+      ) {
+        rowErrors.push(t('CONFIGURED_WEIGHT_CHANGED', {
+          sheet: sheetName,
+          row: rowNumber,
+          field: DES_EVALUATION_EXCEL_HEADERS.dimensionWeight,
+          expected: configuredDimension.weight,
+        }));
+      }
 
       if (
         requiredRatingLevel === null ||
@@ -516,7 +635,7 @@ export function parseDesEvaluationExcelWorkbook(
         scenarioKey: scenarioKey!,
         scenarioWeight: scenarioWeight!,
         dimensionCode,
-        dimensionName: text(get('dimensionName')),
+        dimensionName,
         dimensionDescription: text(get('dimensionDescription')),
         dimensionWeight: dimensionWeight!,
         criterionCode,
@@ -554,6 +673,27 @@ export function parseDesEvaluationExcelWorkbook(
     criterionCount: criteria.size,
     itemCount: rows.length,
   };
+}
+
+function getPositionBySheetName(workbook: XLSX.WorkBook): Map<string, string> {
+  const worksheet = workbook.Sheets[POSITION_MAP_SHEET];
+  if (!worksheet) {
+    return new Map<string, string>();
+  }
+
+  const mappings = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+    defval: '',
+    raw: false,
+  });
+
+  return new Map(
+    mappings
+      .map((mapping) => [
+        normalize(mapping[POSITION_MAP_SHEET_HEADER]),
+        text(mapping[POSITION_MAP_POSITION_HEADER]),
+      ] as const)
+      .filter(([sheetName, position]) => !!sheetName && !!position)
+  );
 }
 
 function criterionGroupKey(row: DesEvaluationExcelRow): string {

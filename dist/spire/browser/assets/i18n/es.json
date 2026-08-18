@@ -37,6 +37,10 @@
       "TEXT": "Dashboard Desempeño"
     },
 
+     "ACTIONDESEMPENIO": {
+      "TEXT": "Planes de Acción y Seguimiento"
+    },
+
       "DESEMPENIO": {
       "TEXT": "DESEMPEÑO",
       "ORGANIGRAMA": "Organigrama",
@@ -468,6 +472,9 @@
 
         "DESDASHBOARD": "Visualizar módulo de Dashboard para Desempeño",
         "DESDASHBOARDDESC": "Permite la visualización del módulo de Dashboard para evaluaciones de desempeño",
+
+        "ACTIONPLAINS": "Visualizar módulo de Planes de acción para Desempeño",
+        "ACTIONPLAINSDESC": "Permite la visualización del módulo de Planes de acción para evaluaciones de desempeño",
 
         "DESORGANIGRAMA": "Visualizar el organigrama",
         "DESORGANIGRAMADESC": "Permite la visualización del organigrama para evaluaciones de desempeño",
@@ -1037,8 +1044,10 @@
       "SAVE_EVALUATION": "Guardar evaluación",
       "EXCEL_IMPORT": {
         "TITLE": "Importación Excel",
-        "SUBTITLE": "Participantes y modelo por puesto",
+        "SUBTITLE": "Criterios e ítems desde la estructura configurada",
         "DOWNLOAD_TEMPLATE": "Descargar plantilla",
+        "DOWNLOAD_TEMPLATE_READY": "La estructura está completa. Puedes descargar la plantilla dinámica.",
+        "DOWNLOAD_TEMPLATE_REQUIREMENTS": "Completa las dimensiones al 100% y define puestos con escenarios ponderados al 100% para habilitar la descarga.",
         "UPLOAD": "Cargar Excel",
         "POSITIONS": "puestos",
         "DIMENSIONS": "dimensiones",
@@ -1047,21 +1056,28 @@
         "NEW_DIMENSIONS": "dimensiones nuevas",
         "NEW_CRITERIA": "criterios nuevos",
         "NEW_ITEMS": "ítems nuevos",
-        "EXISTING_SKIPPED": "existentes omitidos",
+        "EXISTING_DIMENSIONS": "dimensiones existentes reutilizadas",
+        "EXISTING_CRITERIA": "criterios existentes reutilizados",
+        "EXISTING_ITEMS": "ítems repetidos no duplicados",
         "OMITTED_SCENARIOS": "escenarios no aplicables omitidos",
         "SUCCESS_TITLE": "Excel procesado correctamente",
         "SUCCESS_WITH_WARNINGS_TITLE": "Excel procesado con advertencias",
-        "SUCCESS_TEXT": "Se procesaron {{positions}} puestos y se agregaron {{dimensions}} dimensiones, {{criteria}} criterios y {{items}} ítems nuevos. Se omitieron {{skipped}} valores que ya existían para el mismo puesto y escenario. Los cambios se guardarán en la base únicamente al guardar la evaluación.",
+        "SUCCESS_TEXT": "Se procesaron {{positions}} puestos y se agregaron {{dimensions}} dimensiones, {{criteria}} criterios y {{items}} ítems nuevos. Se reutilizaron {{existingDimensions}} dimensiones y {{existingCriteria}} criterios existentes; {{existingItems}} ítems repetidos no se duplicaron. Cada valor nuevo se incorporó únicamente en el puesto y escenario indicado. Los cambios se guardarán en la base únicamente al guardar la evaluación.",
         "OMITTED_SCENARIOS_WARNING": "Los siguientes escenarios no aplican según la estructura actual de empleados y no fueron incorporados. Los demás datos se cargaron normalmente:",
         "WEIGHTS_RECALCULATED": "Las ponderaciones de los escenarios aplicables se ajustaron proporcionalmente para conservar un total de 100% por puesto.",
         "ERROR_TITLE": "No se pudo cargar el Excel",
         "UNEXPECTED_ERROR": "Ocurrió un error inesperado al leer el archivo.",
         "README_TITLE": "PLANTILLA DE EVALUACIÓN DE DESEMPEÑO",
-        "README_SHEET": "Cada hoja de datos representa un puesto. La columna Puesto debe contener el nombre exacto de un puesto existente en la organización.",
-        "README_POSITION": "Duplica la hoja de ejemplo para agregar puestos. El nombre de la pestaña puede abreviarse, pero no cambies los encabezados ni el valor completo de Puesto.",
+        "README_SHEET": "Cada hoja de datos corresponde a uno de los puestos definidos previamente en el modelo. No renombres, agregues ni elimines hojas de puestos.",
+        "README_POSITION": "El puesto se identifica automáticamente mediante el nombre de la hoja; por eso la plantilla no incluye una columna Puesto.",
+        "README_CODES": "Los códigos de dimensión, criterio e ítem se generan automáticamente durante la carga y no deben incluirse en el archivo.",
         "README_TYPES": "Tipos admitidos: Likert de 5 niveles y Pregunta abierta.",
-        "README_WEIGHTS": "Las dimensiones, los escenarios de cada puesto y los criterios de cada dimensión deben sumar 100%.",
+        "README_WEIGHTS": "Las dimensiones y los escenarios ya incluyen las ponderaciones configuradas. Si agregas criterios, sus ponderaciones deben sumar 100% dentro de cada dimensión.",
         "README_ATOMIC": "La carga se valida completa y se combina con el borrador. Los valores existentes por puesto y escenario se omiten para evitar duplicados; nada se guarda en la base hasta pulsar Guardar evaluación.",
+        "EXAMPLE_CRITERION": "Criterio de ejemplo - {{dimension}}",
+        "EXAMPLE_CRITERION_DESCRIPTION": "Describe el comportamiento o resultado que se evaluará en la dimensión {{dimension}}.",
+        "EXAMPLE_LIKERT_ITEM": "Evalúe el desempeño observado en {{dimension}}.",
+        "EXAMPLE_OPEN_ITEM": "Describa fortalezas u oportunidades de mejora relacionadas con {{dimension}}.",
         "AVAILABLE_SCENARIOS": "ESCENARIOS DISPONIBLES PARA EL TIPO DE MODELO",
         "AVAILABLE_SCALES": "ESCALAS DISPONIBLES"
       },
@@ -1075,6 +1091,9 @@
         "MISSING_COLUMNS": "Hoja \"{{sheet}}\": faltan las columnas obligatorias {{columns}}.",
         "REQUIRED_VALUE": "Hoja \"{{sheet}}\", fila {{row}}: el campo {{field}} es obligatorio.",
         "INVALID_SCENARIO": "Hoja \"{{sheet}}\", fila {{row}}: el escenario \"{{value}}\" no existe o no corresponde al tipo de modelo.",
+        "SCENARIO_NOT_CONFIGURED": "Hoja \"{{sheet}}\", fila {{row}}: el escenario \"{{scenario}}\" no está configurado para el puesto \"{{position}}\".",
+        "DIMENSION_NOT_CONFIGURED": "Hoja \"{{sheet}}\", fila {{row}}: la dimensión \"{{dimension}}\" no pertenece a la estructura configurada del modelo.",
+        "CONFIGURED_WEIGHT_CHANGED": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} debe conservar el valor configurado de {{expected}}%.",
         "INVALID_WEIGHT": "Hoja \"{{sheet}}\", fila {{row}}: {{field}} debe ser un número entre 0 y 100.",
         "INVALID_REQUIRED_LEVEL": "Hoja \"{{sheet}}\", fila {{row}}: el nivel de exigencia debe ser un porcentaje entero entre 1 y 100.",
         "INVALID_ITEM_TYPE": "Hoja \"{{sheet}}\", fila {{row}}: el tipo \"{{value}}\" no está permitido. Utiliza Likert de 5 niveles o Pregunta abierta.",

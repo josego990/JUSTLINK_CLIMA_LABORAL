@@ -16,15 +16,15 @@ select * from dbo.RoleMenuAction
 --update dbo.Menu set Icon = 'award' where MenuId = 33
 
 --INSERT INTO [dbo].[Menu] ([ParentMenuId], [Name], [DisplayOrder], [IsActive], [CreatedAt], [Path], [Title], [IconType], [Icon], [Class], [IsGroupTitle], [Badge], [BadgeClass]) 
---VALUES (NULL, N'MENUITEMS.MAINDESEMPENIO.TEXT', 1, 1, GETDATE(), N'', N'MENUITEMS.MAINDESEMPENIO.TEXT', N'', N'', N'', 1, N'', N'');
+  --                VALUES (31, N'MENUITEMS.ACTIONDESEMPENIO.TEXT', 2, 1, GETDATE(), N'/desempeno/planes-seguimiento', N'MENUITEMS.ACTIONDESEMPENIO.TEXT', N'', N'', N'', 0, N'', N'');
 
 --INSERT INTO [dbo].[menuaction] ([MenuId], [Code], [Name], [Description], [IsActive], [CreatedAt], [Path], [Title], [IconType], [Icon], [Class], [IsGroupTitle], [Badge], [BadgeClass]) 
---VALUES (32, N'viewdesdash', N'MENUITEMS.SECURE.ACCESSDATA.DESDASHBOARD', N'MENUITEMS.SECURE.ACCESSDATA.DESDASHBOARD', 1, GETDATE(), NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL);
+  --          VALUES (37, N'viewdesactionsplans', N'MENUITEMS.SECURE.ACCESSDATA.ACTIONPLAINS', N'MENUITEMS.SECURE.ACCESSDATA.ACTIONPLAINSDESC', 1, GETDATE(), NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL);
 
 
 
 
---INSERT INTO [dbo].[RoleMenuAction] ([RoleId], [ActionId], [Granted], [AssignedAt]) VALUES (1, 34, 1, getdate());
+--INSERT INTO [dbo].[RoleMenuAction] ([RoleId], [ActionId], [Granted], [AssignedAt]) VALUES (1, 38, 1, getdate());
 
 SELECT * FROM PagaditoWebhookEvent order by 1 desc
 
@@ -96,42 +96,10 @@ select * from des_itemevaluativo where idcriterioevaluacion in
 select * from dbo.Menu
 
 
+--INICIA activar una empresa con asistente IA:
 
---validar asistente por organizacion
-DECLARE @IdOrganizacion INT = 40;
-
-SELECT
-    o.IdOrder,
-    o.IdOrganizacionProvisionada,
-    o.IdPlan,
-    p.CodigoPlan,
-    p.Nombre [Plan],
-    p.Activo [PlanActivo],
-    p.IncluyeIA,
-    o.Estado,
-    o.FechaInicioPlanUtc,
-    o.FechaFinPlanUtc,
-    f.CodigoFeature,
-    f.Activo AS FeatureActivo
-FROM dbo.JL_Order o
-INNER JOIN dbo.JL_Plan p
-    ON p.IdPlan = o.IdPlan
-LEFT JOIN dbo.JL_PlanFeature f
-    ON f.IdPlan = p.IdPlan
-   AND f.CodigoFeature = N'AI_ASSISTANT'
-WHERE o.IdOrganizacionProvisionada = @IdOrganizacion
-ORDER BY o.IdOrder DESC;
-
-
-select * from JL_Order
-select * from JL_Plan
-
-
-
-
---activar una empresa con asistente IA:
-
-DECLARE @IdOrganizacion INT = 40;
+/*
+DECLARE @IdOrganizacion INT = 42;
 DECLARE @Usuario NVARCHAR(150) = N'josego';
 
 UPDATE dbo.JL_OrganizacionFeature
@@ -168,67 +136,20 @@ BEGIN
         @Usuario
     );
 END;
+*/
 
+--FINALIZA activar una empresa con asistente IA:
 
 EXEC dbo.AI_sp_AsistenteFeature_Validar
-    @IdOrganizacion = 40;
+    @IdOrganizacion = 1;
 
 
+--opcional?? el de arriba funciona
 EXEC dbo.AI_sp_AsistenteOrganizacion_Autorizar
     @IdUsuario = N'1',
-    @IdOrganizacion = 40;
+    @IdOrganizacion = 1;
 
 
---select * from Respuestas where IdPregunta in (select Id from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39))))
---DELETE from Respuestas where IdPregunta in (select Id from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39))))
-
-
---select * from OpcionesPregunta where IdPregunta in (select Id from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39))))
---delete from OpcionesPregunta where IdPregunta in (select Id from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39)))) and id <> 2477
-
---select * from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39)))
---delete from preguntas where IdFactor in (select Id from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39))) and id <> 751
-
---select * from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39))
---delete from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39)) and id <> 215
-
---select * from GranFactores where Id in (select IdGranFactor from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39)))
---delete from GranFactores where Id in (select IdGranFactor from Factores where IdFlujo in (select id from flujosclima where idorganizacion in (16,38,39)))
-
---select * from flujosclima where idorganizacion in (16,38,39)
---delete from flujosclima where idorganizacion in (16,38,39)
-
-
---select * from empleadodemografico where idempleado in (select Id from empleados where idorganizacion in (16,38,39))
---delete from empleadodemografico where idempleado in (select Id from empleados where idorganizacion in (16,38,39))
-
---select * from empleados where idorganizacion in (16,38,39)
---delete from empleados where idorganizacion in (16,38,39)
-
-
---select * from RoleMenuAction where RoleId in (select RoleId from dbo.[Role] where idorganization in (16,38,39))
---delete from RoleMenuAction where RoleId in (select RoleId from dbo.[Role] where idorganization in (16,38,39))
-
---select * from dbo.[UserRole] where UserId in (select UserId from dbo.[User] where idorganization in (16,38,39))
---delete from dbo.[UserRole] where UserId in (select UserId from dbo.[User] where idorganization in (16,38,39))
-
---select * from dbo.[Role] where idorganization in (16,38,39)
---delete from dbo.[Role] where idorganization in (16,38,39)
-
-
---select * from dbo.[User] where idorganization in (16,38,39)
---delete from dbo.[User] where idorganization in (16,38,39)
-
---select * from camposdemograficos where idorganizacion in (16,38,39)
---delete from camposdemograficos where idorganizacion in (16,38,39)
-
-
---select * from des_puesto where idorganizacion in (select Id from organizaciones where id in (16,38,39))
---delete from des_puesto where idorganizacion in (select Id from organizaciones where id in (16,38,39))
-
-
---select * from organizaciones where id in (16,38,39)
---delete from organizaciones where id in (38,39)
 
 
 select * from Organizaciones
@@ -246,7 +167,164 @@ select * from dbo.[UserRole]
 SELECT * FROM  menuaction
 SELECT * FROM RoleMenuAction
 
+select * from dbo.[Menu]
+
 ------
 GO
 
 select * from dbo.AI_AsistenteMensaje
+
+
+SELECT * FROM organizaciones
+
+SELECT * FROM empleados where IdOrganizacion = 1 AND Cargo like '%ASESOR DE CRÉDITOS%'
+
+select * from EmpleadoDemografico where IdEmpleado in (SELECT Id FROM empleados where IdOrganizacion = 1)
+
+
+select * from dbo.DES_Puesto where IdOrganizacion = 1
+
+select * from DES_EmpleadoPuesto where IdEmpleado = 4475 --in (select id from empleados where IdOrganizacion = 1) AND IdPuesto = 36
+
+--UPDATE DES_EmpleadoPuesto set IdPuesto = 36 where IdEmpleado = 4475
+
+select * from DES_ModeloPuesto
+
+SELECT * FROM DES_ModeloPuestoEscenario
+
+--
+
+select * from FlujosClima
+--update FlujosClima set Nombre = 'ENCUESTA CLIMA Y CULTURA 2026' where Id = 128 and IdOrganizacion = 42
+
+
+select * from DES_Modelo --14
+select * from DES_Evaluacion where IdModelo = 14
+select * from DES_AsignacionEvaluacion where IdEvaluacion = 12
+
+--update DES_AsignacionEvaluacion set FechaInicioRespuesta = NULL where IdAsignacion in (139,148) and IdEvaluacion = 12
+
+
+--
+select * from Organizaciones --42
+select * from FlujosClima where IdOrganizacion = 42 --128
+
+select * from Factores where IdFlujo = 128
+
+--update Factores set Etiqueta = 'Percepción del liderazgo de la Gerencia General. De acuerdo a tu percepción y experiencia, consideras que el Gerente General:' where Id = 470 and IdFlujo = 128 and Clave = 'serie_5'
+
+select * from OpcionesPregunta order by 1 desc
+
+CREATE OR ALTER PROCEDURE dbo.AI_sp_Datos_Clima_Contenido_Obtener
+  @IdOrganizacion INT,
+  @IdFlujo INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM dbo.FlujosClima flowData
+    WHERE flowData.Id = @IdFlujo
+      AND flowData.IdOrganizacion = @IdOrganizacion
+  )
+    THROW 54104, 'El clima no existe en la organizacion autorizada.', 1;
+
+  SELECT
+    flowData.Id AS IdFlujo,
+    flowData.IdOrganizacion,
+    flowData.Nombre,
+    flowData.NombreOrganizacion,
+    flowData.Objetivo,
+    flowData.Frecuencia,
+    flowData.MetodoAplicacion,
+    flowData.EstimadoMinutos,
+    flowData.Estado,
+    flowData.TipoEvaluacion,
+    (SELECT COUNT_BIG(*)
+     FROM dbo.GranFactores greatFactor
+     WHERE greatFactor.IdFlujo = flowData.Id) AS TotalGrandesFactores,
+    (SELECT COUNT_BIG(*)
+     FROM dbo.Factores factorData
+     WHERE factorData.IdFlujo = flowData.Id) AS TotalFactores,
+    (SELECT COUNT_BIG(*)
+     FROM dbo.Preguntas question
+     INNER JOIN dbo.Factores factorData ON factorData.Id = question.IdFactor
+     WHERE factorData.IdFlujo = flowData.Id) AS TotalPreguntas,
+    (SELECT COUNT_BIG(*)
+     FROM dbo.Preguntas question
+     INNER JOIN dbo.Factores factorData ON factorData.Id = question.IdFactor
+     WHERE factorData.IdFlujo = flowData.Id
+       AND question.Estado = 1) AS TotalPreguntasActivas
+  FROM dbo.FlujosClima flowData
+  WHERE flowData.Id = @IdFlujo
+    AND flowData.IdOrganizacion = @IdOrganizacion;
+
+  SELECT
+    greatFactor.Id AS IdGranFactor,
+    greatFactor.Clave,
+    greatFactor.Etiqueta,
+    greatFactor.Descripcion,
+    greatFactor.Orden
+  FROM dbo.GranFactores greatFactor
+  WHERE greatFactor.IdFlujo = @IdFlujo
+  ORDER BY ISNULL(greatFactor.Orden, 2147483647), greatFactor.Id;
+
+  SELECT
+    factorData.Id AS IdFactor,
+    factorData.IdGranFactor,
+    greatFactor.Clave AS ClaveGranFactor,
+    greatFactor.Etiqueta AS GranFactor,
+    factorData.Clave,
+    factorData.Etiqueta,
+    factorData.Descripcion,
+    factorData.Orden
+  FROM dbo.Factores factorData
+  LEFT JOIN dbo.GranFactores greatFactor
+    ON greatFactor.Id = factorData.IdGranFactor
+   AND greatFactor.IdFlujo = factorData.IdFlujo
+  WHERE factorData.IdFlujo = @IdFlujo
+  ORDER BY ISNULL(greatFactor.Orden, 2147483647), greatFactor.Id,
+           ISNULL(factorData.Orden, 2147483647), factorData.Id;
+
+  SELECT
+    question.Id AS IdPregunta,
+    factorData.IdGranFactor,
+    greatFactor.Etiqueta AS GranFactor,
+    question.IdFactor,
+    factorData.Etiqueta AS Factor,
+    question.Tipo,
+    question.NombreCampo,
+    question.Etiqueta AS Pregunta,
+    question.Obligatoria,
+    question.Estado,
+    question.RangoMin,
+    question.RangoMax,
+    question.Orden
+  FROM dbo.Preguntas question
+  INNER JOIN dbo.Factores factorData
+    ON factorData.Id = question.IdFactor
+   AND factorData.IdFlujo = @IdFlujo
+  LEFT JOIN dbo.GranFactores greatFactor
+    ON greatFactor.Id = factorData.IdGranFactor
+   AND greatFactor.IdFlujo = factorData.IdFlujo
+  ORDER BY ISNULL(greatFactor.Orden, 2147483647), greatFactor.Id,
+           ISNULL(factorData.Orden, 2147483647), factorData.Id,
+           ISNULL(question.Orden, 2147483647), question.Id;
+
+  SELECT
+    optionData.Id AS IdOpcion,
+    optionData.IdPregunta,
+    question.Etiqueta AS Pregunta,
+    optionData.Valor,
+    optionData.Etiqueta,
+    optionData.EsCorrecta
+  FROM dbo.OpcionesPregunta optionData
+  INNER JOIN dbo.Preguntas question
+    ON question.Id = optionData.IdPregunta
+  INNER JOIN dbo.Factores factorData
+    ON factorData.Id = question.IdFactor
+   AND factorData.IdFlujo = @IdFlujo
+  ORDER BY optionData.IdPregunta, optionData.Id;
+END;
+GO

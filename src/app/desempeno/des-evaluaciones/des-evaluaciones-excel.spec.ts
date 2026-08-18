@@ -1,8 +1,10 @@
 import * as XLSX from 'xlsx';
 import {
   DES_EVALUATION_EXCEL_HEADERS,
+  DES_EVALUATION_EXCEL_TEMPLATE_HEADERS,
   DesEvaluationExcelContext,
   DesEvaluationExcelValidationError,
+  appendDesEvaluationPositionMapSheet,
   parseDesEvaluationExcelWorkbook,
 } from './des-evaluaciones-excel';
 
@@ -75,6 +77,36 @@ describe('des-evaluaciones Excel import', () => {
     expect(result.rows[0].requiredRatingLevel).toBe(4);
   });
 
+  it('supports the simplified template without position or code columns', () => {
+    const rows = validRows().map((row) => {
+      const simplifiedRow = { ...row };
+      delete simplifiedRow[DES_EVALUATION_EXCEL_HEADERS.position];
+      delete simplifiedRow[DES_EVALUATION_EXCEL_HEADERS.dimensionCode];
+      delete simplifiedRow[DES_EVALUATION_EXCEL_HEADERS.criterionCode];
+      delete simplifiedRow[DES_EVALUATION_EXCEL_HEADERS.itemCode];
+      return simplifiedRow;
+    });
+
+    const result = parseDesEvaluationExcelWorkbook(workbook(rows), context);
+
+    expect(result.positions).toEqual(['ANALISTA']);
+    expect(result.rows[0].dimensionCode).toBeNull();
+    expect(result.rows[0].criterionCode).toBeNull();
+    expect(result.rows[0].itemCode).toBeNull();
+    expect(DES_EVALUATION_EXCEL_TEMPLATE_HEADERS).not.toContain(
+      DES_EVALUATION_EXCEL_HEADERS.position
+    );
+    expect(DES_EVALUATION_EXCEL_TEMPLATE_HEADERS).not.toContain(
+      DES_EVALUATION_EXCEL_HEADERS.dimensionCode
+    );
+    expect(DES_EVALUATION_EXCEL_TEMPLATE_HEADERS).not.toContain(
+      DES_EVALUATION_EXCEL_HEADERS.criterionCode
+    );
+    expect(DES_EVALUATION_EXCEL_TEMPLATE_HEADERS).not.toContain(
+      DES_EVALUATION_EXCEL_HEADERS.itemCode
+    );
+  });
+
   it('preserves open questions without a scale or Likert options', () => {
     const rows = validRows();
     rows[0][DES_EVALUATION_EXCEL_HEADERS.itemType] = 'Pregunta abierta';
@@ -124,6 +156,19 @@ describe('des-evaluaciones Excel import', () => {
     expect(result.positions).toEqual([position]);
   });
 
+  it('resolves long position names from the hidden template configuration', () => {
+    const position = 'Jefe del departamento de Infraestructura';
+    const resultWorkbook = workbook(validRows(), 'Jefe del departamento de Infr');
+    appendDesEvaluationPositionMapSheet(resultWorkbook, [{
+      sheetName: 'Jefe del departamento de Infr',
+      position,
+    }]);
+
+    const result = parseDesEvaluationExcelWorkbook(resultWorkbook, context);
+
+    expect(result.positions).toEqual([position]);
+  });
+
   it('rejects unsupported item types and invalid dimension totals', () => {
     const rows = validRows();
     rows[0][DES_EVALUATION_EXCEL_HEADERS.itemType] = 'Selección múltiple';
@@ -137,6 +182,37 @@ describe('des-evaluaciones Excel import', () => {
       const validation = error as DesEvaluationExcelValidationError;
       expect(validation.errors.some((message) => message.startsWith('INVALID_ITEM_TYPE'))).toBeTrue();
       expect(validation.errors.some((message) => message.startsWith('DIMENSION_TOTAL'))).toBeTrue();
+    }
+  });
+
+  it('rejects changes to configured dimensions and scenario weights', () => {
+    const configuredContext: DesEvaluationExcelContext = {
+      ...context,
+      dimensions: [
+        { name: 'Objetivos', weight: 45 },
+        { name: 'Competencias', weight: 35 },
+        { name: 'Valores', weight: 20 },
+      ],
+      positionScenarios: [{
+        position: 'ANALISTA',
+        scenarios: [{ key: 'BOSS_TO_EMPLOYEE', weight: 100 }],
+      }],
+    };
+    const rows = validRows();
+    rows[0][DES_EVALUATION_EXCEL_HEADERS.dimensionName] = 'Dimensión no configurada';
+    rows[1][DES_EVALUATION_EXCEL_HEADERS.scenarioWeight] = 90;
+
+    try {
+      parseDesEvaluationExcelWorkbook(workbook(rows), configuredContext);
+      fail('The workbook should have been rejected.');
+    } catch (error) {
+      const validation = error as DesEvaluationExcelValidationError;
+      expect(validation.errors.some((message) =>
+        message.startsWith('DIMENSION_NOT_CONFIGURED')
+      )).toBeTrue();
+      expect(validation.errors.some((message) =>
+        message.startsWith('CONFIGURED_WEIGHT_CHANGED')
+      )).toBeTrue();
     }
   });
 
