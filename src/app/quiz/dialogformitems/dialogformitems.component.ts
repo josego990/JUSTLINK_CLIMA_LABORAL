@@ -49,6 +49,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { GFactor } from '../models/quiz-models'; 
 
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { TextFieldModule } from '@angular/cdk/text-field';
 
 
 import { MatCardModule } from '@angular/material/card';
@@ -57,10 +58,10 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { number } from 'echarts/core';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
 import { JoyrideModule, JoyrideService } from 'ngx-joyride';
+import { ClimateSurveyPreviewDialogComponent } from './climate-survey-preview-dialog.component';
 
 export interface PreguntaField {
   Id: number;
@@ -101,7 +102,7 @@ export interface GranFactor {
   templateUrl: './dialogformitems.component.html',
   styleUrls: ['./dialogformitems.component.scss'],
   imports: [
-    MatDialogModule,DragDropModule,
+    MatDialogModule,DragDropModule,TextFieldModule,
     MatTableModule,MatCardModule,MatTooltipModule,
     MatIconModule,
     MatExpansionModule, 
@@ -117,7 +118,6 @@ export interface GranFactor {
     MatProgressSpinnerModule,
     TranslateModule,
     MatInputModule,
-    MatSlideToggleModule,
     JoyrideModule
 ],
 
@@ -157,7 +157,6 @@ export class DialogformItemsComponent implements OnInit {
 
   public selectedGFactor = 0;
   public noUsarGranFactor = false;
-  public bloquearSwitchNoUsarGranFactor = false;
 
   public series_data_send: SeriesDataSend = {
     series: this.seriesx,
@@ -314,7 +313,6 @@ export class DialogformItemsComponent implements OnInit {
     this.card = data[0];
     const granFactoresFromCard = Array.isArray(this.card?.granFactores) ? this.card.granFactores : [];
     this.card.granFactores = granFactoresFromCard;
-    this.configurarSwitchNoUsarGranFactor(granFactoresFromCard);
     //this.bankData = data[1];
 
     this.tipoEvaluacion = this.data[0].tipoEvaluacion;
@@ -349,6 +347,12 @@ export class DialogformItemsComponent implements OnInit {
     this.series_data_send.gfactores = granFactoresFromCard; 
       
     this.idFlujo = this.card.id;
+    this.idOrganization = Number(
+      this.card?.idOrganization ??
+      this.card?.IdOrganizacion ??
+      this.organizacionService.selectedOrganizationSnapshot?.Id ??
+      0
+    );
 
     const allSeries = granFactoresFromCard
 
@@ -389,32 +393,6 @@ export class DialogformItemsComponent implements OnInit {
 
   }
 
-  private configurarSwitchNoUsarGranFactor(granFactores: any[]): void {
-    const hasGranFactores = granFactores.length > 0;
-    const isSingleGenerico = granFactores.length === 1 && this.esGranFactorGenerico(granFactores[0]);
-    const hasSinGranFactor = granFactores.some(
-      (gf: any) => String(gf?.label ?? '').trim().toLowerCase() === 'sin gran factor',
-    );
-
-    if (hasSinGranFactor || isSingleGenerico) {
-      // Ya existe el contenedor especial "Sin gran factor".
-      this.noUsarGranFactor = true;
-      this.bloquearSwitchNoUsarGranFactor = true;
-      return;
-    }
-
-    if (hasGranFactores) {
-      // Cuando ya hay gran factores reales, no se permite activar el modo sin gran factor.
-      this.noUsarGranFactor = false;
-      this.bloquearSwitchNoUsarGranFactor = true;
-      return;
-    }
-
-    // Sin gran factores: se permite trabajar en modo "sin gran factor".
-    this.noUsarGranFactor = true;
-    this.bloquearSwitchNoUsarGranFactor = false;
-  }
-
   private esGranFactorGenerico(gf: any): boolean {
     return String(gf?.label ?? '').trim().toLowerCase() === 'generico';
   }
@@ -444,13 +422,71 @@ export class DialogformItemsComponent implements OnInit {
     return this.getRowsArray(idFactor).at(index).get(control)?.value;
   }
 
-  onCellChange(idPregunta: number, campo: string, valor: any, idFactor: number) {
+  private readonly savingQuestionLabels = new Set<number>();
+
+  async saveQuestionDescriptionIfChanged(idPregunta: number, idFactor: number, index: number): Promise<void> {
+    const labelControl = this.getRowsArray(idFactor).at(index)?.get('label');
+    if (!labelControl || !labelControl.dirty || this.savingQuestionLabels.has(idPregunta)) {
+      return;
+    }
+
+    const newLabel = String(labelControl.value ?? '').trim();
+    const storedLabel = this.getStoredQuestionLabel(idPregunta);
+
+    if (newLabel === storedLabel) {
+      labelControl.markAsPristine();
+      return;
+    }
+
+    this.savingQuestionLabels.add(idPregunta);
+    try {
+      const saved = await this.onCellChange(idPregunta, 'label', newLabel, idFactor);
+      if (saved) {
+        this.updateStoredQuestionLabel(idPregunta, newLabel);
+        labelControl.markAsPristine();
+      }
+    } finally {
+      this.savingQuestionLabels.delete(idPregunta);
+    }
+  }
+
+  private getStoredQuestionLabel(idPregunta: number): string {
+    for (const grandFactor of this.granFactores || []) {
+      for (const factor of grandFactor?.series || []) {
+        const question = (factor?.fields || []).find((field: any) => Number(field?.Id) === Number(idPregunta));
+        if (question) {
+          return String(question?.label ?? question?.Etiqueta ?? '').trim();
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private updateStoredQuestionLabel(idPregunta: number, label: string): void {
+    const updateQuestion = (grandFactors: any[]): void => {
+      for (const grandFactor of grandFactors || []) {
+        for (const factor of grandFactor?.series || []) {
+          for (const question of factor?.fields || []) {
+            if (Number(question?.Id) === Number(idPregunta)) {
+              question.label = label;
+              question.Etiqueta = label;
+            }
+          }
+        }
+      }
+    };
+
+    updateQuestion(this.granFactores);
+    updateQuestion(this.gfactorsx);
+  }
+
+  async onCellChange(idPregunta: number, campo: string, valor: any, idFactor: number): Promise<boolean> {
     //console.log('CAMBIO PREGUNA?', { idPregunta, campo, valor, idFactor });
     this.loading = true;
-    this.organizacionService.updatePreguntaLabel({IdPregunta:idPregunta,Etiqueta:valor}).then((respunsi:any)=>{
-
+    try {
+      const respunsi: any = await this.organizacionService.updatePreguntaLabel({IdPregunta:idPregunta,Etiqueta:valor});
       if(respunsi && respunsi.data.message == 'success'){
-        this.loading = false;
         this.showNotification(
             'bg-red',
             'Guardado',
@@ -458,19 +494,20 @@ export class DialogformItemsComponent implements OnInit {
             'bottom',
             'right'
           );
+        return true;
       }
-
-    }).catch((err)=>{
+      return false;
+    } catch (err: any) {
       console.error(err);
-      this.loading = false;
-
       Swal.fire({
         title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
         text: err,
         icon: 'error'
       });
-
-    });
+      return false;
+    } finally {
+      this.loading = false;
+    }
 
     // aquí llamas tu endpoint “patch pregunta”
     // this.quizService.updatePreguntaField({ Id: idPregunta, Campo: campo, Valor: valor }).subscribe(...)
@@ -500,6 +537,78 @@ export class DialogformItemsComponent implements OnInit {
       (row?.[enKey] ?? '') !== ''    ? row?.[enKey] : '';
 
     return String(val ?? '').trim();
+  }
+
+  private normalizeExcelText(value: any): string {
+    return String(value ?? '')
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+  }
+
+  private getClimateSurveyWorksheet(): XLSX.WorkSheet | null {
+    if (!this.workbook) {
+      return null;
+    }
+
+    const sheetNames = this.workbook.SheetNames || [];
+    const preferredSheet = sheetNames.find((sheetName: string) => {
+      const normalizedName = this.normalizeExcelText(sheetName);
+      return ['ENCUESTA', 'SURVEY', 'PREGUNTAS', 'QUESTIONS'].includes(normalizedName);
+    });
+
+    const fallbackSheet = sheetNames.find((sheetName: string) => {
+      const normalizedName = this.normalizeExcelText(sheetName);
+      return !['INSTRUCCIONES', 'INSTRUCTIONS', 'README', 'LEEME'].includes(normalizedName);
+    });
+
+    const selectedSheetName = preferredSheet || fallbackSheet;
+    return selectedSheetName ? this.workbook.Sheets[selectedSheetName] : null;
+  }
+
+  private getClimateExcelAllowedTypesText(): string {
+    const allowedTypes = this.langStoreValue === 'en'
+      ? ['SURVEY', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'AI QUESTION', 'RANGE', 'LIST', 'DEMOGRAPHIC LIST']
+      : ['ENCUESTA', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA', 'RANGO', 'LISTA', 'LISTA DEMOGRAFICO'];
+
+    return allowedTypes.map((type) => `'${type}'`).join(', ');
+  }
+
+  private normalizeClimateExcelType(value: any): string {
+    const normalizedType = this.normalizeExcelText(value);
+
+    switch (normalizedType) {
+      case 'ENCUESTA':
+      case 'SURVEY':
+      case 'GRAN FACTOR':
+      case 'MAIN FACTOR':
+      case 'PRINCIPAL FACTOR':
+        return 'ENCUESTA';
+      case 'FACTOR':
+        return 'FACTOR';
+      case 'LIKERT':
+        return 'LIKERT';
+      case 'PREGUNTA ABIERTA':
+      case 'OPEN QUESTION':
+        return 'PREGUNTA ABIERTA';
+      case 'PREGUNTA IA':
+      case 'IA QUESTION':
+      case 'AI QUESTION':
+        return 'PREGUNTA IA';
+      case 'RANGO':
+      case 'RANGE':
+        return 'RANGO';
+      case 'LISTA':
+      case 'LIST':
+        return 'LISTA';
+      case 'LISTA DEMOGRAFICO':
+      case 'DEMOGRAPHIC LIST':
+        return 'LISTA DEMOGRAFICO';
+      default:
+        return '';
+    }
   }
 
   initForms(granFactores: any[]) {
@@ -549,6 +658,45 @@ export class DialogformItemsComponent implements OnInit {
       (total: number, gf: any) => total + this.countQuestions(gf),
       0,
     );
+  }
+
+  openSurveyPreview(): void {
+    const granFactores = (this.granFactores ?? []).map((survey: any) => ({
+      label: String(survey?.label ?? ''),
+      desc: String(survey?.desc ?? ''),
+      series: (survey?.series ?? []).map((factor: any) => ({
+        label: String(factor?.label ?? ''),
+        desc: String(factor?.desc ?? ''),
+        fields: (factor?.fields ?? [])
+          .filter((question: any) => Number(question?.is_active ?? question?.isActive ?? 1) !== 0)
+          .map((question: any) => ({
+            type: String(question?.type ?? 'text'),
+            label: String(question?.label ?? question?.name ?? ''),
+            name: String(question?.name ?? ''),
+            min: Number(question?.min ?? 0),
+            max: Number(question?.max ?? 100),
+            options: (question?.options ?? []).map((option: any, index: number) => ({
+              label: String(option?.label ?? option?.name ?? option?.value ?? option ?? `Opción ${index + 1}`),
+              value: String(option?.value ?? option?.label ?? option?.name ?? index + 1),
+            })),
+          })),
+      })),
+    }));
+
+    this.dialog.open(ClimateSurveyPreviewDialogComponent, {
+      width: '920px',
+      maxWidth: '96vw',
+      maxHeight: '86vh',
+      autoFocus: false,
+      restoreFocus: false,
+      disableClose: false,
+      panelClass: 'climate-survey-preview-dialog-panel',
+      data: {
+        title: this.card?.title ?? '',
+        subtitle: this.card?.subtitle ?? '',
+        granFactores,
+      },
+    });
   }
 
   dropGranFactor(event: CdkDragDrop<any[]>) {
@@ -834,7 +982,16 @@ export class DialogformItemsComponent implements OnInit {
         return reject('No se encontró workbook');
       }
   
-      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const worksheet = this.getClimateSurveyWorksheet();
+      if (!worksheet) {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ISSUESFIND'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NO_SURVEY_DATA_SHEET'),
+          icon: 'error',
+        });
+        return reject('No se encontró hoja de datos.');
+      }
+
       const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
   
       const preguntasJSON: any = {
@@ -980,7 +1137,16 @@ export class DialogformItemsComponent implements OnInit {
         return reject('No se encontró workbook');
       }
 
-      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const worksheet = this.getClimateSurveyWorksheet();
+      if (!worksheet) {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ISSUESFIND'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NO_SURVEY_DATA_SHEET'),
+          icon: 'error',
+        });
+        return reject('No se encontró hoja de datos.');
+      }
+
       const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       const preguntasJSON: any = {
@@ -1000,36 +1166,24 @@ export class DialogformItemsComponent implements OnInit {
       rawData.forEach((row: any, idx: number) => {
         const fila = idx + 2;
 
-        const tipo     = this.getByLang(row, 'TIPO',       'TYPE');
+        const tipoOriginal = this.getByLang(row, 'TIPO',       'TYPE');
+        const tipo         = this.normalizeClimateExcelType(tipoOriginal);
         const etiqueta = this.getByLang(row, 'ETIQUETA',   'LABEL');
         const desc     = this.getByLang(row, 'DESCRIPCION', 'DESCRIPTION');
         const list     = this.getByLang(row, 'OPCIONES LISTA', 'OPTIONS LIST');
-        //satán!
 
-        // Validación de tipos permitidos por idioma
-        switch (localStorage.getItem('lang')) {
-          case 'es':
-            if (!['GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA', 'RANGO', 'LISTA', 'LISTA DEMOGRAFICO'].includes(tipo)) {
-              errores.push(
-                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
-                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
-                ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'GRAN FACTOR', 'FACTOR', 'LIKERT', 'PREGUNTA ABIERTA', 'PREGUNTA IA', 'RANGO', 'LISTA', 'LISTA DEMOGRAFICO'`
-              );
-              return;
-            }
-            break;
-          case 'en':
-            if (!['MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION', 'RANGE', 'LIST', 'DEMOGRAPHIC LIST'].includes(tipo)) {
-              errores.push(
-                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
-                this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
-                ` (${tipo}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
-                ` 'MAIN FACTOR', 'FACTOR', 'LIKERT', 'OPEN QUESTION', 'IA QUESTION', 'RANGE', 'LIST', 'DEMOGRAPHIC LIST'` + 'are admited.'
-              );
-              return;
-            }
-            break;
+        if (!tipoOriginal && !etiqueta && !desc && !list) {
+          return;
+        }
+
+        if (!tipo) {
+          errores.push(
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.INVALIDTYPE') +
+            ` (${tipoOriginal || '-'}). ` + this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ONLYPERMMITED') +
+            ` ${this.getClimateExcelAllowedTypesText()}`
+          );
+          return;
         }
 
         if (!etiqueta) {
@@ -1040,8 +1194,8 @@ export class DialogformItemsComponent implements OnInit {
           return;
         }
 
-        // ===== NUEVO: principal factor (gran factor) =====
-        if (tipo === 'GRAN FACTOR' || tipo === 'MAIN FACTOR') {
+        // ===== ENCUESTA (antes gran factor) =====
+        if (tipo === 'ENCUESTA') {
           const newGFactor = {
             idFlujo: this.idFlujo,
             Clave: `gfac_${currentGFactorKey}`,
@@ -1061,10 +1215,9 @@ export class DialogformItemsComponent implements OnInit {
         // ===== FACTOR =====
         if (tipo === 'FACTOR') {
           if (!hasCurrentGranFactor) {
-            // No puede haber FACTOR sin un gran factor activo
             errores.push(
               this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
-              `Se encontró 'FACTOR' sin un 'PRINCIPAL FACTOR' previo.`
+              this.translate.instant('MENUITEMS.QUIZ.MESSAGES.FACTOR_WITHOUT_SURVEY')
             );
             return;
           }
@@ -1090,7 +1243,7 @@ export class DialogformItemsComponent implements OnInit {
         if (!hasCurrentFactor) {
           errores.push(
             this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ROW') + ` ${fila}: ` +
-            `Se encontró una pregunta sin un 'FACTOR' definido previamente.`
+            this.translate.instant('MENUITEMS.QUIZ.MESSAGES.QUESTION_WITHOUT_FACTOR')
           );
           return;
         }
@@ -1098,68 +1251,31 @@ export class DialogformItemsComponent implements OnInit {
         // Mapear tipo de pregunta
         let tipoCampo = '';
         let tipoAbrev = '';
-        let currentLang = localStorage.getItem('lang');
-        console.log('LOS DE INFORMATICA SOIS GENIALES currentLang:: ', currentLang);
-        switch (currentLang) {
-          case 'es':
-            switch (tipo) {
-              case 'LIKERT':
-                tipoCampo = 'radio';
-                tipoAbrev = 'rad_';
-                break;
-              case 'PREGUNTA ABIERTA':
-                tipoCampo = 'text';
-                tipoAbrev = 'txt_';
-                break;
-              case 'PREGUNTA IA':
-                tipoCampo = 'iatext';
-                tipoAbrev = 'iatxt_';
-                break;
-              case 'RANGO':
-                tipoCampo = 'slider';
-                tipoAbrev = 'sld_';
-                break;              
-              case 'LISTA':
-                tipoCampo = 'select';
-                tipoAbrev = 'sel_';
-                break;
-              case 'LISTA DEMOGRAFICO':
-                tipoCampo = 'selectdem';
-                tipoAbrev = 'seldem_';
-                break;
 
-
-            
-            }
+        switch (tipo) {
+          case 'LIKERT':
+            tipoCampo = 'radio';
+            tipoAbrev = 'rad_';
             break;
-          case 'en':
-            switch (tipo) {
-              case 'LIKERT':
-                tipoCampo = 'radio';
-                tipoAbrev = 'rad_';
-                break;
-              case 'OPEN QUESTION':
-                tipoCampo = 'text';
-                tipoAbrev = 'txt_';
-                break;
-              case 'IA QUESTION':
-                tipoCampo = 'iatext';
-                tipoAbrev = 'iatxt_';
-                break;
-
-               case 'RANGE':
-                tipoCampo = 'slider';
-                tipoAbrev = 'sld_';
-                break;              
-              case 'LIST':
-                tipoCampo = 'select';
-                tipoAbrev = 'sel_';
-                break;
-              case 'DEMOGRAPHIC LIST':
-                tipoCampo = 'selectdem';
-                tipoAbrev = 'seldem_';
-                break;
-            }
+          case 'PREGUNTA ABIERTA':
+            tipoCampo = 'text';
+            tipoAbrev = 'txt_';
+            break;
+          case 'PREGUNTA IA':
+            tipoCampo = 'iatext';
+            tipoAbrev = 'iatxt_';
+            break;
+          case 'RANGO':
+            tipoCampo = 'slider';
+            tipoAbrev = 'sld_';
+            break;
+          case 'LISTA':
+            tipoCampo = 'select';
+            tipoAbrev = 'sel_';
+            break;
+          case 'LISTA DEMOGRAFICO':
+            tipoCampo = 'selectdem';
+            tipoAbrev = 'seldem_';
             break;
         }
 
@@ -1344,18 +1460,20 @@ export class DialogformItemsComponent implements OnInit {
       ? 'SurveyTemplate_EN.xlsx'
       : 'PlantillaEncuesta_ES.xlsx';
 
+    const downloadUrl = encodeURI(url);
+
     const ua = navigator.userAgent;
     const isIOS = /iPad|iPhone|iPod/.test(ua);
     const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
 
     if (isIOS || isSafari) {
       // algunos Safari ignoran download: abre en pestaña nueva
-      window.open(url, '_blank', 'noopener');
+      window.open(downloadUrl, '_blank', 'noopener');
       return;
     }
 
     const a = document.createElement('a');
-    a.href = url;
+    a.href = downloadUrl;
     a.download = filename;
     a.rel = 'noopener';
     document.body.appendChild(a);
@@ -1393,6 +1511,230 @@ export class DialogformItemsComponent implements OnInit {
 
    //console.log(this.factorName);
 
+  }
+
+  canEditSelectedGFactor(): boolean {
+    return !!this.getSelectedGFactor();
+  }
+
+  canEditSelectedFactor(): boolean {
+    return !!this.getSelectedFactor();
+  }
+
+  editSelectedGFactor(event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const selected = this.getSelectedGFactor();
+    if (!selected) {
+      return;
+    }
+
+    this.openStructureQuickEdit('survey', selected);
+  }
+
+  editSelectedFactor(event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const selected = this.getSelectedFactor();
+    if (!selected) {
+      return;
+    }
+
+    this.openStructureQuickEdit('factor', selected);
+  }
+
+  private getSelectedGFactor(): any | null {
+    const selectedId = Number(this.selectedGFactor || this.idGFactor);
+    if (!selectedId) {
+      return null;
+    }
+
+    return (this.granFactores || []).find((gf: any) => Number(gf?.Id) === selectedId) || null;
+  }
+
+  private getSelectedFactor(): any | null {
+    const selectedId = Number(this.selectedSerie === 'none' ? this.idFactor : this.selectedSerie);
+    if (!selectedId) {
+      return null;
+    }
+
+    return (this.seriesx || []).find((factor: any) => Number(factor?.Id) === selectedId) || null;
+  }
+
+  private async openStructureQuickEdit(type: 'survey' | 'factor', item: any): Promise<void> {
+    const isSurvey = type === 'survey';
+    const titleKey = isSurvey ? 'MENUITEMS.QUIZ.EDIT_SURVEY_TITLE' : 'MENUITEMS.QUIZ.EDIT_FACTOR_TITLE';
+    const nameLabelKey = isSurvey ? 'MENUITEMS.QUIZ.GRANDFACTORNAME' : 'MENUITEMS.QUIZ.FACTORNAME';
+    const descLabelKey = isSurvey ? 'MENUITEMS.QUIZ.GRANDFACTORDESC' : 'MENUITEMS.QUIZ.FACTORDESC';
+    const duplicateKey = isSurvey ? 'MENUITEMS.QUIZ.DUPLICATE_SURVEY_NAME' : 'MENUITEMS.QUIZ.DUPLICATE_FACTOR_NAME';
+    const currentName = String(item?.label ?? item?.Etiqueta ?? '').trim();
+    const currentDesc = String(item?.desc ?? item?.Descripcion ?? '').trim();
+
+    const result = await Swal.fire({
+      title: this.translate.instant(titleKey),
+      html: `
+        <div class="quiz-structure-edit">
+          <label for="structure-edit-name">${this.translate.instant(nameLabelKey)}</label>
+          <input id="structure-edit-name" class="swal2-input" value="${this.escapeHtml(currentName)}" maxlength="200" autocomplete="off">
+          <label for="structure-edit-desc">${this.translate.instant(descLabelKey)}</label>
+          <textarea id="structure-edit-desc" class="swal2-textarea" maxlength="500">${this.escapeHtml(currentDesc)}</textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('MENUITEMS.QUIZ.UPDATE'),
+      cancelButtonText: this.translate.instant('MENUITEMS.QUIZ.CANCEL'),
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      customClass: {
+        popup: 'quiz-structure-edit-popup',
+      },
+      preConfirm: async () => {
+        const popup = Swal.getPopup();
+        const Etiqueta = (popup?.querySelector<HTMLInputElement>('#structure-edit-name')?.value || '').trim();
+        const Descripcion = (popup?.querySelector<HTMLTextAreaElement>('#structure-edit-desc')?.value || '').trim();
+
+        if (!Etiqueta) {
+          Swal.showValidationMessage(this.translate.instant('MENUITEMS.QUIZ.STRUCTURE_NAME_REQUIRED'));
+          return false;
+        }
+
+        try {
+          if (isSurvey) {
+            await this.organizacionService.updateGFactor({
+              Id: item.Id,
+              IdOrganizacion: this.idOrganization,
+              IdFlujo: this.idFlujo,
+              Etiqueta,
+              Descripcion,
+            });
+          } else {
+            await this.organizacionService.updateFactor({
+              Id: item.Id,
+              IdOrganizacion: this.idOrganization,
+              IdFlujo: this.idFlujo,
+              IdGFactor: this.idGFactor,
+              Etiqueta,
+              Descripcion,
+            });
+          }
+
+          return { Etiqueta, Descripcion };
+        } catch (error: any) {
+          const apiMessage = error?.response?.status === 409
+            ? this.translate.instant(duplicateKey)
+            : error?.response?.data?.message;
+          Swal.showValidationMessage(apiMessage || this.translate.instant('MENUITEMS.QUIZ.UPDATE_STRUCTURE_ERROR'));
+          return false;
+        }
+      },
+    });
+
+    if (!result.isConfirmed || !result.value) {
+      return;
+    }
+
+    this.applyStructureQuickEdit(type, Number(item.Id), result.value.Etiqueta, result.value.Descripcion);
+    this.showNotification(
+      'bg-green',
+      this.translate.instant('MENUITEMS.QUIZ.UPDATE_STRUCTURE_SUCCESS'),
+      'bottom',
+      'right'
+    );
+  }
+
+  private applyStructureQuickEdit(
+    type: 'survey' | 'factor',
+    itemId: number,
+    label: string,
+    desc: string
+  ): void {
+    this.granFactores = (this.granFactores || []).map((gf: any) => {
+      if (type === 'survey' && Number(gf?.Id) === itemId) {
+        return {
+          ...gf,
+          label,
+          Etiqueta: label,
+          desc,
+          Descripcion: desc,
+          series: (gf?.series || []).map((factor: any) => ({
+            ...factor,
+            fields: (factor?.fields || []).map((field: any) => ({
+              ...field,
+              granFactor: label,
+            })),
+          })),
+        };
+      }
+
+      return {
+        ...gf,
+        series: (gf?.series || []).map((factor: any) => {
+          if (type !== 'factor' || Number(factor?.Id) !== itemId) {
+            return factor;
+          }
+
+          return {
+            ...factor,
+            label,
+            Etiqueta: label,
+            desc,
+            Descripcion: desc,
+            fields: (factor?.fields || []).map((field: any) => ({
+              ...field,
+              serie: label,
+            })),
+          };
+        }),
+      };
+    });
+
+    this.refreshClimateStructureLists();
+  }
+
+  private refreshClimateStructureLists(): void {
+    this.card.granFactores = this.granFactores;
+    this.series_data_send.gfactores = this.granFactores;
+
+    this.gfactorsx = (this.granFactores || []).map((gf: any) => ({
+      Id: gf.Id,
+      label: gf.label,
+      desc: gf.desc,
+      ...gf,
+    }));
+    this.gfactors_data_send.gfactores = this.gfactorsx;
+
+    const selectedGF = this.getSelectedGFactor();
+    this.gfactorName = selectedGF?.label ?? '';
+    this.seriesx = Array.isArray(selectedGF?.series) ? [...selectedGF.series] : [];
+    this.series_data_send.series = this.seriesx;
+
+    const selectedFactor = this.getSelectedFactor();
+    this.factorName = selectedFactor?.label ?? '';
+
+    const allSeries = (this.granFactores || []).flatMap((gf: any) => gf?.series || []);
+    this.dataSourceSerie = allSeries;
+    this.series = allSeries;
+    this.dataSource = (this.granFactores || []).flatMap((granFactor: any) =>
+      (granFactor.series || []).flatMap((serie: any) =>
+        (serie.fields || []).map((field: any) => ({
+          ...field,
+          serie: serie.label,
+          granFactor: granFactor.label,
+        }))
+      )
+    );
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   onMenuOptionClick(opcion: string): void {
@@ -3266,13 +3608,13 @@ export class DialogformItemsComponent implements OnInit {
     });
   
     dialogRef.afterClosed().subscribe(result => {
-      if (result === true) {
-        this.syncAfterSerieDialog();
+      if (result?.created && result?.factor) {
+        this.syncAfterSerieDialog(result.factor, result.idGFactor);
       }
     });
   }
 
-  private syncAfterSerieDialog(): void {
+  private syncAfterSerieDialog(createdFactor?: Serie, createdGFactorId?: number): void {
     const updatedGranFactores = Array.isArray(this.series_data_send.gfactores)
       ? this.series_data_send.gfactores
       : [];
@@ -3288,9 +3630,7 @@ export class DialogformItemsComponent implements OnInit {
     }));
     this.gfactors_data_send.gfactores = this.gfactorsx;
 
-    this.configurarSwitchNoUsarGranFactor(updatedGranFactores);
-
-    const selectedGFactorId = this.series_data_send.idGFactor || this.idGFactor;
+    const selectedGFactorId = createdGFactorId || this.series_data_send.idGFactor || this.idGFactor;
     if (selectedGFactorId) {
       this.selectedGFactor = selectedGFactorId;
       this.idGFactor = selectedGFactorId;
@@ -3308,6 +3648,12 @@ export class DialogformItemsComponent implements OnInit {
     this.series = allSeries;
     this.series_data_send.series = this.seriesx;
 
+    if (createdFactor?.Id) {
+      this.idFactor = createdFactor.Id;
+      (this as any).selectedSerie = createdFactor.Id;
+      this.factorName = createdFactor.label ?? '';
+    }
+
     this.formByFactor = {};
     this.initForms(this.granFactores);
   }
@@ -3322,9 +3668,15 @@ export class DialogformItemsComponent implements OnInit {
     });
   
     dialogRef.afterClosed().subscribe(result => {
-      if (result === true) {
-       //console.log('SE HA OBTENIDO EL EVENTO DE CIERRE DEL DIALOG DE SERIE');
-       //this.getClimasLista(); // O el método que necesites para refrescar
+      if (result?.created && result?.gfactor) {
+        this.series_data_send.gfactores = Array.isArray(this.gfactors_data_send.gfactores)
+          ? this.gfactors_data_send.gfactores
+          : [];
+        this.series_data_send.idGFactor = result.gfactor.Id;
+        this.syncAfterSerieDialog(undefined, result.gfactor.Id);
+        (this as any).selectedSerie = 'none';
+        this.idFactor = 0;
+        this.factorName = '';
       }
     });
   }

@@ -50,7 +50,7 @@ export class LockedComponent implements OnInit {
     if (this.authForm.invalid) {
       return;
     } else {
-      this.router.navigate(['/dashboard/dashboard1']);
+      this.router.navigate(['/profile']);
     }
   }
 }

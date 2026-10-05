@@ -39,51 +39,6 @@ import { TranslateModule } from '@ngx-translate/core';
     <div class="df-container">
       <form [formGroup]="form" novalidate>
 
-        <!-- ===================== -->
-        <!-- SECCIÓN: SELECTDEM    -->
-        <!-- ===================== -->
-        <section class="gf-card" *ngIf="selectDemFields.length > 0" >
-          <div class="gf-card__header" role="group" aria-label="Datos demográficos">
-            <div class="gf-card__accent"></div>
-            <div class="gf-card__titles">
-              <mat-icon aria-hidden="true">assignment_ind</mat-icon>
-              <h2 class="gf-card__title">Datos demográficos</h2>
-              <div class="gf-card__meta">
-                <!-- puedes poner un subtítulo si quieres -->
-              </div>
-            </div>
-          </div>
-
-          <mat-card class="serie-card" *ngFor="let field of selectDemFields; trackBy: trackByIdx">
-            <mat-card-content class="serie-card__content">
-
-              <div class="q-block">
-                <div class="q-title">
-                  <span class="q-index">{{ field.qIndex }}.</span>
-                  <span>{{ field.label }}</span>
-                </div>
-
-                <mat-radio-group
-                  [formControlName]="field.name"
-                  class="q-radio-group">
-                  <mat-radio-button
-                    *ngFor="let option of field.options; trackBy: trackByIdx"
-                    [value]="option.value"
-                    class="q-radio">
-                    {{ option.label }}
-                  </mat-radio-button>
-                </mat-radio-group>
-
-                <div class="q-error" *ngIf="form.get(field.name)?.invalid">
-                  <mat-icon aria-hidden="true">error</mat-icon>
-                  {{ 'MENUITEMS.ALONE.REQUIRED' | translate }}
-                </div>
-              </div>
-
-            </mat-card-content>
-          </mat-card>
-        </section>
-
         <!-- Gran Factores -->
        <section class="gf-card" *ngFor="let gf of formConfig!.GranFactores; trackBy: trackByIdx">
           <div class="gf-card__header" role="group" [attr.aria-label]="gf.Etiqueta">
@@ -218,8 +173,8 @@ import { TranslateModule } from '@ngx-translate/core';
                     </div>
                   </ng-container>
 
-                  <!-- SELECT (lista) -->
-                  <ng-container *ngIf="field.type === 'select'">
+                  <!-- SELECT (lista y lista demográfica) -->
+                  <ng-container *ngIf="field.type === 'select' || field.type === 'selectdem'">
                     <div class="q-block">
                       <div class="q-title">
                         <span class="q-index">{{ field.qIndex }}.</span>
@@ -331,7 +286,8 @@ import { TranslateModule } from '@ngx-translate/core';
     .gf-card { margin: 18px 0 22px; background:#fff; border:1px solid #e7eaf0; border-radius:14px; box-shadow:0 1px 6px rgba(16,24,40,.06); }
     .gf-card__header { display:flex; gap:14px; align-items:center; padding:16px 18px; border-bottom:1px solid #eef2f7; }
     .gf-card__accent { width:6px; align-self:stretch; border-radius:14px 0 0 0; background:#0d6efd; }
-    .gf-card__titles { display:flex; flex-direction:column; gap:4px; }
+    .gf-card__titles { display:flex; align-items:center; gap:8px; min-width:0; }
+    .gf-card__titles mat-icon { flex:0 0 auto; color:#0d6efd; }
     .gf-card__title { margin:0; font-size:1.1rem; font-weight:700; color:#1f2937; }
     .gf-card__meta { display:flex; align-items:center; gap:6px; color:#64748b; font-size:.85rem; }
 
@@ -402,8 +358,6 @@ export class DynamicFormComponent implements OnInit {
   btnIsDisabled = false;
   isSubmitting = false;
 
-  selectDemFields: any[] = [];
-
   constructor(
     private formBuilderService: FormBuilderService,
     public languageService: LanguageService,
@@ -424,65 +378,64 @@ export class DynamicFormComponent implements OnInit {
 
     this.asignarIndicesGlobales();
     
-    // 👇 AQUÍ extraemos los selectdem
-    this.selectDemFields = this.extractSelectDemFields(this.formConfig!);
-    console.log('selectDemFields => ', this.selectDemFields);
-
   }
 
-  /** Progreso visual */
-  get totalFields(): number { return Object.keys(this.form?.controls || {}).length; }
+  /** Progreso visual de preguntas, sin controles técnicos como Turnstile. */
+  get totalFields(): number {
+    return this.getActiveSurveyFields().length;
+  }
+
   get answeredCount(): number {
-    const v = this.form?.value || {};
-    return Object.values(v).filter(val => val !== null && val !== '' && val !== undefined).length;
+    return this.getActiveSurveyFields().filter((field) => this.isFieldAnswered(field)).length;
   }
+
   get progress(): number {
     if (!this.totalFields) return 0;
     return Math.max(0, Math.min(100, Math.round((this.answeredCount / this.totalFields) * 100)));
   }
 
-  private extractSelectDemFields(config: any): any[] {
-  if (!config) return [];
+  private getActiveSurveyFields(): any[] {
+    const fields: any[] = [];
+    const grandFactors = this.formConfig?.GranFactores;
+    const series = Array.isArray(grandFactors) && grandFactors.length > 0
+      ? grandFactors.flatMap((grandFactor: any) => grandFactor?.series ?? [])
+      : this.formConfig?.series ?? [];
 
-  const result: any[] = [];
-
-  // 1) Caso ideal: usar la lista plana de fields del flujo
-  if (Array.isArray(config.fields) && config.fields.length) {
-    return config.fields
-      .filter((f: any) => f.type === 'selectdem' && f.is_active !== 0)
-      .sort((a: any, b: any) => (a.qIndex ?? 0) - (b.qIndex ?? 0));
-  }
-
-  // 2) Fallback: recorrer GranFactores → series → fields
-  if (Array.isArray(config.GranFactores)) {
-    for (const gf of config.GranFactores) {
-      if (!gf?.series) continue;
-
-      for (const serie of gf.series) {
-        if (!serie?.fields) continue;
-
-        for (const f of serie.fields) {
-          if (f?.type === 'selectdem' && f.is_active !== 0) {
-            result.push(f);
-          }
+    for (const serie of series) {
+      for (const field of serie?.fields ?? []) {
+        if (
+          field?.name &&
+          field?.is_active !== 0 &&
+          ['radio', 'text', 'iatext', 'slider', 'select', 'selectdem'].includes(field.type)
+        ) {
+          fields.push(field);
         }
       }
     }
+
+    const uniqueFields = new Map<string, any>();
+    fields.forEach((field) => uniqueFields.set(field.name, field));
+    return Array.from(uniqueFields.values());
   }
 
-  // 3) Quitar duplicados por id (por si aparecen en varios arrays)
-  const uniqueById = new Map<number, any>();
-  for (const f of result) {
-    const key = f.id ?? f.name;
-    if (!uniqueById.has(key)) {
-      uniqueById.set(key, f);
+  private isFieldAnswered(field: any): boolean {
+    const control = this.form?.get(field.name);
+    if (!control) {
+      return false;
     }
+
+    const value = control.value;
+    if (field.type === 'slider') {
+      // El slider inicia visualmente en el mínimo; solo cuenta tras interacción real.
+      return control.dirty && value !== null && value !== undefined;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return value !== null && value !== undefined && String(value).trim() !== '';
   }
-
-  return Array.from(uniqueById.values())
-    .sort((a: any, b: any) => (a.qIndex ?? 0) - (b.qIndex ?? 0));
-}
-
 
   trackByIdx = (_: number, __: any) => _;
 
@@ -656,7 +609,7 @@ getTicks(field: any): number[] {
       for (const serie of gf.series ?? []) {
         for (const field of serie.fields ?? []) {
           // Numerar solo preguntas que llevan índice visual
-          if (['radio', 'text', 'iatext', 'slider', 'select'].includes(field.type)) {
+          if (['radio', 'text', 'iatext', 'slider', 'select', 'selectdem'].includes(field.type)) {
               counter += 1;
               field.qIndex = counter;
             }

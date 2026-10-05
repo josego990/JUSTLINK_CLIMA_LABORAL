@@ -1,0 +1,418 @@
+<section class="content criteria-bank-page">
+  <div class="content-block">
+    <div class="block-header">
+      <app-breadcrumb
+        [title]="pageTitleKey | translate"
+        [items]="breadcrumbItems"
+        [active_item]="pageTitleKey | translate">
+      </app-breadcrumb>
+    </div>
+
+    <div class="criteria-bank-shell">
+      <div class="bank-toolbar">
+        <div class="bank-title-block">
+          <div class="bank-title-icon"><mat-icon>library_books</mat-icon></div>
+          <div>
+            <h2>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.TITLE' | translate }}</h2>
+            <p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="bank-actions">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="openGuide()"
+            [matTooltip]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.BUTTON' | translate">
+            <mat-icon>help_outline</mat-icon>
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!hasSelectedOrganization || isImporting"
+            (click)="excelInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.BUTTON' | translate }}
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="isImporting"
+            (click)="downloadTemplate()">
+            <mat-icon>download</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.TEMPLATE.BUTTON' | translate }}
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            [disabled]="!hasSelectedOrganization"
+            (click)="openCreateDialog()">
+            <mat-icon>add</mat-icon>
+            {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.NEW' | translate }}
+          </button>
+          <input
+            #excelInput
+            class="visually-hidden"
+            type="file"
+            accept=".xlsx"
+            (change)="onExcelSelected($event)" />
+        </div>
+      </div>
+
+      <div class="bank-loading" *ngIf="isLoading || isImporting">
+        <mat-spinner diameter="30"></mat-spinner>
+        <span>
+          {{ (isImporting
+            ? 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.LOADING'
+            : 'DESEMPENO_MENUITEMS.CRITERIA_BANK.LOADING') | translate }}
+        </span>
+      </div>
+
+      <section class="bank-summary" *ngIf="hasSelectedOrganization && !isLoading">
+        <div class="summary-context">
+          <span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.ORGANIZATION' | translate }}</span>
+          <strong>{{ selectedOrganizationName }}</strong>
+        </div>
+        <div class="summary-metric">
+          <mat-icon>fact_check</mat-icon>
+          <div><strong>{{ activeCriterionCount }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.METRICS.CRITERIA' | translate }}</span></div>
+        </div>
+        <div class="summary-metric">
+          <mat-icon>quiz</mat-icon>
+          <div><strong>{{ totalQuestions }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.METRICS.QUESTIONS' | translate }}</span></div>
+        </div>
+        <div class="summary-metric">
+          <mat-icon>linear_scale</mat-icon>
+          <div><strong>{{ likertQuestionCount }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.METRICS.LIKERT' | translate }}</span></div>
+        </div>
+        <div class="summary-metric">
+          <mat-icon>notes</mat-icon>
+          <div><strong>{{ openQuestionCount }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.METRICS.OPEN' | translate }}</span></div>
+        </div>
+      </section>
+
+      <section class="bank-filters" *ngIf="hasSelectedOrganization && !isLoading">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search-field">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.SEARCH' | translate }}</mat-label>
+          <input
+            matInput
+            [value]="searchTerm"
+            (input)="searchTerm = $any($event.target).value; onFilterChange()" />
+          <mat-icon matPrefix>search</mat-icon>
+          <button
+            *ngIf="searchTerm"
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="searchTerm = ''; onFilterChange()"
+            [attr.aria-label]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.CLEAR_SEARCH' | translate">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.DIMENSION' | translate }}</mat-label>
+          <mat-select [value]="selectedDimension" (selectionChange)="selectedDimension = $event.value; onFilterChange()">
+            <mat-option value="ALL">{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.ALL_DIMENSIONS' | translate }}</mat-option>
+            <mat-option *ngFor="let dimension of availableDimensions" [value]="dimension">{{ dimension }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.TYPE' | translate }}</mat-label>
+          <mat-select [value]="selectedQuestionType" (selectionChange)="selectedQuestionType = $event.value; onFilterChange()">
+            <mat-option value="ALL">{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.ALL_TYPES' | translate }}</mat-option>
+            <mat-option *ngFor="let option of questionTypeOptions" [value]="option.value">{{ option.labelKey | translate }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.TAGS' | translate }}</mat-label>
+          <mat-select multiple [value]="selectedTags" (selectionChange)="selectedTags = $event.value; onFilterChange()">
+            <mat-option *ngFor="let tag of availableTags" [value]="tag">#{{ tag }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          type="button"
+          class="clear-filters-button"
+          (click)="resetFilters()"
+          [matTooltip]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.CLEAR' | translate">
+          <mat-icon>filter_alt_off</mat-icon>
+        </button>
+      </section>
+
+      <div class="results-bar" *ngIf="hasSelectedOrganization && !isLoading">
+        <div>
+          <strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.RESULTS_TITLE' | translate }}</strong>
+          <span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.RESULTS_COUNT' | translate:{ count: filteredCriteria.length } }}</span>
+        </div>
+        <div class="active-filter-tags" *ngIf="selectedTags.length > 0">
+          <span *ngFor="let tag of selectedTags">#{{ tag }}</span>
+        </div>
+      </div>
+
+      <div class="criteria-grid" *ngIf="hasSelectedOrganization && !isLoading && visibleCriteria.length > 0">
+        <mat-card
+          class="criterion-card"
+          *ngFor="let criterion of visibleCriteria; trackBy: trackByCriterion"
+          [class.inactive]="!criterion.active">
+          <div class="criterion-accent"></div>
+          <mat-card-header>
+            <div mat-card-avatar class="criterion-avatar"><mat-icon>fact_check</mat-icon></div>
+            <mat-card-title>{{ criterion.name }}</mat-card-title>
+            <mat-card-subtitle>{{ criterion.code }}</mat-card-subtitle>
+            <div class="criterion-actions">
+              <button mat-icon-button type="button" (click)="openEditDialog(criterion)" [matTooltip]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.ACTIONS.EDIT' | translate">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="toggleCriterionStatus(criterion)" [matTooltip]="(criterion.active ? 'DESEMPENO_MENUITEMS.CRITERIA_BANK.ACTIONS.DEACTIVATE' : 'DESEMPENO_MENUITEMS.CRITERIA_BANK.ACTIONS.ACTIVATE') | translate">
+                <mat-icon>{{ criterion.active ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+              </button>
+              <button mat-icon-button type="button" color="warn" (click)="deleteCriterion(criterion)" [matTooltip]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.ACTIONS.DELETE' | translate">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </mat-card-header>
+
+          <mat-card-content>
+            <p class="criterion-description" [class.empty]="!criterion.description">
+              {{ criterion.description || ('DESEMPENO_MENUITEMS.CRITERIA_BANK.NO_DESCRIPTION' | translate) }}
+            </p>
+
+            <div class="criterion-meta">
+              <span><mat-icon>category</mat-icon>{{ criterion.suggestedDimension || ('DESEMPENO_MENUITEMS.CRITERIA_BANK.NO_DIMENSION' | translate) }}</span>
+              <span><mat-icon>speed</mat-icon>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.REQUIRED_LEVEL_SHORT' | translate }} {{ criterion.requiredLevel }}%</span>
+              <span [class.status-inactive]="!criterion.active"><mat-icon>{{ criterion.active ? 'check_circle' : 'pause_circle' }}</mat-icon>{{ (criterion.active ? 'DESEMPENO_MENUITEMS.CRITERIA_BANK.STATUS.ACTIVE' : 'DESEMPENO_MENUITEMS.CRITERIA_BANK.STATUS.INACTIVE') | translate }}</span>
+            </div>
+
+            <div class="criterion-tags" *ngIf="criterion.tags.length > 0">
+              <span *ngFor="let tag of criterion.tags">#{{ tag }}</span>
+            </div>
+
+            <div class="questions-heading">
+              <strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.QUESTIONS_TITLE' | translate }}</strong>
+              <span>{{ criterion.questions.length }}</span>
+            </div>
+            <div class="question-preview-list">
+              <div class="question-preview" *ngFor="let question of criterion.questions.slice(0, 3); trackBy: trackByQuestion">
+                <mat-icon>{{ question.type === 'ABIERTA' ? 'notes' : 'linear_scale' }}</mat-icon>
+                <div>
+                  <span>{{ question.text }}</span>
+                  <small>{{ getQuestionTypeLabel(question.type) }}<ng-container *ngIf="question.suggestedScale"> · {{ question.suggestedScale }}</ng-container></small>
+                </div>
+              </div>
+              <div class="more-questions" *ngIf="criterion.questions.length > 3">
+                +{{ criterion.questions.length - 3 }} {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.MORE_QUESTIONS' | translate }}
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <div class="bank-empty" *ngIf="!hasSelectedOrganization && !isLoading">
+        <mat-icon>business</mat-icon>
+        <h3>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.EMPTY_ORGANIZATION_TITLE' | translate }}</h3>
+        <p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.EMPTY_ORGANIZATION_TEXT' | translate }}</p>
+      </div>
+
+      <div class="bank-empty" *ngIf="hasSelectedOrganization && !isLoading && criteria.length === 0">
+        <mat-icon>library_add</mat-icon>
+        <h3>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.EMPTY_TITLE' | translate }}</h3>
+        <p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.EMPTY_TEXT' | translate }}</p>
+        <div class="empty-actions">
+          <button mat-stroked-button type="button" (click)="excelInput.click()"><mat-icon>upload_file</mat-icon>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.BUTTON' | translate }}</button>
+          <button mat-raised-button color="primary" type="button" (click)="openCreateDialog()"><mat-icon>add</mat-icon>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.NEW' | translate }}</button>
+        </div>
+      </div>
+
+      <div class="bank-empty compact" *ngIf="hasSelectedOrganization && !isLoading && criteria.length > 0 && filteredCriteria.length === 0">
+        <mat-icon>search_off</mat-icon>
+        <h3>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.NO_RESULTS_TITLE' | translate }}</h3>
+        <p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.NO_RESULTS_TEXT' | translate }}</p>
+        <button mat-stroked-button type="button" (click)="resetFilters()">{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FILTERS.CLEAR' | translate }}</button>
+      </div>
+
+      <mat-paginator
+        *ngIf="hasSelectedOrganization && filteredCriteria.length > pageSize"
+        [length]="filteredCriteria.length"
+        [pageIndex]="pageIndex"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[8, 16, 24]"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </div>
+  </div>
+</section>
+
+<ng-template #criterionDialogTemplate>
+  <div class="criterion-dialog">
+    <div class="dialog-header">
+      <div class="dialog-heading-icon"><mat-icon>{{ isEditing ? 'edit_note' : 'playlist_add' }}</mat-icon></div>
+      <div>
+        <h2>{{ (isEditing ? 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.EDIT_TITLE' : 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.CREATE_TITLE') | translate }}</h2>
+        <p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.SUBTITLE' | translate }}</p>
+      </div>
+      <button mat-icon-button type="button" mat-dialog-close [attr.aria-label]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.CLOSE' | translate"><mat-icon>close</mat-icon></button>
+    </div>
+
+    <mat-dialog-content>
+      <form [formGroup]="criterionForm" class="criterion-form">
+        <section class="criteria-form-section">
+          <div class="section-heading">
+            <mat-icon>fact_check</mat-icon>
+            <div><strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.CRITERION_SECTION' | translate }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.CRITERION_HELP' | translate }}</span></div>
+          </div>
+
+          <div class="form-grid">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-2">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.NAME' | translate }}</mat-label>
+              <input matInput formControlName="name" maxlength="200" />
+              <mat-error>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.VALIDATION.NAME_REQUIRED' | translate }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.CODE' | translate }}</mat-label>
+              <input matInput formControlName="code" maxlength="50" />
+              <mat-hint>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.CODE_HINT' | translate }}</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.DIMENSION' | translate }}</mat-label>
+              <input matInput formControlName="suggestedDimension" maxlength="150" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.REQUIRED_LEVEL' | translate }}</mat-label>
+              <input matInput type="number" min="1" max="100" step="1" formControlName="requiredLevel" />
+              <span matSuffix>%</span>
+              <mat-error>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.VALIDATION.REQUIRED_LEVEL' | translate }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-2 tags-field">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.TAGS' | translate }}</mat-label>
+              <mat-chip-grid #tagGrid>
+                <mat-chip-row
+                  *ngFor="let tag of formTags"
+                  (removed)="removeTag(tag)">
+                  #{{ tag }}
+                  <button matChipRemove type="button" [attr.aria-label]="'Quitar etiqueta ' + tag">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip-row>
+              </mat-chip-grid>
+              <input
+                matInput
+                [matChipInputFor]="tagGrid"
+                [matChipInputSeparatorKeyCodes]="tagSeparatorKeysCodes"
+                [matChipInputAddOnBlur]="true"
+                (matChipInputTokenEnd)="addTag($event)"
+                maxlength="500" />
+              <mat-hint>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.TAGS_HINT' | translate }}</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-all description-field">
+              <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.DESCRIPTION' | translate }}</mat-label>
+              <textarea matInput rows="2" formControlName="description" maxlength="1000"></textarea>
+            </mat-form-field>
+          </div>
+
+          <mat-checkbox formControlName="active">{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.ACTIVE' | translate }}</mat-checkbox>
+        </section>
+
+        <section class="criteria-form-section questions-section">
+          <div class="section-heading with-action">
+            <mat-icon>quiz</mat-icon>
+            <div><strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.QUESTIONS_SECTION' | translate }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.QUESTIONS_HELP' | translate }}</span></div>
+            <button mat-stroked-button color="primary" type="button" (click)="addQuestion()"><mat-icon>add</mat-icon>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.ADD_QUESTION' | translate }}</button>
+          </div>
+
+          <div formArrayName="questions" class="question-editor-list">
+            <div class="question-editor" *ngFor="let question of questions.controls; let index = index" [formGroupName]="index">
+              <div class="question-number">{{ index + 1 }}</div>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="question-text-field">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.QUESTION' | translate }}</mat-label>
+                <textarea matInput rows="2" formControlName="text" maxlength="1000"></textarea>
+                <mat-error>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.VALIDATION.QUESTION_REQUIRED' | translate }}</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.QUESTION_TYPE' | translate }}</mat-label>
+                <mat-select formControlName="type" (selectionChange)="onQuestionTypeChange(index, $event.value)">
+                  <mat-option *ngFor="let option of questionTypeOptions" [value]="option.value">{{ option.labelKey | translate }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" *ngIf="question.get('type')?.value === 'LIKERT_1_5'">
+                <mat-label>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.FIELDS.SCALE' | translate }}</mat-label>
+                <input matInput formControlName="suggestedScale" maxlength="120" />
+              </mat-form-field>
+              <div class="open-question-note" *ngIf="question.get('type')?.value === 'ABIERTA'">
+                <mat-icon>notes</mat-icon><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.OPEN_NOTE' | translate }}</span>
+              </div>
+              <button mat-icon-button color="warn" type="button" [disabled]="questions.length <= 1" (click)="removeQuestion(index)" [matTooltip]="'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.REMOVE_QUESTION' | translate"><mat-icon>delete_outline</mat-icon></button>
+            </div>
+          </div>
+        </section>
+      </form>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.CANCEL' | translate }}</button>
+      <button mat-raised-button color="primary" type="button" [disabled]="isSaving" (click)="saveCriterion()">
+        <mat-spinner *ngIf="isSaving" diameter="18"></mat-spinner>
+        <mat-icon *ngIf="!isSaving">save</mat-icon>
+        {{ (isEditing ? 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.SAVE_CHANGES' : 'DESEMPENO_MENUITEMS.CRITERIA_BANK.DIALOG.CREATE') | translate }}
+      </button>
+    </mat-dialog-actions>
+  </div>
+</ng-template>
+
+<ng-template #importPreviewDialogTemplate>
+  <div class="import-dialog">
+    <div class="dialog-header">
+      <div class="dialog-heading-icon import"><mat-icon>upload_file</mat-icon></div>
+      <div><h2>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.PREVIEW_TITLE' | translate }}</h2><p>{{ pendingImportFileName }}</p></div>
+      <button mat-icon-button type="button" mat-dialog-close><mat-icon>close</mat-icon></button>
+    </div>
+    <mat-dialog-content>
+      <div class="import-summary" *ngIf="pendingImportSummary as summary">
+        <div><strong>{{ summary.newCriteria }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.NEW_CRITERIA' | translate }}</span></div>
+        <div><strong>{{ summary.mergedCriteria }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.MERGED_CRITERIA' | translate }}</span></div>
+        <div><strong>{{ summary.newQuestions }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.NEW_QUESTIONS' | translate }}</span></div>
+        <div><strong>{{ summary.skippedQuestions }}</strong><span>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.SKIPPED' | translate }}</span></div>
+      </div>
+      <p class="import-note">{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.PREVIEW_NOTE' | translate }}</p>
+      <div class="import-preview-list">
+        <div class="import-preview-row" *ngFor="let criterion of pendingImport?.criteria">
+          <div><strong>{{ criterion.name }}</strong><span>{{ criterion.code }} · {{ criterion.suggestedDimension || ('DESEMPENO_MENUITEMS.CRITERIA_BANK.NO_DIMENSION' | translate) }}</span></div>
+          <span class="import-question-count">{{ criterion.questions.length }} {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.METRICS.QUESTIONS' | translate }}</span>
+          <div class="criterion-tags"><span *ngFor="let tag of criterion.tags">#{{ tag }}</span></div>
+        </div>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.CANCEL' | translate }}</button>
+      <button mat-raised-button color="primary" type="button" (click)="confirmImport()"><mat-icon>playlist_add_check</mat-icon>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.IMPORT.CONFIRM' | translate }}</button>
+    </mat-dialog-actions>
+  </div>
+</ng-template>
+
+<ng-template #guideDialogTemplate>
+  <div class="guide-dialog">
+    <div class="dialog-header">
+      <div class="dialog-heading-icon"><mat-icon>help_outline</mat-icon></div>
+      <div><h2>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.TITLE' | translate }}</h2><p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.SUBTITLE' | translate }}</p></div>
+      <button mat-icon-button type="button" mat-dialog-close><mat-icon>close</mat-icon></button>
+    </div>
+    <mat-dialog-content>
+      <div class="guide-intro"><mat-icon>lightbulb</mat-icon><p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.PURPOSE' | translate }}</p></div>
+      <div class="guide-steps">
+        <div><span>1</span><div><strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP1_TITLE' | translate }}</strong><p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP1_TEXT' | translate }}</p></div></div>
+        <div><span>2</span><div><strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP2_TITLE' | translate }}</strong><p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP2_TEXT' | translate }}</p></div></div>
+        <div><span>3</span><div><strong>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP3_TITLE' | translate }}</strong><p>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.STEP3_TEXT' | translate }}</p></div></div>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end"><button mat-raised-button color="primary" type="button" mat-dialog-close>{{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.GUIDE.UNDERSTOOD' | translate }}</button></mat-dialog-actions>
+  </div>
+</ng-template>

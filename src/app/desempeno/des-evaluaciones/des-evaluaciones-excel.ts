@@ -140,9 +140,70 @@ export const DES_EVALUATION_EXCEL_TEMPLATE_HEADERS = TEMPLATE_COLUMN_KEYS.map(
   (key) => DES_EVALUATION_EXCEL_HEADERS[key]
 );
 
+export const DES_EVALUATION_DIMENSION_EXCEL_HEADERS = {
+  positions: 'PUESTOS *',
+  scenarios: 'ESCENARIOS DE EVALUACION *',
+} as const;
+
+export const DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS = [
+  DES_EVALUATION_DIMENSION_EXCEL_HEADERS.positions,
+  DES_EVALUATION_DIMENSION_EXCEL_HEADERS.scenarios,
+  'CRITERIO *',
+  'PONDERACION (%) *',
+  'NIVEL EXIGENCIA (%) *',
+  'PREGUNTA *',
+  'TIPO PREGUNTA *',
+] as const;
+
+export type DesEvaluationDimensionCriterionColumn =
+  | 'criterion'
+  | 'weight'
+  | 'requiredRating'
+  | 'question'
+  | 'questionType';
+
+const DIMENSION_CRITERION_COLUMN_ORDER: DesEvaluationDimensionCriterionColumn[] = [
+  'criterion',
+  'weight',
+  'requiredRating',
+  'question',
+  'questionType',
+];
+
+export function getDesEvaluationDimensionCriterionHeader(
+  column: DesEvaluationDimensionCriterionColumn,
+  criterionNumber: number
+): string {
+  const labels: Record<DesEvaluationDimensionCriterionColumn, string> = {
+    criterion: 'CRITERIO',
+    weight: 'PONDERACION (%)',
+    requiredRating: 'NIVEL EXIGENCIA (%)',
+    question: 'PREGUNTA',
+    questionType: 'TIPO PREGUNTA',
+  };
+
+  return `${labels[column]} ${criterionNumber}`;
+}
+
+export function getDesEvaluationDimensionExcelHeaders(criterionCount = 2): string[] {
+  const headers: string[] = [
+    DES_EVALUATION_DIMENSION_EXCEL_HEADERS.positions,
+    DES_EVALUATION_DIMENSION_EXCEL_HEADERS.scenarios,
+  ];
+
+  for (let criterionNumber = 1; criterionNumber <= criterionCount; criterionNumber++) {
+    DIMENSION_CRITERION_COLUMN_ORDER.forEach((column) => {
+      headers.push(getDesEvaluationDimensionCriterionHeader(column, criterionNumber));
+    });
+  }
+
+  return headers;
+}
+
 const POSITION_MAP_SHEET = '_CONFIG';
 const POSITION_MAP_SHEET_HEADER = 'Hoja';
 const POSITION_MAP_POSITION_HEADER = 'Puesto';
+const DIMENSION_MAP_DIMENSION_HEADER = 'Dimension';
 
 export function appendDesEvaluationPositionMapSheet(
   workbook: XLSX.WorkBook,
@@ -260,6 +321,13 @@ function splitOptions(value: unknown): string[] {
     .filter((item) => item.length > 0);
 }
 
+function splitSelections(value: unknown): string[] {
+  return text(value)
+    .split(/[|;\n]/g)
+    .map((item) => item.replace(/^[\s\u2610\u2611\u2713\u2714]+/, '').trim())
+    .filter((item) => item.length > 0);
+}
+
 function isDataSheet(name: string): boolean {
   const normalized = normalize(name).replace(/\s/g, '');
   return !!normalized && !IGNORED_SHEETS.has(normalized) && !name.trim().startsWith('_');
@@ -314,7 +382,59 @@ function validateCode(value: string | null): boolean {
   return !value || (value.length <= 50 && /^[A-Za-z0-9_-]+$/.test(value));
 }
 
+function isDimensionTemplateWorkbook(workbook: XLSX.WorkBook): boolean {
+  return workbook.SheetNames.filter(isDataSheet).some((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const firstRow = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: '',
+      raw: false,
+      blankrows: false,
+    })[0] ?? [];
+    const normalizedHeaders = firstRow.map(normalize);
+
+    return normalizedHeaders.some((header) => /^CRITERIO\s+1$/.test(header)) &&
+      normalizedHeaders.some((header) =>
+        ['PUESTOS', 'PUESTO', 'POSITIONS', 'POSITION'].includes(header)
+      );
+  });
+}
+
+function isGroupedDimensionTemplateWorkbook(workbook: XLSX.WorkBook): boolean {
+  return workbook.SheetNames.filter(isDataSheet).some((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const firstRow = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: '',
+      raw: false,
+      blankrows: false,
+    })[0] ?? [];
+    const normalizedHeaders = firstRow.map(normalize);
+
+    return normalizedHeaders.some((header) => header === 'CRITERIO') &&
+      normalizedHeaders.some((header) =>
+        ['PUESTOS', 'PUESTO', 'POSITIONS', 'POSITION'].includes(header)
+      ) &&
+      normalizedHeaders.some((header) =>
+        ['PREGUNTA', 'QUESTION'].includes(header)
+      );
+  });
+}
+
 export function parseDesEvaluationExcelWorkbook(
+  workbook: XLSX.WorkBook,
+  context: DesEvaluationExcelContext
+): DesEvaluationExcelImport {
+  if (isGroupedDimensionTemplateWorkbook(workbook)) {
+    return parseGroupedDimensionTemplateWorkbook(workbook, context);
+  }
+  if (isDimensionTemplateWorkbook(workbook)) {
+    return parseDimensionTemplateWorkbook(workbook, context);
+  }
+  return parseLegacyPositionWorkbook(workbook, context);
+}
+
+function parseLegacyPositionWorkbook(
   workbook: XLSX.WorkBook,
   context: DesEvaluationExcelContext
 ): DesEvaluationExcelImport {
@@ -675,6 +795,682 @@ export function parseDesEvaluationExcelWorkbook(
   };
 }
 
+interface DimensionCriterionBlock {
+  criterionNumber: number;
+  startColumn: number;
+  valid: boolean;
+}
+
+function parseGroupedDimensionTemplateWorkbook(
+  workbook: XLSX.WorkBook,
+  context: DesEvaluationExcelContext
+): DesEvaluationExcelImport {
+  const t = context.translate;
+  const errors: string[] = [];
+  const rows: DesEvaluationExcelRow[] = [];
+  const dataSheetNames = workbook.SheetNames.filter(isDataSheet);
+  const positionsByName = new Map(
+    context.positions.map((position) => [normalize(position), position])
+  );
+  const scenariosByName = new Map<string, DesEvaluationExcelScenarioKey>();
+  const configuredDimensionsByName = new Map(
+    (context.dimensions ?? []).map((dimension) => [normalize(dimension.name), dimension])
+  );
+  const configuredScenariosByPosition = new Map(
+    (context.positionScenarios ?? []).map((positionConfig) => [
+      normalize(positionConfig.position),
+      new Map(positionConfig.scenarios.map((scenario) => [scenario.key, scenario])),
+    ])
+  );
+  const dimensionBySheetName = getDimensionBySheetName(workbook);
+  const defaultScale = context.scales.find((scale) => scale.id === context.defaultScaleId);
+
+  context.scenarios.forEach((scenario) => {
+    scenariosByName.set(normalize(scenario.key), scenario.key);
+    scenario.names.forEach((name) => scenariosByName.set(normalize(name), scenario.key));
+  });
+
+  if (dataSheetNames.length === 0) {
+    throw new DesEvaluationExcelValidationError([t('NO_DATA_SHEETS')]);
+  }
+
+  dataSheetNames.forEach((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const range = worksheet['!ref']
+      ? XLSX.utils.decode_range(worksheet['!ref'])
+      : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+    const headers = DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS.map((_, columnIndex) =>
+      text(getWorksheetCellValue(worksheet, 0, columnIndex))
+    );
+    const dimensionName = dimensionBySheetName.get(normalize(sheetName)) ?? sheetName;
+    const configuredDimension = configuredDimensionsByName.get(normalize(dimensionName));
+
+    validateGroupedDimensionHeaders(headers, sheetName, t, errors);
+    if (!configuredDimension) {
+      errors.push(t('DIMENSION_SHEET_NOT_FOUND', { sheet: sheetName, dimension: dimensionName }));
+    }
+
+    let dataRowCount = 0;
+    for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex++) {
+      const values = DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS.map((_, columnIndex) =>
+        text(getWorksheetCellValue(worksheet, rowIndex, columnIndex))
+      );
+      if (values.every((value) => !value)) {
+        continue;
+      }
+      dataRowCount++;
+
+      const rowNumber = rowIndex + 1;
+      const rowErrors: string[] = [];
+      const [
+        positionsValue,
+        scenariosValue,
+        criterionName,
+        criterionWeightValue,
+        requiredRatingValue,
+        itemText,
+        itemTypeValue,
+      ] = values;
+      const requiredValues = [
+        positionsValue,
+        scenariosValue,
+        criterionName,
+        criterionWeightValue,
+        requiredRatingValue,
+        itemText,
+        itemTypeValue,
+      ];
+      requiredValues.forEach((value, columnIndex) => {
+        if (!value) {
+          rowErrors.push(t('REQUIRED_VALUE', {
+            sheet: sheetName,
+            row: rowNumber,
+            field: DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS[columnIndex],
+          }));
+        }
+      });
+
+      const selectedPositions: string[] = [];
+      splitSelections(positionsValue).forEach((positionValue) => {
+        const position = positionsByName.get(normalize(positionValue));
+        if (!position) {
+          rowErrors.push(t('POSITION_NOT_FOUND', {
+            sheet: sheetName,
+            row: rowNumber,
+            value: positionValue,
+          }));
+        } else if (!selectedPositions.some((item) => normalize(item) === normalize(position))) {
+          selectedPositions.push(position);
+        }
+      });
+
+      const selectedScenarios: Array<{
+        key: DesEvaluationExcelScenarioKey;
+        label: string;
+      }> = [];
+      splitSelections(scenariosValue).forEach((scenarioValue) => {
+        const scenarioKey = scenariosByName.get(normalize(scenarioValue));
+        if (!scenarioKey) {
+          rowErrors.push(t('INVALID_SCENARIO', {
+            sheet: sheetName,
+            row: rowNumber,
+            value: scenarioValue,
+          }));
+        } else if (!selectedScenarios.some((scenario) => scenario.key === scenarioKey)) {
+          selectedScenarios.push({ key: scenarioKey, label: scenarioValue });
+        }
+      });
+
+      const criterionWeight = parseWeight(criterionWeightValue);
+      if (criterionWeight === null || criterionWeight < 0 || criterionWeight > 100) {
+        rowErrors.push(t('INVALID_WEIGHT', {
+          sheet: sheetName,
+          row: rowNumber,
+          field: DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS[3],
+        }));
+      }
+
+      const requiredRatingPercent = parseWeight(requiredRatingValue);
+      if (
+        requiredRatingPercent === null ||
+        !Number.isInteger(requiredRatingPercent) ||
+        requiredRatingPercent < 1 ||
+        requiredRatingPercent > 100
+      ) {
+        rowErrors.push(t('INVALID_REQUIRED_LEVEL', { sheet: sheetName, row: rowNumber }));
+      }
+
+      const itemType = resolveItemType(itemTypeValue);
+      if (itemTypeValue && !itemType) {
+        rowErrors.push(t('INVALID_ITEM_TYPE', {
+          sheet: sheetName,
+          row: rowNumber,
+          value: itemTypeValue,
+        }));
+      }
+      if (itemType === 'LIKERT_1_5' && (!defaultScale || defaultScale.levels.length === 0)) {
+        rowErrors.push(defaultScale
+          ? t('SCALE_WITHOUT_LEVELS', {
+              sheet: sheetName,
+              row: rowNumber,
+              value: defaultScale.name,
+            })
+          : t('INVALID_SCALE', {
+              sheet: sheetName,
+              row: rowNumber,
+              value: t('DEFAULT_SCALE'),
+            }));
+      }
+
+      if (
+        configuredDimension &&
+        criterionName &&
+        criterionWeight !== null &&
+        requiredRatingPercent !== null &&
+        Number.isInteger(requiredRatingPercent) &&
+        itemText &&
+        itemType &&
+        (itemType !== 'LIKERT_1_5' || defaultScale)
+      ) {
+        selectedPositions.forEach((position) => {
+          const configuredScenarios = configuredScenariosByPosition.get(normalize(position));
+          selectedScenarios.forEach((scenario) => {
+            const configuredScenario = configuredScenarios?.get(scenario.key);
+            if (!configuredScenario) {
+              rowErrors.push(t('SCENARIO_NOT_CONFIGURED', {
+                sheet: sheetName,
+                row: rowNumber,
+                scenario: scenario.label,
+                position,
+              }));
+              return;
+            }
+
+            rows.push({
+              sheetName,
+              rowNumber,
+              position,
+              scenarioKey: scenario.key,
+              scenarioWeight: configuredScenario.weight,
+              dimensionCode: null,
+              dimensionName: configuredDimension.name,
+              dimensionDescription: '',
+              dimensionWeight: configuredDimension.weight,
+              criterionCode: null,
+              criterionName,
+              criterionDescription: '',
+              criterionWeight,
+              requiredRatingLevel: requiredRatingPercentToScale(requiredRatingPercent),
+              itemCode: null,
+              itemText,
+              itemType,
+              scaleId: itemType === 'LIKERT_1_5' ? defaultScale!.id : null,
+              options: itemType === 'LIKERT_1_5' ? [...defaultScale!.levels] : [],
+            });
+          });
+        });
+      }
+
+      errors.push(...rowErrors);
+    }
+
+    if (dataRowCount === 0) {
+      errors.push(t('EMPTY_SHEET', { sheet: sheetName }));
+    }
+  });
+
+  validateWorkbookConsistency(rows, context, errors, { validateScenarioTotals: false });
+
+  if (errors.length > 0) {
+    throw new DesEvaluationExcelValidationError(Array.from(new Set(errors)));
+  }
+
+  return buildImportSummary(rows);
+}
+
+function getWorksheetCellValue(
+  worksheet: XLSX.WorkSheet,
+  rowIndex: number,
+  columnIndex: number
+): unknown {
+  const getCellValue = (row: number, column: number): unknown => {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: column })];
+    return cell?.w ?? cell?.v ?? '';
+  };
+  const ownValue = getCellValue(rowIndex, columnIndex);
+  if (text(ownValue)) {
+    return ownValue;
+  }
+
+  const merge = (worksheet['!merges'] ?? []).find((range) =>
+    rowIndex >= range.s.r &&
+    rowIndex <= range.e.r &&
+    columnIndex >= range.s.c &&
+    columnIndex <= range.e.c
+  );
+  return merge ? getCellValue(merge.s.r, merge.s.c) : ownValue;
+}
+
+function validateGroupedDimensionHeaders(
+  headers: string[],
+  sheetName: string,
+  t: DesEvaluationExcelContext['translate'],
+  errors: string[]
+): void {
+  const aliases = [
+    ['PUESTOS', 'PUESTO', 'POSITIONS', 'POSITION'],
+    [
+      'ESCENARIOS DE EVALUACION',
+      'ESCENARIO DE EVALUACION',
+      'ESCENARIOS',
+      'EVALUATION SCENARIOS',
+      'EVALUATION SCENARIO',
+      'SCENARIOS',
+    ],
+    ['CRITERIO', 'CRITERION'],
+    ['PONDERACION', 'PONDERACION CRITERIO', 'WEIGHT', 'CRITERION WEIGHT'],
+    [
+      'NIVEL EXIGENCIA',
+      'NIVEL DE EXIGENCIA',
+      'REQUIRED RATING',
+      'REQUIRED RATING LEVEL',
+      'REQUIRED LEVEL',
+    ],
+    ['PREGUNTA', 'QUESTION'],
+    ['TIPO PREGUNTA', 'TIPO DE PREGUNTA', 'QUESTION TYPE'],
+  ];
+
+  headers.forEach((header, columnIndex) => {
+    if (!aliases[columnIndex].includes(normalize(header))) {
+      errors.push(t('INVALID_DIMENSION_HEADER', {
+        sheet: sheetName,
+        column: columnIndex + 1,
+        expected: DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS[columnIndex],
+        actual: header || '-',
+      }));
+    }
+  });
+}
+
+function parseDimensionTemplateWorkbook(
+  workbook: XLSX.WorkBook,
+  context: DesEvaluationExcelContext
+): DesEvaluationExcelImport {
+  const t = context.translate;
+  const errors: string[] = [];
+  const rows: DesEvaluationExcelRow[] = [];
+  const dataSheetNames = workbook.SheetNames.filter(isDataSheet);
+  const positionsByName = new Map(
+    context.positions.map((position) => [normalize(position), position])
+  );
+  const scenariosByName = new Map<string, DesEvaluationExcelScenarioKey>();
+  const configuredDimensionsByName = new Map(
+    (context.dimensions ?? []).map((dimension) => [normalize(dimension.name), dimension])
+  );
+  const configuredScenariosByPosition = new Map(
+    (context.positionScenarios ?? []).map((positionConfig) => [
+      normalize(positionConfig.position),
+      new Map(positionConfig.scenarios.map((scenario) => [scenario.key, scenario])),
+    ])
+  );
+  const dimensionBySheetName = getDimensionBySheetName(workbook);
+  const defaultScale = context.scales.find((scale) => scale.id === context.defaultScaleId);
+
+  context.scenarios.forEach((scenario) => {
+    scenariosByName.set(normalize(scenario.key), scenario.key);
+    scenario.names.forEach((name) => scenariosByName.set(normalize(name), scenario.key));
+  });
+
+  if (dataSheetNames.length === 0) {
+    throw new DesEvaluationExcelValidationError([t('NO_DATA_SHEETS')]);
+  }
+
+  dataSheetNames.forEach((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const matrix = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: '',
+      raw: false,
+      blankrows: false,
+    });
+    const headers = (matrix[0] ?? []).map(text);
+    const dataRows = matrix.slice(1).filter((row) => row.some((value) => !!text(value)));
+    const maxColumnCount = Math.max(headers.length, ...dataRows.map((row) => row.length));
+    while (headers.length < maxColumnCount) {
+      headers.push('');
+    }
+    const dimensionName = dimensionBySheetName.get(normalize(sheetName)) ?? sheetName;
+    const configuredDimension = configuredDimensionsByName.get(normalize(dimensionName));
+
+    if (!configuredDimension) {
+      errors.push(t('DIMENSION_SHEET_NOT_FOUND', { sheet: sheetName, dimension: dimensionName }));
+    }
+
+    const blocks = getDimensionCriterionBlocks(headers, sheetName, t, errors);
+    if (dataRows.length === 0) {
+      errors.push(t('EMPTY_SHEET', { sheet: sheetName }));
+      return;
+    }
+
+    dataRows.forEach((rawRow, rowIndex) => {
+      const rowNumber = rowIndex + 2;
+      const rowErrors: string[] = [];
+      const positionValues = splitSelections(rawRow[0]);
+      const scenarioValues = splitSelections(rawRow[1]);
+      const selectedPositions: string[] = [];
+      const selectedScenarios: Array<{
+        key: DesEvaluationExcelScenarioKey;
+        label: string;
+      }> = [];
+
+      if (positionValues.length === 0) {
+        rowErrors.push(t('REQUIRED_VALUE', {
+          sheet: sheetName,
+          row: rowNumber,
+          field: DES_EVALUATION_DIMENSION_EXCEL_HEADERS.positions,
+        }));
+      }
+      positionValues.forEach((positionValue) => {
+        const position = positionsByName.get(normalize(positionValue));
+        if (!position) {
+          rowErrors.push(t('POSITION_NOT_FOUND', {
+            sheet: sheetName,
+            row: rowNumber,
+            value: positionValue,
+          }));
+        } else if (!selectedPositions.some((item) => normalize(item) === normalize(position))) {
+          selectedPositions.push(position);
+        }
+      });
+
+      if (scenarioValues.length === 0) {
+        rowErrors.push(t('REQUIRED_VALUE', {
+          sheet: sheetName,
+          row: rowNumber,
+          field: DES_EVALUATION_DIMENSION_EXCEL_HEADERS.scenarios,
+        }));
+      }
+      scenarioValues.forEach((scenarioValue) => {
+        const scenarioKey = scenariosByName.get(normalize(scenarioValue));
+        if (!scenarioKey) {
+          rowErrors.push(t('INVALID_SCENARIO', {
+            sheet: sheetName,
+            row: rowNumber,
+            value: scenarioValue,
+          }));
+        } else if (!selectedScenarios.some((scenario) => scenario.key === scenarioKey)) {
+          selectedScenarios.push({ key: scenarioKey, label: scenarioValue });
+        }
+      });
+
+      let populatedBlockCount = 0;
+      blocks.filter((block) => block.valid).forEach((block) => {
+        const values = DIMENSION_CRITERION_COLUMN_ORDER.map((_, offset) =>
+          text(rawRow[block.startColumn + offset])
+        );
+        if (values.every((value) => !value)) {
+          return;
+        }
+        populatedBlockCount++;
+
+        const missingFields = values
+          .map((value, offset) => value
+            ? null
+            : getDesEvaluationDimensionCriterionHeader(
+                DIMENSION_CRITERION_COLUMN_ORDER[offset],
+                block.criterionNumber
+              ))
+          .filter((value): value is string => !!value);
+        if (missingFields.length > 0) {
+          rowErrors.push(t('INCOMPLETE_CRITERION_BLOCK', {
+            sheet: sheetName,
+            row: rowNumber,
+            criterion: block.criterionNumber,
+            columns: missingFields.join(', '),
+          }));
+          return;
+        }
+
+        const [criterionName, criterionWeightValue, requiredRatingValue, itemText, itemTypeValue] =
+          values;
+        const criterionWeight = parseWeight(criterionWeightValue);
+        const requiredRatingPercent = parseWeight(requiredRatingValue);
+        const itemType = resolveItemType(itemTypeValue);
+
+        if (criterionWeight === null || criterionWeight < 0 || criterionWeight > 100) {
+          rowErrors.push(t('INVALID_WEIGHT', {
+            sheet: sheetName,
+            row: rowNumber,
+            field: getDesEvaluationDimensionCriterionHeader('weight', block.criterionNumber),
+          }));
+        }
+        if (
+          requiredRatingPercent === null ||
+          !Number.isInteger(requiredRatingPercent) ||
+          requiredRatingPercent < 1 ||
+          requiredRatingPercent > 100
+        ) {
+          rowErrors.push(t('INVALID_REQUIRED_LEVEL', { sheet: sheetName, row: rowNumber }));
+        }
+        if (!itemType) {
+          rowErrors.push(t('INVALID_ITEM_TYPE', {
+            sheet: sheetName,
+            row: rowNumber,
+            value: itemTypeValue,
+          }));
+        }
+        if (itemType === 'LIKERT_1_5' && (!defaultScale || defaultScale.levels.length === 0)) {
+          rowErrors.push(defaultScale
+            ? t('SCALE_WITHOUT_LEVELS', {
+                sheet: sheetName,
+                row: rowNumber,
+                value: defaultScale.name,
+              })
+            : t('INVALID_SCALE', {
+                sheet: sheetName,
+                row: rowNumber,
+                value: t('DEFAULT_SCALE'),
+              }));
+        }
+
+        if (
+          !configuredDimension ||
+          criterionWeight === null ||
+          requiredRatingPercent === null ||
+          !Number.isInteger(requiredRatingPercent) ||
+          !itemType ||
+          (itemType === 'LIKERT_1_5' && !defaultScale)
+        ) {
+          return;
+        }
+
+        selectedPositions.forEach((position) => {
+          const configuredScenarios = configuredScenariosByPosition.get(normalize(position));
+          selectedScenarios.forEach((scenario) => {
+            const configuredScenario = configuredScenarios?.get(scenario.key);
+            if (!configuredScenario) {
+              rowErrors.push(t('SCENARIO_NOT_CONFIGURED', {
+                sheet: sheetName,
+                row: rowNumber,
+                scenario: scenario.label,
+                position,
+              }));
+              return;
+            }
+
+            rows.push({
+              sheetName,
+              rowNumber,
+              position,
+              scenarioKey: scenario.key,
+              scenarioWeight: configuredScenario.weight,
+              dimensionCode: null,
+              dimensionName: configuredDimension.name,
+              dimensionDescription: '',
+              dimensionWeight: configuredDimension.weight,
+              criterionCode: null,
+              criterionName,
+              criterionDescription: '',
+              criterionWeight,
+              requiredRatingLevel: requiredRatingPercentToScale(requiredRatingPercent),
+              itemCode: null,
+              itemText,
+              itemType,
+              scaleId: itemType === 'LIKERT_1_5' ? defaultScale!.id : null,
+              options: itemType === 'LIKERT_1_5' ? [...defaultScale!.levels] : [],
+            });
+          });
+        });
+      });
+
+      if (populatedBlockCount === 0) {
+        rowErrors.push(t('NO_CRITERION_DATA', { sheet: sheetName, row: rowNumber }));
+      }
+      errors.push(...rowErrors);
+    });
+  });
+
+  validateWorkbookConsistency(rows, context, errors, { validateScenarioTotals: false });
+
+  if (errors.length > 0) {
+    throw new DesEvaluationExcelValidationError(Array.from(new Set(errors)));
+  }
+
+  return buildImportSummary(rows);
+}
+
+function getDimensionCriterionBlocks(
+  headers: string[],
+  sheetName: string,
+  t: DesEvaluationExcelContext['translate'],
+  errors: string[]
+): DimensionCriterionBlock[] {
+  const positionHeader = normalize(headers[0]);
+  const scenarioHeader = normalize(headers[1]);
+  const validPositionHeaders = new Set(['PUESTOS', 'PUESTO', 'POSITIONS', 'POSITION']);
+  const validScenarioHeaders = new Set([
+    'ESCENARIOS DE EVALUACION',
+    'ESCENARIO DE EVALUACION',
+    'ESCENARIOS',
+    'EVALUATION SCENARIOS',
+    'EVALUATION SCENARIO',
+    'SCENARIOS',
+  ]);
+
+  if (!validPositionHeaders.has(positionHeader)) {
+    errors.push(t('INVALID_DIMENSION_HEADER', {
+      sheet: sheetName,
+      column: 1,
+      expected: DES_EVALUATION_DIMENSION_EXCEL_HEADERS.positions,
+      actual: headers[0] || '-',
+    }));
+  }
+  if (!validScenarioHeaders.has(scenarioHeader)) {
+    errors.push(t('INVALID_DIMENSION_HEADER', {
+      sheet: sheetName,
+      column: 2,
+      expected: DES_EVALUATION_DIMENSION_EXCEL_HEADERS.scenarios,
+      actual: headers[1] || '-',
+    }));
+  }
+
+  let lastHeaderIndex = headers.length - 1;
+  while (lastHeaderIndex >= 2 && !text(headers[lastHeaderIndex])) {
+    lastHeaderIndex--;
+  }
+  if (lastHeaderIndex < 2) {
+    errors.push(t('NO_CRITERION_COLUMNS', { sheet: sheetName }));
+    return [];
+  }
+
+  const blockCount = Math.ceil((lastHeaderIndex - 1) / DIMENSION_CRITERION_COLUMN_ORDER.length);
+  const blocks: DimensionCriterionBlock[] = [];
+  for (let blockIndex = 0; blockIndex < blockCount; blockIndex++) {
+    const criterionNumber = blockIndex + 1;
+    const startColumn = 2 + blockIndex * DIMENSION_CRITERION_COLUMN_ORDER.length;
+    let valid = true;
+
+    DIMENSION_CRITERION_COLUMN_ORDER.forEach((column, offset) => {
+      const actual = headers[startColumn + offset] ?? '';
+      if (!matchesDimensionCriterionHeader(actual, column, criterionNumber)) {
+        valid = false;
+        errors.push(t('INVALID_DIMENSION_HEADER', {
+          sheet: sheetName,
+          column: startColumn + offset + 1,
+          expected: getDesEvaluationDimensionCriterionHeader(column, criterionNumber),
+          actual: actual || '-',
+        }));
+      }
+    });
+    blocks.push({ criterionNumber, startColumn, valid });
+  }
+
+  return blocks;
+}
+
+function matchesDimensionCriterionHeader(
+  header: string,
+  column: DesEvaluationDimensionCriterionColumn,
+  criterionNumber: number
+): boolean {
+  const normalized = normalize(header);
+  const aliases: Record<DesEvaluationDimensionCriterionColumn, string[]> = {
+    criterion: ['CRITERIO', 'CRITERION'],
+    weight: ['PONDERACION', 'PONDERACION CRITERIO', 'WEIGHT', 'CRITERION WEIGHT'],
+    requiredRating: [
+      'NIVEL EXIGENCIA',
+      'NIVEL DE EXIGENCIA',
+      'REQUIRED RATING',
+      'REQUIRED RATING LEVEL',
+      'REQUIRED LEVEL',
+    ],
+    question: ['PREGUNTA', 'QUESTION'],
+    questionType: ['TIPO PREGUNTA', 'TIPO DE PREGUNTA', 'QUESTION TYPE'],
+  };
+
+  return aliases[column].some((alias) =>
+    normalized === `${alias} ${criterionNumber}` ||
+    (column !== 'criterion' && normalized === alias)
+  );
+}
+
+function buildImportSummary(rows: DesEvaluationExcelRow[]): DesEvaluationExcelImport {
+  const positions = Array.from(new Set(rows.map((row) => row.position)));
+  const scenarios = new Set(rows.map((row) => `${normalize(row.position)}|${row.scenarioKey}`));
+  const dimensions = new Set(rows.map((row) => normalize(row.dimensionName)));
+  const criteria = new Set(rows.map((row) => criterionGroupKey(row)));
+
+  return {
+    rows,
+    positions,
+    scenarioCount: scenarios.size,
+    dimensionCount: dimensions.size,
+    criterionCount: criteria.size,
+    itemCount: rows.length,
+  };
+}
+
+function getDimensionBySheetName(workbook: XLSX.WorkBook): Map<string, string> {
+  const worksheet = workbook.Sheets[POSITION_MAP_SHEET];
+  if (!worksheet) {
+    return new Map<string, string>();
+  }
+
+  const mappings = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+    defval: '',
+    raw: false,
+  });
+
+  return new Map(
+    mappings
+      .map((mapping) => [
+        normalize(mapping[POSITION_MAP_SHEET_HEADER]),
+        text(mapping[DIMENSION_MAP_DIMENSION_HEADER]),
+      ] as const)
+      .filter(([sheetName, dimension]) => !!sheetName && !!dimension)
+  );
+}
+
 function getPositionBySheetName(workbook: XLSX.WorkBook): Map<string, string> {
   const worksheet = workbook.Sheets[POSITION_MAP_SHEET];
   if (!worksheet) {
@@ -708,7 +1504,8 @@ function criterionGroupKey(row: DesEvaluationExcelRow): string {
 function validateWorkbookConsistency(
   rows: DesEvaluationExcelRow[],
   context: DesEvaluationExcelContext,
-  errors: string[]
+  errors: string[],
+  options: { validateScenarioTotals?: boolean } = {}
 ): void {
   const t = context.translate;
   const scenarioMap = new Map<string, DesEvaluationExcelRow>();
@@ -816,17 +1613,19 @@ function validateWorkbookConsistency(
     }
   });
 
-  const scenarioTotals = new Map<string, number>();
-  scenarioMap.forEach((row) => {
-    const key = normalize(row.position);
-    scenarioTotals.set(key, (scenarioTotals.get(key) ?? 0) + row.scenarioWeight);
-  });
-  scenarioTotals.forEach((total, positionKey) => {
-    if (Math.abs(total - 100) > WEIGHT_TOLERANCE) {
-      const position = rows.find((row) => normalize(row.position) === positionKey)?.position ?? positionKey;
-      errors.push(t('SCENARIO_TOTAL', { position, total }));
-    }
-  });
+  if (options.validateScenarioTotals !== false) {
+    const scenarioTotals = new Map<string, number>();
+    scenarioMap.forEach((row) => {
+      const key = normalize(row.position);
+      scenarioTotals.set(key, (scenarioTotals.get(key) ?? 0) + row.scenarioWeight);
+    });
+    scenarioTotals.forEach((total, positionKey) => {
+      if (Math.abs(total - 100) > WEIGHT_TOLERANCE) {
+        const position = rows.find((row) => normalize(row.position) === positionKey)?.position ?? positionKey;
+        errors.push(t('SCENARIO_TOTAL', { position, total }));
+      }
+    });
+  }
 
   const dimensionTotal = Array.from(dimensionMap.values())
     .reduce((total, row) => total + row.dimensionWeight, 0);

@@ -1,0 +1,200 @@
+<div class="organization-dialog-shell">
+  <div class="organization-dialog-header">
+    <div class="organization-dialog-title">
+      <span class="organization-dialog-title__icon" aria-hidden="true">
+        <mat-icon>{{ isEditMode ? 'edit_business' : 'add_business' }}</mat-icon>
+      </span>
+      <div>
+        <h2>
+          {{ (isEditMode
+            ? 'MENUITEMS.ORGANIZATION.EDITORGANIZATION'
+            : 'MENUITEMS.ORGANIZATION.CREATEORG') | translate }}
+        </h2>
+        <p>
+          {{ (isEditMode
+            ? 'MENUITEMS.ORGANIZATION.EDITDIALOGSUBTITLE'
+            : 'MENUITEMS.ORGANIZATION.CREATEDIALOGSUBTITLE') | translate }}
+        </p>
+      </div>
+    </div>
+
+    <button
+      mat-icon-button
+      type="button"
+      class="organization-dialog-close"
+      [disabled]="isSaving"
+      [attr.aria-label]="'MENUITEMS.ORGANIZATION.CLOSE' | translate"
+      (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <form [formGroup]="organizationForm" (ngSubmit)="save()">
+    <mat-dialog-content class="organization-dialog-content">
+      <section class="organization-form-section">
+        <div class="organization-section-heading">
+          <span class="organization-section-heading__icon organization-section-heading__icon--blue" aria-hidden="true">
+            <mat-icon>domain</mat-icon>
+          </span>
+          <div>
+            <h3>{{ 'MENUITEMS.ORGANIZATION.GENERALDATA' | translate }}</h3>
+            <p>{{ 'MENUITEMS.ORGANIZATION.GENERALDATADESC' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="organization-form-grid">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field organization-field--full">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.NAME' | translate }}</mat-label>
+            <input matInput formControlName="Nombre" autocomplete="organization" />
+            <mat-icon matSuffix>apartment</mat-icon>
+            <mat-error *ngIf="hasError('Nombre', 'required')">
+              {{ 'MENUITEMS.ORGANIZATION.FIELDREQUIRED' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field organization-field--wide">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.REASON' | translate }}</mat-label>
+            <input matInput formControlName="RazonSocial" />
+            <mat-icon matSuffix>business_center</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field">
+            <mat-label>NIT</mat-label>
+            <input matInput formControlName="NIT" />
+            <mat-icon matSuffix>receipt_long</mat-icon>
+            <mat-error *ngIf="hasError('NIT', 'required')">
+              {{ 'MENUITEMS.ORGANIZATION.FIELDREQUIRED' | translate }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="organization-form-section">
+        <div class="organization-section-heading">
+          <span class="organization-section-heading__icon organization-section-heading__icon--orange" aria-hidden="true">
+            <mat-icon>contact_phone</mat-icon>
+          </span>
+          <div>
+            <h3>{{ 'MENUITEMS.ORGANIZATION.CONTACTDATA' | translate }}</h3>
+            <p>{{ 'MENUITEMS.ORGANIZATION.CONTACTDATADESC' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="organization-form-grid">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field organization-field--full">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.ADDRESS' | translate }}</mat-label>
+            <input matInput formControlName="Direccion" autocomplete="street-address" />
+            <mat-icon matSuffix>location_on</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.PHONECOUNTRY' | translate }}</mat-label>
+            <mat-select
+              formControlName="PhoneCountryIso"
+              [disabled]="isLoadingCountries"
+              (selectionChange)="onPhoneCountryChange()">
+              <mat-option *ngFor="let country of phoneCountries" [value]="country.isoCode">
+                {{ getPhoneCountryLabel(country) }} ({{ country.dialCode }})
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>public</mat-icon>
+            <mat-error *ngIf="organizationForm.get('PhoneCountryIso')?.hasError('phoneCountryRequired')">
+              {{ 'MENUITEMS.ORGANIZATION.PHONECOUNTRYREQUIRED' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic" class="organization-field organization-field--wide">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.PHONE' | translate }}</mat-label>
+            <span matTextPrefix *ngIf="selectedPhoneCountry">{{ selectedPhoneCountry.dialCode }}&nbsp;</span>
+            <input
+              matInput
+              formControlName="Telefono"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              [maxlength]="selectedPhoneCountry?.maxDigits || maxPhoneLocalDigits"
+              (input)="onPhoneInput()" />
+            <mat-icon matSuffix>phone</mat-icon>
+            <mat-hint>
+              {{ 'MENUITEMS.ORGANIZATION.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+            </mat-hint>
+            <mat-hint align="end" *ngIf="phonePreview">
+              {{ 'MENUITEMS.ORGANIZATION.PHONEPREVIEW' | translate:{ phone: phonePreview } }}
+            </mat-hint>
+            <mat-error *ngIf="organizationForm.get('Telefono')?.hasError('phoneLength')">
+              {{ 'MENUITEMS.ORGANIZATION.PHONEDIGITS' | translate:{ digits: phoneDigitsHint, country: getPhoneCountryLabel(selectedPhoneCountry) } }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field organization-field--wide">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.MAIL' | translate }}</mat-label>
+            <input matInput type="email" formControlName="CorreoContacto" autocomplete="email" />
+            <mat-icon matSuffix>mail</mat-icon>
+            <mat-error *ngIf="hasError('CorreoContacto', 'email')">
+              {{ 'MENUITEMS.ORGANIZATION.INVALIDEMAIL' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.REPRESENT' | translate }}</mat-label>
+            <input matInput formControlName="RepresentanteLegal" />
+            <mat-icon matSuffix>person</mat-icon>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="organization-form-section">
+        <div class="organization-section-heading">
+          <span class="organization-section-heading__icon organization-section-heading__icon--green" aria-hidden="true">
+            <mat-icon>analytics</mat-icon>
+          </span>
+          <div>
+            <h3>{{ 'MENUITEMS.ORGANIZATION.PROFILEDATA' | translate }}</h3>
+            <p>{{ 'MENUITEMS.ORGANIZATION.PROFILEDATADESC' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="organization-form-grid organization-form-grid--two-columns">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.SECTOR' | translate }}</mat-label>
+            <input matInput formControlName="SectorIndustria" />
+            <mat-icon matSuffix>factory</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-field">
+            <mat-label>{{ 'MENUITEMS.ORGANIZATION.EMP_NUMBER' | translate }}</mat-label>
+            <input matInput type="number" min="0" formControlName="NumeroEmpleados" />
+            <mat-icon matSuffix>groups</mat-icon>
+            <mat-error *ngIf="hasError('NumeroEmpleados', 'min')">
+              {{ 'MENUITEMS.ORGANIZATION.INVALIDEMPLOYEECOUNT' | translate }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <div class="organization-form-error" *ngIf="errorMessage" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ errorMessage }}</span>
+      </div>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end" class="organization-dialog-actions">
+      <button mat-button type="button" [disabled]="isSaving" (click)="close()">
+        {{ 'MENUITEMS.ORGANIZATION.CANCEL' | translate }}
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        class="organization-save-button"
+        [disabled]="isSaving || isLoadingCountries">
+        <mat-spinner *ngIf="isSaving" diameter="18"></mat-spinner>
+        <mat-icon *ngIf="!isSaving">save</mat-icon>
+        <span>
+          {{ (isSaving
+            ? 'MENUITEMS.ORGANIZATION.SAVING'
+            : 'MENUITEMS.ORGANIZATION.SAVE') | translate }}
+        </span>
+      </button>
+    </mat-dialog-actions>
+  </form>
+</div>

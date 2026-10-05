@@ -1,238 +1,219 @@
-<section class="content">
-  <div  class="content-block">
+<section class="content organization-page">
+  <div class="content-block">
     <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'MENUITEMS.ORGANIZATION.LIST.CREAR' | translate" [items]="['Home','ORGANIZACION']" [active_item]="'Crear '"></app-breadcrumb>
+      <app-breadcrumb
+        [title]="'MENUITEMS.ORGANIZATION.LIST.CREAR' | translate"
+        [items]="['Home', 'ORGANIZACION']"
+        [active_item]="'MENUITEMS.ORGANIZATION.LIST.CREAR' | translate">
+      </app-breadcrumb>
     </div>
-    <div class="row">
-      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
-        <div style="margin-left: -50px;"  class="card">
-          
-          <div >
-          
-          
-              <div class="body table-responsive">
-                <div class="table-loader" *ngIf="isLoading">
-                  <mat-spinner diameter="40"></mat-spinner>
+
+    <div class="organization-workspace">
+      <div class="organization-toolbar" role="toolbar">
+        <div class="organization-toolbar__identity">
+          <span class="organization-toolbar__icon" aria-hidden="true">
+            <mat-icon>domain</mat-icon>
+          </span>
+          <div>
+            <h2>{{ 'MENUITEMS.ORGANIZATION.MANAGEMENTTITLE' | translate }}</h2>
+            <p>{{ 'MENUITEMS.ORGANIZATION.MANAGEMENTSUBTITLE' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="organization-toolbar__actions">
+          <button
+            mat-icon-button
+            type="button"
+            class="organization-refresh-button"
+            [disabled]="isLoading"
+            [matTooltip]="'MENUITEMS.ORGANIZATION.REFRESH' | translate"
+            [attr.aria-label]="'MENUITEMS.ORGANIZATION.REFRESH' | translate"
+            (click)="getOrganizations()">
+            <mat-icon [class.organization-icon--spinning]="isLoading">refresh</mat-icon>
+          </button>
+
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            class="organization-add-button"
+            (click)="openCreateOrganizationDialog()">
+            <mat-icon>add_business</mat-icon>
+            <span>{{ 'MENUITEMS.ORGANIZATION.ADDORGANIZATION' | translate }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="organization-summary-bar">
+        <div class="organization-count">
+          <span class="organization-count__icon" aria-hidden="true">
+            <mat-icon>apartment</mat-icon>
+          </span>
+          <div>
+            <strong>{{ totalOrganizations }}</strong>
+            <span>{{ 'MENUITEMS.ORGANIZATION.REGISTERED' | translate }}</span>
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="organization-search">
+          <mat-label>{{ 'MENUITEMS.ORGANIZATION.SEARCH' | translate }}</mat-label>
+          <input
+            matInput
+            autocomplete="off"
+            [ngModel]="organizationSearchTerm"
+            (ngModelChange)="onOrganizationSearchChange($event)"
+            [placeholder]="'MENUITEMS.ORGANIZATION.SEARCHPLACEHOLDER' | translate" />
+          <button
+            *ngIf="organizationSearchTerm"
+            mat-icon-button
+            matSuffix
+            type="button"
+            [attr.aria-label]="'MENUITEMS.ORGANIZATION.CLEARSEARCH' | translate"
+            (click)="clearOrganizationSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+          <mat-icon *ngIf="!organizationSearchTerm" matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <span class="organization-visible-count" *ngIf="organizationSearchTerm">
+          {{ 'MENUITEMS.ORGANIZATION.FILTERRESULTS' | translate:{ visible: visibleOrganizations, total: totalOrganizations } }}
+        </span>
+      </div>
+
+      <div class="organization-table-panel">
+        <div
+          *ngIf="isLoading"
+          class="organization-loading-state"
+          role="status"
+          aria-live="polite">
+          <mat-spinner diameter="44"></mat-spinner>
+          <span>{{ 'MENUITEMS.ORGANIZATION.LOADING' | translate }}</span>
+        </div>
+
+        <div class="organization-table-scroll" *ngIf="!isLoading">
+          <table mat-table [dataSource]="dataSourceOrganizations" class="organization-table">
+            <ng-container matColumnDef="Id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="organization-id">#{{ element.Id }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="Nombre">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.NAME' | translate }}</th>
+              <td mat-cell *matCellDef="let element">
+                <div class="organization-name-cell">
+                  <span class="organization-name-cell__avatar" aria-hidden="true">
+                    {{ (element.Nombre || '?').charAt(0) | uppercase }}
+                  </span>
+                  <div>
+                    <strong>{{ element.Nombre || '-' }}</strong>
+                    <span>{{ element.RazonSocial || element.SectorIndustria || '-' }}</span>
+                  </div>
                 </div>
-                <table  mat-table [dataSource]="dataSourceOrganizations" class="table">
-                  <!-- No Column -->
-                  <ng-container matColumnDef="Id">
-                    <th mat-header-cell *matHeaderCellDef> ID </th>
-                    <td mat-cell *matCellDef="let element"> {{element.Id}} </td>
-                  </ng-container>
-                  <!-- Name Column -->
-                  <ng-container matColumnDef="IdPais">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.COUNTRY' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{element.nombre_pais}} </td>
-                  </ng-container>
-            
-                  <ng-container matColumnDef="Nombre">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.NAME' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{element.Nombre}} </td>
-                  </ng-container>
-            
-               
-            
-                  <ng-container matColumnDef="NIT">
-                    <th mat-header-cell *matHeaderCellDef> NIT </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.NIT}} </td>
-                  </ng-container>
-            
-            
-          
-                  <ng-container matColumnDef="Telefono">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.PHONE' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{element.Telefono}} </td>
-                  </ng-container>
-                  <!-- Salary Column -->
-                  <ng-container matColumnDef="CorreoContacto">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.MAIL' | translate}}  </th>
-                    <td mat-cell *matCellDef="let element"> {{element.CorreoContacto}} </td>
-                  </ng-container>
-                  <ng-container matColumnDef="RepresentanteLegal">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.REPRESENT' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{element.RepresentanteLegal}} </td>
-                  </ng-container>
-                  <ng-container matColumnDef="SectorIndustria">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.SECTOR' | translate}}  </th>
-                    <td mat-cell *matCellDef="let element"> {{element.SectorIndustria}} </td>
-                  </ng-container>
-                  <ng-container matColumnDef="NumeroEmpleados">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.EMP_NUMBER' | translate}}  </th>
-                    <td mat-cell *matCellDef="let element"> {{element.NumeroEmpleados}} </td>
-                  </ng-container>
-                 
-                  <ng-container matColumnDef="Editar">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.EDIT' | translate}}  </th>
-                    <td mat-cell *matCellDef="let element">
-                      <button mat-icon-button 
-                        [color]="element.estado === 1 ? 'warn' : 'accent'"  
-                        (click)="editItem(element)">
-                        <mat-icon>edit</mat-icon>
-                      </button>
-                    </td>
-                  </ng-container>
+              </td>
+            </ng-container>
 
-                  <ng-container matColumnDef="Borrar">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.DELETE' | translate}}  </th>
-                    <td mat-cell *matCellDef="let element">
-                      <button mat-icon-button 
-                        [color]="element.estado === 1 ? 'warn' : 'accent'"  
-                        (click)="deleteItem(element)">
-                        <mat-icon>delete</mat-icon>
-                      </button>
-                    </td>
-                  </ng-container>
-            
-                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
-              </div>
+            <ng-container matColumnDef="IdPais">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.COUNTRY' | translate }}</th>
+              <td mat-cell *matCellDef="let element">{{ element.nombre_pais || '-' }}</td>
+            </ng-container>
 
-              <!-- Envuelve el formulario dentro de un mat-accordion y un mat-expansion-panel -->
-              <mat-accordion>
-                <mat-expansion-panel [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      {{'MENUITEMS.ORGANIZATION.CREATEORG' | translate}} 
-                    </mat-panel-title>
-                    <mat-panel-description>
-                       {{'MENUITEMS.ORGANIZATION.EXPAND' | translate}}
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
+            <ng-container matColumnDef="NIT">
+              <th mat-header-cell *matHeaderCellDef>NIT</th>
+              <td mat-cell *matCellDef="let element">{{ element.NIT || '-' }}</td>
+            </ng-container>
 
-                  <!-- Nuestro formulario con [formGroup]="orgForm" -->
-                  <form [formGroup]="orgForm" class="org-form">
-                    <div class="row">
+            <ng-container matColumnDef="Telefono">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.PHONE' | translate }}</th>
+              <td mat-cell *matCellDef="let element">{{ element.Telefono || '-' }}</td>
+            </ng-container>
 
-                      <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field class="example-full-width" appearance="fill">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.COUNTRY' | translate}}</mat-label>
-                          <mat-select (selectionChange)="onCountryChange($event.value)" formControlName="IdPais">
-                            <mat-option
-                              *ngFor="let country of dataSourceCountries"
-                              [value]="country.Id"
-                            >
-                              {{ country.Nombre }}
-                            </mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                      </div>
-                      
-                      <div class="col-xl-7 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.NAME' | translate}}</mat-label>
-                          <input matInput formControlName="Nombre" />
-                        </mat-form-field>
-                      </div>
-                    </div>
+            <ng-container matColumnDef="CorreoContacto">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.MAIL' | translate }}</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="organization-email" [matTooltip]="element.CorreoContacto || ''">
+                  {{ element.CorreoContacto || '-' }}
+                </span>
+              </td>
+            </ng-container>
 
-                    <div class="row">
+            <ng-container matColumnDef="RepresentanteLegal">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.REPRESENT' | translate }}</th>
+              <td mat-cell *matCellDef="let element">{{ element.RepresentanteLegal || '-' }}</td>
+            </ng-container>
 
-                      <div class="col-xl-7 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.REASON' | translate}}</mat-label>
-                          <input matInput formControlName="RazonSocial" />
-                        </mat-form-field>
-                      </div>
-                      <div class="col-xl-4 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>NIT</mat-label>
-                          <input matInput formControlName="NIT" />
-                        </mat-form-field>
-                      </div>
+            <ng-container matColumnDef="SectorIndustria">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.SECTOR' | translate }}</th>
+              <td mat-cell *matCellDef="let element">{{ element.SectorIndustria || '-' }}</td>
+            </ng-container>
 
-                    </div>
+            <ng-container matColumnDef="NumeroEmpleados">
+              <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.ORGANIZATION.EMP_NUMBER' | translate }}</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="organization-employees-count">
+                  <mat-icon aria-hidden="true">groups</mat-icon>
+                  {{ element.NumeroEmpleados ?? 0 }}
+                </span>
+              </td>
+            </ng-container>
 
-                    <div class="row">
+            <ng-container matColumnDef="Acciones">
+              <th mat-header-cell *matHeaderCellDef class="organization-actions-header">
+                {{ 'MENUITEMS.ORGANIZATION.ACTIONS' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element" class="organization-actions-cell">
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="organization-row-action organization-row-action--edit"
+                  [matTooltip]="'MENUITEMS.ORGANIZATION.EDIT' | translate"
+                  [attr.aria-label]="'MENUITEMS.ORGANIZATION.EDIT' | translate"
+                  (click)="editItem(element)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="organization-row-action organization-row-action--delete"
+                  [matTooltip]="'MENUITEMS.ORGANIZATION.DELETE' | translate"
+                  [attr.aria-label]="'MENUITEMS.ORGANIZATION.DELETE' | translate"
+                  (click)="deleteItem(element)">
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </td>
+            </ng-container>
 
-                      <div class="col-xl-8 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.ADDRESS' | translate}}</mat-label>
-                          <input matInput formControlName="Direccion" />
-                        </mat-form-field>
-                      </div>
-                      <div class="col-xl-3 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.PHONE' | translate}}</mat-label>
-                          <input matInput formControlName="Telefono" />
-                        </mat-form-field>
-                      </div>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns; trackBy: trackOrganization">
+            </tr>
+          </table>
 
-                    </div>
-
-                    <div class="row">
-
-                      <div class="col-xl-6 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.MAIL' | translate}}</mat-label>
-                          <input matInput formControlName="CorreoContacto" type="email" />
-                        </mat-form-field>
-                      </div>
-                      <div class="col-xl-5 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.REPRESENT' | translate}}</mat-label>
-                          <input matInput formControlName="RepresentanteLegal" />
-                        </mat-form-field>
-                      </div>
-                    </div>
-
-                    <div class="row">
-
-                      <div class="col-xl-6 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.SECTOR' | translate}}</mat-label>
-                          <input matInput formControlName="SectorIndustria" />
-                        </mat-form-field>
-                      </div>
-                      <div class="col-xl-5 col-lg-4 col-md-12 col-sm-12 mb-2">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.ORGANIZATION.EMP_NUMBER' | translate}}</mat-label>
-                          <input matInput formControlName="NumeroEmpleados" type="number" />
-                        </mat-form-field>
-                      </div>
-
-                    </div>
-
-                  </form>
-                  <!-- FIN formulario -->
-
-              
-        
-                    <div class="save-actions">
-                      <button
-                        class="save-org-button"
-                        mat-raised-button
-                        color="primary"
-                        type="button"
-                        [disabled]="isSavingOrganization"
-                        (click)="onSubmit()"
-                      >
-                        <mat-spinner
-                          *ngIf="isSavingOrganization"
-                          class="save-button-spinner"
-                          diameter="18"
-                        ></mat-spinner>
-                        <span>
-                          {{ isSavingOrganization ? 'Guardando...' : ('MENUITEMS.ORGANIZATION.SAVE' | translate) }}
-                        </span>
-                      </button>
-
-                      <div class="saving-organization-message" *ngIf="isSavingOrganization">
-                        <mat-spinner diameter="24"></mat-spinner>
-                        <span>Guardando organización, por favor espera...</span>
-                      </div>
-                    </div>
-                
-
-
-                </mat-expansion-panel>
-              </mat-accordion>
-       
-
-            
-
+          <div class="organization-empty-state" *ngIf="!dataSourceOrganizations.length">
+            <span class="organization-empty-state__icon" aria-hidden="true">
+              <mat-icon>{{ organizationSearchTerm ? 'domain_disabled' : 'add_business' }}</mat-icon>
+            </span>
+            <h3>
+              {{ (organizationSearchTerm
+                ? 'MENUITEMS.ORGANIZATION.NOFILTERRESULTS'
+                : 'MENUITEMS.ORGANIZATION.NOORGANIZATIONS') | translate }}
+            </h3>
+            <p>
+              {{ (organizationSearchTerm
+                ? 'MENUITEMS.ORGANIZATION.NOFILTERRESULTSDESC'
+                : 'MENUITEMS.ORGANIZATION.NOORGANIZATIONSDESC') | translate }}
+            </p>
+            <button
+              *ngIf="!organizationSearchTerm"
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="openCreateOrganizationDialog()">
+              <mat-icon>add_business</mat-icon>
+              {{ 'MENUITEMS.ORGANIZATION.ADDORGANIZATION' | translate }}
+            </button>
           </div>
         </div>
       </div>

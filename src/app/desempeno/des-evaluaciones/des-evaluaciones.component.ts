@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
@@ -18,6 +20,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { RouterLink } from '@angular/router';
 import { saveAs } from 'file-saver';
 import ExcelJS from 'exceljs';
 import {
@@ -28,15 +31,14 @@ import {
   Orientation,
   PanningAxis,
 } from '@swimlane/ngx-graph';
-import { Subscription } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { DemoLimitsService } from '../../config/demo-limits.service';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import {
-  DES_EVALUATION_EXCEL_HEADERS,
-  DES_EVALUATION_EXCEL_TEMPLATE_HEADERS,
+  DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS,
   DesEvaluationExcelImport,
   DesEvaluationExcelRow,
   DesEvaluationExcelScenarioKey,
@@ -47,6 +49,11 @@ import {
   requiredRatingPercentToScale,
   requiredRatingScaleToPercent,
 } from '../shared/performance-score.utils';
+import {
+  CriteriaBankCriterion,
+  CriteriaBankListResponse,
+  CriteriaBankQuestion,
+} from '../des-criteria-bank/criteria-bank.models';
 
 interface DesEvaluationOrganization {
   Id: number;
@@ -57,6 +64,7 @@ interface PerformanceGuideStep {
   target: string;
   titleKey: string;
   textKey: string;
+  tabIndex?: number;
 }
 
 type PerformanceGuidePlacement = 'above' | 'below' | 'center';
@@ -419,6 +427,26 @@ interface DesEvaluationExcelApplicabilityResult {
   recalculatedWeights: boolean;
 }
 
+interface DesEvaluationDimensionTemplateGroup {
+  positions: string[];
+  scenarios: DesEvaluationScenario[];
+  criteria: Array<{
+    name: string;
+    weight: number;
+    requiredRating: number;
+    questions: Array<{
+      text: string;
+      type: 'Likert de 5 niveles' | 'Pregunta abierta';
+    }>;
+  }>;
+}
+
+interface CriteriaBankSelectionContext {
+  bigFactorIndex: number;
+  position: string;
+  scenarioKey: DesEvaluationScenarioKey;
+}
+
 @Component({
   selector: 'app-des-evaluaciones',
   standalone: true,
@@ -427,9 +455,11 @@ interface DesEvaluationExcelApplicabilityResult {
     FormsModule,
     BreadcrumbComponent,
     TranslateModule,
+    RouterLink,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
+    MatDatepickerModule,
     MatDialogModule,
     MatDividerModule,
     MatExpansionModule,
@@ -446,12 +476,28 @@ interface DesEvaluationExcelApplicabilityResult {
   ],
   templateUrl: './des-evaluaciones.component.html',
   styleUrls: ['./des-evaluaciones.component.scss'],
+  providers: [
+    {
+      provide: MAT_DATE_FORMATS,
+      useValue: {
+        parse: { dateInput: 'DD/MM/YYYY' },
+        display: {
+          dateInput: 'DD/MM/YYYY',
+          monthYearLabel: 'MMM YYYY',
+          dateA11yLabel: 'LL',
+          monthYearA11yLabel: 'MMMM YYYY',
+        },
+      },
+    },
+  ],
 })
 export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   @ViewChild('editorDialogTemplate') editorDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('sendDialogTemplate') sendDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('performanceEmailPreviewDialogTemplate')
   performanceEmailPreviewDialogTemplate?: TemplateRef<unknown>;
+  @ViewChild('performanceSurveyPreviewDialogTemplate')
+  performanceSurveyPreviewDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('modelDialogTemplate') modelDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('duplicateModelDialogTemplate') duplicateModelDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('modelCatalogSearchDialogTemplate') modelCatalogSearchDialogTemplate?: TemplateRef<unknown>;
@@ -463,6 +509,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   @ViewChild('questionDialogTemplate') questionDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('questionValuesDialogTemplate') questionValuesDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('duplicatePositionsDialogTemplate') duplicatePositionsDialogTemplate?: TemplateRef<unknown>;
+  @ViewChild('criteriaBankDialogTemplate') criteriaBankDialogTemplate?: TemplateRef<unknown>;
   @ViewChild('performanceGuidePopover') performanceGuidePopover?: ElementRef<HTMLElement>;
 
   readonly breadcrumbTitleKey = 'DESEMPENO_MENUITEMS.MAIN.TEXT';
@@ -529,12 +576,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     // 'AUTOEVALUACION', // Reactivar cuando el flujo vuelva a ofrecer este tipo.
     // 'MIXTA', // Reactivar cuando el flujo vuelva a ofrecer este tipo.
   ]);
+  private readonly enabledQuestionTypeCodes = new Set<string>([
+    'LIKERT_1_5',
+    'ABIERTA',
+  ]);
   public surveyTypes = Array.from(this.enabledSurveyTypeCodes);
   public questionTypes: Array<{ value: string; label?: string; labelKey?: string }> = [
     { value: 'LIKERT_1_5', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.LIKERT_1_5' },
     { value: 'ABIERTA', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.ABIERTA' },
-    { value: 'SELECCION_UNICA', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.SELECCION_UNICA' },
-    { value: 'SELECCION_MULTIPLE', labelKey: 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTION_TYPES.SELECCION_MULTIPLE' },
   ];
   readonly questionLikertPresets: DesEvaluationLikertPreset[] = [
     {
@@ -580,6 +629,14 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       labels: ['Excelente', 'Muy buena', 'Buena', 'Regular', 'Mala'],
     },
   ];
+  private readonly questionLikertScaleCodes: Record<string, string> = {
+    compliance_5: 'CUMPLIMIENTO_1_5',
+    agreement_5: 'ACUERDO_1_5',
+    satisfaction_5: 'SATISFACCION_1_5',
+    frequency_5: 'FRECUENCIA_1_5',
+    importance_5: 'IMPORTANCIA_1_5',
+    quality_5: 'CALIDAD_1_5',
+  };
   public modelStates = ['ACTIVO', 'BORRADOR', 'INACTIVO'];
   readonly sendTypeOptions: Array<{ value: DesEvaluationSendType; icon: string }> = [
     { value: 'NINGUNO', icon: 'block' },
@@ -620,6 +677,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public sendPreviewEvaluation: DesEvaluationCard | null = null;
   public sendAssignments: DesEvaluationSendAssignment[] = [];
   public performanceEmailHtml: SafeHtml | null = null;
+  public surveyPreviewPosition: string | null = null;
   public modelPreviewEvaluation: DesEvaluationCard | null = null;
   public duplicateModelSource: DesEvaluationCard | null = null;
   public duplicateModelName = '';
@@ -638,6 +696,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   };
   public draftEvaluation: DesEvaluationCard | null = null;
   public activeEditorTabIndex = 0;
+  public periodStartDatePickerValue: Date | null = null;
+  public periodEndDatePickerValue: Date | null = null;
   public selectedModelCatalogId: number | null = null;
   public modelCatalogSearchTerm = '';
   public bigFactorDraft: BigFactorDraft = this.createEmptyBigFactorDraft();
@@ -665,6 +725,13 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public duplicateContext: DesEvaluationDuplicateContext | null = null;
   public duplicatePositionSearchTerm = '';
   public selectedDuplicatePositions: string[] = [];
+  public criteriaBankItems: CriteriaBankCriterion[] = [];
+  public criteriaBankSearchTerm = '';
+  public criteriaBankSelectedTags: string[] = [];
+  public selectedCriteriaBankIds: string[] = [];
+  public selectedCriteriaBankQuestionIds: Record<string, string[]> = {};
+  public criteriaBankContext: CriteriaBankSelectionContext | null = null;
+  public isCriteriaBankLoading = false;
   public isPerformanceGuideVisible = false;
   public performanceGuideStepIndex = -1;
   public performanceGuideFocusStyle: Record<string, string> = {};
@@ -692,7 +759,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   public modelCatalogDialogRef: MatDialogRef<unknown> | null = null;
   public duplicateModelDialogRef: MatDialogRef<unknown> | null = null;
   public duplicatePositionsDialogRef: MatDialogRef<unknown> | null = null;
+  public criteriaBankDialogRef: MatDialogRef<unknown> | null = null;
   public nestedDialogRef: MatDialogRef<unknown> | null = null;
+  public surveyPreviewDialogRef: MatDialogRef<unknown> | null = null;
   public editBigFactorIndex: number | null = null;
   public editFactorContext: {
     bigFactorIndex: number;
@@ -717,6 +786,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   private modelImageFileChanged = false;
   private modelImageFormData = new FormData();
   private filteredParticipantEmployees: DesEvaluationEmployee[] = [];
+  private readonly retainedParticipantEmployeeIds = new Set<number>();
   private readonly scenarioApplicabilityCache =
     new WeakMap<DesEvaluationCard, DesEvaluationScenarioApplicabilityContext>();
   private readonly modelImageBucketUrl =
@@ -760,9 +830,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.activeEditorTabIndex = 0;
     this.startGuide([
       this.guideStep('performance-editor-overview', 'EDITOR.OVERVIEW'),
-      this.guideStep('performance-editor-general', 'EDITOR.GENERAL'),
-      this.guideStep('performance-editor-excel', 'EDITOR.EXCEL'),
-      this.guideStep('performance-editor-dimensions', 'EDITOR.DIMENSIONS'),
+      this.guideStep('performance-editor-general', 'EDITOR.GENERAL', 0),
+      this.guideStep('performance-editor-dimensions', 'EDITOR.DIMENSIONS', 0),
+      this.guideStep('performance-editor-excel', 'EDITOR.EXCEL', 2),
       this.guideStep('performance-editor-save', 'EDITOR.SAVE'),
     ]);
   }
@@ -823,12 +893,17 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.performanceGuidePopoverStyle = {};
   }
 
-  private guideStep(target: string, translationPath: string): PerformanceGuideStep {
+  private guideStep(
+    target: string,
+    translationPath: string,
+    tabIndex?: number
+  ): PerformanceGuideStep {
     const baseKey = `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.GUIDE.${translationPath}`;
     return {
       target,
       titleKey: `${baseKey}_TITLE`,
       textKey: `${baseKey}_TEXT`,
+      tabIndex,
     };
   }
 
@@ -845,6 +920,15 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   private showPerformanceGuideStep(index: number): void {
     const step = this.performanceGuideSteps[index];
+    if (
+      step?.tabIndex !== undefined &&
+      this.activeEditorTabIndex !== step.tabIndex
+    ) {
+      this.activeEditorTabIndex = step.tabIndex;
+      window.setTimeout(() => this.showPerformanceGuideStep(index), 0);
+      return;
+    }
+
     const target = step ? this.findPerformanceGuideTarget(step.target) : null;
     if (!step || !target) {
       this.closePerformanceGuide();
@@ -1174,8 +1258,10 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.selectedModelCatalogId = null;
     this.modelCatalogSearchTerm = '';
     this.modelExcelImportSummary = null;
+    this.retainedParticipantEmployeeIds.clear();
     this.resetModelImageUpload();
     this.draftEvaluation = this.createBlankEvaluation(this.selectedOrganizationId);
+    this.syncPeriodDatePickerValues();
     this.refreshQuestionScenarioState();
     this.openEditorDialog();
   }
@@ -1199,8 +1285,11 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       this.editingEvaluation = normalizedCard;
       this.activeEditorTabIndex = 0;
       this.modelExcelImportSummary = null;
+      this.retainedParticipantEmployeeIds.clear();
       this.resetModelImageUpload();
       this.draftEvaluation = this.cloneEvaluation(this.ensureDraftFilters(normalizedCard));
+      this.applyDefaultModelConfiguration(this.draftEvaluation);
+      this.syncPeriodDatePickerValues();
       this.draftEvaluation.scenarios = this.buildScenariosForType(
         this.draftEvaluation.modelType,
         this.draftEvaluation.scenarios
@@ -1492,6 +1581,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
     this.draftEvaluation.useWeighting = true;
     this.draftEvaluation.useAnonymity = true;
+    this.applyDefaultModelConfiguration(this.draftEvaluation);
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
 
     if (!this.editingEvaluation && this.isDemoPerformanceModelLimitReached) {
@@ -1673,131 +1763,326 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     this.isGeneratingModelExcel = true;
-    this.ensurePositionScenarioConfigs(this.draftEvaluation);
     try {
+      await this.refreshExcelTemplateTranslations();
+      this.ensurePositionScenarioConfigs(this.draftEvaluation);
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'Just-Link360';
       workbook.created = new Date();
-      const scale = this.getScaleById(this.draftEvaluation.scaleId) ?? this.getDefaultScale();
-      const scaleName = scale ? this.getScaleLabel(scale.id) : 'Predeterminada';
-      const scaleOptions = scale?.levels.map((level) => this.getScaleLevelLabel(level)) ?? [];
       const templatePositions = this.draftEvaluation.participants.positions.filter(
         (position) => !this.isPositionEvaluatorOnly(position, this.draftEvaluation)
       );
-      const headers = DES_EVALUATION_EXCEL_TEMPLATE_HEADERS;
-      const instructions = [
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TITLE')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SHEET')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_POSITION')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_CODES')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TYPES')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_WEIGHTS')],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ATOMIC')],
-        [],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCENARIOS')],
-        ...templatePositions.flatMap((position) =>
-          this.getActivePositionScenarios(position, this.draftEvaluation).map((scenario) => [
-            `${position}: ${scenario.name} (${Number(scenario.weight) || 0}%)`,
-          ])
-        ),
-        [],
-        [this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCALES')],
-        ...this.scaleOptions.map((item) => [
-          `${item.code ?? item.id}: ${this.getScaleLabel(item.id)}`,
-        ]),
+      const headers = [...DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS];
+      const readmeSheet = workbook.addWorksheet('INSTRUCCIONES', {
+        views: [{ state: 'frozen', ySplit: 2 }],
+      });
+      readmeSheet.columns = [{ width: 28 }, { width: 105 }];
+      readmeSheet.mergeCells('A1:B1');
+      const titleCell = readmeSheet.getCell('A1');
+      titleCell.value = this.t(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TITLE'
+      );
+      titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF17324D' },
+      };
+      titleCell.alignment = { vertical: 'middle' };
+      readmeSheet.getRow(1).height = 32;
+
+      const instructionRows: Array<[string, string]> = [
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_FORMAT'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SHEET'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_ASSIGNMENTS'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_POSITION'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_MULTIPLE'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_MULTIPLE'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_CRITERIA'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_BLOCKS'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_ROWS'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ROWS'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_TYPES'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_TYPES'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_WEIGHTS'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_WEIGHTS'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_AUTOMATIC'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_AUTOMATIC'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_CODES'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_CODES'),
+        ],
+        [
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_SECTION_SAVE'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.README_ATOMIC'),
+        ],
       ];
-      const readmeSheet = workbook.addWorksheet('LEEME');
-      readmeSheet.getColumn(1).width = 110;
-      instructions.forEach((instruction) => readmeSheet.addRow(instruction));
-      readmeSheet.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF243447' } };
-      readmeSheet.eachRow((row) => {
+      instructionRows.forEach(([section, detail], index) => {
+        const row = readmeSheet.addRow([section, detail]);
+        row.height = 46;
         row.alignment = { vertical: 'top', wrapText: true };
+        row.getCell(1).font = { bold: true, color: { argb: 'FF17324D' } };
+        if (index % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF3F6F8' },
+            };
+          });
+        }
+      });
+      readmeSheet.addRow([]);
+      const dimensionsTitleRow = readmeSheet.addRow([
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_DIMENSIONS'),
+      ]);
+      dimensionsTitleRow.getCell(1).font = { bold: true, color: { argb: 'FF17324D' } };
+      this.draftEvaluation.bigFactors.forEach((dimension) => {
+        readmeSheet.addRow([
+          dimension.name,
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DIMENSION_WEIGHT_DETAIL', {
+            weight: Number(dimension.weight) || 0,
+          }),
+        ]);
+      });
+      readmeSheet.addRow([]);
+      const scenariosTitleRow = readmeSheet.addRow([
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.AVAILABLE_SCENARIOS'),
+      ]);
+      scenariosTitleRow.getCell(1).font = { bold: true, color: { argb: 'FF17324D' } };
+      templatePositions.forEach((position) => {
+        const scenarios = this.getActivePositionScenarios(position, this.draftEvaluation!);
+        readmeSheet.addRow([
+          position,
+          scenarios.map((scenario) =>
+            `${scenario.name} (${Number(scenario.weight) || 0}%)`
+          ).join(' | '),
+        ]);
       });
 
       const usedSheetNames = new Set<string>([
-        'LEEME',
-        'README',
         'INSTRUCCIONES',
+        'README',
         'CATALOGOS',
         '_CONFIG',
-      ]);
-      const positionMappings: Array<{ sheetName: string; position: string }> = [];
-      templatePositions.forEach((position) => {
-        const rows = this.buildModelExcelTemplateRows(position, scaleName, scaleOptions);
-        const sheetName = this.getModelExcelWorksheetName(position, usedSheetNames);
+        '_CATALOGOS',
+      ].map((name) => this.normalizeSearchText(name)));
+      const dimensionMappings: Array<{ sheetName: string; dimension: string }> = [];
+      this.draftEvaluation.bigFactors.forEach((dimension) => {
+        const groups = this.buildModelDimensionExcelTemplateGroups(dimension, templatePositions);
+        const sheetName = this.getModelExcelWorksheetName(
+          dimension.name,
+          usedSheetNames,
+          'DIMENSION'
+        );
         const worksheet = workbook.addWorksheet(sheetName, {
-          views: [{ state: 'frozen', ySplit: 1 }],
+          views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }],
         });
-        worksheet.columns = headers.map((header) => ({
-          width: Math.min(54, Math.max(18, header.length + 2)),
-        }));
+        worksheet.columns = [34, 32, 30, 17, 21, 52, 24].map((width) => ({ width }));
         const headerRow = worksheet.addRow(headers);
-        headerRow.height = 28;
+        headerRow.height = 38;
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        headerRow.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF455568' },
-        };
         headerRow.alignment = { vertical: 'middle', wrapText: true };
+        headerRow.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF37667F' },
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF8293A3' } },
+            right: { style: 'thin', color: { argb: 'FF8293A3' } },
+            bottom: { style: 'thin', color: { argb: 'FF8293A3' } },
+            left: { style: 'thin', color: { argb: 'FF8293A3' } },
+          };
+        });
 
-        let criterionGroupIndex = -1;
-        let previousCriterionKey = '';
-        rows.forEach((data, rowIndex) => {
-          const criterionKey = [
-            data[DES_EVALUATION_EXCEL_HEADERS.scenario],
-            data[DES_EVALUATION_EXCEL_HEADERS.dimensionName],
-            data[DES_EVALUATION_EXCEL_HEADERS.criterionName],
-          ].join('|');
-          const nextData = rows[rowIndex + 1];
-          const nextCriterionKey = nextData
-            ? [
-                nextData[DES_EVALUATION_EXCEL_HEADERS.scenario],
-                nextData[DES_EVALUATION_EXCEL_HEADERS.dimensionName],
-                nextData[DES_EVALUATION_EXCEL_HEADERS.criterionName],
-              ].join('|')
-            : '';
-          const startsCriterion = criterionKey !== previousCriterionKey;
-          const endsCriterion = criterionKey !== nextCriterionKey;
-          if (startsCriterion) {
-            criterionGroupIndex++;
-          }
+        groups.forEach((group, groupIndex) => {
+          const groupStartRow = worksheet.rowCount + 1;
+          let isFirstGroupRow = true;
 
-          const excelRow = worksheet.addRow(headers.map((header) => data[header] ?? ''));
-          excelRow.height = 34;
-          excelRow.alignment = { vertical: 'top', wrapText: true };
-          excelRow.eachCell({ includeEmpty: true }, (cell) => {
-            if (criterionGroupIndex % 2 === 0) {
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFF3F4F6' },
-              };
+          group.criteria.forEach((criterion, criterionIndex) => {
+            const criterionStartRow = worksheet.rowCount + 1;
+            criterion.questions.forEach((question, questionIndex) => {
+              const excelRow = worksheet.addRow([
+                isFirstGroupRow ? group.positions.join(' | ') : '',
+                isFirstGroupRow ? group.scenarios.map((scenario) => scenario.name).join(' | ') : '',
+                questionIndex === 0 ? criterion.name : '',
+                questionIndex === 0 ? criterion.weight : '',
+                questionIndex === 0 ? criterion.requiredRating : '',
+                question.text,
+                question.type,
+              ]);
+              excelRow.height = 52;
+              excelRow.alignment = { vertical: 'top', wrapText: true };
+              excelRow.eachCell({ includeEmpty: true }, (cell) => {
+                if (criterionIndex % 2 === 0) {
+                  cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFF3F4F6' },
+                  };
+                }
+                cell.border = {
+                  top: { style: 'thin', color: { argb: 'FFD5DCE3' } },
+                  bottom: { style: 'thin', color: { argb: 'FFD5DCE3' } },
+                  left: { style: 'thin', color: { argb: 'FFD5DCE3' } },
+                  right: { style: 'thin', color: { argb: 'FFD5DCE3' } },
+                };
+              });
+              isFirstGroupRow = false;
+            });
+
+            const criterionEndRow = worksheet.rowCount;
+            if (criterionEndRow > criterionStartRow) {
+              [3, 4, 5].forEach((columnNumber) => {
+                worksheet.mergeCells(
+                  criterionStartRow,
+                  columnNumber,
+                  criterionEndRow,
+                  columnNumber
+                );
+              });
             }
-            cell.border = {
-              top: startsCriterion
-                ? { style: 'thin', color: { argb: 'FFB8C0CA' } }
-                : undefined,
-              bottom: endsCriterion
-                ? { style: 'thin', color: { argb: 'FFB8C0CA' } }
-                : undefined,
+            [3, 4, 5].forEach((columnNumber) => {
+              worksheet.getCell(criterionStartRow, columnNumber).alignment = {
+                vertical: 'middle',
+                wrapText: true,
+              };
+            });
+          });
+
+          const groupEndRow = worksheet.rowCount;
+          if (groupEndRow > groupStartRow) {
+            [1, 2].forEach((columnNumber) => {
+              worksheet.mergeCells(groupStartRow, columnNumber, groupEndRow, columnNumber);
+            });
+          }
+          [1, 2].forEach((columnNumber) => {
+            worksheet.getCell(groupStartRow, columnNumber).alignment = {
+              vertical: 'middle',
+              wrapText: true,
             };
           });
-          previousCriterionKey = criterionKey;
+          worksheet.getCell(groupStartRow, 1).note = this.t(
+            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.POSITION_CELL_NOTE'
+          );
+          worksheet.getCell(groupStartRow, 2).note = this.t(
+            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SCENARIO_CELL_NOTE'
+          );
+
+          const groupBorderColor = groupIndex % 2 === 0 ? 'FF8EA8B7' : 'FFA7B2BD';
+          for (let columnNumber = 1; columnNumber <= headers.length; columnNumber++) {
+            worksheet.getCell(groupStartRow, columnNumber).border = {
+              ...(worksheet.getCell(groupStartRow, columnNumber).border ?? {}),
+              top: { style: 'medium', color: { argb: groupBorderColor } },
+            };
+          }
         });
+
+        const catalogPositionEnd = Math.max(2, templatePositions.length + 1);
+        const availableScenarios = Array.from(new Set(
+          templatePositions.flatMap((position) =>
+            this.getActivePositionScenarios(position, this.draftEvaluation!)
+              .map((scenario) => scenario.name)
+          )
+        ));
+        const catalogScenarioEnd = Math.max(2, availableScenarios.length + 1);
+        for (let rowNumber = 2; rowNumber <= 200; rowNumber++) {
+          worksheet.getCell(rowNumber, 1).dataValidation = {
+            type: 'list',
+            allowBlank: false,
+            formulae: [`'_CATALOGOS'!$A$2:$A$${catalogPositionEnd}`],
+            showInputMessage: true,
+            promptTitle: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.POSITIONS'
+            ),
+            prompt: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.MULTISELECT_PROMPT'
+            ),
+          };
+          worksheet.getCell(rowNumber, 2).dataValidation = {
+            type: 'list',
+            allowBlank: false,
+            formulae: [`'_CATALOGOS'!$B$2:$B$${catalogScenarioEnd}`],
+            showInputMessage: true,
+            promptTitle: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SCENARIOS'
+            ),
+            prompt: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.MULTISELECT_PROMPT'
+            ),
+          };
+
+          [4, 5].forEach((columnNumber) => {
+            worksheet.getCell(rowNumber, columnNumber).dataValidation = {
+              type: 'whole',
+              operator: 'between',
+              allowBlank: false,
+              formulae: [1, 100],
+              showErrorMessage: true,
+              errorTitle: this.t(
+                'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.INVALID_PERCENT_TITLE'
+              ),
+              error: this.t(
+                'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.INVALID_PERCENT_TEXT'
+              ),
+            };
+          });
+          worksheet.getCell(rowNumber, 7).dataValidation = {
+            type: 'list',
+            allowBlank: false,
+            formulae: [`'_CATALOGOS'!$C$2:$C$3`],
+            showErrorMessage: true,
+          };
+        }
         worksheet.autoFilter = {
           from: { row: 1, column: 1 },
           to: { row: 1, column: headers.length },
         };
-        positionMappings.push({ sheetName, position });
+        dimensionMappings.push({ sheetName, dimension: dimension.name });
       });
 
       const configSheet = workbook.addWorksheet('_CONFIG', { state: 'veryHidden' });
       configSheet.columns = [{ width: 34 }, { width: 70 }];
-      configSheet.addRow(['Hoja', 'Puesto']);
-      positionMappings.forEach((mapping) => {
-        configSheet.addRow([mapping.sheetName, mapping.position]);
+      configSheet.addRow(['Hoja', 'Dimension']);
+      dimensionMappings.forEach((mapping) => {
+        configSheet.addRow([mapping.sheetName, mapping.dimension]);
       });
+
+      const catalogSheet = workbook.addWorksheet('_CATALOGOS', { state: 'veryHidden' });
+      catalogSheet.columns = [{ width: 70 }, { width: 42 }, { width: 28 }];
+      catalogSheet.addRow(['Puestos', 'Escenarios', 'Tipos de pregunta']);
+      const scenarioNames = Array.from(new Set(
+        templatePositions.flatMap((position) =>
+          this.getActivePositionScenarios(position, this.draftEvaluation!)
+            .map((scenario) => scenario.name)
+        )
+      ));
+      const catalogRowCount = Math.max(templatePositions.length, scenarioNames.length, 2);
+      for (let index = 0; index < catalogRowCount; index++) {
+        catalogSheet.addRow([
+          templatePositions[index] ?? '',
+          scenarioNames[index] ?? '',
+          ['Likert de 5 niveles', 'Pregunta abierta'][index] ?? '',
+        ]);
+      }
 
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(
@@ -1874,7 +2159,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         existingItems: mergeResult.stats.itemsSkipped,
         fileName: file.name,
       };
-      this.activeEditorTabIndex = 1;
+      this.activeEditorTabIndex = 2;
       this.refreshQuestionScenarioState();
       this.syncParticipantEmployeeSelectionWithCriteria();
 
@@ -2015,7 +2300,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         name: this.getScaleLabel(scale.id),
         levels: scale.levels.map((level) => this.getScaleLevelLabel(level)),
       })),
-      defaultScaleId: this.draftEvaluation?.scaleId ?? 0,
+      defaultScaleId: this.getDefaultScale()?.id ?? this.draftEvaluation?.scaleId ?? 0,
       demoLimits,
       translate: (key: string, params?: Record<string, unknown>) => this.t(
         `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_VALIDATIONS.${key}`,
@@ -2119,7 +2404,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
             id: this.generateId(),
             code: row.criterionCode ?? this.buildEntityCode('CRI', row.criterionName),
             name: row.criterionName,
-            description: row.criterionDescription,
+            description: row.criterionDescription || row.criterionName,
             weight: row.criterionWeight,
             requiredRatingLevel: row.requiredRatingLevel,
             defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
@@ -2441,60 +2726,52 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     };
   }
 
-  private buildModelExcelTemplateRows(
-    position: string,
-    scale: string,
-    scaleOptions: string[]
-  ): Array<Record<string, string | number>> {
+  private buildModelDimensionExcelTemplateGroups(
+    dimension: DesEvaluationBigFactor,
+    positions: string[]
+  ): DesEvaluationDimensionTemplateGroup[] {
     if (!this.draftEvaluation) {
       return [];
     }
 
-    return this.getActivePositionScenarios(position, this.draftEvaluation).flatMap((scenario) =>
-      this.draftEvaluation!.bigFactors.flatMap((dimension) => {
-        const criterionName = this.t(
-          'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_CRITERION',
-          { dimension: dimension.name }
-        );
-        const baseRow: Record<string, string | number> = {
-          [DES_EVALUATION_EXCEL_HEADERS.scenario]: scenario.name,
-          [DES_EVALUATION_EXCEL_HEADERS.scenarioWeight]: Number(scenario.weight) || 0,
-          [DES_EVALUATION_EXCEL_HEADERS.dimensionName]: dimension.name,
-          [DES_EVALUATION_EXCEL_HEADERS.dimensionDescription]: dimension.description,
-          [DES_EVALUATION_EXCEL_HEADERS.dimensionWeight]: Number(dimension.weight) || 0,
-          [DES_EVALUATION_EXCEL_HEADERS.criterionName]: criterionName,
-          [DES_EVALUATION_EXCEL_HEADERS.criterionDescription]: this.t(
-            'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_CRITERION_DESCRIPTION',
-            { dimension: dimension.name }
-          ),
-          [DES_EVALUATION_EXCEL_HEADERS.criterionWeight]: 100,
-          [DES_EVALUATION_EXCEL_HEADERS.requiredRatingLevel]: 80,
-        };
+    const groups = new Map<string, { positions: string[]; scenarios: DesEvaluationScenario[] }>();
+    positions.forEach((position) => {
+      const scenarios = this.getActivePositionScenarios(position, this.draftEvaluation!);
+      const signature = scenarios
+        .map((scenario) => scenario.key ?? this.normalizeSearchText(scenario.name))
+        .join('|');
+      const group = groups.get(signature) ?? { positions: [], scenarios };
+      group.positions.push(position);
+      groups.set(signature, group);
+    });
 
-        return [
+    return Array.from(groups.values()).map((group) => ({
+      ...group,
+      criteria: [1, 2].map((number) => ({
+        name: this.t(
+          'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_CRITERION_NUMBERED',
+          { dimension: dimension.name, number }
+        ),
+        weight: 50,
+        requiredRating: 80,
+        questions: [
           {
-            ...baseRow,
-            [DES_EVALUATION_EXCEL_HEADERS.itemText]: this.t(
-              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_LIKERT_ITEM',
-              { dimension: dimension.name }
+            text: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_LIKERT_ITEM_NUMBERED',
+              { dimension: dimension.name, number }
             ),
-            [DES_EVALUATION_EXCEL_HEADERS.itemType]: 'Likert de 5 niveles',
-            [DES_EVALUATION_EXCEL_HEADERS.scale]: scale,
-            [DES_EVALUATION_EXCEL_HEADERS.options]: scaleOptions.join(' | '),
+            type: 'Likert de 5 niveles' as const,
           },
           {
-            ...baseRow,
-            [DES_EVALUATION_EXCEL_HEADERS.itemText]: this.t(
-              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_OPEN_ITEM',
-              { dimension: dimension.name }
+            text: this.t(
+              'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXAMPLE_OPEN_ITEM_NUMBERED',
+              { dimension: dimension.name, number }
             ),
-            [DES_EVALUATION_EXCEL_HEADERS.itemType]: 'Pregunta abierta',
-            [DES_EVALUATION_EXCEL_HEADERS.scale]: '',
-            [DES_EVALUATION_EXCEL_HEADERS.options]: '',
+            type: 'Pregunta abierta' as const,
           },
-        ];
-      })
-    );
+        ],
+      })),
+    }));
   }
 
   private getExcelImportPositionNames(): string[] {
@@ -2520,11 +2797,15 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return Array.from(unique.values());
   }
 
-  private getModelExcelWorksheetName(position: string, usedNames: Set<string>): string {
-    const baseName = position
+  private getModelExcelWorksheetName(
+    value: string,
+    usedNames: Set<string>,
+    fallback = 'HOJA'
+  ): string {
+    const baseName = value
       .replace(/[\\/?*\[\]:]/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim() || 'PUESTO';
+      .trim() || fallback;
     let sheetName = baseName.slice(0, 31);
     let suffixNumber = 2;
 
@@ -2624,9 +2905,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.draftEvaluation.modelTypeId =
       option.typeId ??
       this.modelTypeOptions.find((item) => item.code === option.type)?.id;
-    this.draftEvaluation.scaleId = this.getScaleById(option.scaleId)
-      ? option.scaleId
-      : this.getDefaultScale()?.id ?? this.draftEvaluation.scaleId;
+    this.draftEvaluation.scaleId = this.getDefaultScale()?.id ?? this.draftEvaluation.scaleId;
     this.draftEvaluation.scaleLabel = this.getScaleLabel(this.draftEvaluation.scaleId);
     this.draftEvaluation.useWeighting = option.useWeighting;
     this.draftEvaluation.useAnonymity = option.useAnonymity;
@@ -2939,6 +3218,372 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     factors.splice(factorIndex, 1);
   }
 
+  async openCriteriaBankDialog(
+    bigFactorIndex: number,
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey
+  ): Promise<void> {
+    if (
+      !this.draftEvaluation ||
+      !this.selectedOrganizationId ||
+      !this.criteriaBankDialogTemplate
+    ) {
+      return;
+    }
+
+    this.criteriaBankContext = { bigFactorIndex, position, scenarioKey };
+    this.criteriaBankSearchTerm = '';
+    this.criteriaBankSelectedTags = [];
+    this.selectedCriteriaBankIds = [];
+    this.selectedCriteriaBankQuestionIds = {};
+    this.criteriaBankItems = [];
+    this.criteriaBankDialogRef = this.dialog.open(this.criteriaBankDialogTemplate, {
+      width: 'min(1080px, 96vw)',
+      maxWidth: '96vw',
+      maxHeight: '90vh',
+      autoFocus: false,
+      panelClass: ['des-evaluaciones-dialog-panel', 'criteria-bank-picker-panel'],
+    });
+    await this.loadCriteriaBankForPicker();
+  }
+
+  get filteredCriteriaBankItems(): CriteriaBankCriterion[] {
+    const search = this.normalizeSearchText(this.criteriaBankSearchTerm);
+    return this.criteriaBankItems.filter((criterion) => {
+      const matchesSearch = !search || this.normalizeSearchText([
+        criterion.code,
+        criterion.name,
+        criterion.description,
+        criterion.suggestedDimension,
+        ...criterion.tags,
+        ...criterion.questions.map((question) => question.text),
+      ].join(' ')).includes(search);
+      const matchesTags = this.criteriaBankSelectedTags.length === 0 ||
+        this.criteriaBankSelectedTags.every((tag) => criterion.tags.includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }
+
+  get criteriaBankAvailableTags(): string[] {
+    const tags = new Map<string, string>();
+    this.criteriaBankItems.forEach((criterion) => criterion.tags.forEach((tag) => {
+      const key = this.normalizeSearchText(tag);
+      if (key && !tags.has(key)) {
+        tags.set(key, tag);
+      }
+    }));
+    return Array.from(tags.values()).sort((left, right) =>
+      left.localeCompare(right, 'es', { sensitivity: 'base' })
+    );
+  }
+
+  isCriteriaBankSelected(criterion: CriteriaBankCriterion): boolean {
+    return this.selectedCriteriaBankIds.includes(criterion.id);
+  }
+
+  isCriteriaBankPartiallySelected(criterion: CriteriaBankCriterion): boolean {
+    const selectedQuestionIds = this.selectedCriteriaBankQuestionIds[criterion.id] ?? [];
+    return selectedQuestionIds.length > 0 && selectedQuestionIds.length < criterion.questions.length;
+  }
+
+  isCriteriaBankQuestionSelected(
+    criterion: CriteriaBankCriterion,
+    question: CriteriaBankQuestion
+  ): boolean {
+    return (this.selectedCriteriaBankQuestionIds[criterion.id] ?? []).includes(question.id);
+  }
+
+  get selectedCriteriaBankQuestionCount(): number {
+    return Object.values(this.selectedCriteriaBankQuestionIds)
+      .reduce((total, questionIds) => total + questionIds.length, 0);
+  }
+
+  toggleCriteriaBankCriterion(criterion: CriteriaBankCriterion, selected: boolean): void {
+    if (this.isCriteriaBankAlreadyAdded(criterion)) {
+      return;
+    }
+
+    const selectedIds = new Set(this.selectedCriteriaBankIds);
+    const questionIds = selected ? criterion.questions.map((question) => question.id) : [];
+    this.selectedCriteriaBankQuestionIds = {
+      ...this.selectedCriteriaBankQuestionIds,
+      [criterion.id]: questionIds,
+    };
+    selected ? selectedIds.add(criterion.id) : selectedIds.delete(criterion.id);
+    if (questionIds.length === 0) {
+      delete this.selectedCriteriaBankQuestionIds[criterion.id];
+    }
+    this.selectedCriteriaBankIds = this.criteriaBankItems
+      .map((item) => item.id)
+      .filter((id) => selectedIds.has(id));
+  }
+
+  toggleCriteriaBankQuestion(
+    criterion: CriteriaBankCriterion,
+    question: CriteriaBankQuestion,
+    selected: boolean
+  ): void {
+    if (this.isCriteriaBankAlreadyAdded(criterion)) {
+      return;
+    }
+
+    const questionIds = new Set(this.selectedCriteriaBankQuestionIds[criterion.id] ?? []);
+    selected ? questionIds.add(question.id) : questionIds.delete(question.id);
+    const nextQuestionIds = Array.from(questionIds);
+    const nextSelectedQuestionIds = { ...this.selectedCriteriaBankQuestionIds };
+    if (nextQuestionIds.length > 0) {
+      nextSelectedQuestionIds[criterion.id] = nextQuestionIds;
+    } else {
+      delete nextSelectedQuestionIds[criterion.id];
+    }
+    this.selectedCriteriaBankQuestionIds = nextSelectedQuestionIds;
+
+    const selectedIds = new Set(this.selectedCriteriaBankIds);
+    nextQuestionIds.length > 0
+      ? selectedIds.add(criterion.id)
+      : selectedIds.delete(criterion.id);
+    this.selectedCriteriaBankIds = this.criteriaBankItems
+      .map((item) => item.id)
+      .filter((id) => selectedIds.has(id) && (nextSelectedQuestionIds[id]?.length ?? 0) > 0);
+  }
+
+  isCriteriaBankAlreadyAdded(criterion: CriteriaBankCriterion): boolean {
+    if (!this.draftEvaluation || !this.criteriaBankContext) {
+      return false;
+    }
+
+    const { bigFactorIndex, position, scenarioKey } = this.criteriaBankContext;
+    const bigFactor = this.draftEvaluation.bigFactors[bigFactorIndex];
+    if (!bigFactor) {
+      return false;
+    }
+
+    return this.getFactorsForPositionAndScenario(bigFactor, position, scenarioKey)
+      .some(({ factor }) =>
+        (!!factor.code && !!criterion.code &&
+          this.normalizeSearchText(factor.code) === this.normalizeSearchText(criterion.code)) ||
+        this.normalizeSearchText(factor.name) === this.normalizeSearchText(criterion.name)
+      );
+  }
+
+  async addSelectedCriteriaFromBank(): Promise<void> {
+    if (!this.draftEvaluation || !this.criteriaBankContext) {
+      return;
+    }
+
+    const context = this.criteriaBankContext;
+    const bigFactor = this.draftEvaluation.bigFactors[context.bigFactorIndex];
+    if (!bigFactor) {
+      return;
+    }
+
+    const selected = this.criteriaBankItems.map((criterion) => ({
+      criterion,
+      questions: criterion.questions.filter((question) =>
+        (this.selectedCriteriaBankQuestionIds[criterion.id] ?? []).includes(question.id)
+      ),
+    })).filter(({ criterion, questions }) =>
+      this.selectedCriteriaBankIds.includes(criterion.id) &&
+      !this.isCriteriaBankAlreadyAdded(criterion) &&
+      questions.length > 0
+    );
+    if (selected.length === 0) {
+      await Swal.fire({
+        icon: 'info',
+        title: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.SELECT_REQUIRED_TITLE'),
+        text: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.SELECT_REQUIRED_TEXT'),
+      });
+      return;
+    }
+
+    const currentTotal = this.getFactorWeightTotal(
+      bigFactor,
+      context.position,
+      context.scenarioKey
+    );
+    const availableWeight = Math.max(0, 100 - currentTotal);
+    const baseWeight = Math.floor(availableWeight / selected.length);
+    let weightRemainder = availableWeight - (baseWeight * selected.length);
+    let addedCount = 0;
+
+    for (const { criterion, questions } of selected) {
+      if (this.isDemoPerformanceCriteriaLimitReached(
+        bigFactor,
+        context.position,
+        context.scenarioKey
+      )) {
+        await this.showDemoLimitMessage(
+          'DEMO_CRITERIA_LIMIT_TEXT',
+          this.demoLimitsService.getLimit('maxPerformanceCriteriaPerDimension'),
+          { dimension: bigFactor.name }
+        );
+        break;
+      }
+
+      const weight = baseWeight + (weightRemainder > 0 ? 1 : 0);
+      weightRemainder = Math.max(0, weightRemainder - 1);
+      bigFactor.factors.push({
+        id: this.generateId(),
+        code: criterion.code,
+        name: criterion.name,
+        description: criterion.description,
+        weight,
+        requiredRatingLevel: requiredRatingPercentToScale(criterion.requiredLevel),
+        defaultQuestionType: DEFAULT_CRITERION_ITEM_TYPE,
+        questions: questions.map((question) =>
+          this.createQuestionFromCriteriaBank(question, context.position, context.scenarioKey)
+        ),
+        scenarioKeys: [context.scenarioKey],
+        positionScope: 'SELECTED',
+        positions: [context.position],
+      });
+      addedCount += 1;
+    }
+
+    if (addedCount === 0) {
+      return;
+    }
+
+    this.refreshQuestionScenarioState();
+    this.criteriaBankDialogRef?.close();
+    await Swal.fire({
+      icon: 'success',
+      title: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.ADDED_TITLE'),
+      text: this.translate.instant(
+        'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.ADDED_TEXT',
+        { count: addedCount }
+      ),
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  }
+
+  private async loadCriteriaBankForPicker(): Promise<void> {
+    if (!this.selectedOrganizationId) {
+      this.criteriaBankItems = [];
+      return;
+    }
+
+    this.isCriteriaBankLoading = true;
+    try {
+      this.criteriaBankItems = await this.fetchAllCriteriaBankItems();
+    } catch (error) {
+      console.error('No fue posible cargar el banco de criterios:', error);
+      this.criteriaBankItems = [];
+      await Swal.fire({
+        icon: 'error',
+        title: this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.LOAD_ERROR_TITLE'),
+        text: this.getErrorMessage(
+          error,
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.LOAD_ERROR_TEXT')
+        ),
+      });
+    } finally {
+      this.isCriteriaBankLoading = false;
+    }
+  }
+
+  private async fetchAllCriteriaBankItems(): Promise<CriteriaBankCriterion[]> {
+    if (!this.selectedOrganizationId) {
+      return [];
+    }
+
+    const pageSize = 100;
+    let page = 1;
+    let totalPages = 1;
+    const items: CriteriaBankCriterion[] = [];
+
+    do {
+      const response = await this.organizacionService.getDesempenoCriteriaBank(
+        this.selectedOrganizationId,
+        { activeOnly: true, page, pageSize }
+      );
+      const data = response?.data?.data as CriteriaBankListResponse | undefined;
+      items.push(...this.normalizeCriteriaBankItems(data?.items ?? []));
+      totalPages = Math.max(1, Number(data?.pagination?.totalPages ?? 1));
+      page += 1;
+    } while (page <= totalPages);
+
+    return items
+      .filter((criterion) => criterion.active !== false && criterion.questions.length > 0)
+      .sort((left, right) => left.name.localeCompare(right.name, 'es', { sensitivity: 'base' }));
+  }
+
+  private normalizeCriteriaBankItems(items: CriteriaBankCriterion[]): CriteriaBankCriterion[] {
+    return (items ?? [])
+      .map((item: any) => ({
+        id: String(item.id ?? item.IdBancoCriterio ?? ''),
+        organizationId: Number(item.organizationId ?? item.IdOrganizacion ?? this.selectedOrganizationId ?? 0),
+        code: String(item.code ?? item.codigo ?? item.Codigo ?? ''),
+        name: String(item.name ?? item.nombre ?? item.Nombre ?? ''),
+        description: String(item.description ?? item.descripcion ?? item.Descripcion ?? ''),
+        suggestedDimension: String(item.suggestedDimension ?? item.dimensionSugerida ?? item.DimensionSugerida ?? ''),
+        requiredLevel: Number(item.requiredLevel ?? item.nivelExigenciaPct ?? item.NivelExigenciaPct ?? 80),
+        tags: Array.isArray(item.tags)
+          ? item.tags.map((tag: any) => String(tag).replace(/^#+/, '').trim()).filter(Boolean)
+          : [],
+        active: item.active ?? item.activo ?? item.Activo ?? true,
+        questions: Array.isArray(item.questions)
+          ? item.questions.map((question: any, index: number) => ({
+              id: String(question.id ?? question.IdBancoPregunta ?? `${Date.now()}-${index}`),
+              code: question.code ?? question.codigo ?? question.Codigo ?? null,
+              text: String(question.text ?? question.texto ?? question.Texto ?? ''),
+              type: (question.type ?? question.tipo ?? question.TipoItemCodigo ?? 'LIKERT_1_5') as any,
+              suggestedScaleId: question.suggestedScaleId ?? question.idEscalaSugerida ?? null,
+              suggestedScaleCode: question.suggestedScaleCode ?? question.escalaSugeridaCodigo ?? null,
+              suggestedScale: question.suggestedScale ?? question.escalaSugerida ?? null,
+              required: question.required ?? question.requerida ?? true,
+              order: Number(question.order ?? question.orden ?? index + 1),
+              active: question.active ?? question.activo ?? true,
+            }))
+          : [],
+        createdAt: String(item.createdAt ?? item.fechaCreacion ?? ''),
+        updatedAt: String(item.updatedAt ?? item.fechaModificacion ?? ''),
+      }))
+      .filter((item) => !!item.id && !!item.name);
+  }
+
+  private createQuestionFromCriteriaBank(
+    question: CriteriaBankQuestion,
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey
+  ): DesEvaluationQuestion {
+    const options = question.type === 'ABIERTA'
+      ? []
+      : this.getCriteriaBankLikertOptions(question.suggestedScale);
+    return {
+      id: this.generateId(),
+      label: question.text,
+      type: question.type,
+      required: true,
+      options,
+      scaleId: question.type === 'ABIERTA'
+        ? null
+        : this.resolveQuestionDraftScaleId(options),
+      scenarioKeys: [scenarioKey],
+      positionScope: 'SELECTED',
+      positions: [position],
+    };
+  }
+
+  private getCriteriaBankLikertOptions(scaleName: string | null): string[] {
+    const normalized = this.normalizeSearchText(scaleName ?? '');
+    const presetKey = normalized.includes('ACUERDO') || normalized.includes('AGREEMENT')
+      ? 'agreement_5'
+      : normalized.includes('SATISF')
+        ? 'satisfaction_5'
+        : normalized.includes('FRECUEN') || normalized.includes('FREQUENCY')
+          ? 'frequency_5'
+          : normalized.includes('IMPORTAN')
+            ? 'importance_5'
+            : normalized.includes('CALIDAD') || normalized.includes('QUALITY')
+              ? 'quality_5'
+              : 'compliance_5';
+    const preset = this.questionLikertPresets.find((item) => item.key === presetKey) ??
+      this.questionLikertPresets[0];
+    return [...preset.labels];
+  }
+
   openQuestionDialog(
     bigFactorIndex: number,
     factorIndex: number,
@@ -3062,6 +3707,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       type: this.questionDraft.type,
       required: true,
       options,
+      scaleId: this.questionDraft.type === 'ABIERTA'
+        ? null
+        : this.resolveQuestionDraftScaleId(options),
       scenarioKeys: this.editQuestionContext.scenarioKey
         ? [this.editQuestionContext.scenarioKey]
         : [],
@@ -3552,9 +4200,17 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       return;
     }
 
-    this.ensurePositionScenarioConfigs(this.draftEvaluation);
-    const positionConfig = this.draftEvaluation.positionScenarios
+    let positionConfig = this.draftEvaluation.positionScenarios
       .find((item) => item.position === position);
+
+    // La configuracion se crea al agregar el puesto. No la reinicializamos durante
+    // una edicion manual, porque mientras se ajustan dos campos el total puede no ser 100%.
+    if (!positionConfig) {
+      this.ensurePositionScenarioConfigs(this.draftEvaluation);
+      positionConfig = this.draftEvaluation.positionScenarios
+        .find((item) => item.position === position);
+    }
+
     const scenario = positionConfig?.scenarios.find((item) => item.key === scenarioKey);
 
     if (!scenario) {
@@ -3653,6 +4309,107 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
         ),
       0
     );
+  }
+
+  openPositionSurveyPreview(position: string): void {
+    if (
+      !this.draftEvaluation ||
+      !this.performanceSurveyPreviewDialogTemplate ||
+      this.getPositionQuestionCount(position) === 0
+    ) {
+      return;
+    }
+
+    this.surveyPreviewDialogRef?.close();
+    this.surveyPreviewPosition = position;
+    this.surveyPreviewDialogRef = this.dialog.open(
+      this.performanceSurveyPreviewDialogTemplate,
+      {
+        width: '980px',
+        maxWidth: '96vw',
+        height: 'min(820px, 90vh)',
+        maxHeight: '90vh',
+        autoFocus: false,
+        restoreFocus: false,
+        panelClass: [
+          'des-evaluaciones-dialog-panel',
+          'performance-survey-preview-dialog-panel',
+        ],
+      }
+    );
+
+    this.surveyPreviewDialogRef.afterClosed().subscribe(() => {
+      this.surveyPreviewDialogRef = null;
+      this.surveyPreviewPosition = null;
+    });
+  }
+
+  closePositionSurveyPreview(): void {
+    this.surveyPreviewDialogRef?.close();
+  }
+
+  getPositionSurveyPreviewScenarios(position: string): DesEvaluationScenarioOption[] {
+    return this.getActivePositionScenarios(position)
+      .filter(
+        (scenario): scenario is DesEvaluationScenario & { key: DesEvaluationScenarioKey } =>
+          !!scenario.key && this.getPositionScenarioQuestionCount(position, scenario.key) > 0
+      )
+      .map((scenario) => ({
+        key: scenario.key,
+        name: scenario.name || this.getQuestionScenarioLabel(scenario.key),
+        weight: Number(scenario.weight) || 0,
+      }));
+  }
+
+  getPositionSurveyPreviewDimensions(
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey
+  ): DesEvaluationBigFactor[] {
+    if (!this.draftEvaluation) {
+      return [];
+    }
+
+    return this.draftEvaluation.bigFactors.filter((bigFactor) =>
+      this.getPositionSurveyPreviewFactors(bigFactor, position, scenarioKey).length > 0
+    );
+  }
+
+  getPositionSurveyPreviewFactors(
+    bigFactor: DesEvaluationBigFactor,
+    position: string,
+    scenarioKey: DesEvaluationScenarioKey
+  ): Array<{ factor: DesEvaluationFactor; index: number }> {
+    return this.getFactorsForPositionAndScenario(bigFactor, position, scenarioKey)
+      .filter(({ factor }) =>
+        this.getQuestionsForPositionAndScenario(factor, position, scenarioKey).length > 0
+      );
+  }
+
+  getSurveyPreviewQuestionOptions(question: DesEvaluationQuestion): string[] {
+    const configuredOptions = (question.options ?? [])
+      .map((option) => String(option ?? '').trim())
+      .filter(Boolean);
+
+    if (configuredOptions.length > 0) {
+      return configuredOptions;
+    }
+
+    if (this.isSurveyPreviewOpenQuestion(question)) {
+      return [];
+    }
+
+    const scaleId = Number(question.scaleId ?? this.draftEvaluation?.scaleId ?? 0);
+    return (this.getScaleById(scaleId)?.levels ?? []).map((level) =>
+      this.getScaleLevelLabel(level)
+    );
+  }
+
+  isSurveyPreviewOpenQuestion(question: DesEvaluationQuestion): boolean {
+    return this.toFrontendItemTypeCode(question.type) === 'ABIERTA';
+  }
+
+  isSurveyPreviewMultipleChoice(question: DesEvaluationQuestion): boolean {
+    return this.toFrontendItemTypeCode(question.type) === 'SELECCION_MULTIPLE';
   }
 
   isPositionScenarioApplicable(
@@ -4088,6 +4845,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
     const startDate = this.normalizeDateInput(value);
     this.draftEvaluation.period.startDate = startDate;
+    this.periodStartDatePickerValue = this.toNativeDate(startDate);
 
     if (
       startDate &&
@@ -4097,6 +4855,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       )
     ) {
       this.draftEvaluation.period.endDate = this.addDaysToInputDate(startDate, 15);
+      this.periodEndDatePickerValue = this.toNativeDate(
+        this.draftEvaluation.period.endDate
+      );
     }
   }
 
@@ -4106,6 +4867,18 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     this.draftEvaluation.period.endDate = this.normalizeDateInput(value);
+    this.periodEndDatePickerValue = this.toNativeDate(
+      this.draftEvaluation.period.endDate
+    );
+  }
+
+  private syncPeriodDatePickerValues(): void {
+    this.periodStartDatePickerValue = this.toNativeDate(
+      this.draftEvaluation?.period.startDate
+    );
+    this.periodEndDatePickerValue = this.toNativeDate(
+      this.draftEvaluation?.period.endDate
+    );
   }
 
   getBigFactorQuestionCount(bigFactor: DesEvaluationBigFactor): number {
@@ -4649,7 +5422,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
   private refreshParticipantEmployeeView(): void {
     const search = this.normalizeSearchText(this.participantEmployeeSearchTerm);
-    const candidateEmployees = this.getParticipantCandidateEmployees(this.draftEvaluation);
+    const candidateEmployees = this.getParticipantEmployeePickerEmployees(this.draftEvaluation);
 
     this.filteredParticipantEmployees = search
       ? candidateEmployees.filter((employee) =>
@@ -4777,6 +5550,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.draftEvaluation.participants.excludedSubordinatePositions = [];
     this.draftEvaluation.participants.evaluatorOnlyPositions = [];
     this.draftEvaluation.positionScenarios = [];
+    this.retainedParticipantEmployeeIds.clear();
     this.selectParticipantEmployeesFromSelectedPositions();
   }
 
@@ -4832,20 +5606,29 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     const selectedEmployeeIds = new Set(this.draftEvaluation.participants.employeeIds);
-    selected ? selectedEmployeeIds.add(employeeId) : selectedEmployeeIds.delete(employeeId);
+    const employee = this.employees.find((item) => item.id === employeeId) ?? null;
+
+    if (selected) {
+      selectedEmployeeIds.add(employeeId);
+      this.retainedParticipantEmployeeIds.delete(employeeId);
+      this.restoreParticipantPositionForEmployee(employee);
+    } else {
+      selectedEmployeeIds.delete(employeeId);
+      this.retainedParticipantEmployeeIds.add(employeeId);
+    }
 
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
     if (!selected) {
-      const employeePosition = this.employees.find((employee) => employee.id === employeeId)?.cargo;
+      const employeePosition = employee?.cargo;
       if (employeePosition) {
         this.removeParticipantPositionsWithoutSelectedEmployees([
           this.normalizeSearchText(employeePosition),
         ]);
-        return;
       }
     }
 
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
+    this.refreshParticipantEmployeeView();
   }
 
   selectAllFilteredParticipantEmployees(): void {
@@ -4858,7 +5641,11 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       ...this.filteredParticipantEmployees.map((employee) => employee.id),
     ]);
 
+    this.restoreParticipantPositionsForEmployees(this.filteredParticipantEmployees);
     this.draftEvaluation.participants.employeeIds = this.orderParticipantEmployeeIds(selectedEmployeeIds);
+    this.filteredParticipantEmployees.forEach((employee) =>
+      this.retainedParticipantEmployeeIds.delete(employee.id)
+    );
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
@@ -4868,6 +5655,9 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     const participants = this.draftEvaluation.participants;
+    participants.employeeIds.forEach((employeeId) =>
+      this.retainedParticipantEmployeeIds.add(employeeId)
+    );
     if (participants.selectSubordinates) {
       const excludedPositionKeys = new Set([
         ...(participants.excludedSubordinatePositions ?? []),
@@ -4885,6 +5675,41 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     participants.employeeIds = [];
     this.pruneEvaluatorOnlyPositions(this.draftEvaluation, false);
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
+    this.refreshParticipantEmployeeView();
+  }
+
+  private restoreParticipantPositionForEmployee(employee: DesEvaluationEmployee | null): void {
+    this.restoreParticipantPositionsForEmployees(employee ? [employee] : []);
+  }
+
+  private restoreParticipantPositionsForEmployees(
+    employees: DesEvaluationEmployee[]
+  ): void {
+    if (!this.draftEvaluation || employees.length === 0) {
+      return;
+    }
+
+    const participants = this.draftEvaluation.participants;
+    const selectedPositionKeys = new Set(
+      participants.positions.map((position) => this.normalizeSearchText(position))
+    );
+    const restoredPositionKeys = new Set(
+      employees
+        .map((employee) => this.normalizeSearchText(employee.cargo ?? ''))
+        .filter((positionKey) => positionKey.length > 0)
+    );
+    restoredPositionKeys.forEach((positionKey) => selectedPositionKeys.add(positionKey));
+    participants.positions = this.availablePositions.filter((position) =>
+      selectedPositionKeys.has(this.normalizeSearchText(position))
+    );
+
+    participants.excludedSubordinatePositions = (
+      participants.excludedSubordinatePositions ?? []
+    ).filter((position) => !restoredPositionKeys.has(this.normalizeSearchText(position)));
+
+    if (!participants.selectSubordinates) {
+      participants.subordinateSourcePositions = [...participants.positions];
+    }
   }
 
   private removeParticipantPositionsWithoutSelectedEmployees(
@@ -5494,6 +6319,97 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
   }
 
+  async sendPerformanceWhatsapp(
+    assignment: DesEvaluationSendAssignment
+  ): Promise<void> {
+    const evaluation = this.sendPreviewEvaluation;
+    const organizationId = this.selectedOrganizationId ?? evaluation?.organizationId;
+
+    if (!evaluation || !organizationId || assignment.isSending) {
+      return;
+    }
+
+    if (this.isDemoPerformanceResendBlocked(assignment)) {
+      await Swal.fire(
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TITLE'),
+        this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TEXT'),
+        'info'
+      );
+      return;
+    }
+
+    const phone = this.normalizeWhatsappPhone(assignment.evaluator.phone);
+    if (!phone) {
+      await Swal.fire(
+        'WhatsApp no disponible',
+        'El evaluador no tiene un número de teléfono válido para recibir el mensaje.',
+        'warning'
+      );
+      return;
+    }
+
+    assignment.isSending = true;
+
+    try {
+      await this.refreshAssignmentSendState(assignment, evaluation.id, true);
+      if (this.isDemoPerformanceResendBlocked(assignment)) {
+        await Swal.fire(
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TITLE'),
+          this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.DEMO_RESEND_BLOCKED_TEXT'),
+          'info'
+        );
+        return;
+      }
+
+      const portalAccessCode = btoa(`${assignment.evaluator.id}|${evaluation.id}`);
+      const portalUrl = `https://justlink360.net/#/portal-desempeno/evaluaciones/${portalAccessCode}`;
+      const organizationName = this.organizations.find((item) => item.Id === organizationId)?.Nombre ?? 'Just-Link360';
+      const payload = {
+        to: phone,
+        employe_name: assignment.evaluator.fullName,
+        organization_name: organizationName,
+        clima_code: portalAccessCode,
+        clima_name: evaluation.name,
+        IdFlujo: evaluation.id,
+        IdEmpleado: assignment.evaluator.id,
+        codigoCentroEvaluaciones: portalAccessCode,
+        urlCentroEvaluaciones: portalUrl,
+        IdModelo: evaluation.id,
+        modelo_nombre: evaluation.name,
+      };
+      const response = await this.organizacionService.sendDesempenoWhatsapp(payload);
+      const responsePayload = response?.data ?? response;
+
+      if (responsePayload?.ok === false || responsePayload?.success === false) {
+        throw responsePayload;
+      }
+
+      await Swal.fire(
+        'WhatsApp enviado',
+        String(responsePayload?.message ?? responsePayload?.mensaje ?? 'La invitación fue enviada por WhatsApp.'),
+        'success'
+      );
+
+      try {
+        await this.refreshAssignmentSendState(assignment, evaluation.id, true);
+      } catch (error) {
+        console.error('WhatsApp enviado, pero no fue posible refrescar su estado:', error);
+      }
+    } catch (error) {
+      console.error(
+        `Error al enviar WhatsApp de desempeño al empleado ${assignment.evaluator.id}:`,
+        error
+      );
+      await Swal.fire(
+        'No fue posible enviar el WhatsApp',
+        this.getApiErrorMessage(error, 'No se pudo enviar la invitación por WhatsApp.'),
+        'error'
+      );
+    } finally {
+      assignment.isSending = false;
+    }
+  }
+
   getStatusClass(status: string): string {
     const normalized = this.normalizeKey(status);
     if (normalized.includes('PUBLICADA') || normalized.includes('EN_CURSO')) {
@@ -5558,19 +6474,27 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       });
 
       this.editorDialogRef.afterClosed().subscribe(() => {
+        this.surveyPreviewDialogRef?.close();
         this.editorDialogRef = null;
         this.editingEvaluation = null;
         this.draftEvaluation = null;
         this.activeEditorTabIndex = 0;
+        this.periodStartDatePickerValue = null;
+        this.periodEndDatePickerValue = null;
+        this.retainedParticipantEmployeeIds.clear();
         this.resetModelImageUpload();
       });
     } catch (error) {
       console.error('Error al abrir el dialog de evaluación:', error);
+      this.surveyPreviewDialogRef?.close();
       this.dialog.closeAll();
       this.editorDialogRef = null;
       this.editingEvaluation = null;
       this.draftEvaluation = null;
       this.activeEditorTabIndex = 0;
+      this.periodStartDatePickerValue = null;
+      this.periodEndDatePickerValue = null;
+      this.retainedParticipantEmployeeIds.clear();
       void Swal.fire(
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.LOAD_MODEL_ERROR_TITLE'),
         this.t('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MESSAGES.LOAD_MODEL_ERROR_TEXT'),
@@ -5717,10 +6641,16 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       }
 
       if (this.itemTypeOptions.length > 0) {
-        this.questionTypes = this.itemTypeOptions.map((item) => ({
-          value: this.toFrontendItemTypeCode(item.code),
-          label: item.name,
-        }));
+        const allowedQuestionTypes = this.itemTypeOptions
+          .map((item) => ({
+            value: this.toFrontendItemTypeCode(item.code),
+            label: item.name,
+          }))
+          .filter((item) => this.enabledQuestionTypeCodes.has(item.value));
+
+        if (allowedQuestionTypes.length > 0) {
+          this.questionTypes = allowedQuestionTypes;
+        }
       }
 
       await this.refreshPositionOptions(organizationId);
@@ -7163,9 +8093,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     const defaultType = this.surveyTypes[0] ?? '360';
     const today = this.formatDateForInput(new Date());
     const closingDate = this.addDaysToInputDate(today, 15);
-    const defaultState =
-      this.modelStateOptions.find((item) => item.code === 'BORRADOR') ??
-      this.modelStateOptions[0];
+    const defaultState = this.getDraftModelState();
     const defaultMethod =
       this.calculationMethodOptions.find((item) => item.code === 'PROMEDIO_PONDERADO') ??
       this.calculationMethodOptions[0];
@@ -7188,7 +8116,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       status: 'CONFIGURACION',
       modelName: name,
       modelType: defaultType,
-      modelState: defaultState?.code ?? 'BORRADOR',
+      modelState: 'BORRADOR',
       scaleId: defaultScale?.id ?? this.scaleOptions[0]?.id ?? 0,
       scaleLabel: this.getScaleLabel(defaultScale?.id ?? this.scaleOptions[0]?.id ?? 0),
       useWeighting: true,
@@ -7416,6 +8344,31 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     });
 
     return preset?.key ?? null;
+  }
+
+  private resolveQuestionDraftScaleId(options: string[]): number | null {
+    const presetKey = this.matchQuestionLikertPreset(options);
+    const presetScaleCode = presetKey
+      ? this.questionLikertScaleCodes[presetKey]
+      : null;
+    const presetScale = presetScaleCode
+      ? this.scaleOptions.find((scale) => scale.code === presetScaleCode)
+      : null;
+
+    if (presetScale) {
+      return presetScale.id;
+    }
+
+    const optionLabels = options.map((option) => this.normalizeSearchText(option));
+    const matchingScale = this.scaleOptions.find((scale) => {
+      const scaleLabels = scale.levels.map((level) =>
+        this.normalizeSearchText(this.getScaleLevelLabel(level))
+      );
+      return scaleLabels.length === optionLabels.length &&
+        scaleLabels.every((label, index) => label === optionLabels[index]);
+    });
+
+    return matchingScale?.id ?? this.getDefaultScale()?.id ?? null;
   }
 
   private normalizeEvaluationQuestionScopes(evaluation: DesEvaluationCard): void {
@@ -7776,6 +8729,27 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     }
 
     return baseEmployees.filter((employee) => this.employeeMatchesAnyParticipantCriteria(employee, evaluation));
+  }
+
+  private getParticipantEmployeePickerEmployees(
+    evaluation: DesEvaluationCard | null
+  ): DesEvaluationEmployee[] {
+    if (!evaluation) {
+      return [];
+    }
+
+    const candidateEmployeeIds = new Set(
+      this.getParticipantCandidateEmployees(evaluation).map((employee) => employee.id)
+    );
+
+    return this.employees.filter((employee) =>
+      (
+        candidateEmployeeIds.has(employee.id) ||
+        this.retainedParticipantEmployeeIds.has(employee.id)
+      ) &&
+      (!evaluation.participants.onlyActive || employee.activo) &&
+      this.employeeMatchesParticipantDemographics(employee, evaluation)
+    );
   }
 
   private employeeMatchesAnyParticipantCriteria(
@@ -8186,6 +9160,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   private prepareEvaluationSnapshot(evaluation: DesEvaluationCard): DesEvaluationCard {
     const snapshot = this.cloneEvaluation(evaluation);
 
+    this.applyDefaultModelConfiguration(snapshot);
     this.normalizeEvaluationQuestionScopes(snapshot);
     this.pruneEvaluatorOnlyPositions(snapshot);
     this.ensurePositionScenarioConfigs(snapshot);
@@ -8217,11 +9192,8 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       this.modelTypeOptions.find((item) => item.code === evaluation.modelType)?.id ??
       evaluation.modelTypeId ??
       0;
-    const modelStateId =
-      this.modelStateOptions.find((item) => item.code === evaluation.modelState)?.id ??
-      evaluation.modelStateId ??
-      this.modelStateOptions.find((item) => item.code === 'BORRADOR')?.id ??
-      0;
+    const modelStateId = this.getDraftModelState()?.id ?? 0;
+    const defaultScaleId = this.getDefaultScale()?.id ?? evaluation.scaleId;
     const calculationMethodId =
       evaluation.calculationMethodId ??
       this.calculationMethodOptions.find((item) => item.code === 'PROMEDIO_PONDERADO')?.id ??
@@ -8260,7 +9232,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       ),
       tipoModeloId: modelTypeId,
       estadoModeloId: modelStateId,
-      escalaPredeterminadaId: evaluation.scaleId,
+      escalaPredeterminadaId: defaultScaleId,
       metodoCalculoId: calculationMethodId,
       usaPonderacion: true,
       usaAnonimato: true,
@@ -9680,9 +10652,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return !!(
       evaluation.name.trim() &&
       evaluation.description.trim() &&
-      evaluation.modelType &&
-      evaluation.modelState &&
-      Number(evaluation.scaleId) > 0
+      evaluation.modelType
     );
   }
 
@@ -9738,6 +10708,23 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     return this.scaleOptions.find((item) => item.code === 'CUMPLIMIENTO_1_5') ??
       this.scaleOptions[0] ??
       null;
+  }
+
+  private getDraftModelState(): DesEvaluationCatalogOption | null {
+    return this.modelStateOptions.find((item) => item.code === 'BORRADOR') ?? null;
+  }
+
+  private applyDefaultModelConfiguration(evaluation: DesEvaluationCard): void {
+    const defaultState = this.getDraftModelState();
+    const defaultScale = this.getDefaultScale();
+
+    evaluation.modelState = 'BORRADOR';
+    evaluation.modelStateId = defaultState?.id;
+
+    if (defaultScale) {
+      evaluation.scaleId = defaultScale.id;
+      evaluation.scaleLabel = this.getScaleLabel(defaultScale.id);
+    }
   }
 
   private toScenarioKey(value: any): DesEvaluationScenarioKey | null {
@@ -10110,8 +11097,44 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       .trim();
   }
 
+  private getErrorMessage(error: any, fallback: string): string {
+    return String(
+      error?.response?.data?.message ??
+      error?.response?.data?.error?.message ??
+      error?.error?.message ??
+      error?.message ??
+      fallback
+    );
+  }
+
+  private normalizeWhatsappPhone(value: string | null | undefined): string | null {
+    const phone = String(value ?? '').replace(/\D/g, '');
+    if (!phone) return null;
+
+    // The employee form stores the country code when available. Keep it; only
+    // complement legacy eight-digit Guatemala numbers used by older records.
+    const normalizedPhone = phone.length === 8 ? `502${phone}` : phone;
+    return normalizedPhone.length >= 10 ? normalizedPhone : null;
+  }
+
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  /**
+   * The workbook is generated entirely in the browser. Reloading the active
+   * language here prevents a long-lived session from exporting translation keys
+   * that were added after the page was first opened.
+   */
+  private async refreshExcelTemplateTranslations(): Promise<void> {
+    const language = this.translate.currentLang || this.translate.getDefaultLang() || 'es';
+
+    try {
+      await firstValueFrom(this.translate.reloadLang(language));
+    } catch (error) {
+      // Preserve the current dictionary so a transient request failure does not block the export.
+      console.warn('No se pudieron recargar las traducciones para la plantilla Excel.', error);
+    }
   }
 
   private translateKeyOrFallback(key: string, fallback: string): string {

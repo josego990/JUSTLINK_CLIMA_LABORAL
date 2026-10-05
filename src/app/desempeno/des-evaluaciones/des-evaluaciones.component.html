@@ -38,6 +38,14 @@
                 <mat-icon>help_outline</mat-icon>
               </button>
               <button
+                mat-stroked-button
+                type="button"
+                routerLink="/desempeno/banco-criterios"
+                [disabled]="!hasSelectedOrganization">
+                <mat-icon>library_books</mat-icon>
+                {{ 'DESEMPENO_MENUITEMS.CRITERIA_BANK.OPEN_FROM_EVALUATIONS' | translate }}
+              </button>
+              <button
                 mat-raised-button
                 color="primary"
                 data-performance-guide="performance-list-create"
@@ -371,53 +379,37 @@
             </div>
             <div class="col-lg-4 col-md-6">
               <mat-form-field appearance="outline" class="w-100">
-                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.MODEL_STATE' | translate }}</mat-label>
-                <mat-select required [(ngModel)]="draftEvaluation.modelState">
-                  <mat-option *ngFor="let state of modelStates" [value]="state">{{ getModelStateLabel(state) }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-            <div class="col-lg-4 col-md-12">
-              <mat-form-field appearance="outline" class="w-100">
-                <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCALE' | translate }}</mat-label>
-                <mat-select required [(ngModel)]="draftEvaluation.scaleId" (ngModelChange)="draftEvaluation.scaleLabel = getScaleLabel($event)">
-                  <mat-option *ngFor="let scale of scaleOptions; trackBy: trackByAnyId" [value]="scale.id">
-                    {{ getScaleLabel(scale.id) }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-            <div class="col-lg-6 col-md-12">
-              <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.START_DATE' | translate }}</mat-label>
                 <input
                   matInput
-                  type="date"
+                  [matDatepicker]="startDatePicker"
                   required
-                  [max]="draftEvaluation.period.endDate || null"
-                  [ngModel]="draftEvaluation.period.startDate"
+                  [max]="periodEndDatePickerValue"
+                  [ngModel]="periodStartDatePickerValue"
                   (ngModelChange)="setPeriodStartDate($event)"
                   #startDateModel="ngModel"
                 />
-                <mat-icon matSuffix>calendar_today</mat-icon>
+                <mat-datepicker-toggle matSuffix [for]="startDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #startDatePicker></mat-datepicker>
                 <mat-error *ngIf="startDateModel.hasError('required')">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DATE_REQUIRED' | translate }}
                 </mat-error>
               </mat-form-field>
             </div>
-            <div class="col-lg-6 col-md-12">
+            <div class="col-lg-4 col-md-6">
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.END_DATE' | translate }}</mat-label>
                 <input
                   matInput
-                  type="date"
+                  [matDatepicker]="endDatePicker"
                   required
-                  [min]="draftEvaluation.period.startDate || null"
-                  [ngModel]="draftEvaluation.period.endDate"
+                  [min]="periodStartDatePickerValue"
+                  [ngModel]="periodEndDatePickerValue"
                   (ngModelChange)="setPeriodEndDate($event)"
                   #endDateModel="ngModel"
                 />
-                <mat-icon matSuffix>calendar_today</mat-icon>
+                <mat-datepicker-toggle matSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #endDatePicker></mat-datepicker>
                 <mat-error *ngIf="endDateModel.hasError('required')">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DATE_REQUIRED' | translate }}
                 </mat-error>
@@ -451,67 +443,6 @@
                     (change)="onModelImageSelected($event)" />
                 </label>
               </div>
-            </div>
-          </div>
-
-          <div
-            class="model-excel-import-bar"
-            data-performance-guide="performance-editor-excel">
-            <div class="model-excel-import-title">
-              <span class="model-excel-import-icon"><mat-icon>table_view</mat-icon></span>
-              <div>
-                <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.TITLE' | translate }}</strong>
-                <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUBTITLE' | translate }}</small>
-              </div>
-            </div>
-
-            <div class="model-excel-import-summary" *ngIf="modelExcelImportSummary as summary">
-              <span><strong>{{ summary.positions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.POSITIONS' | translate }}</span>
-              <span><strong>{{ summary.dimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_DIMENSIONS' | translate }}</span>
-              <span><strong>{{ summary.criteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_CRITERIA' | translate }}</span>
-              <span><strong>{{ summary.items }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_ITEMS' | translate }}</span>
-              <span *ngIf="summary.existingDimensions > 0"><strong>{{ summary.existingDimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_DIMENSIONS' | translate }}</span>
-              <span *ngIf="summary.existingCriteria > 0"><strong>{{ summary.existingCriteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_CRITERIA' | translate }}</span>
-              <span *ngIf="summary.existingItems > 0"><strong>{{ summary.existingItems }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_ITEMS' | translate }}</span>
-              <span *ngIf="summary.omittedScenarios > 0"><strong>{{ summary.omittedScenarios }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.OMITTED_SCENARIOS' | translate }}</span>
-            </div>
-
-            <div class="model-excel-import-actions">
-              <span [matTooltip]="modelExcelTemplateDownloadTooltip">
-                <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="downloadModelExcelTemplate()"
-                  [disabled]="isImportingModelExcel || isSavingModel || isGeneratingModelExcel || !canDownloadModelExcelTemplate">
-                  <mat-progress-spinner
-                    *ngIf="isGeneratingModelExcel; else downloadExcelIcon"
-                    diameter="18"
-                    mode="indeterminate">
-                  </mat-progress-spinner>
-                  <ng-template #downloadExcelIcon><mat-icon>download</mat-icon></ng-template>
-                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE' | translate }}
-                </button>
-              </span>
-              <button
-                mat-raised-button
-                color="primary"
-                type="button"
-                (click)="modelExcelInput.click()"
-                [disabled]="isImportingModelExcel || isSavingModel">
-                <mat-progress-spinner
-                  *ngIf="isImportingModelExcel; else uploadExcelIcon"
-                  diameter="18"
-                  mode="indeterminate">
-                </mat-progress-spinner>
-                <ng-template #uploadExcelIcon><mat-icon>upload_file</mat-icon></ng-template>
-                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.UPLOAD' | translate }}
-              </button>
-              <input
-                #modelExcelInput
-                hidden
-                type="file"
-                accept=".xlsx,.xls"
-                (change)="onModelExcelSelected($event)" />
             </div>
           </div>
 
@@ -590,12 +521,6 @@
                   [ngModel]="draftEvaluation.participants.onlyActive"
                   (ngModelChange)="onParticipantOnlyActiveChange($event)">
                   {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ONLY_ACTIVE' | translate }}
-                </mat-checkbox>
-                <mat-checkbox
-                  [ngModel]="draftEvaluation.participants.selectSubordinates"
-                  (ngModelChange)="onParticipantSelectSubordinatesChange($event)"
-                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES_HELP' | translate">
-                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES' | translate }}
                 </mat-checkbox>
               </div>
               <div class="col-12">
@@ -916,6 +841,67 @@
           </div>
 
           <div
+            class="model-excel-import-bar"
+            data-performance-guide="performance-editor-excel">
+            <div class="model-excel-import-title">
+              <span class="model-excel-import-icon"><mat-icon>table_view</mat-icon></span>
+              <div>
+                <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.TITLE' | translate }}</strong>
+                <small>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.SUBTITLE' | translate }}</small>
+              </div>
+            </div>
+
+            <div class="model-excel-import-summary" *ngIf="modelExcelImportSummary as summary">
+              <span><strong>{{ summary.positions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.POSITIONS' | translate }}</span>
+              <span><strong>{{ summary.dimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_DIMENSIONS' | translate }}</span>
+              <span><strong>{{ summary.criteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_CRITERIA' | translate }}</span>
+              <span><strong>{{ summary.items }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.NEW_ITEMS' | translate }}</span>
+              <span *ngIf="summary.existingDimensions > 0"><strong>{{ summary.existingDimensions }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_DIMENSIONS' | translate }}</span>
+              <span *ngIf="summary.existingCriteria > 0"><strong>{{ summary.existingCriteria }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_CRITERIA' | translate }}</span>
+              <span *ngIf="summary.existingItems > 0"><strong>{{ summary.existingItems }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.EXISTING_ITEMS' | translate }}</span>
+              <span *ngIf="summary.omittedScenarios > 0"><strong>{{ summary.omittedScenarios }}</strong> {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.OMITTED_SCENARIOS' | translate }}</span>
+            </div>
+
+            <div class="model-excel-import-actions">
+              <span [matTooltip]="modelExcelTemplateDownloadTooltip">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="downloadModelExcelTemplate()"
+                  [disabled]="isImportingModelExcel || isSavingModel || isGeneratingModelExcel || !canDownloadModelExcelTemplate">
+                  <mat-progress-spinner
+                    *ngIf="isGeneratingModelExcel; else downloadExcelIcon"
+                    diameter="18"
+                    mode="indeterminate">
+                  </mat-progress-spinner>
+                  <ng-template #downloadExcelIcon><mat-icon>download</mat-icon></ng-template>
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.DOWNLOAD_TEMPLATE' | translate }}
+                </button>
+              </span>
+              <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="modelExcelInput.click()"
+                [disabled]="isImportingModelExcel || isSavingModel">
+                <mat-progress-spinner
+                  *ngIf="isImportingModelExcel; else uploadExcelIcon"
+                  diameter="18"
+                  mode="indeterminate">
+                </mat-progress-spinner>
+                <ng-template #uploadExcelIcon><mat-icon>upload_file</mat-icon></ng-template>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EXCEL_IMPORT.UPLOAD' | translate }}
+              </button>
+              <input
+                #modelExcelInput
+                hidden
+                type="file"
+                accept=".xlsx,.xls"
+                (change)="onModelExcelSelected($event)" />
+            </div>
+          </div>
+
+          <div
             class="position-model-empty"
             *ngIf="draftEvaluation.participants.positions.length === 0">
             <mat-icon>badge</mat-icon>
@@ -961,6 +947,23 @@
               </mat-expansion-panel-header>
 
               <ng-template matExpansionPanelContent>
+                <div
+                  class="position-survey-preview-toolbar"
+                  *ngIf="getPositionSurveyPreviewScenarios(position).length > 0">
+                  <div class="position-survey-preview-copy">
+                    <mat-icon>fact_check</mat-icon>
+                    <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_HELP' | translate }}</span>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    type="button"
+                    (click)="openPositionSurveyPreview(position)">
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_BUTTON' | translate }}
+                  </button>
+                </div>
+
                 <mat-accordion class="position-scenarios" multi>
                 <mat-expansion-panel
                   class="position-scenario-panel"
@@ -997,6 +1000,7 @@
                     </mat-panel-description>
                   </mat-expansion-panel-header>
 
+                  <ng-template matExpansionPanelContent>
                   <mat-accordion class="position-dimensions" multi>
                     <mat-expansion-panel
                       class="position-dimension-panel"
@@ -1017,6 +1021,7 @@
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
+                      <ng-template matExpansionPanelContent>
                       <div class="position-dimension-toolbar">
                         <span
                           class="weight-total"
@@ -1024,15 +1029,24 @@
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.TOTAL' | translate }}:
                           {{ getFactorWeightTotal(bigFactor, position, scenario.key) }}%
                         </span>
-                        <button
-                          mat-stroked-button
-                          color="primary"
-                          type="button"
-                          (click)="openFactorDialog(bigFactorIndex, null, position, scenario.key)"
-                          [disabled]="isDemoPerformanceCriteriaLimitReached(bigFactor, position, scenario.key)">
-                          <mat-icon>playlist_add</mat-icon>
-                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_COMPETENCY' | translate }}
-                        </button>
+                        <div class="position-dimension-actions">
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            (click)="openCriteriaBankDialog(bigFactorIndex, position, scenario.key)">
+                            <mat-icon>library_add</mat-icon>
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.OPEN' | translate }}
+                          </button>
+                          <button
+                            mat-stroked-button
+                            color="primary"
+                            type="button"
+                            (click)="openFactorDialog(bigFactorIndex, null, position, scenario.key)"
+                            [disabled]="isDemoPerformanceCriteriaLimitReached(bigFactor, position, scenario.key)">
+                            <mat-icon>playlist_add</mat-icon>
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ADD_COMPETENCY' | translate }}
+                          </button>
+                        </div>
                       </div>
 
                       <div class="position-competencies">
@@ -1152,8 +1166,10 @@
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_COMPETENCIES' | translate }}
                         </span>
                       </div>
+                      </ng-template>
                     </mat-expansion-panel>
                   </mat-accordion>
+                  </ng-template>
                 </mat-expansion-panel>
                 </mat-accordion>
 
@@ -1196,6 +1212,171 @@
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE_EVALUATION' | translate }}
       </button>
     </div>
+  </div>
+</ng-template>
+
+<ng-template #performanceSurveyPreviewDialogTemplate>
+  <div
+    class="performance-survey-preview-dialog"
+    *ngIf="draftEvaluation && surveyPreviewPosition as position">
+    <div class="survey-preview-header" role="banner">
+      <div class="survey-preview-heading">
+        <span class="survey-preview-icon" aria-hidden="true">
+          <mat-icon>visibility</mat-icon>
+        </span>
+        <div>
+          <span class="survey-preview-eyebrow">
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_TITLE' | translate }}
+          </span>
+          <h2>{{ draftEvaluation.name }}</h2>
+          <p>{{ position }}</p>
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        (click)="closePositionSurveyPreview()"
+        [attr.aria-label]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="survey-preview-summary">
+      <span>
+        <mat-icon>badge</mat-icon>
+        {{ position }}
+      </span>
+      <span>
+        <mat-icon>account_tree</mat-icon>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_SCENARIO_COUNT' | translate: {
+          count: getPositionSurveyPreviewScenarios(position).length
+        } }}
+      </span>
+      <span>
+        <mat-icon>quiz</mat-icon>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
+          count: getPositionQuestionCount(position)
+        } }}
+      </span>
+    </div>
+
+    <div class="survey-preview-body">
+      <mat-tab-group
+        class="survey-preview-tabs"
+        animationDuration="150ms"
+        mat-stretch-tabs="false">
+        <mat-tab
+          *ngFor="let scenario of getPositionSurveyPreviewScenarios(position); trackBy: trackByScenarioKey">
+          <ng-template mat-tab-label>
+            <mat-icon>compare_arrows</mat-icon>
+            <span>{{ scenario.name }}</span>
+          </ng-template>
+
+          <div class="survey-preview-scenario">
+            <div class="survey-preview-scenario-meta">
+              <span>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_SCENARIO_WEIGHT' | translate: {
+                  weight: scenario.weight
+                } }}
+              </span>
+              <span>
+                {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION_QUESTION_COUNT' | translate: {
+                  count: getPositionScenarioQuestionCount(position, scenario.key)
+                } }}
+              </span>
+            </div>
+
+            <section
+              class="survey-preview-dimension"
+              *ngFor="let bigFactor of getPositionSurveyPreviewDimensions(position, scenario.key); trackBy: trackByAnyId">
+              <div class="survey-preview-dimension-heading">
+                <div>
+                  <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_DIMENSION' | translate }}</span>
+                  <h3>{{ bigFactor.name }}</h3>
+                  <p *ngIf="bigFactor.description">{{ bigFactor.description }}</p>
+                </div>
+                <span class="survey-preview-weight">
+                  {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_DIMENSION_WEIGHT' | translate: {
+                    weight: bigFactor.weight
+                  } }}
+                </span>
+              </div>
+
+              <article
+                class="survey-preview-criterion"
+                *ngFor="let factorItem of getPositionSurveyPreviewFactors(bigFactor, position, scenario.key); trackBy: trackByPositionFactor">
+                <div class="survey-preview-criterion-heading">
+                  <div>
+                    <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_CRITERION' | translate }}</span>
+                    <h4>{{ factorItem.factor.name }}</h4>
+                    <p *ngIf="factorItem.factor.description">{{ factorItem.factor.description }}</p>
+                  </div>
+                  <div class="survey-preview-criterion-metrics">
+                    <span>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_CRITERION_WEIGHT' | translate: {
+                        weight: factorItem.factor.weight
+                      } }}
+                    </span>
+                    <span>
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.REQUIRED_RATING_LEVEL_VALUE' | translate: {
+                        level: getFactorRequiredRatingPercentage(factorItem.factor)
+                      } }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="survey-preview-questions">
+                  <div
+                    class="survey-preview-question"
+                    *ngFor="let item of getQuestionsForPositionAndScenario(factorItem.factor, position, scenario.key); let questionIndex = index; trackBy: trackByPositionQuestion">
+                    <div class="survey-preview-question-number">{{ questionIndex + 1 }}</div>
+                    <div class="survey-preview-question-content">
+                      <div class="survey-preview-question-heading">
+                        <strong>{{ item.question.label }}</strong>
+                        <span>{{ getQuestionTypeLabel(item.question.type) }}</span>
+                      </div>
+
+                      <ng-container *ngIf="isSurveyPreviewOpenQuestion(item.question); else surveyPreviewOptions">
+                        <textarea
+                          class="survey-preview-open-answer"
+                          rows="3"
+                          disabled
+                          [placeholder]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_OPEN_PLACEHOLDER' | translate"></textarea>
+                      </ng-container>
+
+                      <ng-template #surveyPreviewOptions>
+                        <div
+                          class="survey-preview-options"
+                          *ngIf="getSurveyPreviewQuestionOptions(item.question) as options">
+                          <div
+                            class="survey-preview-option"
+                            *ngFor="let option of options">
+                            <span
+                              class="survey-preview-option-marker"
+                              [class.multiple]="isSurveyPreviewMultipleChoice(item.question)"></span>
+                            <span>{{ option }}</span>
+                          </div>
+                          <span class="survey-preview-no-options" *ngIf="options.length === 0">
+                            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_NO_OPTIONS' | translate }}
+                          </span>
+                        </div>
+                      </ng-template>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+
+    <footer class="survey-preview-footer">
+      <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SURVEY_PREVIEW_READ_ONLY' | translate }}</span>
+      <button mat-stroked-button type="button" (click)="closePositionSurveyPreview()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLOSE' | translate }}
+      </button>
+    </footer>
   </div>
 </ng-template>
 
@@ -1337,6 +1518,15 @@
     </div>
 
     <div class="simple-dialog-body participant-picker-body">
+      <div class="participant-subordinates-option">
+        <mat-checkbox
+          [ngModel]="draftEvaluation.participants.selectSubordinates"
+          (ngModelChange)="onParticipantSelectSubordinatesChange($event)">
+          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES' | translate }}
+        </mat-checkbox>
+        <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_SUBORDINATES_HELP' | translate }}</span>
+      </div>
+
       <div class="participant-picker-toolbar">
         <mat-form-field appearance="outline">
           <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEARCH_POSITIONS' | translate }}</mat-label>
@@ -1352,7 +1542,7 @@
         <div class="participant-picker-toolbar-actions">
           <button mat-stroked-button color="primary" type="button" (click)="selectAllFilteredParticipantPositions()">
             <mat-icon>done_all</mat-icon>
-            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_ALL' | translate }}
           </button>
           <button mat-button type="button" (click)="clearParticipantPositions()">
             {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
@@ -1552,7 +1742,7 @@
           </span>
           <button mat-stroked-button color="primary" type="button" (click)="selectAllFilteredDuplicatePositions()">
             <mat-icon>done_all</mat-icon>
-            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_VISIBLE' | translate }}
+            {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SELECT_ALL' | translate }}
           </button>
           <button mat-button type="button" (click)="clearDuplicatePositions()">
             {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CLEAR_SELECTION' | translate }}
@@ -1807,7 +1997,7 @@
                   <mat-icon>visibility</mat-icon>
                 </button>
                 <button
-                  *ngIf="assignment.sendStatus === 'CREADO'"
+                  *ngIf="assignment.sendStatus === 'CREADO' && (assignment.sendType === 'CORREO' || assignment.sendType === 'AMBOS')"
                   mat-icon-button
                   color="accent"
                   type="button"
@@ -1815,6 +2005,16 @@
                   [disabled]="assignment.isSending || isDemoPerformanceResendBlocked(assignment)"
                   [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_EVALUATION' | translate">
                   <mat-icon>{{ assignment.isSending ? 'sync' : 'send' }}</mat-icon>
+                </button>
+                <button
+                  *ngIf="assignment.sendStatus === 'CREADO' && (assignment.sendType === 'WHATSAPP' || assignment.sendType === 'AMBOS')"
+                  mat-icon-button
+                  type="button"
+                  class="send-whatsapp-button"
+                  (click)="sendPerformanceWhatsapp(assignment)"
+                  [disabled]="assignment.isSending || isDemoPerformanceResendBlocked(assignment)"
+                  [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SEND_TYPES.WHATSAPP' | translate">
+                  <mat-icon>{{ assignment.isSending ? 'sync' : 'chat' }}</mat-icon>
                 </button>
               </td>
             </tr>
@@ -2138,6 +2338,159 @@
       </button>
       <button mat-raised-button color="primary" type="button" (click)="saveBigFactorDialog()">
         {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SAVE' | translate }}
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #criteriaBankDialogTemplate>
+  <div class="criteria-bank-picker">
+    <div class="criteria-bank-picker-header">
+      <div class="criteria-bank-picker-heading">
+        <div class="criteria-bank-picker-icon"><mat-icon>library_books</mat-icon></div>
+        <div>
+          <h3>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.TITLE' | translate }}</h3>
+          <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        (click)="criteriaBankDialogRef?.close()"
+        [matTooltip]="'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="criteria-bank-picker-context" *ngIf="criteriaBankContext as context">
+      <span><mat-icon>badge</mat-icon>{{ context.position }}</span>
+      <span><mat-icon>compare_arrows</mat-icon>{{ getQuestionScenarioLabel(context.scenarioKey) }}</span>
+      <span>
+        <mat-icon>category</mat-icon>
+        {{ draftEvaluation?.bigFactors?.[context.bigFactorIndex]?.name }}
+      </span>
+    </div>
+
+    <div class="criteria-bank-picker-filters">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.SEARCH' | translate }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [(ngModel)]="criteriaBankSearchTerm" />
+        <button
+          *ngIf="criteriaBankSearchTerm"
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="criteriaBankSearchTerm = ''">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.TAGS' | translate }}</mat-label>
+        <mat-select [(ngModel)]="criteriaBankSelectedTags" multiple>
+          <mat-option *ngFor="let tag of criteriaBankAvailableTags" [value]="tag">#{{ tag }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="criteria-bank-picker-summary">
+      <span>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.RESULTS' | translate: {
+          count: filteredCriteriaBankItems.length
+        } }}
+      </span>
+      <strong>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.SELECTED' | translate: {
+          count: selectedCriteriaBankIds.length
+        } }}
+      </strong>
+      <span class="criteria-bank-picker-question-selection">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.QUESTIONS_SELECTED' | translate: {
+          count: selectedCriteriaBankQuestionCount
+        } }}
+      </span>
+    </div>
+
+    <div class="criteria-bank-picker-loading" *ngIf="isCriteriaBankLoading; else criteriaBankContent">
+      <mat-spinner diameter="34"></mat-spinner>
+      <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.LOADING' | translate }}</span>
+    </div>
+
+    <ng-template #criteriaBankContent>
+    <div class="criteria-bank-picker-list" *ngIf="filteredCriteriaBankItems.length > 0; else emptyCriteriaBank">
+      <div
+        class="criteria-bank-picker-item"
+        *ngFor="let criterion of filteredCriteriaBankItems"
+        [class.selected]="isCriteriaBankSelected(criterion)"
+        [class.already-added]="isCriteriaBankAlreadyAdded(criterion)">
+        <mat-checkbox
+          [checked]="isCriteriaBankSelected(criterion)"
+          [indeterminate]="isCriteriaBankPartiallySelected(criterion)"
+          [disabled]="isCriteriaBankAlreadyAdded(criterion)"
+          (change)="toggleCriteriaBankCriterion(criterion, $event.checked)">
+        </mat-checkbox>
+        <div class="criteria-bank-picker-item-content">
+          <div class="criteria-bank-picker-item-head">
+            <div>
+              <strong>{{ criterion.name }}</strong>
+              <small>{{ criterion.code }}</small>
+            </div>
+            <span class="criteria-bank-picker-added" *ngIf="isCriteriaBankAlreadyAdded(criterion)">
+              <mat-icon>check_circle</mat-icon>
+              {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.ALREADY_ADDED' | translate }}
+            </span>
+          </div>
+          <p>{{ criterion.description || ('DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DESCRIPTION' | translate) }}</p>
+          <div class="criteria-bank-picker-meta">
+            <span><mat-icon>category</mat-icon>{{ criterion.suggestedDimension || '-' }}</span>
+            <span><mat-icon>speed</mat-icon>{{ criterion.requiredLevel }}%</span>
+            <span><mat-icon>quiz</mat-icon>{{ criterion.questions.length }}</span>
+          </div>
+          <div class="criteria-bank-picker-tags" *ngIf="criterion.tags.length > 0">
+            <span *ngFor="let tag of criterion.tags">#{{ tag }}</span>
+          </div>
+          <div class="criteria-bank-picker-questions">
+            <div
+              class="criteria-bank-picker-question"
+              *ngFor="let question of criterion.questions"
+              [class.selected]="isCriteriaBankQuestionSelected(criterion, question)">
+              <mat-checkbox
+                [checked]="isCriteriaBankQuestionSelected(criterion, question)"
+                [disabled]="isCriteriaBankAlreadyAdded(criterion)"
+                (change)="toggleCriteriaBankQuestion(criterion, question, $event.checked)">
+              </mat-checkbox>
+              <mat-icon>{{ question.type === 'ABIERTA' ? 'notes' : 'linear_scale' }}</mat-icon>
+              <span>{{ question.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </ng-template>
+
+    <ng-template #emptyCriteriaBank>
+      <div class="criteria-bank-picker-empty">
+        <mat-icon>library_add</mat-icon>
+        <strong>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.EMPTY_TITLE' | translate }}</strong>
+        <p>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.EMPTY_TEXT' | translate }}</p>
+      </div>
+    </ng-template>
+
+    <div class="criteria-bank-picker-footer">
+      <button mat-button type="button" (click)="criteriaBankDialogRef?.close()">
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CANCEL' | translate }}
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        [disabled]="isCriteriaBankLoading || selectedCriteriaBankIds.length === 0"
+        (click)="addSelectedCriteriaFromBank()">
+        <mat-icon>add_task</mat-icon>
+        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.CRITERIA_BANK_PICKER.ADD_SELECTED' | translate: {
+          count: selectedCriteriaBankIds.length
+        } }}
       </button>
     </div>
   </div>

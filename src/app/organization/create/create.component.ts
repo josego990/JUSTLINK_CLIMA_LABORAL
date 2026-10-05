@@ -1,285 +1,248 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, FormsModule,
-  ReactiveFormsModule, UntypedFormGroup, UntypedFormControl,
- } from '@angular/forms';
- import {
-  MAT_DATE_LOCALE,
-  MatOptionModule,
-  MatRippleModule,
-} from '@angular/material/core';
-import {
-  MatDialog,
-  MatDialogConfig,
-  //MatDialogRef,
-} from "@angular/material/dialog";
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatDialogRef } from '@angular/material/dialog';
-import { OrganizacionService } from '../services/organizacion.service';
-import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
-import { MatDialogModule } from '@angular/material/dialog';
-import { MatTableModule } from '@angular/material/table';
-import { MatIconModule } from '@angular/material/icon';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import Swal from 'sweetalert2';
-import { TranslateService } from '@ngx-translate/core';
-import { LanguageService } from '../../core/service/language.service';
-import { TranslateModule } from '@ngx-translate/core';
-import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
-import { Router } from '@angular/router';
-import { DialogformEditOrganizationComponent } from '../dialogformeditorganization/dialogformeditorganization.component';
-
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
+import Swal from 'sweetalert2';
+
+import { LanguageService } from '../../core/service/language.service';
+import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
+import { OrganizacionService } from '../services/organizacion.service';
+import {
+  OrganizationFormDialogComponent,
+  OrganizationFormDialogData,
+  OrganizationFormDialogResult,
+} from './organization-form-dialog.component';
 
 @Component({
   selector: 'app-crear-organizacion',
   templateUrl: './create.component.html',
   styleUrls: ['./create.component.scss'],
-  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'en-GB' }],
   imports: [
-    BreadcrumbComponent,TranslateModule,MatProgressSpinnerModule,
-    MatDialogModule,
-    MatTableModule,
-    MatIconModule,
-    MatExpansionModule,
-    FormsModule,
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatOptionModule,
-    MatRippleModule,
-    MatInputModule,
-    MatSelectModule,
+    BreadcrumbComponent,
     CommonModule,
-    MatButtonModule
-    
-
-    ],
-  
+    FormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatTableModule,
+    MatTooltipModule,
+    TranslateModule,
+  ],
 })
 export class CrearOrganizacionComponent implements OnInit {
-  public orgForm: FormGroup;
-  public dialogRef?: MatDialogRef<CrearOrganizacionComponent> 
+  public dataSourceOrganizations: any[] = [];
+  public isLoading = false;
+  public organizationSearchTerm = '';
 
-  public dataSourceOrganizations:any = [];
-  public dataSourceCountries:any = [];
-  isLoading = false;
-  isSavingOrganization = false;
-  langStoreValue?: string;
-  displayedColumns: string[] = [
+  public readonly displayedColumns: string[] = [
     'Id',
-    'IdPais',
     'Nombre',
+    'IdPais',
     'NIT',
-
     'Telefono',
     'CorreoContacto',
     'RepresentanteLegal',
     'SectorIndustria',
     'NumeroEmpleados',
-    'Editar',
-    'Borrar',
-
-
+    'Acciones',
   ];
 
-  constructor(private languageService: LanguageService,private translate: TranslateService,
-    private fb: FormBuilder, private router: Router,
+  private allOrganizations: any[] = [];
+  private langStoreValue?: string;
+
+  constructor(
+    private languageService: LanguageService,
+    private translate: TranslateService,
+    private router: Router,
     private organizacionService: OrganizacionService,
-    private dialogItemModel: MatDialog,
-    
-  ) {
-    // Inicializamos el formulario y definimos validaciones:
-    this.orgForm = this.fb.group({
-      IdPais: [1, Validators.required],
-      Nombre: ['', Validators.required],
-      RazonSocial: [''],
-      NIT: ['', Validators.required],
-      Direccion: [''],
-      Telefono: [''],
-      CorreoContacto: ['', [Validators.email]],
-      RepresentanteLegal: [''],
-      SectorIndustria: [''],
-      NumeroEmpleados: [0],
-    });
-  }
+    private dialog: MatDialog,
+  ) {}
 
-   existsRoute(routes: RouteInfo[], target: string): boolean {
-      return routes.some(route =>
-        route.path === target ||
-        this.existsRoute(route.submenu, target)
-      );
-    }
-  
-  ngOnInit() {
-  
-      const stored = sessionStorage.getItem('routes');
-      if (stored) {
-        const routes: RouteInfo[] = JSON.parse(stored);
-       //console.log('RUTAS DESDE sessionStorage:: ', routes);
-  
-        //buscar path
-        const found = this.existsRoute(routes, '/organization/create');
-       //console.log(found);
-  
-        if(!found){
-          this.router.navigate(['/authentication/page404']);
-        }
-  
+  public ngOnInit(): void {
+    const storedRoutes = sessionStorage.getItem('routes');
+    if (storedRoutes) {
+      const routes: RouteInfo[] = JSON.parse(storedRoutes);
+      if (!this.existsRoute(routes, '/organization/create')) {
+        this.router.navigate(['/authentication/page404']);
+        return;
       }
+    }
 
-     //jjg aquí se cambia el idioma al cargar
     this.langStoreValue = localStorage.getItem('lang') as string;
     this.languageService.setLanguage(this.langStoreValue);
     this.translate.use(this.langStoreValue);
+    this.languageService.getLanguageChangeSubject().subscribe((lang) => this.translate.use(lang));
 
-    //jjg aquí se maneja el cambio desde el componente header
-    this.languageService.getLanguageChangeSubject().subscribe(lang => {
-      this.translate.use(lang);
-    });
-    this.getCountries();
     this.getOrganizations();
   }
 
-  getOrganizations(): void {
+  public get totalOrganizations(): number {
+    return this.allOrganizations.length;
+  }
+
+  public get visibleOrganizations(): number {
+    return this.dataSourceOrganizations.length;
+  }
+
+  public getOrganizations(): void {
     this.isLoading = true;
     this.organizacionService.getOrganizations()
-        .then((response:any) => {
-         //console.log('Organizaciones:', JSON.stringify(response.data));
-          
-          this.dataSourceOrganizations = response.data;
-          this.isLoading = false;
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener organizaciones:', error);
-          this.isLoading = false;
-        });
+      .then((response: any) => {
+        this.allOrganizations = Array.isArray(response?.data) ? response.data : [];
+        this.applyOrganizationFilter();
+      })
+      .catch((error: any) => {
+        console.error('Error al obtener organizaciones:', error);
+        this.allOrganizations = [];
+        this.dataSourceOrganizations = [];
+      })
+      .finally(() => {
+        this.isLoading = false;
+      });
   }
 
-  getCountries(): void {
-    this.organizacionService.getCountries()
-        .then((response:any) => {
-         //console.log('Countries:', JSON.stringify(response.data));
-          
-          this.dataSourceCountries = response.data;
-        })
-        .catch((error:any) => {
-          console.error('Error al obtener Countries:', error);
-        });
+  public onOrganizationSearchChange(value: string): void {
+    this.organizationSearchTerm = value ?? '';
+    this.applyOrganizationFilter();
   }
 
-  onCountryChange(selectedId: number) {
-    //console.log('Se seleccionó el pais con Id:', selectedId);
+  public clearOrganizationSearch(): void {
+    this.organizationSearchTerm = '';
+    this.applyOrganizationFilter();
+  }
 
-    const selectedCountry = this.dataSourceCountries.find((pais:any) => pais.Id  === selectedId);
+  public openCreateOrganizationDialog(): void {
+    this.openOrganizationDialog({ mode: 'create' });
+  }
 
-    if(selectedCountry){
-      
-      console.log('pais:: ', selectedCountry);
+  public editItem(organization: any): void {
+    this.openOrganizationDialog({ mode: 'edit', organization });
+  }
 
+  public async deleteItem(organization: any): Promise<void> {
+    const organizationName = String(organization?.Nombre ?? '').trim();
+    const confirmation = await Swal.fire({
+      title: this.translate.instant('MENUITEMS.ORGANIZATION.DELETECONFIRMTITLE'),
+      text: this.translate.instant('MENUITEMS.ORGANIZATION.DELETECONFIRMTEXT', {
+        name: organizationName,
+      }),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('MENUITEMS.ORGANIZATION.DELETECONFIRM'),
+      cancelButtonText: this.translate.instant('MENUITEMS.ORGANIZATION.CANCEL'),
+      confirmButtonColor: '#c53d4a',
+    });
+
+    if (!confirmation.isConfirmed) {
+      return;
     }
-    
+
+    this.organizacionService.deleteOrganization(Number(organization?.Id))
+      .then(() => {
+        this.getOrganizations();
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.ORGANIZATION.SUCCESS'),
+          text: this.translate.instant('MENUITEMS.ORGANIZATION.ORGDELETED'),
+          icon: 'success',
+        });
+      })
+      .catch((error: any) => {
+        console.error('Error al eliminar la organización:', error);
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.ORGANIZATION.SOMEWRONG'),
+          text: this.translate.instant('MENUITEMS.ORGANIZATION.ERRDELETEORG'),
+          icon: 'error',
+        });
+      });
   }
 
-  deleteOrganization(idOrganization:number): void {
-    this.organizacionService.deleteOrganization(idOrganization)
-    .then((response:any) => {
-     //console.log(response);
+  public trackOrganization(_: number, organization: any): number | string {
+    return organization?.Id ?? organization?.Nombre;
+  }
+
+  private openOrganizationDialog(data: OrganizationFormDialogData): void {
+    const dialogRef = this.dialog.open<
+      OrganizationFormDialogComponent,
+      OrganizationFormDialogData,
+      OrganizationFormDialogResult
+    >(OrganizationFormDialogComponent, {
+      width: '880px',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: '92dvh',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      disableClose: true,
+      panelClass: 'organization-form-dialog',
+      data,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (!result?.saved) {
+        return;
+      }
+
       this.getOrganizations();
       Swal.fire({
         title: this.translate.instant('MENUITEMS.ORGANIZATION.SUCCESS'),
-        text: this.translate.instant('MENUITEMS.ORGANIZATION.ORGDELETED'),
+        text: this.translate.instant(
+          result.mode === 'create'
+            ? 'MENUITEMS.ORGANIZATION.ORGADDSUCCESS'
+            : 'MENUITEMS.ORGANIZATION.ORGUPDATEDSUCCESS'
+        ),
         icon: 'success',
-      });      
-    })
-    .catch((error:any) => {
-      console.error('Error al eliminar la organización:', error);
-      Swal.fire({
-        title: this.translate.instant('MENUITEMS.ORGANIZATION.SOMEWRONG'),
-        text: this.translate.instant('MENUITEMS.ORGANIZATION.ERRDELETEORG') + 'Error: ' + error,
-        icon: 'error',
       });
     });
   }
 
-  // Enviar datos al servicio:
-  onSubmit(): void {
-    if (this.isSavingOrganization) {
+  private applyOrganizationFilter(): void {
+    const search = this.normalizeSearchText(this.organizationSearchTerm);
+    if (!search) {
+      this.dataSourceOrganizations = [...this.allOrganizations];
       return;
     }
 
-    if (this.orgForm.valid) {
-     //console.log('CHORICITO!!', this.orgForm.value);
+    const searchableFields = [
+      'Id',
+      'Nombre',
+      'nombre_pais',
+      'NIT',
+      'Telefono',
+      'CorreoContacto',
+      'RepresentanteLegal',
+      'SectorIndustria',
+    ];
 
-      this.isSavingOrganization = true;
-      this.organizacionService.saveNewOrganization(this.orgForm.value)
-        .then((response:any) => {
-         //console.log('Organización creada:', response.data);
-          this.getOrganizations();
-          Swal.fire({
-            title: this.translate.instant('MENUITEMS.ORGANIZATION.SUCCESS'),
-            text: this.translate.instant('MENUITEMS.ORGANIZATION.ORGADDSUCCESS'),
-            icon: 'success',
-          });
-          this.orgForm.reset();
-        })
-        .catch((error:any) => {
-          console.error('Error al crear la organización:', error);
-          Swal.fire({
-            title: this.translate.instant('MENUITEMS.ORGANIZATION.SOMEWRONG'),
-            text: this.translate.instant('MENUITEMS.ORGANIZATION.ERRCREATEORG') + 'Error: ' + error,
-            icon: 'error',
-          });
-
-        })
-        .finally(() => {
-          this.isSavingOrganization = false;
-        });
-
-    } else {
-      console.warn('Formulario inválido');
-    }
+    this.dataSourceOrganizations = this.allOrganizations.filter((organization) =>
+      searchableFields.some((field) =>
+        this.normalizeSearchText(organization?.[field]).includes(search)
+      )
+    );
   }
 
-  deleteItem(item:any){
-   //console.log('DELETE ITEM:: ', item);
-    this.deleteOrganization(item.Id);
+  private normalizeSearchText(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase()
+      .trim();
   }
 
-   editItem(item:any){
-   //console.log('DELETE ITEM:: ', item);
-    //this.deleteOrganization(item.Id);
-
-    //open dialoghe
-    this.openDialogEditItems(item);
-
-
-  }
-
-  openDialogEditItems(item:any): void {
-      //this.id_quiz_context = this.cardsData.indexOf(card);
-    
-      const dialogRef = this.dialogItemModel.open(DialogformEditOrganizationComponent, {
-        width:  '95vw',
-        maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
-        height: 'auto',         // o '100vh' si quieres pantalla completa
-        disableClose: true,
-        data: item
-      });
-    
-      // ✅ Escuchar el cierre del diálogo
-      dialogRef.afterClosed().subscribe(result => {
-        if (result === true) {
-         this.getOrganizations();
-        }
-      });
-    }
-
-  // Cerrar sin guardar
-  onCancel(): void {
-    this.dialogRef?.close();
+  private existsRoute(routes: RouteInfo[], target: string): boolean {
+    return routes.some((route) =>
+      route.path === target || this.existsRoute(route.submenu ?? [], target)
+    );
   }
 }

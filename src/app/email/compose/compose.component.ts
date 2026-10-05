@@ -21,6 +21,9 @@ import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Va
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { JoyrideModule, JoyrideService } from 'ngx-joyride';
 
 import { AuthService } from '@core';
 import { Router } from '@angular/router';
@@ -29,10 +32,12 @@ import { Router } from '@angular/router';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { relativeTimeThreshold } from 'moment';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
-import { Subscription } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 type ToTarget = 'correo' | 'pendiente_llenar' | 'encuestas_completadas' | 'todos_activos';
+type ComposeContext = 'clima' | 'desempeno';
 type OrganizationOption = { Id: number; Nombre: string };
+type PerformanceModelOption = { id: number; nombre: string; codigo: string; raw: any };
 
 function renderizarPlantilla(
   plantilla: string,
@@ -56,7 +61,8 @@ function renderizarPlantilla(
   standalone: true,
   imports: [BreadcrumbComponent, FormsModule, MatChipsModule, ReactiveFormsModule,
     MatButtonModule, MatInputModule, TranslateModule, MatDialogModule, MatIconModule,
-    MatFormFieldModule, CommonModule, MatProgressSpinnerModule, MatSelectModule],
+    MatFormFieldModule, CommonModule, MatProgressSpinnerModule, MatSelectModule,
+    MatButtonToggleModule, MatTooltipModule, JoyrideModule],
 })
 export class ComposeComponent implements AfterViewInit, OnDestroy {
   @ViewChild('gjsHost', { static: true }) gjsHost!: ElementRef<HTMLDivElement>;
@@ -70,6 +76,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   ];
 
   toTargetsCtrl = new FormControl<ToTarget[]>([], { nonNullable: true });
+  composeContextCtrl = new FormControl<ComposeContext>('clima', { nonNullable: true });
 
   organizationCtrl = new FormControl<OrganizationOption | null>(null);
   secondaryListCtrl = new FormControl<number | null>(null);
@@ -104,12 +111,18 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
   public idFlujo = 0;
   public nombreFlujo = '';
+  public performanceModels: PerformanceModelOption[] = [];
+  public selectedPerformanceModelId = 0;
+  public selectedPerformanceModelName = '';
+  public loadingPerformanceModels = false;
+  public performanceModelsError = '';
 
   public idOrganization = 0;
   public loadingOrganizations = false;
   public loadingClimas = false;
   public dataSourceOrganizations: any = [];
   private selectedOrganizationSubscription?: Subscription;
+  private performanceModelLoadSequence = 0;
 
   private validateEmailList = (control: AbstractControl): ValidationErrors | null => {
     const raw = String(control.value ?? '').trim();
@@ -131,7 +144,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   constructor(private languageService: LanguageService, private translate: TranslateService,
     public dialog: MatDialog, private authService: AuthService, private router: Router,
     private organizationService: OrganizacionService,
-    private demoLimitsService: DemoLimitsService,) {
+    private demoLimitsService: DemoLimitsService,
+    private joyrideService: JoyrideService,) {
 
     this.toTargetsCtrl.valueChanges.subscribe((vals) => {
       const hasCorreo = (vals || []).includes('correo');
@@ -190,11 +204,43 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     return this.idOrganization > 0;
   }
 
+  isClimateContext(): boolean {
+    return this.composeContextCtrl.value === 'clima';
+  }
+
+  isPerformanceContext(): boolean {
+    return this.composeContextCtrl.value === 'desempeno';
+  }
+
+  hasSelectedPerformanceModel(): boolean {
+    return this.selectedPerformanceModelId > 0;
+  }
+
+  get selectedScopeName(): string {
+    return this.isClimateContext() ? this.nombreFlujo : this.selectedPerformanceModelName;
+  }
+
+  get isPerformanceApiPending(): boolean {
+    return this.isPerformanceContext();
+  }
+
   canSaveTemplate(): boolean {
-    return this.hasSelectedOrganization() && this.hasSelectedClima();
+    return this.isClimateContext() && this.hasSelectedOrganization() && this.hasSelectedClima() && !this.loading;
+  }
+
+  canSendMail(): boolean {
+    if (this.loading || this.isPerformanceContext() || this.subjectManualCtrl.invalid) {
+      return false;
+    }
+
+    return this.toTargetsCtrl.value.length > 0;
   }
 
   isToTargetDisabled(target: ToTarget): boolean {
+    if (this.isPerformanceContext()) {
+      return true;
+    }
+
     if (this.isDemoTargetBlocked(target)) {
       return true;
     }
@@ -225,13 +271,74 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     this.clearClimaDependentTargets();
   }
 
+  private resetSelectedPerformanceModel(): void {
+    this.selectedPerformanceModelId = 0;
+    this.selectedPerformanceModelName = '';
+  }
+
+  onComposeContextChange(context: ComposeContext): void {
+    this.composeContextCtrl.setValue(context, { emitEvent: false });
+    this.toTargetsCtrl.setValue([]);
+
+    if (context === 'clima') {
+      this.resetSelectedPerformanceModel();
+      return;
+    }
+
+    this.resetSelectedClima();
+    if (this.idOrganization > 0 && !this.performanceModels.length && !this.loadingPerformanceModels) {
+      void this.loadPerformanceModels(this.idOrganization);
+    }
+  }
+
+  onPerformanceModelChange(selectedId: number): void {
+    this.selectedPerformanceModelId = Number(selectedId) || 0;
+    this.selectedPerformanceModelName = this.performanceModels.find(
+      (model) => model.id === this.selectedPerformanceModelId
+    )?.nombre ?? '';
+  }
+
+  startComposeTour(): void {
+    setTimeout(() => {
+      const candidates = [
+        'composeOverview',
+        'composeContext',
+        'composeScope',
+        'composeRecipients',
+        'composeSubject',
+        'composeEditor',
+        'composeActions'
+      ];
+      const steps = candidates.filter((step) =>
+        document.querySelector(`[joyrideStep="${step}"]`)
+      );
+
+      this.joyrideService.startTour({
+        steps,
+        showPrevButton: true,
+        customTexts: {
+          prev: this.translate.instant('MENUITEMS.TOUR.NAV.PREV'),
+          next: this.translate.instant('MENUITEMS.TOUR.NAV.NEXT'),
+          done: this.translate.instant('MENUITEMS.TOUR.NAV.DONE'),
+          close: this.translate.instant('MENUITEMS.TOUR.NAV.CLOSE')
+        }
+      }).subscribe();
+    }, 100);
+  }
+
   removeToTarget(val: ToTarget) {
     const current = this.toTargetsCtrl.value || [];
     this.toTargetsCtrl.setValue(current.filter(x => x !== val));
   }
 
   getToLabel(val: ToTarget): string {
-    return this.toOptions.find(o => o.value === val)?.label ?? val;
+    const translationKeyByTarget: Record<ToTarget, string> = {
+      correo: 'MENUITEMS.EMAILCOMPOSE.TARGETS.EMAIL',
+      todos_activos: 'MENUITEMS.EMAILCOMPOSE.TARGETS.ALL_ACTIVE',
+      pendiente_llenar: 'MENUITEMS.EMAILCOMPOSE.TARGETS.PENDING',
+      encuestas_completadas: 'MENUITEMS.EMAILCOMPOSE.TARGETS.COMPLETED'
+    };
+    return this.translate.instant(translationKeyByTarget[val]);
   }
 
   ngAfterViewInit(): void {
@@ -239,7 +346,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     this.registerCustomBlocks();
     this.loadStarterTemplate();
 
-    this.gjs?.I18n.setLocale('es');
+    this.syncEditorLocale(this.langStoreValue);
     this.gjs?.render();
 
 
@@ -288,6 +395,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     //jjg aquí se maneja el cambio desde el componente header
     this.languageService.getLanguageChangeSubject().subscribe(lang => {
       this.translate.use(lang);
+      this.syncEditorLocale(lang);
     });
 
     if (this.authService.currentUserValue?.roles[0].roleName !== 'admin') {
@@ -323,12 +431,16 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   private setupSelectedOrganizationListener(): void {
     this.selectedOrganizationSubscription = this.organizationService.selectedOrganization$.subscribe((organization) => {
       if (!organization) {
+        this.performanceModelLoadSequence += 1;
         this.dataSourceOrganizations = [];
         this.organizationCtrl.setValue(null, { emitEvent: false });
         this.idOrganization = 0;
         this.nombreOrganizacion = '';
         this.dataSourceClimas = [];
+        this.performanceModels = [];
+        this.performanceModelsError = '';
         this.resetSelectedClima();
+        this.resetSelectedPerformanceModel();
         return;
       }
 
@@ -337,6 +449,9 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
       if (this.idOrganization === organization.Id) {
         this.nombreOrganizacion = organization.Nombre;
+        if (this.isPerformanceContext() && !this.performanceModels.length) {
+          void this.loadPerformanceModels(organization.Id);
+        }
         return;
       }
 
@@ -417,10 +532,13 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
         this.idOrganization = idOrganization;
         this.dataSourceClimas = [];
+        this.performanceModels = [];
         this.resetSelectedClima();
+        this.resetSelectedPerformanceModel();
         this.nombreOrganizacion = 'cargando..'
         this.loadingOrganizations = false;
         this.getFlujosLista();
+        void this.loadPerformanceModels(this.idOrganization);
 
       })
       .catch((error: any) => {
@@ -437,9 +555,9 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
       .then((response: any) => {
         ////console.log('Flujos Plantillas:', JSON.stringify(response.data));
 
-        this.dataSourceClimas = response.data.data;
+        this.dataSourceClimas = response?.data?.data ?? [];
         var org = this.dataSourceOrganizations.find((o: { Id: number; }) => o.Id === this.idOrganization);
-        this.nombreOrganizacion = org.Nombre;
+        this.nombreOrganizacion = org?.Nombre ?? this.nombreOrganizacion;
 
         this.loadingClimas = false;
 
@@ -471,6 +589,70 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
   };
 
+  async loadPerformanceModels(idOrganization: number): Promise<void> {
+    const loadSequence = ++this.performanceModelLoadSequence;
+    this.loadingPerformanceModels = true;
+    this.performanceModelsError = '';
+    this.performanceModels = [];
+    this.resetSelectedPerformanceModel();
+
+    try {
+      const response = await firstValueFrom(
+        this.organizationService.getDesempenoModelsSelectHttp(idOrganization)
+      );
+
+      if (loadSequence !== this.performanceModelLoadSequence || this.idOrganization !== idOrganization) {
+        return;
+      }
+
+      this.performanceModels = this.extractPerformanceModelItems(response)
+        .map((item, index) => this.normalizePerformanceModel(item, index))
+        .filter((model) => model.id > 0 && model.nombre.length > 0)
+        .sort((left, right) => right.id - left.id);
+    } catch (error) {
+      if (loadSequence !== this.performanceModelLoadSequence || this.idOrganization !== idOrganization) {
+        return;
+      }
+
+      console.error('Error al cargar modelos de desempeño:', error);
+      this.performanceModels = [];
+      this.performanceModelsError = this.translate.instant('MENUITEMS.EMAILCOMPOSE.MODELS_LOAD_ERROR');
+    } finally {
+      if (loadSequence === this.performanceModelLoadSequence && this.idOrganization === idOrganization) {
+        this.loadingPerformanceModels = false;
+      }
+    }
+  }
+
+  private extractPerformanceModelItems(response: any): any[] {
+    const root = response?.data ?? response;
+
+    if (Array.isArray(root)) return root;
+    if (Array.isArray(root?.items)) return root.items;
+    if (Array.isArray(root?.data)) return root.data;
+    if (Array.isArray(root?.data?.items)) return root.data.items;
+    if (Array.isArray(root?.rows)) return root.rows;
+    if (Array.isArray(root?.result)) return root.result;
+    return [];
+  }
+
+  private normalizePerformanceModel(item: any, index: number): PerformanceModelOption {
+    const id = Number(
+      item?.id ?? item?.Id ?? item?.modeloId ?? item?.IdModelo ?? item?.idModelo ?? 0
+    ) || 0;
+    const nombre = String(
+      item?.nombre ?? item?.Nombre ?? item?.modelo ?? item?.modeloNombre ??
+      item?.codigo ?? item?.Codigo ?? (id ? `Modelo ${id}` : `Modelo ${index + 1}`)
+    ).trim();
+
+    return {
+      id,
+      nombre,
+      codigo: String(item?.codigo ?? item?.Codigo ?? item?.modeloCodigo ?? '').trim(),
+      raw: item
+    };
+  }
+
   ngOnDestroy(): void {
     this.selectedOrganizationSubscription?.unsubscribe();
     // Destruye el editor correctamente
@@ -480,7 +662,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   private initGrapes(): void {
     this.gjs = grapesjs.init({
       container: this.gjsHost.nativeElement,
-      height: '700px',
+      height: '620px',
       width: 'auto',
       storageManager: false,
       plugins: [newsletterPreset, this.grapesSpanishOverridesPlugin()],
@@ -495,6 +677,12 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
     // Si quieres verificar:
     console.log('Grapes locale:', this.gjs.I18n.getLocale());
+  }
+
+  private syncEditorLocale(language?: string | null): void {
+    if (!this.gjs) return;
+    const locale = String(language ?? 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+    this.gjs.I18n.setLocale(locale);
   }
 
   private grapesSpanishOverridesPlugin() {
@@ -839,8 +1027,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     });
 
     bm.add('email-desempeno-invitacion-card', {
-      label: 'Invitación Evaluación',
-      category: 'Plantillas Desempeño',
+      label: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_INVITATION'),
+      category: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_CATEGORY'),
       attributes: { class: 'gjs-fonts gjs-f-b1' },
       media: `<i class="fas fa-chart-line" style="font-size:40px; line-height:40px; display:inline-block;"></i>`,
       content: `
@@ -957,8 +1145,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     });
 
     bm.add('email-desempeno-recordatorio-card', {
-      label: 'Recordatorio Evaluación',
-      category: 'Plantillas Desempeño',
+      label: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_REMINDER'),
+      category: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_CATEGORY'),
       attributes: { class: 'gjs-fonts gjs-f-b1' },
       media: `<i class="fas fa-bell" style="font-size:40px; line-height:40px; display:inline-block;"></i>`,
       content: `
@@ -1073,8 +1261,8 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     });
 
     bm.add('email-desempeno-agradecimiento-card', {
-      label: 'Agradecimiento Evaluación',
-      category: 'Plantillas Desempeño',
+      label: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_THANKS'),
+      category: this.translate.instant('MENUITEMS.EMAILCOMPOSE.EDITOR.PERFORMANCE_CATEGORY'),
       attributes: { class: 'gjs-fonts gjs-f-b1' },
       media: `<i class="fas fa-heart" style="font-size:40px; line-height:40px; display:inline-block;"></i>`,
       content: `
@@ -1250,8 +1438,11 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
         </table>
       `.trim(),
     });
+
+    
+
   }
-  
+
   private registerDynamicCustomBlocks(templates:any): void {
     if (!this.gjs) return;
 
@@ -1272,29 +1463,694 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   private loadStarterTemplate(): void {
     if (!this.gjs) return;
 
+    
+
     this.gjs.setComponents(`
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0; padding:0;">
+  
+<table
+  role="presentation"
+  width="100%"
+  cellspacing="0"
+  cellpadding="0"
+  border="0"
+  style="
+    margin:0;
+    padding:0;
+    background-color:#f3f4f6;
+  "
+>
+  <tr>
+    <td align="center" style="padding:40px 20px;">
+
+      <table
+        role="presentation"
+        width="600"
+        cellspacing="0"
+        cellpadding="0"
+        border="0"
+        style="
+          width:100%;
+          max-width:600px;
+          background-color:#ffffff;
+          border-radius:12px;
+          overflow:hidden;
+          box-shadow:0 4px 14px rgba(0,0,0,0.08);
+        "
+      >
+
+        <!-- HEADER -->
         <tr>
-          <td align="center" style="padding:24px;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px; max-width:600px;">
+          <td
+            align="center"
+            style="
+              background-color:#1f4e79;
+              padding:36px 30px;
+              font-family:Arial, Helvetica, sans-serif;
+            "
+          >
+
+            <div
+              style="
+                font-size:13px;
+                font-weight:bold;
+                letter-spacing:1.5px;
+                text-transform:uppercase;
+                color:#dbeafe;
+                margin-bottom:8px;
+              "
+            >
+              Editor de plantillas
+            </div>
+
+            <h1
+              style="
+                margin:0;
+                font-size:28px;
+                line-height:1.3;
+                color:#ffffff;
+                font-weight:700;
+              "
+            >
+              Crea tu plantilla de correo
+            </h1>
+
+            <p
+              style="
+                margin:12px 0 0 0;
+                font-size:15px;
+                line-height:1.6;
+                color:#e5efff;
+              "
+            >
+              Diseña, modifica y personaliza tus correos fácilmente.
+            </p>
+
+          </td>
+        </tr>
+
+
+        <!-- INTRODUCCIÓN -->
+        <tr>
+          <td
+            style="
+              padding:38px 40px 20px 40px;
+              font-family:Arial, Helvetica, sans-serif;
+              color:#374151;
+            "
+          >
+
+            <p
+              style="
+                margin:0 0 16px 0;
+                font-size:17px;
+                line-height:1.7;
+                font-weight:bold;
+                color:#111827;
+              "
+            >
+              Bienvenido al editor de plantillas
+            </p>
+
+            <p
+              style="
+                margin:0;
+                font-size:15px;
+                line-height:1.7;
+                color:#4b5563;
+              "
+            >
+              Desde esta área puedes construir correos personalizados utilizando
+              los bloques disponibles en el editor. Puedes agregar contenido,
+              cambiar textos, modificar estilos y utilizar variables que serán
+              reemplazadas automáticamente al momento de enviar el correo.
+            </p>
+
+          </td>
+        </tr>
+
+
+        <!-- PASO 1 -->
+        <tr>
+          <td style="padding:15px 40px;">
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#f8fafc;
+                border:1px solid #e5e7eb;
+                border-radius:10px;
+              "
+            >
               <tr>
-                <td style="font-family: Arial, sans-serif;">
-                  <h1 style="margin:0 0 12px 0; font-size:22px;">Hola</h1>
-                  <p style="margin:0; font-size:14px; line-height:1.5; color:#374151;">
-                    Arrastra bloques como Card y Botón desde el panel de bloques.
+                <td
+                  width="55"
+                  valign="top"
+                  style="
+                    padding:22px 0 22px 22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+                  <div
+                    style="
+                      width:34px;
+                      height:34px;
+                      line-height:34px;
+                      text-align:center;
+                      background-color:#1f4e79;
+                      color:#ffffff;
+                      border-radius:50%;
+                      font-size:15px;
+                      font-weight:bold;
+                    "
+                  >
+                    1
+                  </div>
+                </td>
+
+                <td
+                  style="
+                    padding:20px 22px 20px 12px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <h2
+                    style="
+                      margin:0 0 8px 0;
+                      font-size:17px;
+                      color:#111827;
+                    "
+                  >
+                    Agrega bloques
+                  </h2>
+
+                  <p
+                    style="
+                      margin:0;
+                      font-size:14px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Arrastra los bloques disponibles desde el panel lateral hacia
+                    esta área de trabajo. Puedes agregar textos, botones, imágenes,
+                    tarjetas, separadores y otros componentes.
                   </p>
+
                 </td>
               </tr>
             </table>
+
           </td>
         </tr>
+
+
+        <!-- PASO 2 -->
+        <tr>
+          <td style="padding:15px 40px;">
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#f8fafc;
+                border:1px solid #e5e7eb;
+                border-radius:10px;
+              "
+            >
+              <tr>
+
+                <td
+                  width="55"
+                  valign="top"
+                  style="
+                    padding:22px 0 22px 22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+                  <div
+                    style="
+                      width:34px;
+                      height:34px;
+                      line-height:34px;
+                      text-align:center;
+                      background-color:#1f4e79;
+                      color:#ffffff;
+                      border-radius:50%;
+                      font-size:15px;
+                      font-weight:bold;
+                    "
+                  >
+                    2
+                  </div>
+                </td>
+
+                <td
+                  style="
+                    padding:20px 22px 20px 12px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <h2
+                    style="
+                      margin:0 0 8px 0;
+                      font-size:17px;
+                      color:#111827;
+                    "
+                  >
+                    Modifica el contenido
+                  </h2>
+
+                  <p
+                    style="
+                      margin:0;
+                      font-size:14px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Selecciona cualquier elemento para cambiar su texto,
+                    colores, tamaños, alineación, espacios y demás propiedades.
+                    También puedes mover o eliminar componentes cuando lo necesites.
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+
+        <!-- PASO 3 VARIABLES -->
+        <tr>
+          <td style="padding:15px 40px;">
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#eff6ff;
+                border:1px solid #bfdbfe;
+                border-radius:10px;
+              "
+            >
+              <tr>
+
+                <td
+                  width="55"
+                  valign="top"
+                  style="
+                    padding:22px 0 22px 22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+                  <div
+                    style="
+                      width:34px;
+                      height:34px;
+                      line-height:34px;
+                      text-align:center;
+                      background-color:#1f4e79;
+                      color:#ffffff;
+                      border-radius:50%;
+                      font-size:15px;
+                      font-weight:bold;
+                    "
+                  >
+                    3
+                  </div>
+                </td>
+
+                <td
+                  style="
+                    padding:20px 22px 20px 12px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <h2
+                    style="
+                      margin:0 0 8px 0;
+                      font-size:17px;
+                      color:#111827;
+                    "
+                  >
+                    Utiliza variables
+                  </h2>
+
+                  <p
+                    style="
+                      margin:0 0 14px 0;
+                      font-size:14px;
+                      line-height:1.6;
+                      color:#4b5563;
+                    "
+                  >
+                    Las variables permiten personalizar automáticamente cada correo
+                    con la información correspondiente al destinatario.
+                  </p>
+
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      background-color:#ffffff;
+                      border-radius:6px;
+                    "
+                  >
+                    <tr>
+                      <td style="padding:15px 18px;">
+
+                        <p
+                          style="
+                            margin:0 0 8px 0;
+                            font-size:13px;
+                            color:#374151;
+                          "
+                        >
+                          Ejemplo:
+                        </p>
+
+                        <p
+                          style="
+                            margin:0;
+                            font-family:Courier New, monospace;
+                            font-size:13px;
+                            line-height:1.8;
+                            color:#1f4e79;
+                          "
+                        >
+                          Hola {{nombre}}<br>
+                          Organización: {{organizacion}}<br>
+                          Usuario: {{usuario}}<br>
+                          Enlace: {{url_acceso}}
+                        </p>
+
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p
+                    style="
+                      margin:14px 0 0 0;
+                      font-size:13px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Al enviar el correo, estas variables serán reemplazadas por
+                    sus valores reales.
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+
+        <!-- PASO 4 -->
+        <tr>
+          <td style="padding:15px 40px;">
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#f8fafc;
+                border:1px solid #e5e7eb;
+                border-radius:10px;
+              "
+            >
+              <tr>
+
+                <td
+                  width="55"
+                  valign="top"
+                  style="
+                    padding:22px 0 22px 22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+                  <div
+                    style="
+                      width:34px;
+                      height:34px;
+                      line-height:34px;
+                      text-align:center;
+                      background-color:#1f4e79;
+                      color:#ffffff;
+                      border-radius:50%;
+                      font-size:15px;
+                      font-weight:bold;
+                    "
+                  >
+                    4
+                  </div>
+                </td>
+
+                <td
+                  style="
+                    padding:20px 22px 20px 12px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <h2
+                    style="
+                      margin:0 0 8px 0;
+                      font-size:17px;
+                      color:#111827;
+                    "
+                  >
+                    Guarda tu plantilla
+                  </h2>
+
+                  <p
+                    style="
+                      margin:0;
+                      font-size:14px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Cuando termines de diseñar tu correo, guarda la plantilla.
+                    Podrás utilizarla posteriormente para nuevos envíos sin
+                    necesidad de crearla nuevamente.
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+
+        <!-- PASO 5 -->
+        <tr>
+          <td style="padding:15px 40px 35px 40px;">
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#f8fafc;
+                border:1px solid #e5e7eb;
+                border-radius:10px;
+              "
+            >
+              <tr>
+
+                <td
+                  width="55"
+                  valign="top"
+                  style="
+                    padding:22px 0 22px 22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+                  <div
+                    style="
+                      width:34px;
+                      height:34px;
+                      line-height:34px;
+                      text-align:center;
+                      background-color:#1f4e79;
+                      color:#ffffff;
+                      border-radius:50%;
+                      font-size:15px;
+                      font-weight:bold;
+                    "
+                  >
+                    5
+                  </div>
+                </td>
+
+                <td
+                  style="
+                    padding:20px 22px 20px 12px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <h2
+                    style="
+                      margin:0 0 8px 0;
+                      font-size:17px;
+                      color:#111827;
+                    "
+                  >
+                    Reutiliza y actualiza tus plantillas
+                  </h2>
+
+                  <p
+                    style="
+                      margin:0;
+                      font-size:14px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Las plantillas guardadas pueden volver a abrirse y modificarse
+                    cuando lo necesites. Así puedes mantener diferentes diseños
+                    para bienvenida, notificaciones, recordatorios, invitaciones
+                    y otros tipos de correo.
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+
+        <!-- MENSAJE FINAL -->
+        <tr>
+          <td
+            align="center"
+            style="
+              padding:0 40px 38px 40px;
+              font-family:Arial, Helvetica, sans-serif;
+            "
+          >
+
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="
+                background-color:#f0f7ff;
+                border-radius:8px;
+              "
+            >
+              <tr>
+                <td
+                  align="center"
+                  style="
+                    padding:22px;
+                    font-family:Arial, Helvetica, sans-serif;
+                  "
+                >
+
+                  <p
+                    style="
+                      margin:0 0 5px 0;
+                      font-size:15px;
+                      font-weight:bold;
+                      color:#1f4e79;
+                    "
+                  >
+                    Comienza a diseñar
+                  </p>
+
+                  <p
+                    style="
+                      margin:0;
+                      font-size:13px;
+                      line-height:1.6;
+                      color:#6b7280;
+                    "
+                  >
+                    Puedes eliminar este contenido y comenzar tu plantilla
+                    desde cero, o utilizarlo como base para tu diseño.
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+
+        <!-- FOOTER -->
+        <tr>
+          <td
+            align="center"
+            style="
+              background-color:#f8fafc;
+              padding:22px 30px;
+              border-top:1px solid #e5e7eb;
+              font-family:Arial, Helvetica, sans-serif;
+            "
+          >
+            <p
+              style="
+                margin:0;
+                font-size:12px;
+                line-height:1.5;
+                color:#9ca3af;
+              "
+            >
+              Editor visual de plantillas de correo
+            </p>
+          </td>
+        </tr>
+
       </table>
+
+    </td>
+  </tr>
+</table>
+
+
     `.trim());
   }
 
   // ===== Guardar/Cargar =====
 
   saveTemplate(): void {
+
+    if (this.isPerformanceContext()) {
+      this.showPerformanceApiPendingMessage();
+      return;
+    }
 
     if (!this.canSaveTemplate()) {
       Swal.fire({
@@ -1382,9 +2238,14 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
     this.idOrganization = selectedOrganization.Id;
     this.nombreOrganizacion = selectedOrganization.Nombre;
+    this.performanceModels = [];
+    this.performanceModelsError = '';
     this.resetSelectedClima();
+    this.resetSelectedPerformanceModel();
+    this.toTargetsCtrl.setValue([]);
 
     this.getFlujosLista();
+    void this.loadPerformanceModels(this.idOrganization);
 
     //this.getEmailTemplatesByOrg();
 
@@ -1486,7 +2347,20 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     return ` Quedan ${this.demoLimitsService.getComposeEmailsRemainingCount()} disponibles en esta sesión.`;
   }
 
+  showPerformanceApiPendingMessage(): void {
+    Swal.fire({
+      title: this.translate.instant('MENUITEMS.EMAILCOMPOSE.PERFORMANCE_PENDING_TITLE'),
+      text: this.translate.instant('MENUITEMS.EMAILCOMPOSE.PERFORMANCE_PENDING_TEXT'),
+      icon: 'info'
+    });
+  }
+
   async sendMail(): Promise<void> {
+
+    if (this.isPerformanceContext()) {
+      this.showPerformanceApiPendingMessage();
+      return;
+    }
 
     console.log('Sending..');
 

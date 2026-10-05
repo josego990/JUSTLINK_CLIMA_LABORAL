@@ -127,8 +127,32 @@
           
           
           <div class="btn-sec">
-            <button type="submit" style="border-radius: 5px;" class="btn-space" mat-raised-button color="primary">{{'MENUITEMS.QUIZ.SAVE' | translate}}</button>
-            <button style="color:#91a1a4;" style="border-radius: 5px;"  type="button" mat-button (click)="closeDialog()">{{'MENUITEMS.QUIZ.CANCEL' | translate}}</button>
+            <button
+              type="submit"
+              class="btn-space save-climate-button"
+              mat-raised-button
+              color="primary"
+              [disabled]="isSavingClimate">
+              <span class="save-climate-button__content">
+                <mat-progress-spinner
+                  *ngIf="isSavingClimate"
+                  diameter="18"
+                  strokeWidth="3"
+                  mode="indeterminate">
+                </mat-progress-spinner>
+                <span>
+                  {{ (isSavingClimate ? 'MENUITEMS.QUIZ.SAVING' : 'MENUITEMS.QUIZ.SAVE') | translate }}
+                </span>
+              </span>
+            </button>
+            <button
+              style="color:#91a1a4; border-radius: 5px;"
+              type="button"
+              mat-button
+              (click)="closeDialog()"
+              [disabled]="isSavingClimate">
+              {{'MENUITEMS.QUIZ.CANCEL' | translate}}
+            </button>
           </div>
         </form>
 

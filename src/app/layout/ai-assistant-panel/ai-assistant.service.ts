@@ -12,9 +12,9 @@ import {
   providedIn: 'root',
 })
 export class AiAssistantService {
-  //private readonly baseUrl = 'https://api.justlink360.net/'; //producción
+  private readonly baseUrl = 'https://api.justlink360.net/'; //producción
 
-   private readonly baseUrl = 'http://localhost:3030/'; //local
+   //private readonly baseUrl = 'http://localhost:3030/'; //local
 
   constructor(private authService: AuthService) {}
 

@@ -1,83 +1,256 @@
 <section class="content">
-  <div class="content-block">
-    <div class="block-header">
-      <app-breadcrumb [title]="'Historial de correos'" [items]="['Home', 'Email']" [active_item]="'Historial de correos'"></app-breadcrumb>
+  <div class="content-block mail-history-page">
+    <div class="block-header mail-history-page__header">
+      <app-breadcrumb
+        [title]="'MENUITEMS.EMAILHISTORY.PAGE_TITLE' | translate"
+        [items]="['Home', 'Email']"
+        [active_item]="'MENUITEMS.EMAILHISTORY.BREADCRUMB' | translate">
+      </app-breadcrumb>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="mail-history-refresh"
+        [disabled]="!selectedOrganization || loading"
+        (click)="refreshHistory()"
+        [matTooltip]="'MENUITEMS.EMAILHISTORY.REFRESH' | translate"
+        [attr.aria-label]="'MENUITEMS.EMAILHISTORY.REFRESH' | translate">
+        <mat-icon>refresh</mat-icon>
+      </button>
     </div>
 
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="body">
-            <div class="history-table-wrapper" *ngIf="selectedOrganization; else noOrganizationSelected">
-              <table class="table table-hover history-table">
-                <thead>
-                  <tr>
-                    <th style="width: 90px;">ID</th>
-                    <th>Asunto</th>
-                    <th style="width: 130px;">Estado</th>
-                    <th>Destinatario</th>
-                    <th>Nombre clima</th>
-                    <th>Mensaje error</th>
-                    <th style="width: 90px;" class="text-center">Ver</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <ng-container *ngFor="let item of filteredHistory">
-                    <tr>
-                      <td>{{ item.idCorreo }}</td>
-                      <td>{{ item.asunto }}</td>
-                      <td>
-                        <span class="history-status" [ngClass]="getStatusClass(item.estado)">
-                          {{ item.estado }}
-                        </span>
-                      </td>
-                      <td>{{ item.destinatario }}</td>
-                      <td>{{ item.nombreClima }}</td>
-                      <td>
-                        <span class="history-error-message" [class.empty]="!item.mensajeError">
-                          {{ item.mensajeError || '-' }}
-                        </span>
-                      </td>
-                      <td class="text-center">
-                        <button
-                          mat-icon-button
-                          color="primary"
-                          type="button"
-                          (click)="toggleHistoryRow(item)"
-                          [matTooltip]="item.expanded ? 'Ocultar correo' : 'Ver correo'"
-                        >
-                          <mat-icon>{{ item.expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
-                        </button>
-                      </td>
-                    </tr>
-
-                    <tr *ngIf="item.expanded" class="history-detail-row">
-                      <td colspan="7">
-                        <div class="history-detail-card">
-                          <div class="history-detail-header">
-                            <strong>Contenido del correo</strong>
-                          </div>
-                          <div class="history-detail-body" [innerHTML]="item.contenidoSeguro"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  </ng-container>
-                </tbody>
-              </table>
-
-              <div class="history-empty" *ngIf="filteredHistory.length === 0">
-                No hay correos enviados de ejemplo para la organización seleccionada.
-              </div>
-            </div>
-
-            <ng-template #noOrganizationSelected>
-              <div class="history-empty">
-                Selecciona una organización para ver el historial de correos enviados.
-              </div>
-            </ng-template>
-          </div>
+    <section class="mail-history-summary">
+      <div class="mail-history-summary__intro">
+        <span class="mail-history-summary__icon"><mat-icon>outbox</mat-icon></span>
+        <div>
+          <span>{{ 'MENUITEMS.EMAILHISTORY.MODULE' | translate }}</span>
+          <strong>{{ 'MENUITEMS.EMAILHISTORY.TITLE' | translate }}</strong>
         </div>
       </div>
-    </div>
+
+      <div class="mail-history-summary__organization">
+        <mat-icon>domain</mat-icon>
+        <div>
+          <span>{{ 'MENUITEMS.EMAILHISTORY.ACTIVE_ORGANIZATION' | translate }}</span>
+          <strong>{{ selectedOrganization?.Nombre || ('MENUITEMS.EMAILHISTORY.NO_ORGANIZATION_SHORT' | translate) }}</strong>
+        </div>
+      </div>
+
+      <div class="mail-history-summary__metrics" *ngIf="selectedOrganization">
+        <div>
+          <span class="metric-icon metric-icon--all"><mat-icon>mail_outline</mat-icon></span>
+          <p><strong>{{ sentMailHistory.length }}</strong><span>{{ 'MENUITEMS.EMAILHISTORY.TOTAL' | translate }}</span></p>
+        </div>
+        <div>
+          <span class="metric-icon metric-icon--sent"><mat-icon>check_circle_outline</mat-icon></span>
+          <p><strong>{{ sentCount }}</strong><span>{{ 'MENUITEMS.EMAILHISTORY.SENT' | translate }}</span></p>
+        </div>
+        <div>
+          <span class="metric-icon metric-icon--error"><mat-icon>error_outline</mat-icon></span>
+          <p><strong>{{ errorCount }}</strong><span>{{ 'MENUITEMS.EMAILHISTORY.ERRORS' | translate }}</span></p>
+        </div>
+      </div>
+
+      <span class="mail-history-preview-badge">
+        <mat-icon>science</mat-icon>
+        {{ 'MENUITEMS.EMAILHISTORY.PREVIEW_DATA' | translate }}
+      </span>
+    </section>
+
+    <ng-container *ngIf="selectedOrganization; else noOrganization">
+      <section class="mail-history-filters" aria-label="Filtros de correos enviados">
+        <div class="mail-history-filter-context">
+          <span>{{ 'MENUITEMS.EMAILHISTORY.FILTER_TYPE' | translate }}</span>
+          <mat-button-toggle-group
+            [(ngModel)]="contextFilter"
+            (change)="onFiltersChanged()"
+            [attr.aria-label]="'MENUITEMS.EMAILHISTORY.FILTER_TYPE' | translate">
+            <mat-button-toggle value="todos">
+              <mat-icon>all_inbox</mat-icon>
+              {{ 'MENUITEMS.EMAILHISTORY.ALL' | translate }}
+            </mat-button-toggle>
+            <mat-button-toggle value="clima">
+              <mat-icon>groups</mat-icon>
+              {{ 'MENUITEMS.EMAILHISTORY.CLIMATE' | translate }}
+            </mat-button-toggle>
+            <mat-button-toggle value="desempeno">
+              <mat-icon>workspace_premium</mat-icon>
+              {{ 'MENUITEMS.EMAILHISTORY.PERFORMANCE' | translate }}
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'MENUITEMS.EMAILHISTORY.RECIPIENT' | translate }}</mat-label>
+          <mat-icon matPrefix>person_search</mat-icon>
+          <input
+            matInput
+            type="search"
+            [(ngModel)]="recipientFilter"
+            (ngModelChange)="onFiltersChanged()"
+            [placeholder]="'MENUITEMS.EMAILHISTORY.RECIPIENT_PLACEHOLDER' | translate">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'MENUITEMS.EMAILHISTORY.SUBJECT' | translate }}</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            type="search"
+            [(ngModel)]="subjectFilter"
+            (ngModelChange)="onFiltersChanged()"
+            [placeholder]="'MENUITEMS.EMAILHISTORY.SUBJECT_PLACEHOLDER' | translate">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'MENUITEMS.EMAILHISTORY.DATE_FROM' | translate }}</mat-label>
+          <input matInput type="date" [(ngModel)]="dateFrom" (ngModelChange)="onFiltersChanged()">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'MENUITEMS.EMAILHISTORY.DATE_TO' | translate }}</mat-label>
+          <input matInput type="date" [(ngModel)]="dateTo" (ngModelChange)="onFiltersChanged()">
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          type="button"
+          class="mail-history-clear"
+          [disabled]="!hasActiveFilters"
+          (click)="resetFilters()"
+          [matTooltip]="'MENUITEMS.EMAILHISTORY.CLEAR_FILTERS' | translate"
+          [attr.aria-label]="'MENUITEMS.EMAILHISTORY.CLEAR_FILTERS' | translate">
+          <mat-icon>filter_alt_off</mat-icon>
+        </button>
+      </section>
+
+      <section class="mail-history-viewer">
+        <aside class="mail-history-list" [attr.aria-label]="'MENUITEMS.EMAILHISTORY.MAIL_LIST' | translate">
+          <div class="mail-history-list__header">
+            <div class="mail-history-list__primary-heading">
+              <strong>{{ 'MENUITEMS.EMAILHISTORY.MAIL_LIST' | translate }}</strong>
+              <span>{{ filteredHistory.length }} {{ 'MENUITEMS.EMAILHISTORY.RESULTS' | translate }}</span>
+            </div>
+            <span class="mail-history-list__system-heading">
+              {{ 'MENUITEMS.EMAILHISTORY.SYSTEM_TYPE_NAME' | translate }}
+            </span>
+            <mat-icon>sort</mat-icon>
+          </div>
+
+          <div class="mail-history-loading" *ngIf="loading">
+            <mat-progress-spinner diameter="34" mode="indeterminate"></mat-progress-spinner>
+            <span>{{ 'MENUITEMS.EMAILHISTORY.LOADING' | translate }}</span>
+          </div>
+
+          <div class="mail-history-list__scroll" *ngIf="!loading && filteredHistory.length">
+            <button
+              *ngFor="let item of filteredHistory; trackBy: trackByMailId"
+              type="button"
+              class="mail-history-item"
+              [class.selected]="selectedMail?.idCorreo === item.idCorreo"
+              (click)="selectMail(item)">
+              <span class="mail-history-avatar" [class.performance]="item.contexto === 'desempeno'">
+                {{ getInitials(item.nombreDestinatario) }}
+              </span>
+
+              <span class="mail-history-item__content">
+                <span class="mail-history-item__topline">
+                  <strong>{{ item.nombreDestinatario }}</strong>
+                  <time [attr.datetime]="item.fechaEnvio.toISOString()">{{ item.fechaEnvio | date:'dd/MM/yyyy' }}</time>
+                </span>
+                <span class="mail-history-item__subject">{{ item.asunto }}</span>
+                <span class="mail-history-item__preview">{{ item.resumen }}</span>
+                <span class="mail-history-item__meta">
+                  <span class="delivery-dot" [class.error]="item.estado === 'error'"></span>
+                  {{ (item.estado === 'enviado' ? 'MENUITEMS.EMAILHISTORY.SENT_SINGLE' : 'MENUITEMS.EMAILHISTORY.ERROR_SINGLE') | translate }}
+                </span>
+              </span>
+
+              <span class="mail-history-item__system">
+                <strong>{{ (item.contexto === 'clima' ? 'MENUITEMS.EMAILHISTORY.CLIMATE' : 'MENUITEMS.EMAILHISTORY.PERFORMANCE') | translate }}</strong>
+                <span>{{ item.nombreSistema }}</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="mail-history-empty mail-history-empty--compact" *ngIf="!loading && filteredHistory.length === 0">
+            <mat-icon>search_off</mat-icon>
+            <strong>{{ 'MENUITEMS.EMAILHISTORY.NO_RESULTS_TITLE' | translate }}</strong>
+            <span>{{ 'MENUITEMS.EMAILHISTORY.NO_RESULTS_TEXT' | translate }}</span>
+            <button mat-stroked-button type="button" (click)="resetFilters()">
+              {{ 'MENUITEMS.EMAILHISTORY.CLEAR_FILTERS' | translate }}
+            </button>
+          </div>
+        </aside>
+
+        <article class="mail-history-detail" *ngIf="selectedMail as mail; else noMailSelected">
+          <div class="mail-history-detail__header">
+            <div class="mail-history-detail__title">
+              <div>
+                <span class="context-pill" [class.performance]="mail.contexto === 'desempeno'">
+                  <mat-icon>{{ mail.contexto === 'clima' ? 'groups' : 'workspace_premium' }}</mat-icon>
+                  {{ (mail.contexto === 'clima' ? 'MENUITEMS.EMAILHISTORY.CLIMATE' : 'MENUITEMS.EMAILHISTORY.PERFORMANCE') | translate }}
+                </span>
+                <span class="delivery-status" [class.error]="mail.estado === 'error'">
+                  <mat-icon>{{ mail.estado === 'enviado' ? 'check_circle' : 'error' }}</mat-icon>
+                  {{ (mail.estado === 'enviado' ? 'MENUITEMS.EMAILHISTORY.SENT_SINGLE' : 'MENUITEMS.EMAILHISTORY.ERROR_SINGLE') | translate }}
+                </span>
+              </div>
+              <h2>{{ mail.asunto }}</h2>
+            </div>
+
+            <div class="mail-history-detail__recipient">
+              <span class="mail-history-avatar" [class.performance]="mail.contexto === 'desempeno'">
+                {{ getInitials(mail.nombreDestinatario) }}
+              </span>
+              <div>
+                <strong>{{ mail.nombreDestinatario }}</strong>
+                <span>{{ 'MENUITEMS.EMAILHISTORY.TO' | translate }}: {{ mail.destinatario }}</span>
+              </div>
+              <time [attr.datetime]="mail.fechaEnvio.toISOString()">
+                {{ mail.fechaEnvio | date:'dd/MM/yyyy, HH:mm' }}
+              </time>
+            </div>
+
+            <div class="mail-history-detail__reference">
+              <mat-icon>{{ mail.contexto === 'clima' ? 'assignment' : 'account_tree' }}</mat-icon>
+              <span>{{ 'MENUITEMS.EMAILHISTORY.SYSTEM_TYPE_NAME' | translate }}</span>
+              <span class="mail-history-detail__system-type">
+                {{ (mail.contexto === 'clima' ? 'MENUITEMS.EMAILHISTORY.CLIMATE' : 'MENUITEMS.EMAILHISTORY.PERFORMANCE') | translate }}
+              </span>
+              <strong>{{ mail.nombreSistema }}</strong>
+            </div>
+
+            <div class="mail-history-delivery-error" *ngIf="mail.mensajeError">
+              <mat-icon>report_problem</mat-icon>
+              <div>
+                <strong>{{ 'MENUITEMS.EMAILHISTORY.DELIVERY_ERROR' | translate }}</strong>
+                <span>{{ mail.mensajeError }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mail-history-detail__body">
+            <div class="mail-history-email-paper" [innerHTML]="mail.contenidoHtml"></div>
+          </div>
+        </article>
+
+        <ng-template #noMailSelected>
+          <div class="mail-history-empty mail-history-empty--detail">
+            <mat-icon>mark_email_read</mat-icon>
+            <strong>{{ 'MENUITEMS.EMAILHISTORY.SELECT_TITLE' | translate }}</strong>
+            <span>{{ 'MENUITEMS.EMAILHISTORY.SELECT_TEXT' | translate }}</span>
+          </div>
+        </ng-template>
+      </section>
+    </ng-container>
+
+    <ng-template #noOrganization>
+      <section class="mail-history-empty mail-history-empty--organization">
+        <span class="mail-history-empty__icon"><mat-icon>domain_disabled</mat-icon></span>
+        <strong>{{ 'MENUITEMS.EMAILHISTORY.NO_ORGANIZATION_TITLE' | translate }}</strong>
+        <span>{{ 'MENUITEMS.EMAILHISTORY.NO_ORGANIZATION_TEXT' | translate }}</span>
+      </section>
+    </ng-template>
   </div>
 </section>

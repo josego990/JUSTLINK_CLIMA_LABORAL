@@ -17,44 +17,188 @@
                   color="primary"
                   type="button"
                   class="employee-add-button"
-                  [disabled]="isButtonDisabled"
+                  [disabled]="isButtonDisabled || isLoadingEmployees"
                   (click)="openEmployeeDialog(newEmployeeDialog)"
                 >
                   <mat-icon>person_add</mat-icon>
                   {{ 'MENUITEMS.EMPLOYEE.ADD' | translate }}
                 </button>
 
-                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Employee settings">
-                  <mat-icon>settings</mat-icon>
+                 <button
+                  mat-stroked-button
+                  type="button"
+                  class="employee-excel-button"
+                  [disabled]="!accessToDownloadExcelEmployee || isButtonDisabled || isLoadingEmployees"
+                  (click)="downloadExcelEmployeeTemplate()">
+                  <mat-icon>file_download</mat-icon>
+                  {{ 'MENUITEMS.EMPLOYEE.DOWNLOADEXCELEMPLOYEE' | translate }}
                 </button>
 
-                <mat-menu #menu="matMenu">
-                  <!-- Cargar Excel -->
-                  <button [disabled]="!accessToUploadExcelEmployee || isButtonDisabled" mat-menu-item (click)="fileInput.click()">
-                    <mat-icon style="color:#217346;">table_view</mat-icon>
-                    <span style="color:#217346;">{{ 'MENUITEMS.EMPLOYEE.UPLOADEXCELEMPLOYEE' | translate }}</span>
-                  </button>
 
+                <input
+                  #fileInput
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style="display:none"
+                  (change)="onFileSelected($event)"
+                />
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="employee-excel-button"
+                  [disabled]="!accessToUploadExcelEmployee || isButtonDisabled || isLoadingEmployees"
+                  (click)="fileInput.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  {{ 'MENUITEMS.EMPLOYEE.UPLOADEXCELEMPLOYEE' | translate }}
+                </button>
+
+              </div>
+
+            </div>
+
+            <div
+              *ngIf="isLoadingEmployees"
+              class="employee-loading-state"
+              role="status"
+              aria-live="polite">
+              <mat-spinner diameter="48"></mat-spinner>
+              <span>{{ 'MENUITEMS.EMPLOYEE.LOADINGEMPLOYEES' | translate }}</span>
+            </div>
+
+            <div class="employee-filter-panel" *ngIf="idOrganization > 0 && !isLoadingEmployees">
+              <div class="employee-filter-grid">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="employee-filter-field employee-filter-field--search">
+                  <mat-label>{{ 'MENUITEMS.EMPLOYEE.SEARCH' | translate }}</mat-label>
                   <input
-                    #fileInput
-                    type="file"
-                    accept=".xlsx,.xls"
-                    style="display:none"
-                    (change)="onFileSelected($event)"
-                  />
-
-                  <!-- Descargar plantilla Excel -->
-                  <button [disabled]="!accessToDownloadExcelEmployee || isButtonDisabled" mat-menu-item (click)="downloadExcelEmployeeTemplate()">
-                    <mat-icon style="color:#217346;">file_download</mat-icon>
-                    <span style="color:#217346;">{{ 'MENUITEMS.EMPLOYEE.DOWNLOADEXCELEMPLOYEE' | translate }}</span>
+                    matInput
+                    autocomplete="off"
+                    [ngModel]="employeeSearchTerm"
+                    (ngModelChange)="onEmployeeSearchChange($event)"
+                    [placeholder]="'MENUITEMS.EMPLOYEE.SEARCHPLACEHOLDER' | translate" />
+                  <button
+                    *ngIf="employeeSearchTerm"
+                    mat-icon-button
+                    matSuffix
+                    type="button"
+                    [attr.aria-label]="'MENUITEMS.EMPLOYEE.CLEARSEARCH' | translate"
+                    (click)="clearEmployeeSearch()">
+                    <mat-icon>close</mat-icon>
                   </button>
-                </mat-menu> 
+                  <mat-icon *ngIf="!employeeSearchTerm" matSuffix>search</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="employee-filter-field">
+                  <mat-label>{{ 'MENUITEMS.EMPLOYEE.FILTERPOSITION' | translate }}</mat-label>
+                  <mat-select
+                    multiple
+                    [ngModel]="selectedPositionFilters"
+                    (ngModelChange)="onPositionFiltersChange($event)">
+                    <mat-select-trigger>
+                      {{ selectedPositionFilters[0] || '' }}
+                      <span *ngIf="selectedPositionFilters.length > 1" class="employee-filter-additional">
+                        (+{{ selectedPositionFilters.length - 1 }})
+                      </span>
+                    </mat-select-trigger>
+                    <mat-option *ngFor="let position of cargoOptions" [value]="position">
+                      {{ position }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field
+                  *ngFor="let campo of camposDinamicos"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                  class="employee-filter-field employee-filter-field--demographic">
+                  <mat-label>{{ campo }}</mat-label>
+                  <mat-select
+                    multiple
+                    [ngModel]="selectedDemographicFilters[campo] || []"
+                    (ngModelChange)="onDemographicFiltersChange(campo, $event)">
+                    <mat-select-trigger>
+                      {{ getSelectedEmployeeDemographicFilters(campo)[0] || '' }}
+                      <span *ngIf="getSelectedEmployeeDemographicFilters(campo).length > 1" class="employee-filter-additional">
+                        (+{{ getSelectedEmployeeDemographicFilters(campo).length - 1 }})
+                      </span>
+                    </mat-select-trigger>
+                    <mat-option
+                      *ngFor="let option of getEmployeeDemographicFilterOptions(campo)"
+                      [value]="option">
+                      {{ option }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="employee-filter-footer">
+                <div class="employee-filter-summary">
+                  <span class="employee-filter-results">
+                    {{ 'MENUITEMS.EMPLOYEE.FILTERRESULTS' | translate:{ visible: visibleEmployeeCount, total: totalEmployeeCount } }}
+                  </span>
+                  <button
+                    *ngIf="accessToDownloadExcelEmployee"
+                    mat-stroked-button
+                    type="button"
+                    class="employee-export-button"
+                    [disabled]="!dataSourceEmployees.length || isExportingEmployees"
+                    (click)="downloadVisibleEmployeesExcel()">
+                    <mat-icon>{{ isExportingEmployees ? 'hourglass_top' : 'download' }}</mat-icon>
+                    {{ 'MENUITEMS.EMPLOYEE.EXPORTEMPLOYEES' | translate }}
+                  </button>
+                </div>
+                <button
+                  *ngIf="hasActiveEmployeeFilters()"
+                  mat-stroked-button
+                  type="button"
+                  class="employee-clear-filters"
+                  (click)="clearEmployeeFilters()">
+                  <mat-icon>filter_alt_off</mat-icon>
+                  {{ 'MENUITEMS.EMPLOYEE.CLEARFILTERS' | translate }}
+                </button>
+              </div>
+            </div>
+
+            <div class="employee-bulk-actions-row" *ngIf="selectedEmployeeCount > 0 && !isLoadingEmployees">
+              <div class="employee-bulk-actions">
+                <span class="employee-bulk-actions__count">
+                  {{ selectedEmployeeCount }} seleccionado(s)
+                </span>
+                <button
+                  *ngIf="selectedActiveEmployeeCount > 0"
+                  mat-stroked-button
+                  color="warn"
+                  type="button"
+                  [disabled]="isProcessingBulkEmployeeAction"
+                  (click)="bulkDeactivateSelectedEmployees()">
+                  <mat-icon>delete</mat-icon>
+                  Eliminar
+                  <span *ngIf="selectedActiveEmployeeCount !== selectedEmployeeCount">({{ selectedActiveEmployeeCount }})</span>
+                </button>
+                <button
+                  *ngIf="selectedInactiveEmployeeCount > 0"
+                  mat-stroked-button
+                  color="primary"
+                  type="button"
+                  [disabled]="isProcessingBulkEmployeeAction"
+                  (click)="bulkActivateSelectedEmployees()">
+                  <mat-icon>restart_alt</mat-icon>
+                  Activar
+                  <span *ngIf="selectedInactiveEmployeeCount !== selectedEmployeeCount">({{ selectedInactiveEmployeeCount }})</span>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="isProcessingBulkEmployeeAction"
+                  (click)="clearEmployeeSelection()"
+                  matTooltip="Limpiar selección"
+                  aria-label="Limpiar selección">
+                  <mat-icon>close</mat-icon>
+                </button>
               </div>
             </div>
 
 
-
-            <div class="body employee-table-wrap">
+            <div class="body employee-table-wrap" *ngIf="!isLoadingEmployees">
               <div class="employee-demographic-table-banner" *ngIf="camposDinamicos.length">
                 <div class="employee-demographic-table-banner__title">
                   <span class="employee-demographic-table-banner__mark" aria-hidden="true"></span>
@@ -67,6 +211,27 @@
 
               <div class="table-responsive employee-table-scroll">
                 <table mat-table [dataSource]="dataSourceEmployees" class="table employee-table">
+
+                <ng-container matColumnDef="Seleccionar">
+                  <th mat-header-cell *matHeaderCellDef class="employee-selection-cell">
+                    <mat-checkbox
+                      [checked]="areAllVisibleEmployeesSelected"
+                      [indeterminate]="areSomeVisibleEmployeesSelected"
+                      [disabled]="!dataSourceEmployees.length || isProcessingBulkEmployeeAction"
+                      (change)="toggleVisibleEmployeeSelection($event.checked)"
+                      aria-label="Seleccionar empleados visibles">
+                    </mat-checkbox>
+                  </th>
+                  <td mat-cell *matCellDef="let element" class="employee-selection-cell">
+                    <mat-checkbox
+                      [checked]="isEmployeeSelected(element)"
+                      [disabled]="isProcessingBulkEmployeeAction"
+                      (click)="$event.stopPropagation()"
+                      (change)="toggleEmployeeSelection(element, $event.checked)"
+                      [attr.aria-label]="'Seleccionar ' + (element.Nombres || '') + ' ' + (element.Apellidos || '')">
+                    </mat-checkbox>
+                  </td>
+                </ng-container>
 
                 <!-- Id -->
                 <ng-container matColumnDef="Id">
@@ -193,6 +358,12 @@
                 <!-- Header & Row definitions -->
                 <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                 <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                <tr class="mat-row employee-no-data-row" *matNoDataRow>
+                  <td class="mat-cell" [attr.colspan]="displayedColumns.length || 1">
+                    <mat-icon>person_search</mat-icon>
+                    <span>{{ 'MENUITEMS.EMPLOYEE.NOFILTERRESULTS' | translate }}</span>
+                  </td>
+                </tr>
                 </table>
               </div>
               

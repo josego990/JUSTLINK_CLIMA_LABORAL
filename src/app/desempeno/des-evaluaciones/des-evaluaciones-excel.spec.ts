@@ -2,9 +2,11 @@ import * as XLSX from 'xlsx';
 import {
   DES_EVALUATION_EXCEL_HEADERS,
   DES_EVALUATION_EXCEL_TEMPLATE_HEADERS,
+  DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS,
   DesEvaluationExcelContext,
   DesEvaluationExcelValidationError,
   appendDesEvaluationPositionMapSheet,
+  getDesEvaluationDimensionExcelHeaders,
   parseDesEvaluationExcelWorkbook,
 } from './des-evaluaciones-excel';
 
@@ -247,6 +249,193 @@ describe('des-evaluaciones Excel import', () => {
       const validation = error as DesEvaluationExcelValidationError;
       expect(validation.errors.some((message) => message.startsWith('INVALID_REQUIRED_LEVEL'))).toBeTrue();
       expect(validation.errors.some((message) => message.startsWith('INVALID_OPTIONS'))).toBeTrue();
+    }
+  });
+
+  it('loads the dimension template and expands multiple positions and scenarios', () => {
+    const dimensionContext: DesEvaluationExcelContext = {
+      ...context,
+      dimensions: [{ name: 'Objetivos', weight: 100 }],
+      scenarios: [
+        ...context.scenarios,
+        { key: 'SELF', names: ['SELF', 'Autoevaluación'] },
+      ],
+      positionScenarios: [
+        {
+          position: 'ANALISTA',
+          scenarios: [
+            { key: 'BOSS_TO_EMPLOYEE', weight: 70 },
+            { key: 'SELF', weight: 30 },
+          ],
+        },
+        {
+          position: 'Jefe del departamento de Infraestructura',
+          scenarios: [
+            { key: 'BOSS_TO_EMPLOYEE', weight: 70 },
+            { key: 'SELF', weight: 30 },
+          ],
+        },
+      ],
+    };
+    const resultWorkbook = XLSX.utils.book_new();
+    const rows = [
+      getDesEvaluationDimensionExcelHeaders(2),
+      [
+        'ANALISTA | Jefe del departamento de Infraestructura',
+        'Jefe a colaborador | Autoevaluación',
+        'Cumplimiento de objetivos',
+        50,
+        80,
+        'Cumple las metas acordadas',
+        'Likert de 5 niveles',
+        'Calidad de resultados',
+        50,
+        80,
+        'Describa el principal resultado alcanzado',
+        'Pregunta abierta',
+      ],
+    ];
+    XLSX.utils.book_append_sheet(resultWorkbook, XLSX.utils.aoa_to_sheet(rows), 'Objetivos');
+
+    const result = parseDesEvaluationExcelWorkbook(resultWorkbook, dimensionContext);
+
+    expect(result.positions.length).toBe(2);
+    expect(result.scenarioCount).toBe(4);
+    expect(result.dimensionCount).toBe(1);
+    expect(result.criterionCount).toBe(8);
+    expect(result.itemCount).toBe(8);
+    expect(result.rows.filter((row) => row.itemType === 'ABIERTA').length).toBe(4);
+    expect(result.rows[0].requiredRatingLevel).toBe(4);
+  });
+
+  it('loads grouped criterion cells according to their question rows', () => {
+    const dimensionContext: DesEvaluationExcelContext = {
+      ...context,
+      dimensions: [{ name: 'Objetivos', weight: 100 }],
+      positionScenarios: [{
+        position: 'ANALISTA',
+        scenarios: [{ key: 'BOSS_TO_EMPLOYEE', weight: 100 }],
+      }],
+    };
+    const resultWorkbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      [...DES_EVALUATION_GROUPED_DIMENSION_EXCEL_HEADERS],
+      [
+        'ANALISTA',
+        'Jefe a colaborador',
+        'Cumplimiento de objetivos',
+        50,
+        80,
+        'Cumple las metas acordadas',
+        'Likert de 5 niveles',
+      ],
+      ['', '', '', '', '', 'Describa los resultados alcanzados', 'Pregunta abierta'],
+      ['', '', 'Calidad de resultados', 50, 80, 'Entrega resultados de calidad', 'Likert'],
+      ['', '', '', '', '', 'Detalle oportunidades de mejora', 'Pregunta abierta'],
+    ]);
+    worksheet['!merges'] = [
+      { s: { r: 1, c: 0 }, e: { r: 4, c: 0 } },
+      { s: { r: 1, c: 1 }, e: { r: 4, c: 1 } },
+      { s: { r: 1, c: 2 }, e: { r: 2, c: 2 } },
+      { s: { r: 1, c: 3 }, e: { r: 2, c: 3 } },
+      { s: { r: 1, c: 4 }, e: { r: 2, c: 4 } },
+      { s: { r: 3, c: 2 }, e: { r: 4, c: 2 } },
+      { s: { r: 3, c: 3 }, e: { r: 4, c: 3 } },
+      { s: { r: 3, c: 4 }, e: { r: 4, c: 4 } },
+    ];
+    XLSX.utils.book_append_sheet(resultWorkbook, worksheet, 'Objetivos');
+
+    const result = parseDesEvaluationExcelWorkbook(resultWorkbook, dimensionContext);
+
+    expect(result.positions).toEqual(['ANALISTA']);
+    expect(result.criterionCount).toBe(2);
+    expect(result.itemCount).toBe(4);
+    expect(result.rows.filter((row) => row.itemType === 'ABIERTA').length).toBe(2);
+    expect(result.rows.every((row) => row.requiredRatingLevel === 4)).toBeTrue();
+  });
+
+  it('reports an incomplete criterion block added to the right', () => {
+    const dimensionContext: DesEvaluationExcelContext = {
+      ...context,
+      dimensions: [{ name: 'Objetivos', weight: 100 }],
+      positionScenarios: [{
+        position: 'ANALISTA',
+        scenarios: [{ key: 'BOSS_TO_EMPLOYEE', weight: 100 }],
+      }],
+    };
+    const resultWorkbook = XLSX.utils.book_new();
+    const incompleteHeaders = [
+      ...getDesEvaluationDimensionExcelHeaders(2),
+      'CRITERIO 3',
+      'PONDERACION (%) 3',
+      'NIVEL EXIGENCIA (%) 3',
+      'PREGUNTA 3',
+    ];
+    XLSX.utils.book_append_sheet(
+      resultWorkbook,
+      XLSX.utils.aoa_to_sheet([
+        incompleteHeaders,
+        [
+          'ANALISTA',
+          'Jefe a colaborador',
+          'Criterio 1', 50, 80, 'Pregunta 1', 'Likert de 5 niveles',
+          'Criterio 2', 50, 80, 'Pregunta 2', 'Pregunta abierta',
+          'Criterio 3', 10, 80, 'Pregunta 3',
+        ],
+      ]),
+      'Objetivos'
+    );
+
+    try {
+      parseDesEvaluationExcelWorkbook(resultWorkbook, dimensionContext);
+      fail('The workbook should have been rejected.');
+    } catch (error) {
+      const validation = error as DesEvaluationExcelValidationError;
+      expect(validation.errors.some((message) =>
+        message.startsWith('INVALID_DIMENSION_HEADER')
+      )).toBeTrue();
+    }
+  });
+
+  it('rejects a scenario that is not configured for a selected position', () => {
+    const dimensionContext: DesEvaluationExcelContext = {
+      ...context,
+      dimensions: [{ name: 'Objetivos', weight: 100 }],
+      scenarios: [
+        ...context.scenarios,
+        { key: 'SELF', names: ['SELF', 'Autoevaluación'] },
+      ],
+      positionScenarios: [{
+        position: 'ANALISTA',
+        scenarios: [{ key: 'BOSS_TO_EMPLOYEE', weight: 100 }],
+      }],
+    };
+    const resultWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      resultWorkbook,
+      XLSX.utils.aoa_to_sheet([
+        getDesEvaluationDimensionExcelHeaders(1),
+        [
+          'ANALISTA',
+          'Autoevaluación',
+          'Cumplimiento',
+          100,
+          80,
+          'Cumple sus objetivos',
+          'Likert de 5 niveles',
+        ],
+      ]),
+      'Objetivos'
+    );
+
+    try {
+      parseDesEvaluationExcelWorkbook(resultWorkbook, dimensionContext);
+      fail('The workbook should have been rejected.');
+    } catch (error) {
+      const validation = error as DesEvaluationExcelValidationError;
+      expect(validation.errors.some((message) =>
+        message.startsWith('SCENARIO_NOT_CONFIGURED')
+      )).toBeTrue();
     }
   });
 });

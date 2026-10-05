@@ -45,6 +45,43 @@
               </div>
             </div>
 
+            <div class="org-demographic-value-panel" *ngIf="availableDemographicFilters.length > 0 && !isLoadingChart">
+              <div class="org-demographic-value-copy">
+                <mat-icon>filter_alt</mat-icon>
+                <div>
+                  <strong>Filtrar colaboradores</strong>
+                  <span>Selecciona valores demográficos para enfocar el organigrama.</span>
+                </div>
+              </div>
+
+              <div class="org-demographic-value-selects">
+                <mat-form-field
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                  *ngFor="let option of availableDemographicFilters">
+                  <mat-label>{{ option.key }}</mat-label>
+                  <mat-select
+                    multiple
+                    [ngModel]="getDemographicValueFilter(option.key)"
+                    (ngModelChange)="setDemographicValueFilter(option.key, $event)">
+                    <mat-option *ngFor="let value of option.values" [value]="value">
+                      {{ value }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <button
+                mat-button
+                type="button"
+                class="org-clear-demographic-values"
+                [disabled]="!hasActiveDemographicValueFilters"
+                (click)="clearDemographicValueFilters()">
+                <mat-icon>filter_alt_off</mat-icon>
+                Limpiar
+              </button>
+            </div>
+
             <div class="org-navigation-toolbar" *ngIf="graphNodes.length > 0 && !isLoadingChart">
               <div class="org-employee-search">
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -184,6 +221,27 @@
               </div>
             </div>
 
+            <div class="org-performance-notice" *ngIf="isGraphLimited && !isLoadingChart">
+              <mat-icon>account_tree</mat-icon>
+              <div>
+                <strong>
+                  {{ focusedNodeId ? 'Vista enfocada' : 'Vista optimizada' }}
+                </strong>
+                <span>
+                  Se muestran {{ graphNodes.length }} de {{ totalFilteredNodeCount }} nodos para mantener el organigrama ágil.
+                  Usa los filtros o el buscador para localizar a cualquier colaborador.
+                </span>
+              </div>
+              <button
+                *ngIf="focusedNodeId"
+                mat-stroked-button
+                type="button"
+                (click)="showGeneralGraph()">
+                <mat-icon>zoom_out_map</mat-icon>
+                Vista general
+              </button>
+            </div>
+
             <div class="org-graph-shell" #graphViewport>
               <div class="org-loading" *ngIf="isLoadingOrganizations || isLoadingChart">
                 <mat-spinner diameter="42"></mat-spinner>
@@ -195,7 +253,9 @@
               </div>
 
               <div class="org-empty" *ngIf="hasSelectedOrganization && !isLoadingChart && graphNodes.length === 0">
-                No hay datos disponibles para construir el organigrama de la organización seleccionada.
+                {{ hasActiveDemographicValueFilters
+                  ? 'No hay colaboradores que coincidan con los filtros demográficos seleccionados.'
+                  : 'No hay datos disponibles para construir el organigrama de la organización seleccionada.' }}
               </div>
 
               <ngx-graph
@@ -214,18 +274,19 @@
                 [enableZoom]="true"
                 [panOnZoom]="true"
                 [autoZoom]="false"
-                [autoCenter]="true"
-                [showMiniMap]="true"
+                [autoCenter]="false"
+                [animate]="false"
+                [showMiniMap]="showGraphMiniMap"
                 [miniMapMaxWidth]="200"
                 [miniMapMaxHeight]="120"
                 [miniMapPosition]="miniMapPosition"
                 [zoomToFit$]="zoomToFitGraph$"
                 [center$]="centerGraph$"
                 [panToNode$]="panToNode$"
-                [update$]="updateGraph$"
                 [enableTrackpadSupport]="true"
                 [deferDisplayUntilPosition]="true"
                 (select)="onGraphSelect($event)"
+                (stateChange)="onGraphStateChange($event)"
               >
                 <ng-template #defsTemplate>
                   <svg:marker id="arrowHead" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="4" markerHeight="4" orient="auto">
@@ -240,13 +301,13 @@
                 </ng-template>
 
                 <ng-template #nodeTemplate let-node>
-                  <svg:g class="node" (click)="onGraphSelect(node)">
+                  <svg:g class="node">
                     <svg:foreignObject [attr.width]="node.dimension?.width || nodeWidth" [attr.height]="node.dimension?.height || nodeHeight">
                       <div xmlns="http://www.w3.org/1999/xhtml" class="org-node-wrap">
                         <div
                           class="org-node-card"
                           [ngClass]="[
-                            getLevelClass(node.data?.nivel || ''),
+                            node.data?.levelClass || 'level-departamento',
                             selectedGraphNode?.id === node.id ? 'selected' : '',
                             isDirectSubordinateNode(node) ? 'direct-subordinate' : ''
                           ]"

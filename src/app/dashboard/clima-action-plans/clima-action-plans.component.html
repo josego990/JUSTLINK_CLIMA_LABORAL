@@ -2,24 +2,22 @@
   <div class="content-block">
     <div class="page-hero">
       <div>
-        <span class="eyebrow">Clima laboral</span>
-        <h1>Planes de acción y cierre de brechas</h1>
-        <p>
-          Convierte los resultados del clima en compromisos, responsables, evidencias y seguimiento real.
-        </p>
+        <span class="eyebrow">{{ t('EYEBROW') }}</span>
+        <h1>{{ t('TITLE') }}</h1>
+        <p>{{ t('SUBTITLE') }}</p>
       </div>
 
       <div class="hero-score" *ngIf="hasMetrics">
-        <span>Resultado general</span>
+        <span>{{ t('GENERAL_RESULT') }}</span>
         <strong [ngClass]="getScoreClass(generalScore)">{{ formatPercent(generalScore) }}</strong>
-        <small>Meta sugerida {{ targetScore }}%</small>
+        <small>{{ t('SUGGESTED_TARGET', { score: targetScore }) }}</small>
       </div>
     </div>
 
     <mat-card class="selector-card">
       <div class="selector-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Clima a visualizar</mat-label>
+          <mat-label>{{ t('CLIMATE_TO_VIEW') }}</mat-label>
           <mat-select
             [ngModel]="selectedClimaId"
             (ngModelChange)="onClimaChange($event)"
@@ -41,7 +39,7 @@
             [disabled]="!selectedClimaId || loadingFilters"
           >
             <mat-icon>tune</mat-icon>
-            Filtros demográficos
+            {{ t('DEMOGRAPHIC_FILTERS') }}
           </button>
 
           <button
@@ -51,7 +49,7 @@
             [disabled]="!filterChips.length || loadingMetrics"
           >
             <mat-icon>filter_alt_off</mat-icon>
-            Limpiar
+            {{ t('CLEAR') }}
           </button>
 
           <button
@@ -62,7 +60,7 @@
             [disabled]="!hasMetrics || loadingMetrics"
           >
             <mat-icon>download</mat-icon>
-            Exportar
+            {{ t('EXPORT') }}
           </button>
         </div>
       </div>
@@ -70,7 +68,7 @@
       <mat-progress-bar *ngIf="loadingOrganizations || loadingClimas || loadingMetrics" mode="indeterminate"></mat-progress-bar>
 
       <div class="filter-strip" *ngIf="filterChips.length">
-        <span>Filtros activos:</span>
+        <span>{{ t('ACTIVE_FILTERS') }}</span>
         <mat-chip-listbox>
           <mat-chip *ngFor="let chip of filterChips">
             {{ chip.label }}: {{ chip.value }}
@@ -81,13 +79,13 @@
 
     <div class="empty-state" *ngIf="!selectedClimaId && !loadingOrganizations">
       <mat-icon>route</mat-icon>
-      <h2>Selecciona un clima</h2>
-      <p>La empresa activa se toma del header para calcular brechas, prioridades y planes sugeridos.</p>
+      <h2>{{ t('SELECT_CLIMATE') }}</h2>
+      <p>{{ t('SELECT_CLIMATE_HELP') }}</p>
     </div>
 
     <div class="loading-state" *ngIf="loadingMetrics">
       <mat-spinner diameter="44"></mat-spinner>
-      <span>Calculando hallazgos y oportunidades de seguimiento...</span>
+      <span>{{ t('LOADING_METRICS') }}</span>
     </div>
 
     <ng-container *ngIf="hasMetrics && !loadingMetrics">
@@ -107,22 +105,22 @@
           (click)="selectTab(tab.id)"
         >
           <mat-icon>{{ tab.icon }}</mat-icon>
-          <span>{{ tab.label }}</span>
+          <span>{{ t(tab.labelKey) }}</span>
         </button>
       </nav>
 
       <section class="tab-panel" *ngIf="selectedTab === 'resumen'">
         <div class="kpi-grid">
           <mat-card class="kpi-card">
-            <span>Satisfacción</span>
+            <span>{{ t('SATISFACTION') }}</span>
             <strong [ngClass]="getScoreClass(generalScore)">{{ formatPercent(generalScore) }}</strong>
-            <small>{{ totalResponses || 0 }} respuestas procesadas</small>
+            <small>{{ t('RESPONSES_PROCESSED', { count: totalResponses || 0 }) }}</small>
           </mat-card>
 
           <mat-card class="kpi-card">
-            <span>Desfavorable</span>
+            <span>{{ t('UNFAVORABLE') }}</span>
             <strong [ngClass]="getScoreClass(100 - (generalUnfavorable || 0))">{{ formatPercent(generalUnfavorable) }}</strong>
-            <small>Se priorizan brechas sobre 25%</small>
+            <small>{{ t('UNFAVORABLE_PRIORITY_HELP') }}</small>
           </mat-card>
 
           <mat-card class="kpi-card">
@@ -132,9 +130,9 @@
           </mat-card>
 
           <mat-card class="kpi-card">
-            <span>Planes activos</span>
+            <span>{{ t('ACTIVE_PLANS') }}</span>
             <strong>{{ planSummary.total }}</strong>
-            <small>{{ planSummary.progress }}% de avance promedio</small>
+            <small>{{ t('AVERAGE_PROGRESS', { progress: planSummary.progress }) }}</small>
           </mat-card>
         </div>
 
@@ -143,15 +141,15 @@
             <div class="card-title">
               <div>
                 <span class="dot"></span>
-                <h2>Áreas de mejora priorizadas</h2>
+                <h2>{{ t('PRIORITIZED_IMPROVEMENT_AREAS') }}</h2>
               </div>
-              <small>{{ opportunities.length }} oportunidades detectadas</small>
+              <small>{{ t('OPPORTUNITIES_DETECTED', { count: opportunities.length }) }}</small>
             </div>
 
             <div class="opportunity-list compact" *ngIf="opportunities.length; else noGaps">
               <article
                 class="opportunity-row"
-                *ngFor="let opportunity of opportunities.slice(0, 7); trackBy: trackById"
+              *ngFor="let opportunity of opportunities; trackBy: trackById"
                 [ngClass]="getPriorityClass(opportunity.priority)"
               >
                 <div>
@@ -169,32 +167,41 @@
             <div class="card-title">
               <div>
                 <span class="dot blue"></span>
-                <h2>Estado de seguimiento</h2>
+                <h2>{{ t('FOLLOW_UP_STATUS') }}</h2>
               </div>
             </div>
 
             <div class="status-grid">
               <div>
-                <span>Completados</span>
+                <span>{{ t('COMPLETED') }}</span>
                 <strong>{{ planSummary.completed }}</strong>
               </div>
               <div>
-                <span>En riesgo</span>
+                <span>{{ t('AT_RISK') }}</span>
                 <strong>{{ planSummary.atRisk }}</strong>
               </div>
               <div>
-                <span>Alta prioridad</span>
+                <span>{{ t('HIGH_PRIORITY') }}</span>
                 <strong>{{ planSummary.high }}</strong>
               </div>
             </div>
 
             <div class="progress-box">
               <div>
-                <span>Avance general</span>
+                <span>{{ t('GENERAL_PROGRESS') }}</span>
                 <strong>{{ planSummary.progress }}%</strong>
               </div>
               <mat-progress-bar mode="determinate" [value]="planSummary.progress"></mat-progress-bar>
             </div>
+
+            <mat-form-field appearance="outline" class="status-plan-selector" *ngIf="openOpportunities.length">
+              <mat-label>{{ t('OPPORTUNITY_FOR_PLAN') }}</mat-label>
+              <mat-select [(ngModel)]="selectedOpportunityId">
+                <mat-option *ngFor="let opportunity of openOpportunities; trackBy: trackById" [value]="opportunity.id">
+                  {{ getOpportunitySelectionLabel(opportunity) }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
 
             <button
               mat-flat-button
@@ -204,7 +211,7 @@
               [disabled]="!selectedOpportunity"
             >
               <mat-icon>add_task</mat-icon>
-              Crear plan sugerido
+              {{ t('CREATE_SUGGESTED_PLAN') }}
             </button>
           </mat-card>
         </div>
@@ -215,9 +222,9 @@
           <div class="card-title">
             <div>
               <span class="dot danger"></span>
-              <h2>Brechas priorizadas por gran factor</h2>
+              <h2>{{ t('PRIORITIZED_GAPS') }}</h2>
             </div>
-            <small>Meta de referencia: {{ targetScore }}% favorable</small>
+            <small>{{ t('REFERENCE_TARGET', { score: targetScore }) }}</small>
           </div>
 
           <div class="gap-groups" *ngIf="groupedOpportunities.length; else noGaps">
@@ -243,22 +250,22 @@
 
                   <div class="gap-metrics">
                     <div>
-                      <span>Resultado</span>
+                      <span>{{ t('RESULT') }}</span>
                       <strong [ngClass]="getScoreClass(opportunity.score)">{{ formatPercent(opportunity.score) }}</strong>
                     </div>
                     <div>
-                      <span>Desfavorable</span>
+                      <span>{{ t('UNFAVORABLE') }}</span>
                       <strong>{{ formatPercent(opportunity.unfavorable) }}</strong>
                     </div>
                     <div>
-                      <span>Brecha</span>
-                      <strong>{{ opportunity.gap }} pts</strong>
+                      <span>{{ t('GAP') }}</span>
+                      <strong>{{ t('POINTS', { value: opportunity.gap }) }}</strong>
                     </div>
                   </div>
 
-                  <button mat-stroked-button color="primary" type="button" (click)="createPlanFromOpportunity(opportunity)">
+                  <button class="gap-card__create-plan" mat-stroked-button color="primary" type="button" (click)="createPlanFromOpportunity(opportunity)">
                     <mat-icon>playlist_add_check</mat-icon>
-                    Crear plan
+                    {{ t('CREATE_PLAN') }}
                   </button>
                 </article>
               </div>
@@ -267,31 +274,107 @@
         </mat-card>
       </section>
 
+      <section class="tab-panel" *ngIf="selectedTab === 'demograficos'">
+        <mat-card class="panel-card">
+          <div class="card-title">
+            <div>
+              <span class="dot purple"></span>
+              <h2>{{ t('DEMOGRAPHIC_GAPS_TITLE') }}</h2>
+            </div>
+            <small>{{ t('DEMOGRAPHIC_GAPS_HELP') }}</small>
+          </div>
+
+          <div class="gap-groups demographic-gap-groups" *ngIf="groupedDemographicOpportunities.length; else noDemographicGaps">
+            <mat-card class="demographic-factor-card" *ngFor="let factorGroup of groupedDemographicOpportunities; trackBy: trackById">
+              <button
+                type="button"
+                class="demographic-factor-card__header"
+                [attr.aria-expanded]="!isDemographicFactorCollapsed(factorGroup.id)"
+                (click)="toggleDemographicFactor(factorGroup.id)">
+                <span>{{ t('FACTOR') }}</span>
+                <h3>
+                  {{ factorGroup.label }}
+                  <small>{{ t('OPPORTUNITIES_COUNT', { count: getFactorOpportunityCount(factorGroup) }) }}</small>
+                </h3>
+                <mat-icon aria-hidden="true">
+                  {{ isDemographicFactorCollapsed(factorGroup.id) ? 'expand_more' : 'expand_less' }}
+                </mat-icon>
+              </button>
+
+              <div class="demographic-question-groups" *ngIf="!isDemographicFactorCollapsed(factorGroup.id)">
+                <section class="demographic-question-group" *ngFor="let questionGroup of factorGroup.questions; trackBy: trackById">
+                  <div class="demographic-question-group__header">
+                    <span>{{ t('CRITICAL_QUESTION') }}</span>
+                    <strong>{{ questionGroup.label }}</strong>
+                  </div>
+
+                  <div class="demographic-segment-list">
+                    <article class="demographic-segment-row" *ngFor="let group of questionGroup.items; trackBy: trackById">
+                      <div class="gap-head">
+                        <div class="demographic-gap-head">
+                          <span class="demographic-gap-head__field">{{ group.granFactor }}</span>
+                          <strong>{{ group.segment }}</strong>
+                        </div>
+                        <span class="priority-badge" [ngClass]="getPriorityClass(group.priority)">
+                          {{ getPriorityLabel(group.priority) }}
+                        </span>
+                      </div>
+
+                      <p>{{ group.reason }}</p>
+
+                      <div class="gap-metrics">
+                        <div>
+                          <span>{{ t('RESULT') }}</span>
+                          <strong [ngClass]="getScoreClass(group.score)">{{ formatPercent(group.score) }}</strong>
+                        </div>
+                        <div>
+                          <span>{{ t('UNFAVORABLE') }}</span>
+                          <strong>{{ formatPercent(group.unfavorable) }}</strong>
+                        </div>
+                        <div>
+                          <span>{{ t('GAP') }}</span>
+                          <strong>{{ t('POINTS', { value: group.gap }) }}</strong>
+                        </div>
+                      </div>
+
+                      <button class="gap-card__create-plan" mat-stroked-button color="primary" type="button" (click)="createPlanFromOpportunity(group)">
+                        <mat-icon>playlist_add_check</mat-icon>
+                        {{ t('CREATE_PLAN') }}
+                      </button>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </mat-card>
+          </div>
+        </mat-card>
+      </section>
+
       <section class="tab-panel" *ngIf="selectedTab === 'planes'">
         <div class="plans-toolbar">
           <mat-form-field appearance="outline">
-            <mat-label>Crear desde brecha</mat-label>
+            <mat-label>{{ t('CREATE_FROM_GAP') }}</mat-label>
             <mat-select [(ngModel)]="selectedOpportunityId">
               <mat-option *ngFor="let opportunity of openOpportunities; trackBy: trackById" [value]="opportunity.id">
-                {{ opportunity.factor }} · {{ getPriorityLabel(opportunity.priority) }}
+                {{ getOpportunitySelectionLabel(opportunity) }}
               </mat-option>
             </mat-select>
           </mat-form-field>
 
           <button mat-flat-button color="primary" type="button" (click)="createPlanFromOpportunity()">
             <mat-icon>add</mat-icon>
-            Agregar plan
+            {{ t('ADD_PLAN') }}
           </button>
         </div>
 
-        <div class="empty-state slim" *ngIf="!actionPlans.length">
+        <div class="empty-state slim" *ngIf="!visibleActionPlans.length">
           <mat-icon>assignment</mat-icon>
-          <h2>Aún no hay planes creados</h2>
-          <p>Elige una brecha priorizada para generar un plan editable.</p>
+          <h2>{{ t('NO_PLANS_CREATED') }}</h2>
+          <p>{{ t('NO_PLANS_CREATED_HELP') }}</p>
         </div>
 
-        <div class="plan-list" *ngIf="actionPlans.length">
-          <mat-card class="plan-card" *ngFor="let plan of actionPlans; trackBy: trackById">
+        <div class="plan-list" *ngIf="visibleActionPlans.length">
+          <mat-card class="plan-card" *ngFor="let plan of visibleActionPlans; trackBy: trackById">
             <div class="plan-header">
               <div>
                 <span class="priority-badge" [ngClass]="getPriorityClass(plan.priority)">
@@ -313,92 +396,139 @@
 
             <div class="plan-form-grid">
               <mat-form-field appearance="outline">
-                <mat-label>Sponsor</mat-label>
-                <input matInput [(ngModel)]="plan.sponsor" (ngModelChange)="onPlanChanged()" />
+                <mat-label>{{ t('SPONSOR') }}</mat-label>
+                <input matInput [(ngModel)]="plan.sponsor" (ngModelChange)="onPlanChanged(plan)" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" [class.responsible-pending]="!hasAssignedResponsibles(plan)">
+                <mat-label>{{ t('RESPONSIBLES') }}</mat-label>
+                <input
+                  matInput
+                  [value]="plan.owner"
+                  [readonly]="true"
+                  (click)="selectPlanResponsible(plan)"
+                  [attr.aria-label]="t('RESPONSIBLES')"
+                />
+                <button
+                  mat-icon-button
+                  matSuffix
+                  type="button"
+                  [disabled]="loadingResponsibleEmployees"
+                  (click)="selectPlanResponsible(plan)"
+                  [matTooltip]="t('SELECT_OWNER')"
+                >
+                  <mat-icon>{{ loadingResponsibleEmployees ? 'hourglass_top' : 'person_search' }}</mat-icon>
+                </button>
+                <mat-hint *ngIf="!hasAssignedResponsibles(plan)">{{ t('RESPONSIBLES_REQUIRED_HINT') }}</mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
-                <mat-label>Responsable</mat-label>
-                <input matInput [(ngModel)]="plan.owner" (ngModelChange)="onPlanChanged()" />
+                <mat-label>{{ t('DUE_DATE') }}</mat-label>
+                <input matInput type="date" [(ngModel)]="plan.dueDate" (ngModelChange)="onPlanChanged(plan)" />
               </mat-form-field>
 
               <mat-form-field appearance="outline">
-                <mat-label>Fecha límite</mat-label>
-                <input matInput type="date" [(ngModel)]="plan.dueDate" (ngModelChange)="onPlanChanged()" />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Periodicidad</mat-label>
-                <mat-select [(ngModel)]="plan.followUpFrequency" (ngModelChange)="onPlanChanged()">
-                  <mat-option value="Semanal">Semanal</mat-option>
-                  <mat-option value="Quincenal">Quincenal</mat-option>
-                  <mat-option value="Mensual">Mensual</mat-option>
+                <mat-label>{{ t('FREQUENCY') }}</mat-label>
+                <mat-select [(ngModel)]="plan.followUpFrequency" (ngModelChange)="onPlanChanged(plan)">
+                  <mat-option value="Semanal">{{ t('WEEKLY') }}</mat-option>
+                  <mat-option value="Quincenal">{{ t('BIWEEKLY') }}</mat-option>
+                  <mat-option value="Mensual">{{ t('MONTHLY') }}</mat-option>
                 </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="wide">
-                <mat-label>Qué se hará</mat-label>
-                <textarea matInput rows="3" [(ngModel)]="plan.action" (ngModelChange)="onPlanChanged()"></textarea>
+                <mat-label>{{ t('ACTION_TO_TAKE') }}</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="plan.action" (ngModelChange)="onPlanChanged(plan)"></textarea>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="wide">
-                <mat-label>Cómo / recursos necesarios</mat-label>
-                <textarea matInput rows="3" [(ngModel)]="plan.resources" (ngModelChange)="onPlanChanged()"></textarea>
+                <mat-label>{{ t('RESOURCES_NEEDED') }}</mat-label>
+                <textarea matInput rows="3" [(ngModel)]="plan.resources" (ngModelChange)="onPlanChanged(plan)"></textarea>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="wide">
-                <mat-label>KPI / meta</mat-label>
-                <textarea matInput rows="2" [(ngModel)]="plan.kpi" (ngModelChange)="onPlanChanged()"></textarea>
+                <mat-label>{{ t('KPI_TARGET') }}</mat-label>
+                <textarea matInput rows="2" [(ngModel)]="plan.kpi" (ngModelChange)="onPlanChanged(plan)"></textarea>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="wide">
-                <mat-label>Bitácora de avances</mat-label>
-                <textarea matInput rows="2" [(ngModel)]="plan.log" (ngModelChange)="onPlanChanged()"></textarea>
-              </mat-form-field>
+              <div class="email-delivery-option wide" [class.selected]="plan.sendResponsibleEmails">
+                <mat-checkbox
+                  color="primary"
+                  [(ngModel)]="plan.sendResponsibleEmails"
+                  [disabled]="savingPlanIds.has(plan.id)">
+                  {{ t('SEND_RESPONSIBLE_EMAILS') }}
+                </mat-checkbox>
+                <span>{{ t('SEND_RESPONSIBLE_EMAILS_HELP') }}</span>
+              </div>
+
+              <div class="plan-follow-up-history wide full" *ngIf="plan.followUps.length">
+                <div class="follow-up-history-title">
+                  <mat-icon>history</mat-icon>
+                  <span>Bitácora de avances</span>
+                </div>
+
+                <article class="follow-up-history-row" *ngFor="let followUp of plan.followUps; trackBy: trackById">
+                  <div class="follow-up-history-meta">
+                    <strong>{{ followUp.dateLabel }}</strong>
+                    <span><mat-icon>person_outline</mat-icon>Creado por: {{ followUp.createdBy }}</span>
+                  </div>
+                  <p>{{ followUp.comment }}</p>
+                </article>
+              </div>
             </div>
 
             <div class="tasks-head">
-              <h3>Tareas y evidencias</h3>
+              <h3>{{ t('TASKS_EVIDENCE') }}</h3>
               <button mat-button color="primary" type="button" (click)="addTask(plan)">
                 <mat-icon>add_circle</mat-icon>
-                Agregar tarea
+                {{ t('ADD_TASK') }}
               </button>
             </div>
 
             <div class="task-list">
               <article class="task-row" *ngFor="let task of plan.tasks; trackBy: trackById">
-                <mat-checkbox [(ngModel)]="task.done" (ngModelChange)="onPlanChanged()"></mat-checkbox>
+                <mat-checkbox [(ngModel)]="task.done" (ngModelChange)="onPlanChanged(plan)"></mat-checkbox>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Tarea</mat-label>
-                  <input matInput [(ngModel)]="task.title" (ngModelChange)="onPlanChanged()" />
+                  <mat-label>{{ t('TASK') }}</mat-label>
+                  <input matInput [(ngModel)]="task.title" (ngModelChange)="onPlanChanged(plan)" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Responsable</mat-label>
-                  <input matInput [(ngModel)]="task.responsible" (ngModelChange)="onPlanChanged()" />
+                  <mat-label>{{ t('OWNER') }}</mat-label>
+                  <input matInput [(ngModel)]="task.responsible" (ngModelChange)="onPlanChanged(plan)" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Fecha</mat-label>
-                  <input matInput type="date" [(ngModel)]="task.dueDate" (ngModelChange)="onPlanChanged()" />
+                  <mat-label>{{ t('DATE') }}</mat-label>
+                  <input matInput type="date" [(ngModel)]="task.dueDate" (ngModelChange)="onPlanChanged(plan)" />
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Evidencia</mat-label>
-                  <input matInput [(ngModel)]="task.evidence" (ngModelChange)="onPlanChanged()" />
+                  <mat-label>{{ t('EVIDENCE') }}</mat-label>
+                  <input matInput [(ngModel)]="task.evidence" (ngModelChange)="onPlanChanged(plan)" />
                 </mat-form-field>
 
-                <button mat-icon-button color="warn" type="button" (click)="removeTask(plan, task)" matTooltip="Quitar tarea">
+                <button mat-icon-button color="warn" type="button" (click)="removeTask(plan, task)" [matTooltip]="t('REMOVE_TASK')">
                   <mat-icon>delete</mat-icon>
                 </button>
               </article>
             </div>
 
             <div class="plan-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="savingPlanIds.has(plan.id)"
+                (click)="savePlan(plan)"
+              >
+                <mat-icon>{{ savingPlanIds.has(plan.id) ? 'hourglass_top' : (plan.sendResponsibleEmails ? 'send' : 'save') }}</mat-icon>
+                {{ t(plan.sendResponsibleEmails ? 'SAVE_AND_SEND' : 'SAVE_PLAN') }}
+              </button>
               <button mat-button color="warn" type="button" (click)="removePlan(plan)">
                 <mat-icon>delete_outline</mat-icon>
-                Quitar plan
+                {{ t('REMOVE_PLAN') }}
               </button>
             </div>
           </mat-card>
@@ -410,21 +540,21 @@
           <div class="card-title">
             <div>
               <span class="dot blue"></span>
-              <h2>Gantt de progreso</h2>
+              <h2>{{ t('PROGRESS_GANTT') }}</h2>
             </div>
-            <small>Seguimiento operativo de tareas y evidencia</small>
+            <small>{{ t('FOLLOW_UP_HELP') }}</small>
           </div>
 
-          <div class="tracking-table" *ngIf="actionPlans.length; else noPlans">
+          <div class="tracking-table" *ngIf="visibleActionPlans.length; else noPlans">
             <div class="tracking-header">
-              <span>Plan</span>
-              <span>Responsable</span>
-              <span>Fecha límite</span>
-              <span>Avance</span>
-              <span>Estado</span>
+              <span>{{ t('PLAN') }}</span>
+              <span>{{ t('OWNER') }}</span>
+              <span>{{ t('DUE_DATE') }}</span>
+              <span>{{ t('PROGRESS') }}</span>
+              <span>{{ t('STATUS') }}</span>
             </div>
 
-            <div class="tracking-row" *ngFor="let plan of actionPlans; trackBy: trackById">
+            <div class="tracking-row" *ngFor="let plan of visibleActionPlans; trackBy: trackById">
               <div>
                 <strong>{{ plan.factor }}</strong>
                 <small>{{ plan.kpi }}</small>
@@ -454,37 +584,33 @@
           <div class="card-title">
             <div>
               <span class="dot green"></span>
-              <h2>Plantilla base de planes de cierre</h2>
+              <h2>{{ t('PLAN_OVERVIEW') }}</h2>
             </div>
-            <small>Inspirada en el formato Excel del proyecto</small>
+            <small>{{ t('PLAN_OVERVIEW_HELP') }}</small>
           </div>
 
-          <div class="template-table">
+          <div class="template-table" *ngIf="visibleActionPlans.length; else noPlans">
             <table>
               <thead>
                 <tr>
-                  <th>Factor / Área</th>
-                  <th>Por qué</th>
-                  <th>Aplica a</th>
-                  <th>Qué</th>
-                  <th>Cómo</th>
-                  <th>KPI / Meta</th>
-                  <th>Responsable</th>
-                  <th>Plazo</th>
-                  <th>Validación</th>
+                  <th>{{ t('FACTOR_AREA') }}</th>
+                  <th>{{ t('APPLIES_TO') }}</th>
+                  <th>{{ t('WHAT') }}</th>
+                  <th>{{ t('KPI_TARGET') }}</th>
+                  <th>{{ t('RESPONSIBLES') }}</th>
+                  <th>{{ t('TERM') }}</th>
+                  <th>{{ t('VALIDATION') }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of templateRows">
-                  <td>{{ row.factorArea }}</td>
-                  <td>{{ row.reason }}</td>
-                  <td>{{ row.appliesTo }}</td>
-                  <td>{{ row.actions }}</td>
-                  <td>{{ row.resources }}</td>
-                  <td>{{ row.kpi }}</td>
-                  <td>{{ row.owner }}</td>
-                  <td>{{ row.term }}</td>
-                  <td>{{ row.validation }}</td>
+                <tr *ngFor="let plan of visibleActionPlans; trackBy: trackById">
+                  <td>{{ plan.factor }} · {{ plan.area }}</td>
+                  <td>{{ plan.scope }}</td>
+                  <td>{{ plan.action }}</td>
+                  <td>{{ plan.kpi }}</td>
+                  <td>{{ plan.owner }}</td>
+                  <td>{{ plan.term }}</td>
+                  <td>{{ plan.validation }}</td>
                 </tr>
               </tbody>
             </table>
@@ -498,13 +624,20 @@
 <ng-template #noGaps>
   <div class="empty-inline">
     <mat-icon>verified</mat-icon>
-    <span>No se detectan brechas críticas con los criterios actuales.</span>
+    <span>{{ t('NO_GAPS') }}</span>
   </div>
 </ng-template>
 
 <ng-template #noPlans>
   <div class="empty-inline">
     <mat-icon>pending_actions</mat-icon>
-    <span>Aún no hay planes para dar seguimiento.</span>
+    <span>{{ t('NO_FOLLOW_UP_PLANS') }}</span>
+  </div>
+</ng-template>
+
+<ng-template #noDemographicGaps>
+  <div class="empty-inline">
+    <mat-icon>groups</mat-icon>
+    <span>{{ t('NO_DEMOGRAPHIC_GAPS') }}</span>
   </div>
 </ng-template>

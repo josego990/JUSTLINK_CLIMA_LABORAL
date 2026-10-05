@@ -134,6 +134,7 @@ export class CreateComponent implements OnDestroy, OnInit {
   langStoreValue?: string;
   private selectedOrganizationSubscription?: Subscription;
   private climateRequestSequence = 0;
+  private readonly expandedClimateStructureIds = new Set<number>();
 
   constructor(
     private joyrideService: JoyrideService,
@@ -336,6 +337,14 @@ export class CreateComponent implements OnDestroy, OnInit {
     return `${heading} (${fields.length})\n\n${preguntas}`;
   }
 
+  getClimateSurveyLabel(count: number): string {
+    return this.translate.instant(
+      count === 1
+        ? 'MENUITEMS.QUIZ.STRUCTURE.SURVEY'
+        : 'MENUITEMS.QUIZ.STRUCTURE.SURVEYS',
+    );
+  }
+
   getClimateFactorCount(card: Quiz): number {
     return (card.granFactores || []).reduce(
       (total, granFactor) => total + (Array.isArray(granFactor?.series) ? granFactor.series.length : 0),
@@ -351,6 +360,30 @@ export class CreateComponent implements OnDestroy, OnInit {
       ),
       0,
     );
+  }
+
+  isClimateStructureExpanded(card: Quiz): boolean {
+    return this.expandedClimateStructureIds.has(card.id);
+  }
+
+  toggleClimateStructure(card: Quiz, event?: Event): void {
+    event?.stopPropagation();
+
+    if (this.expandedClimateStructureIds.has(card.id)) {
+      this.expandedClimateStructureIds.delete(card.id);
+      return;
+    }
+
+    this.expandedClimateStructureIds.add(card.id);
+  }
+
+  getDisplayedGrandFactors(card: Quiz) {
+    const surveys = Array.isArray(card.granFactores) ? card.granFactores : [];
+    return surveys;
+  }
+
+  getDisplayedFactors(_card: Quiz, survey: any): any[] {
+    return Array.isArray(survey?.series) ? survey.series : [];
   }
   
   public getClimasLista():void {

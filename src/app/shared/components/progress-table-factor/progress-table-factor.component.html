@@ -1,3 +1,5 @@
+
+
 <section class="factor-group" *ngFor="let group of groupedSubjects">
   <h3 class="factor-title" *ngIf="(group.factor || '').trim() !== ''">
     {{ group.factor }}
@@ -83,7 +85,7 @@
 
     <!-- % Satisfacción (Top-2) -->
     <ng-container matColumnDef="pctFav">
-      <th mat-header-cell *matHeaderCellDef>% Satisfacción (Top-2)</th>
+      <th mat-header-cell *matHeaderCellDef>Nivel de satisfacción (Top-2)</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.pctFav | number:'1.0-2' }}%
         <mat-progress-bar
@@ -96,7 +98,7 @@
 
     <!-- % Insatisfacción -->
     <ng-container matColumnDef="pctDesf">
-      <th mat-header-cell *matHeaderCellDef>% Insatisfacción</th>
+      <th mat-header-cell *matHeaderCellDef>Nivel de insatisfacción (Bottom-2)</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.pctDesf | number:'1.0-2' }}%
         <mat-progress-bar
@@ -109,7 +111,7 @@
 
     <!-- NSAT -->
     <ng-container matColumnDef="nsat">
-      <th mat-header-cell *matHeaderCellDef>NSAT</th>
+      <th mat-header-cell *matHeaderCellDef>Balance neto de satisfacción (NSAT)</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.nsat | number:'1.0-2' }}
         <mat-progress-bar
@@ -122,7 +124,7 @@
 
     <!-- Índice 0–100 -->
     <ng-container matColumnDef="mean">
-      <th mat-header-cell *matHeaderCellDef>Índice (0–100)</th>
+      <th mat-header-cell *matHeaderCellDef>Índice de satisfacción (0–100)</th>
       <td mat-cell *matCellDef="let subject">
         {{ subject.mean | number:'1.0-2' }}%
         <mat-progress-bar

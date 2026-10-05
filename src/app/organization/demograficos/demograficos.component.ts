@@ -94,6 +94,8 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
       IdOrganizacion: [{ value: this.idOrganization, disabled: true }],
       NombreCampo: ['', Validators.required],
     });
+
+    
   }
 
   existsRoute(routes: RouteInfo[], target: string): boolean {
@@ -120,7 +122,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
     const stored = sessionStorage.getItem('routes');
     if (stored) {
       const routes: RouteInfo[] = JSON.parse(stored);
-     //console.log('RUTAS DESDE sessionStorage:: ', routes);
+     console.log('RUTAS DESDE sessionStorage:: ', routes);
 
       //buscar path
       const found = this.existsRoute(routes, '/organization/demograficos');

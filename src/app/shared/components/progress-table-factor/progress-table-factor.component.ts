@@ -44,14 +44,14 @@ export class ProgressTableFactorComponent {
     return this.showNeutral
       ? [
           'subject',
-          'totacuerdo', 'acuerdo', 'neutro', 'desacuerdo', 'totdesacuerdo',
-          'pctFav', 'pctDesf', 'nsat', 'mean',
+          'totdesacuerdo', 'desacuerdo', 'neutro', 'acuerdo', 'totacuerdo',
+          'pctDesf', 'nsat', 'mean', 'pctFav',
           'duration'
         ]
       : [
           'subject',
-          'totacuerdo', 'acuerdo', 'desacuerdo', 'totdesacuerdo',
-          'pctFav', 'pctDesf', 'nsat', 'mean',
+          'totdesacuerdo', 'desacuerdo', 'acuerdo', 'totacuerdo',
+          'pctDesf', 'nsat', 'mean', 'pctFav',
           'duration'
         ];
   }

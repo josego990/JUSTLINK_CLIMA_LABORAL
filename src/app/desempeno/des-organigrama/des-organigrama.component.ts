@@ -24,6 +24,9 @@ import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 
+import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
+import { Router } from '@angular/router';
+
 interface DesOrganizationOption {
   Id: number;
   Nombre: string;
@@ -52,12 +55,15 @@ interface OrgChartMetric {
 
 interface DemographicFilterOption {
   key: string;
+  values: string[];
   distinctCount: number;
 }
 
 interface OrgGraphNodeData extends OrgChartNode {
   demographicEntries: Array<{ label: string; value: string }>;
   pathLabel: string | null;
+  levelClass: string;
+  searchText: string;
 }
 
 @Component({
@@ -206,8 +212,10 @@ interface OrgGraphNodeData extends OrgChartNode {
     .org-filter-list {
       flex: initial;
       flex-wrap: nowrap;
+      align-items: center;
       gap: 4px 7px;
       min-width: 0;
+      padding-block: 1px;
       overflow-x: auto;
       white-space: nowrap;
       scrollbar-width: thin;
@@ -215,22 +223,50 @@ interface OrgGraphNodeData extends OrgChartNode {
 
     .org-filter-item {
       flex: 0 0 auto;
-      min-height: 30px;
-      padding: 0 6px 0 0;
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      min-height: 32px;
+      padding: 0 7px 0 2px;
       border-radius: 6px;
     }
 
     :host ::ng-deep .org-filter-item .mdc-form-field {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
       font-size: 0.76rem;
+      line-height: 1.2;
     }
 
     :host ::ng-deep .org-filter-item .mdc-checkbox {
-      padding: 4px;
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      padding: 7px;
+      box-sizing: border-box;
+    }
+
+    :host ::ng-deep .org-filter-item .mdc-checkbox__background {
+      top: 7px;
+      left: 7px;
     }
 
     :host ::ng-deep .org-filter-item .mat-mdc-checkbox-touch-target {
       width: 32px;
       height: 32px;
+    }
+
+    :host ::ng-deep .org-filter-item .mdc-label {
+      display: inline-flex;
+      align-items: center;
+      line-height: 1.2;
+    }
+
+    .org-filter-count {
+      display: inline-block;
+      margin-left: 5px;
+      line-height: 1.2;
     }
 
     .org-filter-actions {
@@ -240,6 +276,99 @@ interface OrgGraphNodeData extends OrgChartNode {
     .org-filter-actions button {
       min-height: 34px;
       padding-inline: 14px;
+    }
+
+    .org-demographic-value-panel {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 9px 10px;
+      margin-bottom: 8px;
+      border: 1px solid #d8e5f1;
+      border-radius: 10px;
+      background: #f8fbff;
+    }
+
+    .org-demographic-value-copy {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #475569;
+    }
+
+    .org-demographic-value-copy > div {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .org-demographic-value-copy > mat-icon {
+      width: 32px;
+      height: 32px;
+      padding: 5px;
+      border-radius: 8px;
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .org-demographic-value-copy strong,
+    .org-demographic-value-copy span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .org-demographic-value-copy strong {
+      color: #1e293b;
+      font-size: 0.78rem;
+    }
+
+    .org-demographic-value-copy span {
+      margin-top: 2px;
+      font-size: 0.68rem;
+      line-height: 1.25;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+
+    .org-demographic-value-selects {
+      display: flex;
+      min-width: 0;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .org-demographic-value-selects .mat-mdc-form-field {
+      flex: 0 0 190px;
+      width: 190px;
+    }
+
+    :host ::ng-deep .org-demographic-value-selects .mat-mdc-text-field-wrapper,
+    :host ::ng-deep .org-demographic-value-selects .mat-mdc-form-field-flex {
+      min-height: 42px;
+    }
+
+    :host ::ng-deep .org-demographic-value-selects .mat-mdc-form-field-flex {
+      align-items: center;
+    }
+
+    .org-clear-demographic-values {
+      min-width: 94px;
+    }
+
+    @media (max-width: 1199.98px) {
+      .org-demographic-value-panel {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .org-demographic-value-selects {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
     }
 
     .org-navigation-toolbar {
@@ -461,6 +590,39 @@ interface OrgGraphNodeData extends OrgChartNode {
       color: #2563eb;
     }
 
+    .org-performance-notice {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #334155;
+    }
+
+    .org-performance-notice > mat-icon {
+      color: #2563eb;
+    }
+
+    .org-performance-notice strong,
+    .org-performance-notice span {
+      display: block;
+    }
+
+    .org-performance-notice strong {
+      color: #1e3a8a;
+      font-size: 0.78rem;
+    }
+
+    .org-performance-notice span {
+      margin-top: 2px;
+      font-size: 0.7rem;
+      line-height: 1.3;
+    }
+
     .org-graph-shell {
       flex: 1;
       min-height: 680px;
@@ -487,6 +649,7 @@ interface OrgGraphNodeData extends OrgChartNode {
 
     .org-node-card {
       height: 100%;
+      min-height: 100%;
       border-radius: 18px;
       border: 1px solid #dbe3ef;
       background: #fff;
@@ -494,6 +657,8 @@ interface OrgGraphNodeData extends OrgChartNode {
       padding: 14px 14px 14px 16px;
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     .org-node-card::before {
@@ -579,6 +744,8 @@ interface OrgGraphNodeData extends OrgChartNode {
       color: #0f172a;
       line-height: 1.2;
       margin-bottom: 4px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .org-node-role {
@@ -587,6 +754,8 @@ interface OrgGraphNodeData extends OrgChartNode {
       font-weight: 600;
       line-height: 1.25;
       margin-bottom: 12px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .org-node-meta,
@@ -594,6 +763,8 @@ interface OrgGraphNodeData extends OrgChartNode {
       color: #64748b;
       font-size: 0.76rem;
       line-height: 1.3;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .org-empty,
@@ -624,10 +795,21 @@ interface OrgGraphNodeData extends OrgChartNode {
     }
 
     :host-context(.dark) .org-filter-panel,
+    :host-context(.dark) .org-demographic-value-panel,
     :host-context(.dark) .org-navigation-toolbar {
       border-color: #30394a;
       background: #151a24;
       box-shadow: none;
+    }
+
+    :host-context(.dark) .org-performance-notice {
+      border-color: #294566;
+      background: #16263a;
+      color: #b7c6d9;
+    }
+
+    :host-context(.dark) .org-performance-notice strong {
+      color: #bfdbfe;
     }
 
     :host-context(.dark) .org-filter-item,
@@ -637,6 +819,10 @@ interface OrgGraphNodeData extends OrgChartNode {
     }
 
     :host-context(.dark) .org-selected-identity strong {
+      color: #edf2f8;
+    }
+
+    :host-context(.dark) .org-demographic-value-copy strong {
       color: #edf2f8;
     }
 
@@ -692,6 +878,15 @@ interface OrgGraphNodeData extends OrgChartNode {
         grid-template-columns: 1fr auto;
       }
 
+      .org-demographic-value-panel {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .org-demographic-value-selects {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
       .org-filter-list {
         grid-column: 1 / -1;
         grid-row: 2;
@@ -700,7 +895,9 @@ interface OrgGraphNodeData extends OrgChartNode {
 
     @media (max-width: 575.98px) {
       .org-navigation-toolbar,
-      .org-filter-panel {
+      .org-filter-panel,
+      .org-demographic-value-panel,
+      .org-performance-notice {
         grid-template-columns: minmax(0, 1fr);
       }
 
@@ -712,7 +909,9 @@ interface OrgGraphNodeData extends OrgChartNode {
       .org-graph-controls,
       .org-selected-employee,
       .org-filter-list,
-      .org-filter-actions {
+      .org-filter-actions,
+      .org-demographic-value-selects,
+      .org-clear-demographic-values {
         grid-column: 1;
         grid-row: auto;
       }
@@ -728,8 +927,8 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   readonly Orientation = Orientation;
   readonly panningAxis = PanningAxis.Both;
   readonly miniMapPosition = MiniMapPosition.UpperRight;
-  readonly nodeWidth = 260;
-  readonly nodeHeight = 176;
+  readonly nodeWidth = 320;
+  public nodeHeight = 220;
   public dataSourceOrganizations: DesOrganizationOption[] = [];
   public selectedOrganizationId: number | null = null;
   public chartRoots: OrgChartNode[] = [];
@@ -737,8 +936,13 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   public availableDemographicFilters: DemographicFilterOption[] = [];
   public pendingDemographicKeys: string[] = [];
   public appliedDemographicKeys: string[] = [];
+  public demographicValueFilters: Record<string, string[]> = {};
   public graphNodes: Node[] = [];
   public graphLinks: Edge[] = [];
+  public allGraphNodes: Node[] = [];
+  public totalFilteredNodeCount = 0;
+  public isGraphLimited = false;
+  public focusedNodeId: string | null = null;
   public graphView: [number, number] = [1200, 760];
   public isLoadingOrganizations = false;
   public isLoadingChart = false;
@@ -747,35 +951,65 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   public layoutOrientation: Orientation = Orientation.LEFT_TO_RIGHT;
   public layoutSettings = this.buildLayoutSettings();
   public selectedGraphNode: Node | null = null;
-  public readonly updateGraph$ = new Subject<void>();
   public readonly centerGraph$ = new Subject<void>();
   public readonly zoomToFitGraph$ = new Subject<NgxGraphZoomOptions>();
   public readonly panToNode$ = new Subject<string>();
   public directSubordinateEmployeeIds = new Set<number>();
-  private resizeObserver: ResizeObserver | null = null;
-  private graphRefreshTimer: number | null = null;
+  public readonly maxRenderedNodes = 240;
+  private readonly emptyDemographicValueFilter: string[] = [];
+  private pendingZoomToFit = false;
+  private pendingPanToNodeId: string | null = null;
   private selectedOrganizationSubscription?: Subscription;
+  private graphResizeObserver?: ResizeObserver;
+  private graphResizeFrameId: number | null = null;
 
-  constructor(private organizacionService: OrganizacionService) {}
+
+   existsRoute(routes: RouteInfo[], target: string): boolean {
+      return routes.some(route =>
+        route.path === target ||
+        this.existsRoute(route.submenu, target)
+      );
+    }
+
+  constructor(private router: Router, private organizacionService: OrganizacionService) {}
 
   ngOnInit(): void {
     this.setupSelectedOrganizationListener();
+
+    //validar accesos al modulo..
+    const stored = sessionStorage.getItem('routes');
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      console.log('RUTAS DESDE sessionStorage:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/desempeno/organigrama');
+      //console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
+      }
+
+    }
+
   }
 
   ngAfterViewInit(): void {
-    this.bindResizeObserver();
     this.syncGraphView();
+    this.observeGraphViewportResize();
+    window.addEventListener('resize', this.handleWindowResize, { passive: true });
   }
 
   ngOnDestroy(): void {
     this.selectedOrganizationSubscription?.unsubscribe();
-    this.resizeObserver?.disconnect();
+    this.graphResizeObserver?.disconnect();
+    window.removeEventListener('resize', this.handleWindowResize);
 
-    if (this.graphRefreshTimer !== null) {
-      window.clearTimeout(this.graphRefreshTimer);
+    if (this.graphResizeFrameId !== null) {
+      window.cancelAnimationFrame(this.graphResizeFrameId);
+      this.graphResizeFrameId = null;
     }
 
-    this.updateGraph$.complete();
     this.centerGraph$.complete();
     this.zoomToFitGraph$.complete();
     this.panToNode$.complete();
@@ -811,8 +1045,12 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     return this.chartRoots.length > 0;
   }
 
+  get hasActiveDemographicValueFilters(): boolean {
+    return Object.values(this.demographicValueFilters).some((values) => values.length > 0);
+  }
+
   get chartMetrics(): OrgChartMetric[] {
-    const nodes = this.flattenForest(this.chartRoots);
+    const nodes = this.getVisibleGraphNodeData();
     const employeeNodes = nodes.filter((node) => node.idEmpleado !== null);
 
     return [
@@ -848,12 +1086,12 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       return [];
     }
 
-    return this.graphNodes
+    return this.allGraphNodes
       .filter((node) => {
         const data = node.data as OrgGraphNodeData | undefined;
         return data?.idEmpleado !== null &&
           data?.idEmpleado !== undefined &&
-          this.normalizeSearchText(data.nombreCompleto).includes(search);
+          data.searchText.includes(search);
       })
       .sort((left, right) =>
         String(left.data?.nombreCompleto ?? '').localeCompare(
@@ -863,6 +1101,10 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
         )
       )
       .slice(0, 10);
+  }
+
+  get showGraphMiniMap(): boolean {
+    return this.graphNodes.length > 0 && this.graphNodes.length <= 100;
   }
 
   onOrganizationChange(value: any): void {
@@ -885,6 +1127,40 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     this.pendingDemographicKeys = this.pendingDemographicKeys.filter((item) => item !== key);
   }
 
+  getDemographicValueFilter(key: string): string[] {
+    return this.demographicValueFilters[key] ?? this.emptyDemographicValueFilter;
+  }
+
+  setDemographicValueFilter(key: string, values: string[] | null | undefined): void {
+    const nextValues = Array.from(
+      new Set((values ?? []).map((value) => this.toOptionalText(value)).filter((value): value is string => !!value))
+    );
+
+    const nextFilters = { ...this.demographicValueFilters };
+
+    if (nextValues.length > 0) {
+      nextFilters[key] = nextValues;
+    } else {
+      delete nextFilters[key];
+    }
+
+    this.demographicValueFilters = nextFilters;
+    this.focusedNodeId = null;
+    this.rebuildGraphFromTree();
+    this.queueGraphRefresh(true);
+  }
+
+  clearDemographicValueFilters(): void {
+    if (!this.hasActiveDemographicValueFilters) {
+      return;
+    }
+
+    this.demographicValueFilters = {};
+    this.focusedNodeId = null;
+    this.rebuildGraphFromTree();
+    this.queueGraphRefresh(true);
+  }
+
   generateOrganigram(): void {
     const availableKeys = new Set(this.availableDemographicFilters.map((item) => item.key));
     const nextKeys = this.pendingDemographicKeys.filter((key) => availableKeys.has(key));
@@ -899,6 +1175,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.appliedDemographicKeys = [...nextKeys];
+    this.focusedNodeId = null;
     this.rebuildGraphFromTree();
     this.queueGraphRefresh(true);
   }
@@ -947,7 +1224,45 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
   selectEmployeeSearchResult(node: Node): void {
     this.employeeSearchTerm = String(node.data?.nombreCompleto ?? node.label ?? '').trim();
     this.isEmployeeSearchOpen = false;
-    this.selectGraphNode(node, true);
+
+    if (!this.graphNodes.some((graphNode) => graphNode.id === node.id)) {
+      this.focusedNodeId = node.id;
+      this.rebuildGraphFromTree();
+      this.pendingPanToNodeId = node.id;
+      this.queueGraphRefresh(true);
+    }
+
+    const visibleNode = this.graphNodes.find((graphNode) => graphNode.id === node.id) ?? node;
+    this.selectGraphNode(visibleNode, this.pendingPanToNodeId === null);
+  }
+
+  showGeneralGraph(): void {
+    if (!this.focusedNodeId) {
+      return;
+    }
+
+    this.focusedNodeId = null;
+    this.rebuildGraphFromTree();
+    this.queueGraphRefresh(true);
+  }
+
+  onGraphStateChange(event: { state?: string } | null | undefined): void {
+    if (event?.state !== 'output') {
+      return;
+    }
+
+    if (this.pendingZoomToFit) {
+      this.pendingZoomToFit = false;
+      window.setTimeout(() => {
+        this.zoomToFitGraph$.next({ autoCenter: true, force: true });
+      });
+    }
+
+    if (this.pendingPanToNodeId) {
+      const nodeId = this.pendingPanToNodeId;
+      this.pendingPanToNodeId = null;
+      window.setTimeout(() => this.panToNode$.next(nodeId), 60);
+    }
   }
 
   isDirectSubordinateNode(node: Node | null | undefined): boolean {
@@ -974,7 +1289,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       return 0;
     }
 
-    const nodes = this.flattenForest(this.chartRoots);
+    const nodes = this.getVisibleGraphNodeData();
     const hasManagerData = nodes.some((item) => item.idEmpleadosJefe.length > 0);
 
     if (hasManagerData) {
@@ -1048,8 +1363,13 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.availableDemographicFilters = [];
       this.pendingDemographicKeys = [];
       this.appliedDemographicKeys = [];
+      this.demographicValueFilters = {};
       this.graphNodes = [];
       this.graphLinks = [];
+      this.allGraphNodes = [];
+      this.totalFilteredNodeCount = 0;
+      this.isGraphLimited = false;
+      this.focusedNodeId = null;
       this.selectedGraphNode = null;
       this.employeeSearchTerm = '';
       this.isEmployeeSearchOpen = false;
@@ -1072,18 +1392,25 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       this.availableDemographicFilters = this.extractDemographicFilters(this.chartRoots);
       this.pendingDemographicKeys = this.availableDemographicFilters.map((item) => item.key);
       this.appliedDemographicKeys = [...this.pendingDemographicKeys];
+      this.demographicValueFilters = {};
+      this.focusedNodeId = null;
       this.rebuildGraphFromTree();
     } catch (error) {
       console.error(error);
       this.chartRoots = [];
       this.graphNodes = [];
       this.graphLinks = [];
+      this.allGraphNodes = [];
+      this.totalFilteredNodeCount = 0;
+      this.isGraphLimited = false;
+      this.focusedNodeId = null;
       this.selectedGraphNode = null;
       this.directSubordinateEmployeeIds.clear();
       this.chartMessage = '';
       this.availableDemographicFilters = [];
       this.pendingDemographicKeys = [];
       this.appliedDemographicKeys = [];
+      this.demographicValueFilters = {};
       await Swal.fire(
         'No fue posible cargar el organigrama',
         'Ocurrió un problema al preparar la vista del organigrama.',
@@ -1095,47 +1422,66 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  private bindResizeObserver(): void {
-    if (!this.graphViewport || typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = new ResizeObserver(() => this.syncGraphView());
-    this.resizeObserver.observe(this.graphViewport.nativeElement);
-  }
-
-  private syncGraphView(): void {
+  private syncGraphView(): boolean {
     const host = this.graphViewport?.nativeElement;
 
     if (!host) {
-      return;
+      return false;
     }
 
     const bounds = host.getBoundingClientRect();
-    const nextWidth = Math.max(Math.floor(bounds.width), 960);
-    const nextHeight = Math.max(Math.floor(host.clientHeight || bounds.height), 620);
+    const nextWidth = Math.max(Math.floor(bounds.width), 320);
+    const nextHeight = Math.max(Math.floor(host.clientHeight || bounds.height), 480);
 
     if (this.graphView[0] === nextWidth && this.graphView[1] === nextHeight) {
-      return;
+      return false;
     }
 
     this.graphView = [nextWidth, nextHeight];
-    this.queueGraphRefresh(true);
+    return true;
+  }
+
+  private handleWindowResize = (): void => {
+    this.scheduleGraphViewportSync();
+  };
+
+  private observeGraphViewportResize(): void {
+    const host = this.graphViewport?.nativeElement;
+
+    if (!host || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    this.graphResizeObserver = new ResizeObserver(() => {
+      this.scheduleGraphViewportSync();
+    });
+    this.graphResizeObserver.observe(host);
+  }
+
+  private scheduleGraphViewportSync(): void {
+    if (this.graphResizeFrameId !== null) {
+      return;
+    }
+
+    this.graphResizeFrameId = window.requestAnimationFrame(() => {
+      this.graphResizeFrameId = null;
+
+      if (!this.syncGraphView() || this.graphNodes.length === 0) {
+        return;
+      }
+
+      // Recalculate the graph viewport after the layout settles, for example
+      // when the sidebar changes width or the browser rotates.
+      window.setTimeout(() => {
+        if (this.graphNodes.length > 0 && !this.isLoadingChart) {
+          this.zoomToFitGraph$.next({ autoCenter: true, force: true });
+        }
+      }, 0);
+    });
   }
 
   private queueGraphRefresh(zoomToFit = false): void {
-    if (this.graphRefreshTimer !== null) {
-      window.clearTimeout(this.graphRefreshTimer);
-    }
-
-    this.graphRefreshTimer = window.setTimeout(() => {
-      this.updateGraph$.next();
-
-      if (zoomToFit && this.graphNodes.length > 0) {
-        this.zoomToFitGraph$.next({ autoCenter: true, force: true });
-      }
-    }, 50);
+    this.pendingZoomToFit = this.pendingZoomToFit || zoomToFit;
   }
 
   private extractObject(response: any): any {
@@ -1200,54 +1546,186 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       });
     });
 
-    return Array.from(valueMap.entries()).map(([key, values]) => ({
-      key,
-      distinctCount: values.size,
-    }));
+    return Array.from(valueMap.entries())
+      .map(([key, values]) => ({
+        key,
+        values: Array.from(values).sort((left, right) => left.localeCompare(right, 'es', { sensitivity: 'base' })),
+        distinctCount: values.size,
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key, 'es', { sensitivity: 'base' }));
   }
 
   private rebuildGraphFromTree(): void {
     if (this.chartRoots.length === 0) {
       this.graphNodes = [];
       this.graphLinks = [];
+      this.allGraphNodes = [];
+      this.totalFilteredNodeCount = 0;
+      this.isGraphLimited = false;
       this.selectedGraphNode = null;
       this.directSubordinateEmployeeIds.clear();
       return;
     }
 
     const previousSelectedId = this.selectedGraphNode?.id ?? null;
-    const nodes: Node[] = [];
-    const links: Edge[] = [];
+    const allNodes: Node[] = [];
+    const allLinks: Edge[] = [];
+    const filteredRoots = this.getFilteredChartRoots();
+    const pendingNodes = filteredRoots.map((node) => ({ node, parent: null as OrgChartNode | null }));
 
-    const visit = (current: OrgChartNode, parent: OrgChartNode | null): void => {
+    while (pendingNodes.length > 0) {
+      const entry = pendingNodes.shift();
+      if (!entry) {
+        break;
+      }
+
+      const current = entry.node;
+      const parent = entry.parent;
       const data = this.toGraphNodeData(current);
-      nodes.push({
+      allNodes.push({
         id: data.id,
         label: data.nombreCompleto,
         data,
       });
 
       if (parent) {
-        links.push({
+        allLinks.push({
           id: `${parent.id}-${current.id}`,
           source: parent.id,
           target: current.id,
         });
       }
 
-      current.children.forEach((child) => visit(child, current));
-    };
+      current.children.forEach((child) => pendingNodes.push({ node: child, parent: current }));
+    }
 
-    this.chartRoots.forEach((root) => visit(root, null));
+    this.allGraphNodes = allNodes;
+    this.totalFilteredNodeCount = allNodes.length;
+    this.nodeHeight = this.calculateNodeHeight(allNodes);
 
-    this.graphNodes = nodes;
-    this.graphLinks = links;
+    const renderedNodeIds = this.getRenderedNodeIds(allNodes, allLinks);
+    this.graphNodes = allNodes.filter((node) => renderedNodeIds.has(node.id));
+    this.graphLinks = allLinks.filter((link) =>
+      renderedNodeIds.has(String(link.source)) && renderedNodeIds.has(String(link.target))
+    );
+    this.isGraphLimited = this.graphNodes.length < allNodes.length;
     this.selectedGraphNode =
       this.graphNodes.find((node) => node.id === previousSelectedId) ??
+      this.graphNodes.find((node) => node.id === this.focusedNodeId) ??
       this.graphNodes.find((node) => node.data?.idEmpleado !== null && node.data?.idEmpleado !== undefined) ??
       this.graphNodes[0] ??
       null;
     this.updateDirectSubordinateSelection();
+  }
+
+  private calculateNodeHeight(nodes: Node[]): number {
+    const lineCount = (value: unknown, charactersPerLine: number): number => {
+      const text = String(value ?? '').trim();
+      return text.length > 0 ? Math.max(1, Math.ceil(text.length / charactersPerLine)) : 0;
+    };
+
+    const heights = nodes.map((node) => {
+      const data = node.data as Partial<OrgGraphNodeData> | undefined;
+      const pathLines = lineCount(data?.pathLabel, 39);
+      const nameLines = lineCount(data?.nombreCompleto, 32);
+      const roleLines = lineCount(data?.cargo, 36);
+
+      // Keep enough room for the employee identifier and email even when the
+      // demographic path, name, or position requires multiple lines.
+      return 30 + (pathLines * 19) + (nameLines * 24) +
+        (roleLines > 0 ? (roleLines * 21) + 8 : 0) + 46;
+    });
+
+    return Math.min(360, Math.max(220, Math.max(...heights, 220)));
+  }
+
+  private getRenderedNodeIds(nodes: Node[], links: Edge[]): Set<string> {
+    if (nodes.length <= this.maxRenderedNodes) {
+      return new Set(nodes.map((node) => node.id));
+    }
+
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    const parentByNode = new Map<string, string>();
+    const childrenByNode = new Map<string, string[]>();
+
+    links.forEach((link) => {
+      const source = String(link.source);
+      const target = String(link.target);
+      parentByNode.set(target, source);
+      const children = childrenByNode.get(source) ?? [];
+      children.push(target);
+      childrenByNode.set(source, children);
+    });
+
+    const included = new Set<string>();
+    const queue: string[] = [];
+
+    if (this.focusedNodeId && nodeIds.has(this.focusedNodeId)) {
+      const path: string[] = [];
+      let currentId: string | undefined = this.focusedNodeId;
+
+      while (currentId && !path.includes(currentId)) {
+        path.unshift(currentId);
+        currentId = parentByNode.get(currentId);
+      }
+
+      path.forEach((id) => included.add(id));
+      (childrenByNode.get(this.focusedNodeId) ?? []).forEach((childId) => queue.push(childId));
+    } else {
+      this.focusedNodeId = null;
+      nodes
+        .filter((node) => !parentByNode.has(node.id))
+        .forEach((node) => queue.push(node.id));
+    }
+
+    while (queue.length > 0 && included.size < this.maxRenderedNodes) {
+      const currentId = queue.shift();
+      if (!currentId || included.has(currentId)) {
+        continue;
+      }
+
+      included.add(currentId);
+      (childrenByNode.get(currentId) ?? []).forEach((childId) => queue.push(childId));
+    }
+
+    return included;
+  }
+
+  private getFilteredChartRoots(): OrgChartNode[] {
+    if (!this.hasActiveDemographicValueFilters) {
+      return this.chartRoots;
+    }
+
+    const filterNode = (node: OrgChartNode): OrgChartNode | null => {
+      const children = node.children
+        .map((child) => filterNode(child))
+        .filter((child): child is OrgChartNode => child !== null);
+
+      if (node.idEmpleado !== null && !this.matchesDemographicValueFilters(node)) {
+        return children.length > 0 ? { ...node, children } : null;
+      }
+
+      if (node.idEmpleado === null && children.length === 0) {
+        return null;
+      }
+
+      return { ...node, children };
+    };
+
+    return this.chartRoots
+      .map((root) => filterNode(root))
+      .filter((root): root is OrgChartNode => root !== null);
+  }
+
+  private matchesDemographicValueFilters(node: OrgChartNode): boolean {
+    return Object.entries(this.demographicValueFilters).every(([key, selectedValues]) => {
+      if (selectedValues.length === 0) {
+        return true;
+      }
+
+      const value = this.toOptionalText(node.demograficos?.[key]);
+      return value !== null && selectedValues.includes(value);
+    });
   }
 
   private selectGraphNode(node: Node, panToNode: boolean): void {
@@ -1273,7 +1751,7 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       return new Set<number>();
     }
 
-    const nodes = this.flattenForest(this.chartRoots);
+    const nodes = this.getVisibleGraphNodeData();
     const hasManagerData = nodes.some((node) => node.idEmpleadosJefe.length > 0);
 
     if (hasManagerData) {
@@ -1301,6 +1779,12 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
     });
   }
 
+  private getVisibleGraphNodeData(): OrgGraphNodeData[] {
+    return this.graphNodes
+      .map((node) => node.data)
+      .filter((node): node is OrgGraphNodeData => !!node && typeof node === 'object');
+  }
+
   private toGraphNodeData(node: OrgChartNode): OrgGraphNodeData {
     const demographicEntries = this.extractDemographicEntries(node);
     const pathLabel = demographicEntries
@@ -1312,6 +1796,8 @@ export class DesOrganigramaComponent implements OnInit, AfterViewInit, OnDestroy
       ...node,
       demographicEntries,
       pathLabel: pathLabel.length > 0 ? pathLabel : null,
+      levelClass: this.getLevelClass(node.nivel),
+      searchText: this.normalizeSearchText(`${node.nombreCompleto} ${node.cargo}`),
     };
   }
 

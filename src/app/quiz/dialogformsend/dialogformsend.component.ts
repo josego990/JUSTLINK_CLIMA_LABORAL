@@ -33,6 +33,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { JoyrideModule, JoyrideService } from 'ngx-joyride';
 import { DemoLimitsService } from '../../config/demo-limits.service';
+import { LanguageService } from '../../core/service/language.service';
 
 
 
@@ -101,16 +102,16 @@ export class DialogformSendComponent implements OnInit {
   readonly trailingDisplayedColumns = ['Reenvio'];
 
   readonly estadoSummaryCards = [
-    { key: 'Contestada', label: 'Contestadas' },
-    { key: 'Enviado', label: 'Enviadas' },
-    { key: 'Iniciada', label: 'Iniciadas' },
-    { key: 'Creado', label: 'Creadas' }
+    { key: 'Contestada', labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.SUMMARY_ANSWERED' },
+    { key: 'Enviado', labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.SUMMARY_SENT' },
+    { key: 'Iniciada', labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.SUMMARY_STARTED' },
+    { key: 'Creado', labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.SUMMARY_CREATED' }
   ];
 
   readonly tipoEnvioFilterOptions = [
-    { value: 1, label: 'Correo' },
-    { value: 2, label: 'Whatsapp' },
-    { value: 3, label: 'Correo & Whatsapp' }
+    { value: 1, labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.EMAIL_CHANNEL' },
+    { value: 2, labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.WHATSAPP_CHANNEL' },
+    { value: 3, labelKey: 'MENUITEMS.TOUR.SEND_CLIMATE.EMAIL_WHATSAPP_CHANNEL' }
   ];
 
   readonly baseEstadoFilterOptions = [
@@ -161,6 +162,7 @@ export class DialogformSendComponent implements OnInit {
 
   constructor(
     private joyrideService: JoyrideService,
+    private languageService: LanguageService,
     private translate: TranslateService,
     private fb: UntypedFormBuilder,
     public dialog: MatDialog,
@@ -203,6 +205,11 @@ export class DialogformSendComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+    const activeLanguage = localStorage.getItem('lang') || this.translate.currentLang || 'en';
+    this.translate.use(activeLanguage);
+    this.languageService.getLanguageChangeSubject().subscribe((lang) => {
+      this.translate.use(lang);
+    });
 
     this.obtenerEncuestasEmpleados();
 
@@ -231,14 +238,14 @@ export class DialogformSendComponent implements OnInit {
 
   crearEncuestas(): void{
     Swal.fire({
-      title: 'Crear Encuestas',
-      text: 'Esto creará las encuestas por empleados de la organización que estén activos.',
+      title: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_DIALOG_TITLE'),
+      text: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_DIALOG_TEXT'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',       
       cancelButtonColor: '#3085d6',     
-      confirmButtonText: 'Sí, crear',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_CONFIRM'),
+      cancelButtonText: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_CANCEL')
     }).then((result) => {
       if (result.isConfirmed) {
         this.loading = true;
@@ -247,8 +254,8 @@ export class DialogformSendComponent implements OnInit {
 
           if(resulx.data.message === 'Envío de encuestas creado correctamente'){
             Swal.fire({
-              title: 'Realizado',
-              text: 'Encuestas creadas correctamente',
+              title: this.sendText('SUCCESS_TITLE'),
+              text: this.sendText('ASSIGN_SUCCESS'),
               icon: 'success',
             });
 
@@ -261,7 +268,7 @@ export class DialogformSendComponent implements OnInit {
     
         }).catch((err)=>{
           Swal.fire({
-              title: 'Ocurrió un error',
+              title: this.sendText('ERROR_TITLE'),
               text: err,
               icon: 'error',
             });
@@ -289,29 +296,29 @@ export class DialogformSendComponent implements OnInit {
       const totalPreguntas = this.obtenerTotalPreguntasDesdeRespuesta(resultadopreguntas);
 
       if (!resultadopreguntas?.data) {
-        await Swal.fire('Error', 'No fue posible obtener las preguntas para este clima.', 'error');
+        await Swal.fire(this.sendText('ERROR'), this.sendText('QUESTIONS_UNAVAILABLE'), 'error');
         return;
       }
 
       if (totalPreguntas <= 0) {
-        await Swal.fire('Error', 'La encuesta no tiene preguntas aun. Por favor ingrese preguntas antes de enviar a los empleados.', 'error');
+        await Swal.fire(this.sendText('ERROR'), this.sendText('NO_QUESTIONS'), 'error');
         return;
       }
     } catch (err: any) {
       console.error(err);
-      await Swal.fire('Algo anda mal', 'Ocurrió un error al obtener las preguntas del clima. ' + err, 'error');
+      await Swal.fire(this.sendText('SOMETHING_WRONG_TITLE'), this.sendText('QUESTIONS_ERROR', { error: err }), 'error');
       return;
     }
 
     const confirmado = await Swal.fire({
-      title: 'Enviar Encuestas',
-      text: 'Esto enviará las encuestas pendientes de envío a todos los empleados activos. ¿Desea proceder?',
+      title: this.sendText('SEND_ALL_TITLE'),
+      text: this.sendText('SEND_ALL_TEXT'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: 'green',
       cancelButtonColor: 'gray',
-      confirmButtonText: 'Sí, enviar todo',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.sendText('SEND_ALL_CONFIRM'),
+      cancelButtonText: this.sendText('ASSIGN_CANCEL')
     }).then((r) => r.isConfirmed);
 
     if (!confirmado) return;
@@ -469,9 +476,9 @@ export class DialogformSendComponent implements OnInit {
 
       // Resumen final
       const total = okCount + errCount;
-      const title = errCount === 0 ? 'Proceso exitoso' :
-                    okCount === 0 ? 'Sin envíos exitosos' :
-                    'Proceso parcialmente exitoso';
+      const title = errCount === 0 ? this.sendText('PROCESS_SUCCESS') :
+                    okCount === 0 ? this.sendText('PROCESS_WITHOUT_SUCCESS') :
+                    this.sendText('PROCESS_PARTIAL');
       const icon  = errCount === 0 ? 'success' :
                     okCount === 0 ? 'error'   : 'warning';
 
@@ -480,9 +487,9 @@ export class DialogformSendComponent implements OnInit {
         title,
         html: `
           <div style="text-align:left">
-            <div><strong>Total procesados:</strong> ${total}</div>
-            <div style="color:#16a34a"><strong>Correctos:</strong> ${okCount}</div>
-            <div style="color:#dc2626"><strong>Errores:</strong> ${errCount}</div>
+            <div><strong>${this.sendText('PROCESSED_TOTAL')}:</strong> ${total}</div>
+            <div style="color:#16a34a"><strong>${this.sendText('SUCCESSFUL_TOTAL')}:</strong> ${okCount}</div>
+            <div style="color:#dc2626"><strong>${this.sendText('ERROR_TOTAL')}:</strong> ${errCount}</div>
           </div>
         `
       });
@@ -492,7 +499,7 @@ export class DialogformSendComponent implements OnInit {
 
     } catch (err: any) {
       console.error(err);
-      await Swal.fire('Error', String(err), 'error');
+      await Swal.fire(this.sendText('ERROR'), String(err), 'error');
     } finally {
       this.loading = false;
       this.obtenerEncuestasEmpleados();
@@ -511,31 +518,31 @@ export class DialogformSendComponent implements OnInit {
       const totalPreguntas = this.obtenerTotalPreguntasDesdeRespuesta(resultadopreguntas);
 
       if (!resultadopreguntas?.data) {
-        await Swal.fire('Error', 'No fue posible obtener las preguntas para este clima.', 'error');
+        await Swal.fire(this.sendText('ERROR'), this.sendText('QUESTIONS_UNAVAILABLE'), 'error');
         return;
       }
 
       if (totalPreguntas <= 0) {
-        await Swal.fire('Error', 'La encuesta no tiene preguntas aun. Por favor ingrese preguntas antes de enviar a los empleados.', 'error');
+        await Swal.fire(this.sendText('ERROR'), this.sendText('NO_QUESTIONS'), 'error');
         return;
       }
 
     } 
     catch (err: any) {
       console.error(err);
-      await Swal.fire('Algo anda mal', 'Ocurrió un error al obtener las preguntas del clima. ' + err, 'error');
+      await Swal.fire(this.sendText('SOMETHING_WRONG_TITLE'), this.sendText('QUESTIONS_ERROR', { error: err }), 'error');
       return;
     }
 
     const confirmado = await Swal.fire({
-      title: 'Enviar Encuestas',
-      text: 'Esto enviará las encuestas a los empleados que ya se les envió encuesta pero aún no han llenado la encuesta. ¿Desea proceder?',
+      title: this.sendText('SEND_INCOMPLETE_TITLE'),
+      text: this.sendText('SEND_INCOMPLETE_TEXT'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: 'green',
       cancelButtonColor: 'gray',
-      confirmButtonText: 'Sí, enviar a todos los que no han completado la encuesta',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.sendText('SEND_INCOMPLETE_CONFIRM'),
+      cancelButtonText: this.sendText('ASSIGN_CANCEL')
     }).then((r) => r.isConfirmed);
 
     if (!confirmado) return;
@@ -694,9 +701,9 @@ export class DialogformSendComponent implements OnInit {
 
       // Resumen final
       const total = okCount + errCount;
-      const title = errCount === 0 ? 'Proceso exitoso' :
-                    okCount === 0 ? 'Sin envíos exitosos' :
-                    'Proceso parcialmente exitoso';
+      const title = errCount === 0 ? this.sendText('PROCESS_SUCCESS') :
+                    okCount === 0 ? this.sendText('PROCESS_WITHOUT_SUCCESS') :
+                    this.sendText('PROCESS_PARTIAL');
       const icon  = errCount === 0 ? 'success' :
                     okCount === 0 ? 'error'   : 'warning';
 
@@ -705,9 +712,9 @@ export class DialogformSendComponent implements OnInit {
         title,
         html: `
           <div style="text-align:left">
-            <div><strong>Total procesados:</strong> ${total}</div>
-            <div style="color:#16a34a"><strong>Correctos:</strong> ${okCount}</div>
-            <div style="color:#dc2626"><strong>Errores:</strong> ${errCount}</div>
+            <div><strong>${this.sendText('PROCESSED_TOTAL')}:</strong> ${total}</div>
+            <div style="color:#16a34a"><strong>${this.sendText('SUCCESSFUL_TOTAL')}:</strong> ${okCount}</div>
+            <div style="color:#dc2626"><strong>${this.sendText('ERROR_TOTAL')}:</strong> ${errCount}</div>
           </div>
         `
       });
@@ -717,7 +724,7 @@ export class DialogformSendComponent implements OnInit {
 
     } catch (err: any) {
       console.error(err);
-      await Swal.fire('Error', String(err), 'error');
+      await Swal.fire(this.sendText('ERROR'), String(err), 'error');
     } finally {
       this.loading = false;
       this.obtenerEncuestasEmpleados();
@@ -830,14 +837,14 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
    //console.log(item);
     
     Swal.fire({
-      title: 'Asignar encuesta individual',
-      html: 'Esta acción asignará la encuesta al empleado <strong>' + item.Empleado + '</strong>',
+      title: this.sendText('ASSIGN_INDIVIDUAL_TITLE'),
+      html: this.sendText('ASSIGN_INDIVIDUAL_TEXT', { employee: item.Empleado }),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: 'green',
       cancelButtonColor: 'gray',
-      confirmButtonText: 'Sí, crear encuesta',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.sendText('ASSIGN_INDIVIDUAL_CONFIRM'),
+      cancelButtonText: this.sendText('ASSIGN_CANCEL')
 
     }).then((result) => {
       if (result.isConfirmed) {
@@ -856,8 +863,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           if(resulx.data.message === 'Envío individual preparado correctamente'){
             console.log('resulx:: ', resulx.data.message);
             Swal.fire({
-              title: 'Realizado',
-              text: 'Encuestas creadas correctamente',
+              title: this.sendText('SUCCESS_TITLE'),
+              text: this.sendText('ASSIGN_SUCCESS'),
               icon: 'success',
             });
 
@@ -869,7 +876,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
     
         }).catch((err)=>{
           Swal.fire({
-              title: 'Ocurrió un error',
+              title: this.sendText('ERROR_TITLE'),
               text: err,
               icon: 'error',
             });
@@ -918,14 +925,14 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           if(item.TipoEnvioEncuesta == 1) {
 
             Swal.fire({
-              title: 'Enviar encuesta individual por correo',
-              html: 'Esta acción enviará la encuesta por correo al empleado <strong>' + item.Empleado + '</strong>',
+              title: this.sendText('SEND_EMAIL_TITLE'),
+              html: this.sendText('SEND_EMAIL_TEXT', { employee: item.Empleado }),
               icon: 'warning',
               showCancelButton: true,
               confirmButtonColor: 'green',
               cancelButtonColor: 'gray',
-              confirmButtonText: 'Sí, enviar correo',
-              cancelButtonText: 'Cancelar'
+              confirmButtonText: this.sendText('SEND_EMAIL_CONFIRM'),
+              cancelButtonText: this.sendText('ASSIGN_CANCEL')
 
             }).then((result) => {
               
@@ -999,7 +1006,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                         this.refreshFilteredTable();
           
                         Swal.fire({
-                          title: 'Realizado',
+                          title: this.sendText('SUCCESS_TITLE'),
                           text: resulten.data.message,
                           icon: 'success',
                         });
@@ -1007,8 +1014,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                       }).catch((err)=>{
                         console.error(err);
                         Swal.fire({
-                          title: 'Algo anda mal..',
-                          text: 'No fue posible enviar el correo. ERROR: ' + err,
+                          title: this.sendText('SOMETHING_WRONG_TITLE'),
+                          text: this.sendText('EMAIL_SEND_ERROR', { error: err }),
                           icon: 'error',
                         });
                       })
@@ -1016,8 +1023,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                       
                     } else {
                       Swal.fire({
-                        title: 'Algo anda mal..',
-                        text: 'No fue posible enviar el correo. Mensaje: ' + resulten.data.message,
+                        title: this.sendText('SOMETHING_WRONG_TITLE'),
+                        text: this.sendText('EMAIL_SEND_MESSAGE', { message: resulten.data.message }),
                         icon: 'error',
                       });
                     }
@@ -1025,7 +1032,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                     this.loading = false;
                   }).catch((err)=>{
                     Swal.fire({
-                    title: 'Ocurrió un error',
+                    title: this.sendText('ERROR_TITLE'),
                     text: err,
                     icon: 'error',
                   });
@@ -1035,7 +1042,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                   
                 }).catch((err) =>{
                   Swal.fire({
-                    title: 'Error',
+                    title: this.sendText('ERROR'),
                     text: err,
                     icon: 'error',
                   });
@@ -1050,14 +1057,14 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           else if(item.TipoEnvioEncuesta == 2){ //WHATSAPP
 
             Swal.fire({
-              title: 'Enviar encuesta individual por Whatsapp',
-              html: 'Esta acción enviará la encuesta por Whatsap al empleado <strong>' + item.Empleado + '</strong>',
+              title: this.sendText('SEND_WHATSAPP_TITLE'),
+              html: this.sendText('SEND_WHATSAPP_TEXT', { employee: item.Empleado }),
               icon: 'warning',
               showCancelButton: true,
               confirmButtonColor: 'green',
               cancelButtonColor: 'gray',
-              confirmButtonText: 'Sí, enviar Whatsapp',
-              cancelButtonText: 'Cancelar'
+              confirmButtonText: this.sendText('SEND_WHATSAPP_CONFIRM'),
+              cancelButtonText: this.sendText('ASSIGN_CANCEL')
             }).then((result) => {
               if (result.isConfirmed) {
                 this.loading = true;
@@ -1100,16 +1107,16 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                     this.loading = false;
 
                     Swal.fire({
-                      title: 'Realizado',
-                      text: 'Se envió el mensaje exitósamente.',
+                      title: this.sendText('SUCCESS_TITLE'),
+                      text: this.sendText('MESSAGE_SENT_SUCCESS'),
                       icon: 'success',
                     });
                   } else {
                     item.RespuestaEnvio = 'Error al enviar el mensaje';
                     this.loading = false;
                     Swal.fire({
-                      title: 'Algo anda mal..',
-                      text: 'No fue posible enviar el mensaje. Detalle: ' + (waResult.detalle || waResult.status || 'sin detalle'),
+                      title: this.sendText('SOMETHING_WRONG_TITLE'),
+                      text: this.sendText('MESSAGE_SEND_ERROR', { detail: waResult.detalle || waResult.status || this.sendText('NO_DETAIL') }),
                       icon: 'error',
                     });
                   }
@@ -1117,7 +1124,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                 }).catch((err)=>{
                   console.error(err);
                   Swal.fire({
-                    title: 'Ocurrió un error',
+                    title: this.sendText('ERROR_TITLE'),
                     text: err,
                     icon: 'error',
                   });
@@ -1137,14 +1144,14 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           // --PROBAR ESTA FUNCIONALIDAD Y REMOVER ESTE COMENTARIO
 
             Swal.fire({
-              title: 'Enviar encuesta por Correo y Whatsapp',
-              html: 'Esta acción enviará la encuesta por <strong>correo</strong> y <strong>WhatsApp</strong> al empleado <strong>' + item.Empleado + '</strong>',
+              title: this.sendText('SEND_BOTH_TITLE'),
+              html: this.sendText('SEND_BOTH_TEXT', { employee: item.Empleado }),
               icon: 'warning',
               showCancelButton: true,
               confirmButtonColor: 'green',
               cancelButtonColor: 'gray',
-              confirmButtonText: 'Sí, enviar ambos',
-              cancelButtonText: 'Cancelar'
+              confirmButtonText: this.sendText('SEND_BOTH_CONFIRM'),
+              cancelButtonText: this.sendText('ASSIGN_CANCEL')
             }).then(async (result) => {
               if (!result.isConfirmed) return;
 
@@ -1259,22 +1266,26 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                 // =========================
                 if (correoOk && waOk) {
                   Swal.fire({
-                    title: 'Realizado',
-                    text: 'Se envió la encuesta por correo y WhatsApp exitosamente.',
+                    title: this.sendText('SUCCESS_TITLE'),
+                    text: this.sendText('BOTH_SENT_SUCCESS'),
                     icon: 'success',
                   });
                 } else if (correoOk || waOk) {
                   Swal.fire({
-                    title: 'Envío parcial',
+                    title: this.sendText('PARTIAL_SEND_TITLE'),
                     html:
-                      `${correoOk ? '✅ Correo enviado.<br>' : '❌ Correo falló: ' + (correoMsg || 'sin detalle') + '<br>'}` +
-                      `${waOk ? '✅ WhatsApp enviado.' : '❌ WhatsApp falló: ' + (waMsg || 'sin detalle')}`,
+                      `${correoOk
+                        ? this.sendText('EMAIL_SENT_HTML')
+                        : this.sendText('EMAIL_FAILED_HTML', { detail: correoMsg || this.sendText('NO_DETAIL') })}` +
+                      `${waOk
+                        ? this.sendText('WHATSAPP_SENT_HTML')
+                        : this.sendText('WHATSAPP_FAILED_HTML', { detail: waMsg || this.sendText('NO_DETAIL') })}`,
                     icon: 'warning',
                   });
                 } else {
                   Swal.fire({
-                    title: 'Algo anda mal..',
-                    text: 'No fue posible enviar por correo ni por WhatsApp.',
+                    title: this.sendText('SOMETHING_WRONG_TITLE'),
+                    text: this.sendText('BOTH_SEND_ERROR'),
                     icon: 'error',
                   });
                 }
@@ -1282,7 +1293,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
               } catch (err) {
                 console.error(err);
                 Swal.fire({
-                  title: 'Ocurrió un error',
+                  title: this.sendText('ERROR_TITLE'),
                   text: String(err),
                   icon: 'error',
                 });
@@ -1295,15 +1306,15 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
         }
          else {
-          Swal.fire('Error', 'La encuesta no tiene preguntas aun. Por favor ingrese preguntas antes de enviar a los empleados.', 'error');
+          Swal.fire(this.sendText('ERROR'), this.sendText('NO_QUESTIONS'), 'error');
         }
       } 
       else {
-        Swal.fire('Error', 'No fue posible obtener las preguntas para este clima.', 'error');
+        Swal.fire(this.sendText('ERROR'), this.sendText('QUESTIONS_UNAVAILABLE'), 'error');
       }
 
     }).catch((err:any)=>{
-      Swal.fire('Algo anda mal', 'Ocurrió un error al obtener las preguntas del clima. ' + err , 'error');
+      Swal.fire(this.sendText('SOMETHING_WRONG_TITLE'), this.sendText('QUESTIONS_ERROR', { error: err }), 'error');
     });
 
 
@@ -1381,14 +1392,38 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
   getTipoEnvioTexto(tipo: number): string {
     switch (tipo) {
       case 1:
-        return 'Correo';
+        return this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.EMAIL_CHANNEL');
       case 2:
-        return 'Whatsapp';
+        return this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.WHATSAPP_CHANNEL');
       case 3:
-        return 'Correo & Whatsapp';
+        return this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.EMAIL_WHATSAPP_CHANNEL');
       default:
-        return 'Desconocido';
+        return this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.UNKNOWN');
     }
+  }
+
+  private sendText(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(`MENUITEMS.TOUR.SEND_CLIMATE.${key}`, params);
+  }
+
+  getEstadoTexto(estado: string | null | undefined): string {
+    const normalized = this.normalizeEstadoEncuesta(estado);
+    const statusKeyByValue: Record<string, string> = {
+      'contestada': 'STATUS_ANSWERED',
+      'completada': 'STATUS_COMPLETED',
+      'enviado': 'STATUS_SENT',
+      're enviado': 'STATUS_RESENT',
+      'reenviado': 'STATUS_RESENT',
+      'iniciada': 'STATUS_STARTED',
+      'creado': 'STATUS_CREATED',
+      'no enviado': 'STATUS_NOT_SENT',
+      'sin encuesta': 'STATUS_NO_SURVEY',
+      'no procesado': 'STATUS_NOT_PROCESSED'
+    };
+    const key = statusKeyByValue[normalized.toLowerCase()];
+    return key
+      ? this.translate.instant(`MENUITEMS.TOUR.SEND_CLIMATE.${key}`)
+      : normalized;
   }
 
   setTipoEnvioFilter(tipo: number | 'ALL'): void {
@@ -1404,8 +1439,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
   descargarExcel(): void {
     if (!this.filteredTableDataSource.length) {
       Swal.fire({
-        title: 'Sin datos para exportar',
-        text: 'No hay registros visibles en la tabla para descargar.',
+        title: this.sendText('NO_EXPORT_DATA_TITLE'),
+        text: this.sendText('NO_EXPORT_DATA_TEXT'),
         icon: 'info',
       });
       return;
@@ -1530,8 +1565,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
   private async showDemoClimateResendBlocked(): Promise<void> {
     await Swal.fire({
-      title: 'Reenvío no disponible',
-      text: 'La encuesta ya fue enviada. El modo demo no permite volver a enviarla.',
+      title: this.sendText('RESEND_UNAVAILABLE_TITLE'),
+      text: this.sendText('RESEND_UNAVAILABLE_TEXT'),
       icon: 'info',
     });
   }

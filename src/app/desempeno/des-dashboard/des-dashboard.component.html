@@ -860,6 +860,119 @@
             </section>
             <!-- ────────────────────────────────────────────────────────── -->
 
+            <!-- ─── Distribución ABC ────────────────────────────────────── -->
+            <section *ngIf="selectedResultsTab === 'abc-distribution'" class="results-page">
+              <div class="results-title">
+                <h2>Distribución ABC</h2>
+                <p>
+                  Segmenta a los empleados por <strong>desempeño general</strong>,
+                  <strong>resultados de objetivos</strong> y cumplimiento de la exigencia definida en el modelo.
+                </p>
+              </div>
+
+              <div class="abc-summary-strip">
+                <article class="abc-summary-tile abc-a">
+                  <span>Grupo A</span>
+                  <strong>{{ abcDistributionSummary.a }}</strong>
+                  <small>Desempeño destacado</small>
+                </article>
+                <article class="abc-summary-tile abc-b">
+                  <span>Grupo B</span>
+                  <strong>{{ abcDistributionSummary.b }}</strong>
+                  <small>Contribución consistente</small>
+                </article>
+                <article class="abc-summary-tile abc-c">
+                  <span>Grupo C</span>
+                  <strong>{{ abcDistributionSummary.c }}</strong>
+                  <small>Requiere acompañamiento</small>
+                </article>
+                <article class="abc-summary-tile abc-total">
+                  <span>Total clasificado</span>
+                  <strong>{{ abcDistributionSummary.total }}</strong>
+                  <small>Con resultado disponible</small>
+                </article>
+              </div>
+
+              <div class="abc-distribution-bar" [attr.aria-label]="'Distribución ABC de ' + abcDistributionSummary.total + ' empleados'">
+                <span
+                  *ngFor="let group of abcDistributionGroups"
+                  [ngClass]="'abc-' + group.category.toLowerCase()"
+                  [style.width.%]="group.percentage"
+                  [matTooltip]="group.title + ': ' + group.employees.length + ' empleados (' + formatPercent(group.percentage) + ')'"
+                ></span>
+              </div>
+
+              <div class="abc-group-grid" *ngIf="abcDistributionSummary.total > 0; else abcEmptyState">
+                <article
+                  *ngFor="let group of abcDistributionGroups"
+                  class="abc-group"
+                  [ngClass]="'abc-' + group.category.toLowerCase()"
+                >
+                  <div class="abc-group-header" role="group" [attr.aria-label]="group.title">
+                    <div class="abc-category-icon"><mat-icon>{{ group.icon }}</mat-icon></div>
+                    <div>
+                      <span>{{ group.subtitle }}</span>
+                      <h3>{{ group.title }}</h3>
+                    </div>
+                    <div class="abc-group-total">
+                      <strong>{{ group.employees.length }}</strong>
+                      <small>{{ formatPercent(group.percentage) }}</small>
+                    </div>
+                  </div>
+
+                  <p class="abc-group-description">{{ group.description }}</p>
+                  <p class="abc-group-action"><mat-icon>arrow_forward</mat-icon>{{ group.action }}</p>
+
+                  <div class="abc-employee-list">
+                    <article *ngFor="let employee of group.employees" class="abc-employee-card">
+                      <div class="abc-employee-avatar">{{ employee.name.charAt(0) }}</div>
+                      <div class="abc-employee-main">
+                        <strong>{{ employee.name }}</strong>
+                        <span>{{ employee.position }}</span>
+                      </div>
+                      <div class="abc-employee-metrics">
+                        <span>
+                          <small>Desempeño</small>
+                          <strong>{{ formatPercent(employee.performancePercent) }}</strong>
+                        </span>
+                        <span>
+                          <small>Objetivos</small>
+                          <strong>{{ formatPercent(employee.objectivePercent) }}</strong>
+                        </span>
+                        <span>
+                          <small>Exigencia</small>
+                          <strong>{{ getAbcTargetAttainmentLabel(employee) }}</strong>
+                        </span>
+                      </div>
+                    </article>
+
+                    <div *ngIf="group.employees.length === 0" class="abc-empty-group">
+                      No hay empleados en esta categoría.
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <ng-template #abcEmptyState>
+                <div class="empty-inline">
+                  <mat-icon>leaderboard</mat-icon>
+                  <strong>Sin resultados para clasificar</strong>
+                  <span>Cuando existan resultados por empleado, aparecerán en la distribución ABC.</span>
+                </div>
+              </ng-template>
+
+              <p class="abc-note">
+                <mat-icon>info</mat-icon>
+                <span>
+                  Esta lectura no fuerza una proporción predefinida de empleados. Grupo A: desempeño ≥ 85%,
+                  objetivos ≥ 80% y exigencia cumplida. Grupo C: desempeño u objetivos &lt; 60%, o exigencia
+                  cumplida por debajo de 80%. Los demás casos se clasifican como Grupo B. Úsala como insumo para
+                  calibración y conversaciones de desarrollo, no como sustituto del criterio de liderazgo.
+                </span>
+              </p>
+            </section>
+            <!-- ────────────────────────────────────────────────────────── -->
+
           </main>
         </section>
       </ng-container>

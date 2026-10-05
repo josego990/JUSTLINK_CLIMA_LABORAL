@@ -70,8 +70,9 @@ interface DashboardModelOption {
 }
 
 type DrilldownMode = 'puesto' | 'escenario';
-type DashboardResultsTab = 'summary' | 'employees' | 'dimensions' | 'gaps' | 'findings' | 'nine-box' | 'models';
+type DashboardResultsTab = 'summary' | 'employees' | 'dimensions' | 'gaps' | 'findings' | 'nine-box' | 'abc-distribution' | 'models';
 type DetailResultTone = 'above' | 'expected' | 'below' | 'neutral';
+type AbcCategory = 'A' | 'B' | 'C';
 
 interface DashboardResultsTabOption {
   id: DashboardResultsTab;
@@ -135,6 +136,30 @@ interface ScenarioColumn {
   label: string;
 }
 
+interface AbcDistributionEmployee {
+  employee: any;
+  category: AbcCategory;
+  name: string;
+  position: string;
+  performanceScore: number;
+  objectiveScore: number;
+  targetScore: number | null;
+  performancePercent: number;
+  objectivePercent: number;
+  targetAttainmentPercent: number | null;
+}
+
+interface AbcDistributionGroup {
+  category: AbcCategory;
+  title: string;
+  subtitle: string;
+  description: string;
+  action: string;
+  icon: string;
+  employees: AbcDistributionEmployee[];
+  percentage: number;
+}
+
 @Component({
   selector: 'app-des-dashboard',
   standalone: true,
@@ -181,6 +206,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     { id: 'gaps', label: 'Brechas & criterios', icon: 'rule' },
     { id: 'findings', label: 'Hallazgos & pasos', icon: 'tips_and_updates' },
     { id: 'nine-box', label: 'Nine Box', icon: 'grid_view' },
+    { id: 'abc-distribution', label: 'Distribución ABC', icon: 'leaderboard' },
   ];
   public dashboardData: DesDashboardData | null = null;
   public groupedDashboardSource: any | null = null;
@@ -203,6 +229,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
   private aiActionPlanLoadSequence = 0;
   private aiActionPlanLoadedKey: string | null = null;
   private groupedDashboardPayload: any | null = null;
+  private abcDistributionGroupsCache: AbcDistributionGroup[] | null = null;
   private selectedOrganizationSubscription?: Subscription;
 
   @HostBinding('class.dark-mode')
@@ -603,6 +630,149 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     if (value < 3) return 0;
     if (value < 4) return 1;
     return 2;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Distribución ABC ─────────────────────────────────────────────────────────
+
+  get abcDistributionEmployees(): AbcDistributionEmployee[] {
+    return this.abcDistributionGroups.flatMap((group) => group.employees);
+  }
+
+  get abcDistributionGroups(): AbcDistributionGroup[] {
+    if (this.abcDistributionGroupsCache) {
+      return this.abcDistributionGroupsCache;
+    }
+
+    const employees = this.employeeGroupRows
+      .map((employee) => this.buildAbcDistributionEmployee(employee))
+      .filter((employee): employee is AbcDistributionEmployee => employee !== null)
+      .sort((left, right) => {
+        const categoryOrder: Record<AbcCategory, number> = { A: 0, B: 1, C: 2 };
+        const byCategory = categoryOrder[left.category] - categoryOrder[right.category];
+        return byCategory || right.performancePercent - left.performancePercent || left.name.localeCompare(right.name);
+      });
+    const total = employees.length;
+    const definitions: Array<Omit<AbcDistributionGroup, 'employees' | 'percentage'>> = [
+      {
+        category: 'A',
+        title: 'A · Desempeño destacado',
+        subtitle: 'Impulsores de resultados',
+        description: 'Superan el estándar de desempeño y cumplen sus objetivos con consistencia.',
+        action: 'Reconocer, retener y ampliar retos o responsabilidades.',
+        icon: 'star',
+      },
+      {
+        category: 'B',
+        title: 'B · Contribución consistente',
+        subtitle: 'Base sólida del equipo',
+        description: 'Cumplen de forma confiable y sostienen los resultados esperados.',
+        action: 'Consolidar fortalezas y acordar oportunidades concretas de desarrollo.',
+        icon: 'settings',
+      },
+      {
+        category: 'C',
+        title: 'C · Requiere acompañamiento',
+        subtitle: 'Oportunidad de mejora',
+        description: 'Presentan una alerta en desempeño, objetivos o cumplimiento de exigencia.',
+        action: 'Priorizar conversación, apoyo, seguimiento y un plan de mejora medible.',
+        icon: 'support_agent',
+      },
+    ];
+
+    this.abcDistributionGroupsCache = definitions.map((definition) => {
+      const groupEmployees = employees.filter((employee) => employee.category === definition.category);
+      return {
+        ...definition,
+        employees: groupEmployees,
+        percentage: total ? (groupEmployees.length / total) * 100 : 0,
+      };
+    });
+
+    return this.abcDistributionGroupsCache;
+  }
+
+  get abcDistributionSummary(): { total: number; a: number; b: number; c: number } {
+    const groups = this.abcDistributionGroups;
+    return {
+      total: groups.reduce((total, group) => total + group.employees.length, 0),
+      a: groups.find((group) => group.category === 'A')?.employees.length ?? 0,
+      b: groups.find((group) => group.category === 'B')?.employees.length ?? 0,
+      c: groups.find((group) => group.category === 'C')?.employees.length ?? 0,
+    };
+  }
+
+  private buildAbcDistributionEmployee(employee: any): AbcDistributionEmployee | null {
+    const performanceScore = this.getEmployeeScore(employee);
+    if (performanceScore === null) {
+      return null;
+    }
+
+    const objectiveScore = this.getEmployeeObjectiveScore(employee) ?? performanceScore;
+    const targetScore = this.getEmployeeTarget(employee);
+    const performancePercent = this.getScorePercent(performanceScore);
+    const objectivePercent = this.getScorePercent(objectiveScore);
+    const targetAttainmentPercent = targetScore && targetScore > 0
+      ? Math.max(0, Math.min(200, (objectiveScore / targetScore) * 100))
+      : null;
+
+    return {
+      employee,
+      category: this.resolveAbcCategory(performancePercent, objectivePercent, targetAttainmentPercent),
+      name: this.getEmployeeName(employee),
+      position: this.getEmployeePosition(employee),
+      performanceScore,
+      objectiveScore,
+      targetScore,
+      performancePercent,
+      objectivePercent,
+      targetAttainmentPercent,
+    };
+  }
+
+  private getEmployeeObjectiveScore(employee: any): number | null {
+    const dimensions = this.getEmployeeNineBoxDimensions(employee, false)
+      .filter((dimension) => this.isNineBoxPerformanceDimension(dimension));
+
+    return this.weightedAverageFromRows(
+      dimensions,
+      ['calificacionPromedio', 'resultadoPromedio', 'calificacion', 'resultado'],
+      ['ponderacion']
+    );
+  }
+
+  private resolveAbcCategory(
+    performancePercent: number,
+    objectivePercent: number,
+    targetAttainmentPercent: number | null,
+  ): AbcCategory {
+    const meetsTarget = targetAttainmentPercent === null || targetAttainmentPercent >= 100;
+    if (performancePercent >= 85 && objectivePercent >= 80 && meetsTarget) {
+      return 'A';
+    }
+
+    const needsSupport = performancePercent < 60 || objectivePercent < 60 ||
+      (targetAttainmentPercent !== null && targetAttainmentPercent < 80);
+    return needsSupport ? 'C' : 'B';
+  }
+
+  getAbcTargetAttainmentLabel(employee: AbcDistributionEmployee): string {
+    return employee.targetAttainmentPercent === null
+      ? 'Sin exigencia configurada'
+      : `${this.formatPercent(employee.targetAttainmentPercent)} de exigencia`;
+  }
+
+  getAbcCategoryLabel(category: AbcCategory): string {
+    return category === 'A'
+      ? 'Destacado'
+      : category === 'B'
+        ? 'Consistente'
+        : 'Acompañamiento';
+  }
+
+  private invalidateAbcDistribution(): void {
+    this.abcDistributionGroupsCache = null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1636,6 +1806,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     this.dashboardEmployees = [];
     this.modelSelectOptions = [];
     this.dashboardModels = [];
+    this.invalidateAbcDistribution();
     this.clearAiActionPlan();
     this.dashboardLoadSequence++;
     this.resetCharts();
@@ -1653,6 +1824,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
 
     if (!this.selectedOrganizationId || !this.selectedModelId) {
       this.dashboardData = null;
+      this.invalidateAbcDistribution();
       this.expandedEmployeeRowKey = null;
       this.dimensionEmployeeFilterText = '';
       this.resetCharts();
@@ -1695,6 +1867,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
 
   onPositionFilterChange(positionKey: string | null): void {
     this.selectedPositionKey = positionKey || null;
+    this.invalidateAbcDistribution();
     this.selectedBreakdownKey = this.selectedBreakdownMode === 'puesto' ? this.selectedPositionKey : null;
     this.expandedEmployeeRowKey = null;
     this.dimensionEmployeeFilterText = '';
@@ -1872,6 +2045,28 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
           calificacion: this.formatScore(this.getNumber(employee, ['calificacionPromedio', 'resultadoPromedio'])),
           exigencia: this.formatScore(this.getNumber(employee, ['nivelExigenciaPromedio'])),
           brecha: this.formatGap(this.getNumber(employee, ['brechaPromedio'])),
+        })),
+      );
+
+      addSheet(
+        'Distribucion ABC',
+        [
+          { header: 'Categoría', key: 'categoria', width: 18 },
+          { header: 'Lectura', key: 'lectura', width: 24 },
+          { header: 'Empleado', key: 'empleado', width: 34 },
+          { header: 'Puesto', key: 'puesto', width: 30 },
+          { header: 'Desempeño general', key: 'desempeno', width: 22 },
+          { header: 'Objetivos / resultados', key: 'objetivos', width: 24 },
+          { header: 'Cumplimiento de exigencia', key: 'cumplimiento', width: 28 },
+        ],
+        this.abcDistributionEmployees.map((employee) => ({
+          categoria: employee.category,
+          lectura: this.getAbcCategoryLabel(employee.category),
+          empleado: employee.name,
+          puesto: employee.position,
+          desempeno: this.formatPercent(employee.performancePercent),
+          objetivos: this.formatPercent(employee.objectivePercent),
+          cumplimiento: this.getAbcTargetAttainmentLabel(employee),
         })),
       );
 
@@ -2459,6 +2654,7 @@ export class DesDashboardComponent implements OnDestroy, OnInit {
     this.clearAiActionPlan();
     this.dashboardData = null;
     this.groupedDashboardSource = null;
+    this.invalidateAbcDistribution();
     this.selectedBreakdownKey = null;
     this.selectedPositionKey = null;
     this.selectedEmployeeId = null;

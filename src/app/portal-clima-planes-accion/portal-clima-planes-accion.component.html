@@ -1,0 +1,202 @@
+<main class="action-plan-portal">
+  <header class="portal-toolbar">
+    <div class="portal-toolbar__content">
+      <img src="assets/images/Justlink-360.png" alt="Justlink-360" class="brand-logo" />
+      <div class="portal-toolbar__label"><mat-icon>assignment_turned_in</mat-icon><span>Planes de acción</span></div>
+    </div>
+  </header>
+
+  <div class="portal-content">
+    <section class="portal-state" *ngIf="isLoading" aria-live="polite">
+      <mat-spinner diameter="38" strokeWidth="4"></mat-spinner>
+      <h1>Consultando tu plan de acción</h1>
+      <p>Estamos recuperando las actividades, responsables y avances registrados.</p>
+    </section>
+
+    <section class="portal-state portal-state--error" *ngIf="!isLoading && !responsible">
+      <mat-icon>link_off</mat-icon>
+      <h1>No pudimos abrir el plan de acción</h1>
+      <p>{{ loadError }}</p>
+      <button mat-stroked-button type="button" *ngIf="accessCode" (click)="retryLoad()">
+        <mat-icon>refresh</mat-icon>
+        Intentar de nuevo
+      </button>
+    </section>
+
+    <ng-container *ngIf="!isLoading && responsible as currentResponsible">
+    <section class="responsible-header">
+      <div class="responsible-identity">
+        <span class="responsible-avatar">{{ currentResponsible.initials }}</span>
+        <div>
+          <span class="eyebrow">Plan asignado</span>
+          <h1>{{ currentResponsible.fullName }}</h1>
+          <p>{{ currentResponsible.position }} · {{ currentResponsible.organization }}</p>
+        </div>
+      </div>
+      <div class="responsible-actions">
+        <div class="responsible-contact"><mat-icon>mail_outline</mat-icon><span>{{ currentResponsible.email }}</span></div>
+        <button
+          mat-icon-button
+          type="button"
+          class="refresh-button"
+          [disabled]="isRefreshing || isSaving || hasPendingChanges"
+          [matTooltip]="hasPendingChanges ? 'Guarda tus cambios antes de actualizar' : (isRefreshing ? 'Actualizando plan' : 'Actualizar plan')"
+          aria-label="Actualizar plan"
+          (click)="refreshPlan()">
+          <mat-spinner *ngIf="isRefreshing; else refreshIcon" diameter="20" strokeWidth="3"></mat-spinner>
+          <ng-template #refreshIcon><mat-icon>refresh</mat-icon></ng-template>
+        </button>
+      </div>
+    </section>
+
+    <section class="context-message context-message--error" *ngIf="loadError">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ loadError }} Se conserva la información de la última consulta exitosa.</span>
+    </section>
+
+    <section class="plan-overview" *ngIf="plan as currentPlan">
+      <div class="overview-copy">
+        <span class="eyebrow">Tu responsabilidad</span>
+        <h2>{{ currentPlan.factor }}</h2>
+        <p>{{ currentPlan.survey }} · {{ planContextLabel }}</p>
+      </div>
+      <div class="overview-progress">
+        <div class="progress-ring" [style.--progress]="progressFromTasks"><span>{{ progressFromTasks }}%</span></div>
+        <div><strong>{{ currentPlan.statusName }}</strong><small>{{ completedTasks }} de {{ tasks.length }} tareas completadas</small></div>
+      </div>
+      <div class="priority-chip" [attr.data-priority]="currentPlan.priority.toLowerCase()"><mat-icon>priority_high</mat-icon><span>Prioridad {{ currentPlan.priority }}</span></div>
+    </section>
+
+    <section class="plan-layout" *ngIf="plan as currentPlan">
+      <article class="plan-card action-card">
+        <div class="card-heading"><span class="heading-icon"><mat-icon>flag</mat-icon></span><div><span class="eyebrow">Acción principal</span><h2>Qué se hará</h2></div></div>
+        <p class="action-description">{{ currentPlan.action }}</p>
+        <div class="opportunity-context" *ngIf="currentPlan.criticalQuestion || currentPlan.reason">
+          <span *ngIf="currentPlan.criticalQuestion"><small>Pregunta crítica</small><strong>{{ currentPlan.criticalQuestion }}</strong></span>
+          <span *ngIf="currentPlan.reason"><small>Motivo</small><strong>{{ currentPlan.reason }}</strong></span>
+        </div>
+        <div class="plan-details">
+          <div><mat-icon>event</mat-icon><span><small>Fecha límite</small><strong>{{ currentPlan.dueDate }}</strong></span></div>
+          <div><mat-icon>repeat</mat-icon><span><small>Periodicidad</small><strong>{{ currentPlan.frequency }}</strong></span></div>
+          <div><mat-icon>analytics</mat-icon><span><small>Indicador de éxito</small><strong>{{ currentPlan.kpi }}</strong></span></div>
+        </div>
+      </article>
+
+      <article class="plan-card resource-card">
+        <div class="card-heading"><span class="heading-icon neutral"><mat-icon>inventory_2</mat-icon></span><div><span class="eyebrow">Recursos</span><h2>Con qué se realizará</h2></div></div>
+        <p>{{ currentPlan.resources }}</p>
+        <div class="support-details">
+          <div><small>Patrocinador</small><strong>{{ currentPlan.sponsor }}</strong></div>
+          <div><small>Plazo definido</small><strong>{{ currentPlan.term }}</strong></div>
+          <div><small>Validación esperada</small><strong>{{ currentPlan.validation }}</strong></div>
+        </div>
+        <div class="assigned-people" *ngIf="planResponsibles.length">
+          <span class="assigned-people__label"><mat-icon>groups</mat-icon>Responsables del plan</span>
+          <span class="person-chip" *ngFor="let item of planResponsibles">{{ item.fullName }}</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="tasks-section">
+      <div class="section-heading"><div><span class="eyebrow">Seguimiento</span><h2>Actividades del plan</h2><p>Marca las actividades realizadas y registra la evidencia correspondiente.</p></div><span class="task-count">{{ completedTasks }}/{{ tasks.length }}</span></div>
+      <mat-progress-bar mode="determinate" [value]="progressFromTasks"></mat-progress-bar>
+      <div class="task-list" *ngIf="tasks.length; else emptyTasks">
+        <article class="task-row" *ngFor="let task of tasks; trackBy: trackByTaskId" [class.completed]="task.completed">
+          <mat-checkbox
+            class="task-status"
+            color="primary"
+            [checked]="task.completed"
+            [disabled]="!canEdit || !task.canEdit"
+            [attr.aria-label]="(task.completed ? 'Marcar pendiente: ' : 'Marcar completada: ') + task.title"
+            (change)="task.completed = $event.checked; markTaskChanged(task)">
+          </mat-checkbox>
+          <div class="task-content">
+            <div class="task-main">
+              <div class="task-copy">
+                <strong>{{ task.title }}</strong>
+                <span><mat-icon>person_outline</mat-icon>{{ task.owner }}</span>
+                <span *ngIf="task.deliverable"><mat-icon>inventory_2</mat-icon>{{ task.deliverable }}</span>
+              </div>
+              <div class="task-date"><mat-icon>calendar_today</mat-icon><span>{{ task.dueDate }}</span></div>
+            </div>
+            <mat-form-field appearance="outline" class="evidence-field" *ngIf="canEdit && task.canEdit; else evidenceReadonly">
+              <mat-label>Evidencia o nota de la actividad</mat-label>
+              <textarea
+                matInput
+                rows="2"
+                maxlength="2000"
+                [(ngModel)]="task.evidence"
+                (ngModelChange)="markTaskChanged(task)"
+                placeholder="Describe el avance, resultado o ubicación de la evidencia"></textarea>
+              <mat-hint align="end">{{ task.evidence.length }}/2000</mat-hint>
+            </mat-form-field>
+            <ng-template #evidenceReadonly>
+              <div class="evidence-readonly" *ngIf="task.evidence"><small>Evidencia</small><span>{{ task.evidence }}</span></div>
+            </ng-template>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #emptyTasks>
+        <div class="empty-tasks"><mat-icon>checklist</mat-icon><span>Este plan todavía no tiene actividades asignadas.</span></div>
+      </ng-template>
+
+      <div class="progress-editor" *ngIf="canEdit">
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>Comentario de seguimiento (opcional)</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            maxlength="2000"
+            [(ngModel)]="followUpComment"
+            (ngModelChange)="clearSaveFeedback()"
+            placeholder="Resume avances, bloqueos o próximos pasos"></textarea>
+          <mat-hint align="end">{{ followUpComment.length }}/2000</mat-hint>
+        </mat-form-field>
+        <div class="portal-turnstile">
+          <app-turnstile
+            action="clima-action-plan-progress"
+            theme="light"
+            (tokenChange)="onTurnstileTokenChange($event)">
+          </app-turnstile>
+        </div>
+        <div class="save-actions">
+          <span class="unsaved-label" *ngIf="hasPendingChanges"><mat-icon>edit</mat-icon>Cambios pendientes de guardar</span>
+          <span class="security-label" *ngIf="hasPendingChanges && !turnstileToken">
+            <mat-icon>verified_user</mat-icon>
+            Verificación requerida para guardar
+          </span>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!hasPendingChanges || isSaving || !turnstileToken"
+            (click)="saveProgress()">
+            <mat-spinner *ngIf="isSaving; else saveIcon" diameter="19" strokeWidth="3"></mat-spinner>
+            <ng-template #saveIcon><mat-icon>save</mat-icon></ng-template>
+            <span>{{ isSaving ? 'Guardando...' : 'Guardar progreso' }}</span>
+          </button>
+        </div>
+        <div class="save-feedback save-feedback--success" *ngIf="saveMessage" role="status"><mat-icon>check_circle</mat-icon><span>{{ saveMessage }}</span></div>
+        <div class="save-feedback save-feedback--error" *ngIf="saveError" role="alert"><mat-icon>error_outline</mat-icon><span>{{ saveError }}</span></div>
+      </div>
+    </section>
+
+    <section class="history-section" *ngIf="followUps.length">
+      <div class="section-heading">
+        <div><span class="eyebrow">Historial</span><h2>Seguimientos registrados</h2><p>Consulta las actualizaciones compartidas por los responsables.</p></div>
+        <span class="history-count">{{ followUps.length }}</span>
+      </div>
+      <div class="history-list">
+        <article class="history-row" *ngFor="let followUp of followUps; trackBy: trackByFollowUpId">
+          <span class="history-marker"><mat-icon>history</mat-icon></span>
+          <div><strong>{{ followUp.date }}</strong><p>{{ followUp.comment }}</p></div>
+          <span class="history-progress">{{ followUp.progress }}%</span>
+        </article>
+      </div>
+    </section>
+
+    <footer class="privacy-footer"><mat-icon>shield</mat-icon><span>Este enlace es personal. La información del plan es confidencial para tu organización.</span></footer>
+    </ng-container>
+  </div>
+</main>

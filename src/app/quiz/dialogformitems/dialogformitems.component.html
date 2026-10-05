@@ -47,18 +47,18 @@
         <span>{{'MENUITEMS.QUIZ.DELETECLIMA' | translate}}</span>
       </button>
     
-      <!-- Botón para cargar Excel -->
-      <button  [disabled]="!accessToUploadExcelClima" mat-menu-item (click)="fileInput.click()">
-        <mat-icon style="color: #217346;">table_view</mat-icon>
-        <span style="color: #217346;">{{'MENUITEMS.QUIZ.UPLOADEXCELCLIMA' | translate}}</span>
-      </button>
+     
 
       <!-- Botón para descargar plantilla Excel -->
       <button  [disabled]="!accessToUploadExcelClima" mat-menu-item (click)="downloadExcelTemplate()">
         <mat-icon style="color: #217346;">file_download</mat-icon>
         <span style="color: #217346;">{{'MENUITEMS.QUIZ.DOWNLOADEXCELCLIMA' | translate}}</span>
       </button>
-    
+     <!-- Botón para cargar Excel -->
+      <button  [disabled]="!accessToUploadExcelClima" mat-menu-item (click)="fileInput.click()">
+        <mat-icon style="color: #217346;">table_view</mat-icon>
+        <span style="color: #217346;">{{'MENUITEMS.QUIZ.UPLOADEXCELCLIMA' | translate}}</span>
+      </button>
       <input
         #fileInput
         type="file"
@@ -89,18 +89,6 @@
       <div class="setup-grid">
       <!--      -->    
               
-      <div class="row gran-factor-mode-row">
-        <div class="col-12">
-          <mat-slide-toggle
-            class="gran-factor-mode-toggle"
-            [(ngModel)]="noUsarGranFactor"
-            [disabled]="bloquearSwitchNoUsarGranFactor"
-          >
-            {{ 'MENUITEMS.QUIZ.EDITOR.NO_GRAND_FACTOR' | translate }}
-          </mat-slide-toggle>
-        </div>
-      </div>
-
       <div
         class="gf-row"
         joyrideStep="editClimateFactors"
@@ -120,6 +108,17 @@
                   {{ gfactor.label }}
                 </mat-option>
               </mat-select>
+              <button
+                *ngIf="canEditSelectedGFactor()"
+                mat-icon-button
+                matSuffix
+                type="button"
+                class="field-edit-action"
+                [matTooltip]="'MENUITEMS.QUIZ.EDITSELECTEDSURVEY' | translate"
+                (mousedown)="$event.stopPropagation()"
+                (click)="editSelectedGFactor($event)">
+                <mat-icon>edit</mat-icon>
+              </button>
             </mat-form-field>
 
             <button
@@ -139,12 +138,23 @@
         <div class="gf-col">
           <div class="gf-group">
             <mat-form-field appearance="fill" class="gf-field" subscriptSizing="dynamic" >
-              <mat-label>Factor</mat-label>
+              <mat-label>{{ 'MENUITEMS.QUIZ.FACTOR_SURVEY' | translate }}</mat-label>
               <mat-select [(ngModel)]="selectedSerie" (selectionChange)="onFactorChange($event)">
                 <mat-option *ngFor="let serie of seriesx" [value]="serie.Id">
                   {{ serie.label }}
                 </mat-option>
               </mat-select>
+              <button
+                *ngIf="canEditSelectedFactor()"
+                mat-icon-button
+                matSuffix
+                type="button"
+                class="field-edit-action"
+                [matTooltip]="'MENUITEMS.QUIZ.EDITSELECTEDFACTOR' | translate"
+                (mousedown)="$event.stopPropagation()"
+                (click)="editSelectedFactor($event)">
+                <mat-icon>edit</mat-icon>
+              </button>
             </mat-form-field>
 
             <button
@@ -616,6 +626,15 @@
             <p>{{ getTotalQuestionCount() }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</p>
           </div>
         </div>
+        <button
+          mat-stroked-button
+          type="button"
+          class="questions-preview-button"
+          [disabled]="getTotalQuestionCount() === 0"
+          (click)="openSurveyPreview()">
+          <mat-icon>visibility</mat-icon>
+          {{ 'MENUITEMS.QUIZ.PREVIEWSURVEY' | translate }}
+        </button>
       </div>
     
     <!-- 
@@ -818,21 +837,28 @@
                             {{ 'MENUITEMS.QUIZ.DESCRIPTION' | translate }}
                           </th>
 
-                          <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i">
-                            <mat-form-field appearance="fill" class="w-100" style="margin-top: 16px;">
-                              <input
+                          <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i" class="question-description-cell">
+                            <mat-form-field appearance="fill" class="w-100 question-description-field">
+                              <textarea
                                 matInput
+                                class="question-description-input"
+                                rows="2"
+                                cdkTextareaAutosize
+                                cdkAutosizeMinRows="2"
                                 formControlName="label"
-                                (blur)="onCellChange(row.Id, 'label', getRowControlValue(f.Id, i, 'label'), f.Id)"
-                              />
+                                (pointerdown)="$event.stopPropagation()"
+                                (mousedown)="$event.stopPropagation()"
+                                (touchstart)="$event.stopPropagation()"
+                                (blur)="saveQuestionDescriptionIfChanged(row.Id, f.Id, i)"
+                              ></textarea>
                             </mat-form-field>
 
                           </td>
                         </ng-container>
 
-                        <!-- values (dropdown solo lectura) -->
+                        <!-- Opciones (selector solo lectura) -->
                         <ng-container matColumnDef="values">
-                          <th mat-header-cell *matHeaderCellDef> Valores </th>
+                          <th mat-header-cell *matHeaderCellDef> Opciones </th>
 
                           <td mat-cell *matCellDef="let row; let i = index" [formGroupName]="i">
 
@@ -840,7 +866,7 @@
                               <mat-form-field appearance="fill" class="w-100" style="margin-top: 16px;">
 
                                 <mat-select
-                                  [placeholder]="'Valores'"
+                                  [placeholder]="'Opciones'"
                                   [value]="null"
                                   disableOptionCentering
                                   panelClass="values-panel"
@@ -858,7 +884,7 @@
                                         {{ getOptionLabel(opt) }}
                                       </mat-option>
 
-                                      <mat-option *ngIf="!(row.options?.length)" [disabled]="true">Sin valores</mat-option>
+                                      <mat-option *ngIf="!(row.options?.length)" [disabled]="true">Sin opciones</mat-option>
                                     </ng-container>
 
                                     <ng-template #noValues>
@@ -867,13 +893,13 @@
                                   </ng-template>
                                 </mat-select>
 
-                                <!-- Botón para agregar/editar valores -->
+                                <!-- Botón para agregar o editar opciones -->
                                 <button
                                   mat-icon-button
                                   matSuffix
                                   [disabled]="!(t === 'radio' || t === 'select' || t === 'selectdem' || t === 'slider')"
                                   (click)="$event.stopPropagation(); openValuesEditor(row, t, f.Id, i)"
-                                  [matTooltip]="t === 'radio' ? 'Editar escala Likert' : 'Agregar/editar valores'"
+                                  [matTooltip]="t === 'radio' ? 'Editar escala Likert' : 'Agregar/editar opciones'"
                                 >
                                   <mat-icon>{{ t === 'radio' ? 'edit' : 'add' }}</mat-icon>
                                 </button>

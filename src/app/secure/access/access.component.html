@@ -1,73 +1,251 @@
 <section class="content">
-  <div  class="content-block">
-    <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'MENUITEMS.SECURE.ACCESS' | translate" [items]="['Home','CONFIGURACION']" [active_item]="'Accesos '"></app-breadcrumb>
+  <div class="content-block role-access-page">
+    <div
+      class="block-header role-access-page__header"
+      joyrideStep="roleAccessOverview"
+      [title]="'MENUITEMS.TOUR.ROLE_ACCESS.OVERVIEW_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.ROLE_ACCESS.OVERVIEW_TEXT' | translate">
+      <app-breadcrumb
+        [title]="'MENUITEMS.SECURE.ACCESS' | translate"
+        [items]="['Home', ('MENUITEMS.SECURE.TEXT' | translate)]"
+        [active_item]="'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.BREADCRUMB' | translate">
+      </app-breadcrumb>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="role-access-help-button"
+        (click)="startAccessTour()"
+        [matTooltip]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate"
+        [attr.aria-label]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate">
+        <mat-icon>help_outline</mat-icon>
+      </button>
     </div>
-    <div class="row">
-      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
-        <div  class="card">
-          <div class="header">
-         
-            <button style="margin-left: auto; border-radius: 8px;" mat-raised-button color="primary" (click)="openDialogNewRol()">
-              <mat-icon>add</mat-icon> {{ 'MENUITEMS.SECURE.CREATEROL' | translate }}
-            </button>
-            
-          </div>
-          <div class="body">
-            <div
-              *ngIf="isLoadingRoles"
-              class="roles-loading-state"
-              role="status"
-              [attr.aria-label]="'MENUITEMS.SECURE.LOADING_ROLES' | translate">
-              <mat-progress-spinner
-                mode="indeterminate"
-                [diameter]="42">
-              </mat-progress-spinner>
-            </div>
 
-            <mat-accordion *ngIf="!isLoadingRoles">
-              
-              <mat-expansion-panel *ngFor="let role of rolesAccess">
-                <mat-expansion-panel-header>
-                  <mat-panel-title>Rol [{{ role.roleName }}]</mat-panel-title>
-                  <mat-panel-description>{{ role.Description }}</mat-panel-description>
-                </mat-expansion-panel-header>
-
-                <div class="table-responsive">
-                  <table class="table">
-                    <tbody>
-                      <tr *ngFor="let access of role.accesses">
-                        <!-- Nombre y descripción -->
-                        <td>
-                          <strong>{{ access.actionName | translate}}</strong><br/>
-                          <small class="text-muted">{{ access.actionDescription | translate }}</small>
-                        </td>
-                        <!-- Toggle alineado a la derecha -->
-                        <td class="text-end">
-                          <mat-slide-toggle
-                            [checked]="access.hasAccess === 1"
-                            (change)="onToggleAccess(role.RoleId, access.ActionId, $event.checked)"
-                            [disabled]="role.roleName?.toLowerCase() === 'admin'">
-                          </mat-slide-toggle>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-              </mat-expansion-panel>
-            </mat-accordion>
-
-
-
-           
-
-            
-
-          </div>
+    <section class="role-access-toolbar">
+      <div class="role-access-toolbar__identity">
+        <span class="role-access-toolbar__icon"><mat-icon>admin_panel_settings</mat-icon></span>
+        <div>
+          <strong>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.TITLE' | translate }}</strong>
+          <span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.SUBTITLE' | translate }}</span>
         </div>
       </div>
-    </div>
+
+      <div class="role-access-toolbar__organization">
+        <mat-icon>business</mat-icon>
+        <div>
+          <span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ACTIVE_ORGANIZATION' | translate }}</span>
+          <strong>{{ organizationName || ('MENUITEMS.SECURE.ROLE_ACCESS_PAGE.NO_ORGANIZATION' | translate) }}</strong>
+        </div>
+      </div>
+
+      <div class="role-access-toolbar__actions">
+        <button
+          mat-icon-button
+          type="button"
+          class="role-access-refresh-button"
+          [disabled]="isLoadingRoles || !organizationName"
+          (click)="refreshRoles()"
+          [matTooltip]="'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.REFRESH' | translate"
+          [attr.aria-label]="'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.REFRESH' | translate">
+          <mat-icon>refresh</mat-icon>
+        </button>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          class="create-role-button"
+          (click)="openDialogNewRol()">
+          <mat-icon>add</mat-icon>
+          {{ 'MENUITEMS.SECURE.CREATEROL' | translate }}
+        </button>
+      </div>
+    </section>
+
+    <section
+      class="role-access-summary"
+      joyrideStep="roleAccessSummary"
+      [title]="'MENUITEMS.TOUR.ROLE_ACCESS.SUMMARY_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.ROLE_ACCESS.SUMMARY_TEXT' | translate">
+      <div class="role-access-metric">
+        <span class="role-access-metric__icon role-access-metric__icon--roles"><mat-icon>shield</mat-icon></span>
+        <div><strong>{{ totalRoles }}</strong><span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ROLES' | translate }}</span></div>
+      </div>
+      <div class="role-access-metric">
+        <span class="role-access-metric__icon role-access-metric__icon--enabled"><mat-icon>check_circle</mat-icon></span>
+        <div><strong>{{ enabledPermissions }}</strong><span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ENABLED' | translate }}</span></div>
+      </div>
+      <div class="role-access-metric">
+        <span class="role-access-metric__icon role-access-metric__icon--total"><mat-icon>rule</mat-icon></span>
+        <div><strong>{{ totalPermissions }}</strong><span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.TOTAL_PERMISSIONS' | translate }}</span></div>
+      </div>
+      <div class="role-access-autosave">
+        <mat-icon>cloud_done</mat-icon>
+        <div>
+          <strong>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.AUTOSAVE' | translate }}</strong>
+          <span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.AUTOSAVE_HINT' | translate }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="role-access-controls"
+      joyrideStep="roleAccessStatuses"
+      [title]="'MENUITEMS.TOUR.ROLE_ACCESS.STATUS_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.ROLE_ACCESS.STATUS_TEXT' | translate">
+      <div class="role-access-legend">
+        <div class="role-access-legend__title">
+          <mat-icon>info_outline</mat-icon>
+          <strong>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ACCESS_STATUS' | translate }}</strong>
+        </div>
+        <div class="role-access-legend__item role-access-legend__item--enabled">
+          <span></span>
+          <div><strong>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ALLOWED' | translate }}</strong><small>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ALLOWED_HINT' | translate }}</small></div>
+        </div>
+        <div class="role-access-legend__item role-access-legend__item--disabled">
+          <span></span>
+          <div><strong>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.RESTRICTED' | translate }}</strong><small>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.RESTRICTED_HINT' | translate }}</small></div>
+        </div>
+      </div>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="role-access-search">
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="search"
+          [(ngModel)]="accessSearch"
+          [placeholder]="'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.SEARCH_PLACEHOLDER' | translate">
+        <button
+          *ngIf="accessSearch"
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="accessSearch = ''"
+          [attr.aria-label]="'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.CLEAR_SEARCH' | translate">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+    </section>
+
+    <section class="roles-loading-state" *ngIf="isLoadingRoles" role="status" aria-live="polite">
+      <mat-progress-spinner mode="indeterminate" diameter="44"></mat-progress-spinner>
+      <span>{{ 'MENUITEMS.SECURE.LOADING_ROLES' | translate }}</span>
+    </section>
+
+    <section class="role-access-empty" *ngIf="!isLoadingRoles && !organizationName">
+      <span class="role-access-empty__icon"><mat-icon>business</mat-icon></span>
+      <div>
+        <h2>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.SELECT_ORGANIZATION_TITLE' | translate }}</h2>
+        <p>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.SELECT_ORGANIZATION_TEXT' | translate }}</p>
+      </div>
+    </section>
+
+    <section class="role-access-empty" *ngIf="!isLoadingRoles && organizationName && rolesAccess.length === 0">
+      <span class="role-access-empty__icon"><mat-icon>shield</mat-icon></span>
+      <div>
+        <h2>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.NO_ROLES_TITLE' | translate }}</h2>
+        <p>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.NO_ROLES_TEXT' | translate }}</p>
+      </div>
+    </section>
+
+    <section class="role-access-empty" *ngIf="!isLoadingRoles && rolesAccess.length > 0 && filteredRoles.length === 0">
+      <span class="role-access-empty__icon"><mat-icon>search_off</mat-icon></span>
+      <div>
+        <h2>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.NO_RESULTS_TITLE' | translate }}</h2>
+        <p>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.NO_RESULTS_TEXT' | translate }}</p>
+      </div>
+    </section>
+
+    <mat-accordion
+      *ngIf="!isLoadingRoles && filteredRoles.length > 0"
+      multi
+      class="role-access-accordion"
+      joyrideStep="roleAccessRoles"
+      [title]="'MENUITEMS.TOUR.ROLE_ACCESS.ROLES_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.ROLE_ACCESS.ROLES_TEXT' | translate">
+      <mat-expansion-panel
+        *ngFor="let role of filteredRoles; let roleIndex = index; trackBy: trackRole"
+        class="role-access-panel"
+        [expanded]="roleIndex === 0">
+        <mat-expansion-panel-header collapsedHeight="76px" expandedHeight="76px">
+          <mat-panel-title class="role-access-panel__title">
+            <span class="role-access-panel__icon"><mat-icon>shield_person</mat-icon></span>
+            <span class="role-access-panel__identity">
+              <small>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ROLE' | translate }}</small>
+              <strong>{{ role.roleName }}</strong>
+              <span *ngIf="role.description">{{ getDisplayText(role.description) }}</span>
+            </span>
+          </mat-panel-title>
+
+          <mat-panel-description class="role-access-panel__summary">
+            <span>{{ role.menuGroups.length }} {{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.MENUS' | translate }}</span>
+            <span
+              class="role-access-panel__permission-count"
+              [class.role-access-panel__permission-count--complete]="getRoleEnabledCount(role) === role.accesses.length">
+              {{ getRoleEnabledCount(role) }}/{{ role.accesses.length }}
+              {{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ACTIVE_SHORT' | translate }}
+            </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="role-readonly-note" *ngIf="role.readOnly">
+          <mat-icon>lock</mat-icon>
+          <span>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.SYSTEM_ROLE_NOTE' | translate }}</span>
+        </div>
+
+        <div class="permission-menu-grid">
+          <section
+            class="permission-menu-group"
+            *ngFor="let group of role.menuGroups; trackBy: trackMenu">
+            <div class="permission-menu-group__header">
+              <span class="permission-menu-group__icon"><mat-icon>folder_open</mat-icon></span>
+              <div>
+                <small>{{ 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.MENU' | translate }}</small>
+                <strong>{{ getDisplayText(group.menuName) }}</strong>
+              </div>
+              <span class="permission-menu-group__count">
+                {{ getGroupEnabledCount(group) }}/{{ group.accesses.length }}
+              </span>
+            </div>
+
+            <div class="permission-action-list">
+              <div
+                class="permission-action"
+                [class.permission-action--enabled]="access.hasAccess === 1"
+                *ngFor="let access of group.accesses; trackBy: trackAccess">
+                <span class="permission-action__status">
+                  <mat-icon>{{ access.hasAccess === 1 ? 'check' : 'remove' }}</mat-icon>
+                </span>
+
+                <div class="permission-action__content">
+                  <strong>{{ getDisplayText(access.actionName) }}</strong>
+                  <span>{{ getDisplayText(access.actionDescription) }}</span>
+                  <code>{{ access.actionCode }}</code>
+                </div>
+
+                <div class="permission-action__control">
+                  <span>{{ (access.hasAccess === 1
+                    ? 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.ALLOWED'
+                    : 'MENUITEMS.SECURE.ROLE_ACCESS_PAGE.RESTRICTED') | translate }}</span>
+                  <mat-progress-spinner
+                    *ngIf="access.saving"
+                    mode="indeterminate"
+                    diameter="20">
+                  </mat-progress-spinner>
+                  <mat-slide-toggle
+                    *ngIf="!access.saving"
+                    [checked]="access.hasAccess === 1"
+                    [disabled]="role.readOnly"
+                    (change)="onToggleAccess(role, access, $event.checked)"
+                    [attr.aria-label]="getDisplayText(access.actionName)">
+                  </mat-slide-toggle>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
   </div>
 </section>

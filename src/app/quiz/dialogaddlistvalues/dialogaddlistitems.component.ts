@@ -56,7 +56,7 @@ import {
   template: `
   <div >
   <h1 mat-dialog-title>Agregar valores a la lista</h1>
-  <form id="form_textarea" [formGroup]="addItemForm!">
+  <form id="form_textarea" [formGroup]="addItemForm!" (ngSubmit)="guardaItem()">
     <div mat-dialog-content>
       <mat-form-field class="example-full-width" appearance="outline">
         <mat-label>Nombre del campo</mat-label>
@@ -68,8 +68,22 @@ import {
       
     </div>
     <div mat-dialog-actions>
-      <button class="btn-space" mat-raised-button color="primary" (click)="guardaItem()" style="border-radius: 5px;">Guardar</button>
-      <button style="color: #91a1a4; border-radius: 5px" type="button" mat-button (click)="closeDialog()">Cerrar</button>
+      <button
+        class="btn-space"
+        mat-raised-button
+        color="primary"
+        type="submit"
+        [disabled]="isSaving"
+        style="border-radius: 5px; min-width: 112px;">
+        <mat-progress-spinner *ngIf="isSaving; else saveLabel" diameter="18" mode="indeterminate"></mat-progress-spinner>
+        <ng-template #saveLabel>Guardar</ng-template>
+      </button>
+      <button
+        style="color: #91a1a4; border-radius: 5px"
+        type="button"
+        mat-button
+        [disabled]="isSaving"
+        (click)="closeDialog()">Cerrar</button>
     </div>
   </form>
 </div>
@@ -81,6 +95,7 @@ export class DialogAddListItemsComponent implements OnInit {
       public addItemForm!: UntypedFormGroup;
   public options: { label: string; value: string; name: string; is_correct: boolean }[] = [];
   public idPregunta = 0;
+  public isSaving = false;
 
   constructor(private fb: UntypedFormBuilder, private organizacionService: OrganizacionService,
     private _snackBar: MatSnackBar,
@@ -109,51 +124,63 @@ export class DialogAddListItemsComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  guardaItem() {
-    if(this.addItemForm.valid) {
-
-
-
-       const data_send:any = {
-            IdPregunta: this.idPregunta, 
-            Valor: 'opt_' + (this.options.length + 1).toString(),
-            Etiqueta: this.addItemForm.value.ilabel
-        }
-
-        console.log('datatosend;:: ', data_send);
-
-        /**/
-        this.organizacionService.insertPreguntaOpcion(data_send).then((respenx:any)=> {
-
-            if(respenx && respenx.data.message == 'success'){
-                this.showNotification(
-                    'bg-green',
-                    'Se agregó el valor a la lista',
-                    'bottom',
-                    'right'
-                );
-
-                this.options.push({
-                    value: 'opt_' + (this.options.length + 1).toString(),
-                    label: this.addItemForm.value.ilabel,
-                    name: 'opt_' + (this.options.length + 1).toString(),
-                    is_correct: this.addItemForm.value.is_correct
-                });
-            }
-
-        }).catch((err)=>{
-            this.showNotification(
-                    'bg-green',
-                    'Error al agregar el valor. ' + err,
-                    'bottom',
-                    'right'
-                );
-        });
-        
-     
-      
-      
+  guardaItem(): void {
+    if (this.isSaving) {
+      return;
     }
+
+    if (!this.addItemForm.valid) {
+      this.addItemForm.markAllAsTouched();
+      return;
+    }
+
+    const optionNumber = this.options.length + 1;
+    const data_send:any = {
+      IdPregunta: this.idPregunta,
+      Valor: 'opt_' + optionNumber.toString(),
+      Etiqueta: this.addItemForm.value.ilabel
+    };
+
+    this.isSaving = true;
+    this.dialogRef.disableClose = true;
+
+    this.organizacionService.insertPreguntaOpcion(data_send).then((respenx:any)=> {
+      if (respenx?.data?.message === 'success') {
+        const createdOption = {
+          value: data_send.Valor,
+          label: data_send.Etiqueta,
+          name: data_send.Valor,
+          is_correct: this.addItemForm.value.is_correct,
+        };
+
+        this.options.push(createdOption);
+        this.showNotification(
+          'bg-green',
+          'Se agregó el valor a la lista',
+          'bottom',
+          'right'
+        );
+        this.dialogRef.close({ created: true, option: createdOption });
+        return;
+      }
+
+      this.showNotification(
+        'bg-red',
+        'No fue posible agregar el valor a la lista.',
+        'bottom',
+        'right'
+      );
+    }).catch((err)=>{
+      this.showNotification(
+        'bg-red',
+        'Error al agregar el valor. ' + err,
+        'bottom',
+        'right'
+      );
+    }).finally(() => {
+      this.isSaving = false;
+      this.dialogRef.disableClose = false;
+    });
   }
 
   showNotification(

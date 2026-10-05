@@ -1212,6 +1212,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
     this.sliderRows = [];
     this.listResponseCharts = [];
+    this.resultadoParaExcel = [];
 
     this.participacionRows = [];
     this.rowsPendientes = [];
@@ -3296,6 +3297,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
         console.log('PRINCIPE DE LAS TINIEBLAS..', data.respuestasPorFactor);
 
         this.metricasSatisfaccionPreguntasData = data.respuestasPorFactor;
+        
         if (this.metricasSatisfaccionPreguntasData?.length) {
           // Armado para exportación
           this.resultadoParaExcel = transformData(this.metricasSatisfaccionPreguntasData);
@@ -3438,7 +3440,34 @@ export class Dashboard1Component implements OnDestroy, OnInit {
         this.resultadoParaExcel.preguntasRango = [];
       }
 
-      this.listResponseCharts = this.buildListResponseCharts(data.respuestasTipoLista);
+      const respuestasTipoLista = Array.isArray(data.respuestasTipoLista)
+        ? data.respuestasTipoLista
+        : [];
+
+      this.listResponseCharts = this.buildListResponseCharts(respuestasTipoLista);
+
+      if (!this.resultadoParaExcel || typeof this.resultadoParaExcel !== 'object' || Array.isArray(this.resultadoParaExcel)) {
+        this.resultadoParaExcel = {
+          header: {
+            nombre_clima: this.nombreFlujo,
+            nombre_organizacion: this.nombreOrganizacion,
+          },
+          camposDemograficos: this.camposDemograficosParaExcel,
+          calificacionGeneral: data.calificacionGeneral,
+        };
+      }
+
+      this.resultadoParaExcel.respuestasTipoLista = respuestasTipoLista.map((row: any) => ({
+        idGranFactor: Number(row?.IdGranFactor ?? row?.idGranFactor ?? 0),
+        etiquetaGranFactor: String(row?.EtiquetaGranFactor ?? row?.etiquetaGranFactor ?? ''),
+        idFactor: Number(row?.IdFactor ?? row?.idFactor ?? 0),
+        factor: String(row?.Factor ?? row?.factor ?? ''),
+        idPregunta: Number(row?.IdPregunta ?? row?.idPregunta ?? 0),
+        pregunta: String(row?.Pregunta ?? row?.pregunta ?? ''),
+        totalOpciones: Number(row?.total_opciones ?? row?.totalOpciones ?? 0),
+        totalRespuestas: Number(row?.total_respuestas ?? row?.totalRespuestas ?? 0),
+        opciones: this.parseListResponseOptions(row?.OpcionesJSON ?? row?.opcionesJSON),
+      }));
 
       //particiación por demográfico
       if(data.participacionPorDemografico){

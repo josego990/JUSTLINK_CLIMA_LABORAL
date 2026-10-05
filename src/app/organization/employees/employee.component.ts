@@ -23,7 +23,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
+import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
@@ -31,7 +34,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
-import { MatMenuModule } from '@angular/material/menu';
 import { DialogformEditEmployeeComponent } from '../dialogformeditemployee/dialogformeditemployee.component';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
 import {
@@ -60,7 +62,31 @@ import {
   //MatDialogRef,
 } from "@angular/material/dialog";
 
-export type CampoDemo = { NombreCampo: string; Valor: any }; 
+export type CampoDemo = { NombreCampo: string; Valor: any };
+
+type EmployeeExcelImportAction = {
+  rowNumber: number;
+  payload: Record<string, any>;
+  employeeCodeKey: string;
+  managerCodeKey: string;
+  managerId: number | null;
+};
+
+type EmployeeExcelImportPlan = {
+  creates: EmployeeExcelImportAction[];
+  updates: EmployeeExcelImportAction[];
+  unchanged: number;
+  resolvedEmployeeIdsByCode: Map<string, number>;
+};
+
+type PreparedEmployeeExcelRow = {
+  row: any;
+  rowNumber: number;
+  employeeCodeKey: string;
+  managerCodeKey: string;
+  existingEmployee: any | null;
+  existingEmployeeId: number | null;
+};
 
 export function buildDemographicList(
   data: Record<string, any>,
@@ -143,7 +169,7 @@ function isValidPhoneE164(value: any): boolean {
 
   imports: [
     BreadcrumbComponent,TranslateModule,
-    MatDialogModule, MatMenuModule,
+    MatDialogModule,
     MatTableModule,
     MatIconModule,
     MatExpansionModule,
@@ -158,7 +184,8 @@ function isValidPhoneE164(value: any): boolean {
     MatProgressSpinnerModule,
     DatePipe,
     MatInputModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatCheckboxModule
 ],
   
 })
@@ -174,12 +201,20 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   readonly phoneCountries = PHONE_COUNTRY_OPTIONS;
   readonly maxPhoneLocalDigits = MAX_PHONE_LOCAL_DIGITS;
 
-  public dataSourceOrganizations:any = []; 
+  public dataSourceOrganizations:any = [];
   public dataSourceEmployees:any = [];
+  private allEmployees: any[] = [];
   public cargoOptions: string[] = [];
   public filteredCargoOptions: string[] = [];
   public demographicOptionsByField: Record<string, string[]> = {};
   public filteredDemographicOptionsByField: Record<string, string[]> = {};
+  public employeeSearchTerm = '';
+  public selectedPositionFilters: string[] = [];
+  public selectedDemographicFilters: Record<string, string[]> = {};
+  public selectedEmployeeIds = new Set<number>();
+  public isLoadingEmployees = false;
+  public isProcessingBulkEmployeeAction = false;
+  public isExportingEmployees = false;
   public idOrganization =  0;
   file: File | null = null;
   public selectedFile = {};
@@ -226,6 +261,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
 
   displayedColumns: string[] = [
+    'Seleccionar',
     'Id',
     'IdOrganizacion',
     'Nombres',
@@ -402,9 +438,12 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         this.idOrganization = 0;
         this.employeeForm.get('IdOrganizacion')?.setValue(null);
         this.dataSourceEmployees = [];
+        this.allEmployees = [];
+        this.resetEmployeeFilters(false);
         this.refreshCargoOptions();
         this.clearDemographicAutocompleteOptions();
         this.camposDemograficosOrganizacion = [];
+        this.isLoadingEmployees = false;
         this.isButtonDisabled = true;
         return;
       }
@@ -533,12 +572,80 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     return this.isEmployeeActive(employee) ? 'Activo' : 'Inactivo';
   }
 
+  get selectedEmployeeCount(): number {
+    return this.selectedEmployeeIds.size;
+  }
+
+  get selectedActiveEmployeeCount(): number {
+    return this.getSelectedEmployees().filter((employee) => this.isEmployeeActive(employee)).length;
+  }
+
+  get selectedInactiveEmployeeCount(): number {
+    return this.getSelectedEmployees().filter((employee) => !this.isEmployeeActive(employee)).length;
+  }
+
+  get areAllVisibleEmployeesSelected(): boolean {
+    return this.dataSourceEmployees.length > 0 && this.dataSourceEmployees.every((employee: any) =>
+      this.selectedEmployeeIds.has(this.getEmployeeId(employee))
+    );
+  }
+
+  get areSomeVisibleEmployeesSelected(): boolean {
+    return !this.areAllVisibleEmployeesSelected && this.dataSourceEmployees.some((employee: any) =>
+      this.selectedEmployeeIds.has(this.getEmployeeId(employee))
+    );
+  }
+
+  isEmployeeSelected(employee: any): boolean {
+    return this.selectedEmployeeIds.has(this.getEmployeeId(employee));
+  }
+
+  toggleEmployeeSelection(employee: any, checked: boolean): void {
+    const employeeId = this.getEmployeeId(employee);
+
+    if (!employeeId) {
+      return;
+    }
+
+    const nextSelection = new Set(this.selectedEmployeeIds);
+    checked ? nextSelection.add(employeeId) : nextSelection.delete(employeeId);
+    this.selectedEmployeeIds = nextSelection;
+  }
+
+  toggleVisibleEmployeeSelection(checked: boolean): void {
+    const nextSelection = new Set(this.selectedEmployeeIds);
+
+    this.dataSourceEmployees.forEach((employee: any) => {
+      const employeeId = this.getEmployeeId(employee);
+
+      if (!employeeId) {
+        return;
+      }
+
+      checked ? nextSelection.add(employeeId) : nextSelection.delete(employeeId);
+    });
+
+    this.selectedEmployeeIds = nextSelection;
+  }
+
+  clearEmployeeSelection(): void {
+    this.selectedEmployeeIds = new Set<number>();
+  }
+
+  async bulkDeactivateSelectedEmployees(): Promise<void> {
+    await this.processSelectedEmployeesByStatus(true);
+  }
+
+  async bulkActivateSelectedEmployees(): Promise<void> {
+    await this.processSelectedEmployeesByStatus(false);
+  }
+
   private getManagerNameById(managerId: number | null): string {
     if (!managerId) {
       return '';
     }
 
-    const manager = this.dataSourceEmployees.find(
+    const manager = this.allEmployees.find(
       (employee: any) => getEmployeeOptionId(employee) === managerId
     );
 
@@ -551,7 +658,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   }
 
   private getLoadedEmployeeManagerOptions(): any[] {
-    return Array.isArray(this.dataSourceEmployees) ? this.dataSourceEmployees : [];
+    return Array.isArray(this.allEmployees) ? this.allEmployees : [];
   }
 
   private normalizeCargoSearchValue(value: string): string {
@@ -697,6 +804,118 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     this.updateAllFilteredDemographicOptions();
   }
 
+  onEmployeeSearchChange(value: string): void {
+    this.employeeSearchTerm = value;
+    this.applyEmployeeFilters();
+  }
+
+  onPositionFiltersChange(values: string[]): void {
+    this.selectedPositionFilters = Array.isArray(values) ? values : [];
+    this.applyEmployeeFilters();
+  }
+
+  onDemographicFiltersChange(fieldName: string, values: string[]): void {
+    this.selectedDemographicFilters = {
+      ...this.selectedDemographicFilters,
+      [fieldName]: Array.isArray(values) ? values : [],
+    };
+    this.applyEmployeeFilters();
+  }
+
+  getEmployeeDemographicFilterOptions(fieldName: string): string[] {
+    const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
+    const optionKey = Object.keys(this.demographicOptionsByField).find(
+      (key) => this.normalizeEmployeeColumnKey(key) === normalizedFieldName
+    );
+
+    return optionKey ? this.demographicOptionsByField[optionKey] ?? [] : [];
+  }
+
+  getSelectedEmployeeDemographicFilters(fieldName: string): string[] {
+    return this.selectedDemographicFilters[fieldName] ?? [];
+  }
+
+  clearEmployeeSearch(): void {
+    this.employeeSearchTerm = '';
+    this.applyEmployeeFilters();
+  }
+
+  clearEmployeeFilters(): void {
+    this.resetEmployeeFilters();
+  }
+
+  hasActiveEmployeeFilters(): boolean {
+    return !!this.employeeSearchTerm.trim() ||
+      this.selectedPositionFilters.length > 0 ||
+      Object.values(this.selectedDemographicFilters).some((values) => values.length > 0);
+  }
+
+  get visibleEmployeeCount(): number {
+    return this.dataSourceEmployees.length;
+  }
+
+  get totalEmployeeCount(): number {
+    return this.allEmployees.length;
+  }
+
+  private resetEmployeeFilters(applyFilters = true): void {
+    this.employeeSearchTerm = '';
+    this.selectedPositionFilters = [];
+    this.selectedDemographicFilters = {};
+
+    if (applyFilters) {
+      this.applyEmployeeFilters();
+    }
+  }
+
+  private getEmployeeNameSearchValue(employee: any): string {
+    return this.normalizeCargoSearchValue([
+      employee?.Nombres ?? employee?.nombres ?? '',
+      employee?.Apellidos ?? employee?.apellidos ?? '',
+      employee?.NombreCompleto ?? employee?.nombreCompleto ?? '',
+    ].join(' '));
+  }
+
+  private matchesEmployeePositionFilter(employee: any): boolean {
+    if (this.selectedPositionFilters.length === 0) {
+      return true;
+    }
+
+    const employeePosition = this.normalizeCargoSearchValue(this.getEmployeeCargoValue(employee));
+    return this.selectedPositionFilters.some(
+      (position) => this.normalizeCargoSearchValue(position) === employeePosition
+    );
+  }
+
+  private matchesEmployeeDemographicFilters(employee: any): boolean {
+    return Object.entries(this.selectedDemographicFilters).every(([fieldName, selectedValues]) => {
+      if (!selectedValues.length) {
+        return true;
+      }
+
+      const employeeValue = this.normalizeCargoSearchValue(
+        this.getEmployeeDemographicValue(employee, fieldName)
+      );
+
+      return selectedValues.some(
+        (selectedValue) => this.normalizeCargoSearchValue(selectedValue) === employeeValue
+      );
+    });
+  }
+
+  private applyEmployeeFilters(): void {
+    const normalizedSearch = this.normalizeCargoSearchValue(this.employeeSearchTerm.trim());
+
+    this.dataSourceEmployees = this.allEmployees.filter((employee) => {
+      const matchesName = !normalizedSearch ||
+        this.getEmployeeNameSearchValue(employee).includes(normalizedSearch);
+
+      return matchesName &&
+        this.matchesEmployeePositionFilter(employee) &&
+        this.matchesEmployeeDemographicFilters(employee);
+    });
+  }
+
   private setupDemographicAutocompleteControls(): void {
     this.clearDemographicValueSubscriptions();
 
@@ -815,6 +1034,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     
     if(selectedId > 0){
       this.idOrganization = selectedId;
+      this.allEmployees = [];
+      this.dataSourceEmployees = [];
+      this.resetEmployeeFilters(false);
       this.employeeForm.get('IdOrganizacion')?.setValue(selectedId);
       this.employeeForm.get('IdEmpleadoJefe')?.setValue(null);
       this.selectedManagerName = '';
@@ -897,6 +1119,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
   private getEmployeeBaseColumns(): string[] {
     return [
+      'Seleccionar',
       'Id',
       'IdOrganizacion',
       'Nombres',
@@ -950,7 +1173,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   private getEmployeeKeys(): string[] {
     const keys = new Set<string>();
 
-    this.dataSourceEmployees.forEach((employee: any) => {
+    this.allEmployees.forEach((employee: any) => {
       Object.keys(employee ?? {}).forEach((key) => keys.add(key));
     });
 
@@ -993,7 +1216,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   }
 
   private refreshEmployeeTableColumns(): void {
-    if (this.dataSourceEmployees.length === 0) {
+    if (this.allEmployees.length === 0) {
       this.baseColumns = [];
       this.camposDinamicos = [];
       this.displayedColumns = [];
@@ -1016,21 +1239,49 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
 
   getEmployeesByOrg(): void {
-  this.organizacionService.getEmployees(this.idOrganization)
-    .then((response: any) => {
-      this.dataSourceEmployees = response.data || [];
-      this.refreshCargoOptions();
-      this.refreshDemographicOptions();
-      this.refreshEmployeeTableColumns();
-      this.syncSelectedManagerName();
-    })
-    .catch((error: any) => {
-      console.error('Error al obtener empleados:', error);
-    });
-}
+    const requestedOrganizationId = this.idOrganization;
+
+    if (!requestedOrganizationId) {
+      this.isLoadingEmployees = false;
+      this.clearEmployeeSelection();
+      return;
+    }
+
+    this.isLoadingEmployees = true;
+    this.clearEmployeeSelection();
+
+    this.organizacionService.getEmployees(requestedOrganizationId)
+      .then((response: any) => {
+        if (this.idOrganization !== requestedOrganizationId) {
+          return;
+        }
+
+        this.allEmployees = Array.isArray(response.data) ? response.data : [];
+        this.refreshCargoOptions();
+        this.refreshDemographicOptions();
+        this.refreshEmployeeTableColumns();
+        this.applyEmployeeFilters();
+        this.syncSelectedManagerName();
+      })
+      .catch((error: any) => {
+        if (this.idOrganization !== requestedOrganizationId) {
+          return;
+        }
+
+        console.error('Error al obtener empleados:', error);
+        this.allEmployees = [];
+        this.dataSourceEmployees = [];
+        this.refreshEmployeeTableColumns();
+      })
+      .finally(() => {
+        if (this.idOrganization === requestedOrganizationId) {
+          this.isLoadingEmployees = false;
+        }
+      });
+  }
 
   private getCurrentEmployeesCount(): number {
-    return Array.isArray(this.dataSourceEmployees) ? this.dataSourceEmployees.length : 0;
+    return this.allEmployees.length;
   }
 
   private showEmployeeLimitReachedMessage(incomingCount = 1): void {
@@ -1097,6 +1348,119 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         icon: 'error',
       });
     });
+  }
+
+  private getEmployeeId(employee: any): number {
+    const employeeId = Number(employee?.Id ?? employee?.id ?? employee?.IdEmpleado ?? employee?.idEmpleado ?? 0);
+    return Number.isInteger(employeeId) && employeeId > 0 ? employeeId : 0;
+  }
+
+  private getSelectedEmployees(): any[] {
+    return this.allEmployees.filter((employee: any) =>
+      this.selectedEmployeeIds.has(this.getEmployeeId(employee))
+    );
+  }
+
+  private async processSelectedEmployeesByStatus(activeStatus: boolean): Promise<void> {
+    if (this.isProcessingBulkEmployeeAction) {
+      return;
+    }
+
+    const selectedEmployees = this.getSelectedEmployees();
+    const targetEmployees = selectedEmployees.filter((employee) => this.isEmployeeActive(employee) === activeStatus);
+    const actionLabel = activeStatus ? 'desactivar' : 'activar';
+
+    if (targetEmployees.length === 0) {
+      await Swal.fire({
+        title: 'Sin empleados aplicables',
+        text: `No hay empleados ${activeStatus ? 'activos' : 'inactivos'} seleccionados para ${actionLabel}.`,
+        icon: 'info',
+      });
+      return;
+    }
+
+    const confirmation = await Swal.fire({
+      title: `¿${activeStatus ? 'Desactivar' : 'Activar'} empleados?`,
+      html: `Se aplicará esta acción a <b>${targetEmployees.length}</b> empleado(s) seleccionado(s). Los demás conservarán su estado actual.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: activeStatus ? 'Sí, desactivar' : 'Sí, activar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) {
+      return;
+    }
+
+    this.isProcessingBulkEmployeeAction = true;
+    let successCount = 0;
+    const failedEmployees: string[] = [];
+
+    Swal.fire({
+      title: `${activeStatus ? 'Desactivando' : 'Activando'} empleados`,
+      html: this.buildBulkEmployeeProgressHtml(0, targetEmployees.length, actionLabel),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      for (let index = 0; index < targetEmployees.length; index += 1) {
+        const employee = targetEmployees[index];
+        const employeeId = this.getEmployeeId(employee);
+
+        try {
+          if (activeStatus) {
+            await this.organizacionService.deleteEmployee(employeeId);
+          } else {
+            await this.organizacionService.activeEmployee(employeeId);
+          }
+          successCount += 1;
+        } catch (error) {
+          console.error(`No fue posible ${actionLabel} el empleado ${employeeId}:`, error);
+          failedEmployees.push(this.getBulkEmployeeDisplayName(employee));
+        }
+
+        Swal.update({
+          html: this.buildBulkEmployeeProgressHtml(index + 1, targetEmployees.length, actionLabel),
+        });
+      }
+    } finally {
+      this.isProcessingBulkEmployeeAction = false;
+      Swal.close();
+    }
+
+    this.clearEmployeeSelection();
+    this.getEmployeesByOrg();
+
+    await Swal.fire({
+      title: 'Proceso finalizado',
+      html: failedEmployees.length === 0
+        ? `Se lograron ${actionLabel} <b>${successCount}</b> empleado(s).`
+        : `Se lograron ${actionLabel} <b>${successCount}</b> empleado(s).<br><br>No fue posible procesar: ${failedEmployees.join(', ')}.`,
+      icon: failedEmployees.length === 0 ? 'success' : 'warning',
+    });
+  }
+
+  private buildBulkEmployeeProgressHtml(completed: number, total: number, actionLabel: string): string {
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return `
+      <div style="font-size:14px;color:#475569;margin-bottom:10px">${completed} de ${total} empleados procesados para ${actionLabel}.</div>
+      <div style="height:10px;border-radius:999px;overflow:hidden;background:#e2e8f0">
+        <div style="width:${percentage}%;height:100%;border-radius:inherit;background:#2563eb;transition:width .2s ease"></div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#64748b">${percentage}% completado</div>`;
+  }
+
+  private getBulkEmployeeDisplayName(employee: any): string {
+    return String(
+      employee?.NombreCompleto ??
+      employee?.nombreCompleto ??
+      `${employee?.Nombres ?? employee?.nombres ?? ''} ${employee?.Apellidos ?? employee?.apellidos ?? ''}`
+    ).trim() || `Empleado #${this.getEmployeeId(employee)}`;
   }
 
   // Enviar datos al servicio:
@@ -1278,6 +1642,11 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       .toUpperCase();
   }
 
+  private normalizeExcelManagerCode(value: any): string {
+    const managerCode = String(value ?? '').trim();
+    return this.normalizeEmployeeCodeKey(managerCode) === '0' ? '' : managerCode;
+  }
+
   private sortEmployeesForManagerUpload<T extends { codigo?: string; codigoJefe?: string }>(employees: T[]): T[] {
     const employeesByCode = new Map<string, T>();
 
@@ -1329,7 +1698,24 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
     return orderedEmployees.length === employees.length ? orderedEmployees : employees;
   }
-  
+
+  private getEmployeeImportWorksheet(): XLSX.WorkSheet | null {
+    if (!this.workbook?.SheetNames?.length) {
+      return null;
+    }
+
+    const normalizeSheetName = (sheetName: string) => String(sheetName ?? '').trim().toUpperCase();
+    const preferredSheetName = this.workbook.SheetNames.find((sheetName: string) =>
+      ['EMPLEADOS', 'EMPLOYEES'].includes(normalizeSheetName(sheetName))
+    );
+    const fallbackSheetName = this.workbook.SheetNames.find(
+      (sheetName: string) => !['INSTRUCCIONES', 'INSTRUCTIONS'].includes(normalizeSheetName(sheetName))
+    );
+    const employeeSheetName = preferredSheetName ?? fallbackSheetName;
+
+    return employeeSheetName ? this.workbook.Sheets[employeeSheetName] ?? null : null;
+  }
+
   convertExcelToJSON() {
    
    if(this.langStoreValue == 'es'){
@@ -1339,7 +1725,12 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         return reject('No se encontró workbook');
       }
   
-      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const worksheet = this.getEmployeeImportWorksheet();
+
+      if (!worksheet) {
+        return reject('No se encontro la hoja EMPLEADOS en el archivo Excel.');
+      }
+
       const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
   
       const excel_empleados: any = {
@@ -1399,7 +1790,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
         const cargo = String(t.CARGO ?? '').trim();
         const codigo = this.getExcelCellText(t, ['CODIGO', 'CODE', 'EMPLOYEE_CODE']);
-        const codigoJefe = this.getExcelCellText(t, ['CODIGO_JEFE', 'MANAGER_CODE', 'BOSS_CODE', 'SUPERVISOR_CODE']);
+        const codigoJefe = this.normalizeExcelManagerCode(
+          this.getExcelCellText(t, ['CODIGO_JEFE', 'MANAGER_CODE', 'BOSS_CODE', 'SUPERVISOR_CODE'])
+        );
         const codigoKey = this.normalizeEmployeeCodeKey(codigo);
         const codigoJefeKey = this.normalizeEmployeeCodeKey(codigoJefe);
   
@@ -1427,9 +1820,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
           errores.push(`Fila ${filaExcel}: El campo CODIGO es obligatorio.`);
         } else if (!codigoRegex.test(codigo)) {
           errores.push(`Fila ${filaExcel}: CODIGO solo puede contener letras, numeros, punto, guion o guion bajo.`);
-        } else if (codigosVistos.has(codigoKey)) {
+        } else if (codigoKey !== '0' && codigosVistos.has(codigoKey)) {
           errores.push(`Fila ${filaExcel}: CODIGO duplicado. Ya fue usado en la fila ${codigosVistos.get(codigoKey)}.`);
-        } else {
+        } else if (codigoKey !== '0') {
           codigosVistos.set(codigoKey, filaExcel);
         }
 
@@ -1459,6 +1852,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
             codigo,
             codigoJefe,
             demograficos: valoresDemograficos,
+            filaExcel,
           });
         }
       });
@@ -1491,7 +1885,12 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         return reject('No se encontró workbook');
       }
   
-      const worksheet = this.workbook.Sheets[this.workbook.SheetNames[0]];
+      const worksheet = this.getEmployeeImportWorksheet();
+
+      if (!worksheet) {
+        return reject('The EMPLOYEES worksheet was not found in the Excel file.');
+      }
+
       const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
   
       const excel_empleados: any = {
@@ -1550,7 +1949,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         const tipoEnvioEncuesta = String(t.SEND_SURVEY_TYPE ?? 0);
         const position = String(t.POSITION ?? '').trim();
         const codigo = this.getExcelCellText(t, ['CODE', 'EMPLOYEE_CODE', 'CODIGO']);
-        const codigoJefe = this.getExcelCellText(t, ['MANAGER_CODE', 'BOSS_CODE', 'SUPERVISOR_CODE', 'CODIGO_JEFE']);
+        const codigoJefe = this.normalizeExcelManagerCode(
+          this.getExcelCellText(t, ['MANAGER_CODE', 'BOSS_CODE', 'SUPERVISOR_CODE', 'CODIGO_JEFE'])
+        );
         const codigoKey = this.normalizeEmployeeCodeKey(codigo);
         const codigoJefeKey = this.normalizeEmployeeCodeKey(codigoJefe);
   
@@ -1579,9 +1980,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
           errores.push(`Row ${filaExcel}: CODE field is required.`);
         } else if (!codigoRegex.test(codigo)) {
           errores.push(`Row ${filaExcel}: CODE can only contain letters, numbers, dot, dash or underscore.`);
-        } else if (codigosVistos.has(codigoKey)) {
+        } else if (codigoKey !== '0' && codigosVistos.has(codigoKey)) {
           errores.push(`Row ${filaExcel}: duplicated CODE. It was already used in row ${codigosVistos.get(codigoKey)}.`);
-        } else {
+        } else if (codigoKey !== '0') {
           codigosVistos.set(codigoKey, filaExcel);
         }
 
@@ -1611,6 +2012,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
             codigo,
             codigoJefe,
             demograficos: valoresDemograficos,
+            filaExcel,
           });
         }
       });
@@ -1647,19 +2049,575 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
   }
 
-  private async uploadEmployeesExcel(originalData: any) {
-    console.log('entra en upload..');
+  private getEmployeeImportTranslation(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(`MENUITEMS.EMPLOYEE.${key}`, params);
+  }
 
-    const empleados: any[] = originalData?.empleados ?? [];
-    const total = empleados.length;
-    console.log('total empleados:', total);
+  private normalizeEmployeeImportValue(value: any, ignoreCase = false): string {
+    const normalizedValue = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return ignoreCase ? normalizedValue.toLocaleLowerCase() : normalizedValue;
+  }
 
-    if (!total) {
+  private getEmployeeImportSendType(value: any): number {
+    const normalizedValue = this.normalizeEmployeeCodeKey(value);
+
+    if (normalizedValue === '1' || normalizedValue === 'CORREO' || normalizedValue === 'MAIL' || normalizedValue === 'EMAIL') {
+      return 1;
+    }
+
+    if (normalizedValue === '2' || normalizedValue === 'WHATSAPP') {
+      return 2;
+    }
+
+    if (
+      normalizedValue === '3' ||
+      normalizedValue === 'CORREO Y WHATSAPP' ||
+      normalizedValue === 'MAIL & WHATSAPP' ||
+      normalizedValue === 'EMAIL AND WHATSAPP'
+    ) {
+      return 3;
+    }
+
+    return 0;
+  }
+
+  private getEmployeeImportEmail(employee: any): string {
+    return this.normalizeEmployeeImportValue(
+      employee?.Email ?? employee?.email ?? employee?.Correo ?? employee?.correo,
+      true
+    );
+  }
+
+  private getEmployeeImportDemographicNames(): Map<string, string> {
+    const demographicNames = new Map<string, string>();
+
+    this.camposDemograficosOrganizacion.forEach((field) => {
+      const fieldName = this.getDemographicFieldName(field);
+
+      if (fieldName) {
+        demographicNames.set(this.normalizeEmployeeColumnKey(fieldName), fieldName);
+      }
+    });
+
+    // Dynamic columns come from the loaded employee rows, so they cannot define
+    // an empty organization's demographic schema.
+    (this.allEmployees.length > 0 ? this.camposDinamicos : []).forEach((fieldName) => {
+      const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
+
+      if (fieldName && !demographicNames.has(normalizedFieldName)) {
+        demographicNames.set(normalizedFieldName, fieldName);
+      }
+    });
+
+    return demographicNames;
+  }
+
+  private getCanonicalEmployeeImportDemographics(
+    demographics: Record<string, any> | null | undefined,
+    demographicNames: Map<string, string>
+  ): Record<string, string> {
+    const canonicalDemographics: Record<string, string> = {};
+
+    Object.entries(demographics ?? {}).forEach(([fieldName, value]) => {
+      const canonicalFieldName = demographicNames.get(this.normalizeEmployeeColumnKey(fieldName));
+
+      if (canonicalFieldName) {
+        canonicalDemographics[canonicalFieldName] = this.normalizeEmployeeImportValue(value);
+      }
+    });
+
+    return canonicalDemographics;
+  }
+
+  private buildEmployeeImportPayload(
+    row: any,
+    managerId: number | null,
+    demographics: Record<string, string>
+  ): Record<string, any> {
+    const cargo = this.normalizeEmployeeImportValue(row?.cargo ?? row?.position);
+    const payload = {
+      IdOrganizacion: this.idOrganization,
+      idOrganizacion: this.idOrganization,
+      Nombres: this.normalizeEmployeeImportValue(row?.nombres),
+      Apellidos: this.normalizeEmployeeImportValue(row?.apellidos),
+      Celular: this.normalizeEmployeeImportValue(row?.celular),
+      Email: this.normalizeEmployeeImportValue(row?.email),
+      Cargo: cargo,
+      TipoEnvioEncuesta: this.getEmployeeImportSendType(row?.tipoEnvioEncuesta),
+      IdEmpleadoJefe: managerId,
+      idEmpleadoJefe: managerId,
+      IdJefe: managerId,
+      idJefe: managerId,
+      ...demographics,
+    };
+
+    return payload;
+  }
+
+  private employeeImportPayloadHasChanges(
+    existingEmployee: any,
+    payload: Record<string, any>,
+    importedDemographicNames: string[]
+  ): boolean {
+    const fixedValuesChanged =
+      this.normalizeEmployeeImportValue(existingEmployee?.Nombres ?? existingEmployee?.nombres) !== payload['Nombres'] ||
+      this.normalizeEmployeeImportValue(existingEmployee?.Apellidos ?? existingEmployee?.apellidos) !== payload['Apellidos'] ||
+      this.normalizeEmployeeImportValue(existingEmployee?.Celular ?? existingEmployee?.celular) !== payload['Celular'] ||
+      this.normalizeEmployeeImportValue(existingEmployee?.Email ?? existingEmployee?.email, true) !==
+        this.normalizeEmployeeImportValue(payload['Email'], true) ||
+      this.normalizeEmployeeImportValue(this.getEmployeeCargoValue(existingEmployee)) !== payload['Cargo'] ||
+      this.getEmployeeImportSendType(existingEmployee?.TipoEnvioEncuesta ?? existingEmployee?.tipoEnvioEncuesta) !==
+        payload['TipoEnvioEncuesta'] ||
+      getEmployeeOptionManagerId(existingEmployee) !== normalizeEmployeeManagerId(payload['IdEmpleadoJefe']);
+
+    if (fixedValuesChanged) {
+      return true;
+    }
+
+    return importedDemographicNames.some(
+      (fieldName) =>
+        this.normalizeEmployeeImportValue(this.getEmployeeDemographicValue(existingEmployee, fieldName)) !==
+        this.normalizeEmployeeImportValue(payload[fieldName])
+    );
+  }
+
+  private employeeImportIdentityMatches(existingEmployee: any, row: any): boolean {
+    const existingFirstName = this.normalizeEmployeeImportValue(
+      existingEmployee?.Nombres ?? existingEmployee?.nombres,
+      true
+    );
+    const existingLastName = this.normalizeEmployeeImportValue(
+      existingEmployee?.Apellidos ?? existingEmployee?.apellidos,
+      true
+    );
+    const importedFirstName = this.normalizeEmployeeImportValue(row?.nombres, true);
+    const importedLastName = this.normalizeEmployeeImportValue(row?.apellidos, true);
+
+    return !!importedFirstName &&
+      importedFirstName === existingFirstName &&
+      importedLastName === existingLastName;
+  }
+
+  private setEmployeeImportManagerId(
+    payload: Record<string, any>,
+    managerId: number | null
+  ): Record<string, any> {
+    return {
+      ...payload,
+      IdEmpleadoJefe: managerId,
+      idEmpleadoJefe: managerId,
+      IdJefe: managerId,
+      idJefe: managerId,
+    };
+  }
+
+  private prepareEmployeeExcelImport(
+    originalData: any,
+    allowNewDemographicFields = false
+  ): EmployeeExcelImportPlan {
+    const rows: any[] = Array.isArray(originalData?.empleados) ? originalData.empleados : [];
+    const errors: string[] = [];
+    const employeesById = new Map<number, any>();
+    const employeesByEmail = new Map<string, any[]>();
+    const demographicNames = this.getEmployeeImportDemographicNames();
+    const importedDemographicColumns: string[] = Array.isArray(originalData?.camposDemograficos)
+      ? originalData.camposDemograficos
+      : [];
+
+    this.allEmployees.forEach((employee) => {
+      const employeeId = getEmployeeOptionId(employee);
+      const email = this.getEmployeeImportEmail(employee);
+
+      if (employeeId) {
+        employeesById.set(employeeId, employee);
+      }
+
+      if (email) {
+        const matchingEmployees = employeesByEmail.get(email) ?? [];
+        matchingEmployees.push(employee);
+        employeesByEmail.set(email, matchingEmployees);
+      }
+    });
+
+    const unknownDemographicColumns = importedDemographicColumns.filter(
+      (fieldName) => !demographicNames.has(this.normalizeEmployeeColumnKey(fieldName))
+    );
+
+    if (unknownDemographicColumns.length && !allowNewDemographicFields) {
+      errors.push(this.getEmployeeImportTranslation('IMPORTUNKNOWNDEMOGRAPHICS', {
+        fields: unknownDemographicColumns.join(', '),
+      }));
+    }
+
+    const seenImportedEmails = new Map<string, number>();
+    const seenImportedCodes = new Map<string, number>();
+    const seenResolvedEmployeeIds = new Map<number, number>();
+    const preparedRows: PreparedEmployeeExcelRow[] = [];
+    const preparedRowsByCode = new Map<string, PreparedEmployeeExcelRow>();
+    const resolvedEmployeeIdsByCode = new Map<string, number>();
+    const plan: EmployeeExcelImportPlan = {
+      creates: [],
+      updates: [],
+      unchanged: 0,
+      resolvedEmployeeIdsByCode,
+    };
+
+    rows.forEach((row, index) => {
+      const rowNumber = Number(row?.filaExcel) || index + 2;
+      const rawEmployeeCode = this.normalizeEmployeeImportValue(row?.codigo);
+      const normalizedEmployeeCode = this.normalizeEmployeeCodeKey(rawEmployeeCode);
+      const employeeCodeKey = normalizedEmployeeCode === '0' ? '' : normalizedEmployeeCode;
+      const normalizedManagerCode = this.normalizeEmployeeCodeKey(row?.codigoJefe);
+      const managerCodeKey = normalizedManagerCode === '0' ? '' : normalizedManagerCode;
+      const email = this.normalizeEmployeeImportValue(row?.email, true);
+
+      if (!rawEmployeeCode) {
+        errors.push(this.getEmployeeImportTranslation('IMPORTINVALIDCODE', {
+          row: rowNumber,
+          code: rawEmployeeCode,
+        }));
+        return;
+      }
+
+      if (employeeCodeKey) {
+        const previousCodeRow = seenImportedCodes.get(employeeCodeKey);
+
+        if (previousCodeRow) {
+          errors.push(this.getEmployeeImportTranslation('IMPORTDUPLICATECODEFILE', {
+            row: rowNumber,
+            code: rawEmployeeCode,
+            previousRow: previousCodeRow,
+          }));
+          return;
+        }
+
+        seenImportedCodes.set(employeeCodeKey, rowNumber);
+      }
+
+      const previousEmailRow = seenImportedEmails.get(email);
+
+      if (email && previousEmailRow) {
+        errors.push(this.getEmployeeImportTranslation('IMPORTDUPLICATEEMAILFILE', {
+          row: rowNumber,
+          email,
+          previousRow: previousEmailRow,
+        }));
+        return;
+      }
+
+      if (email) {
+        seenImportedEmails.set(email, rowNumber);
+      }
+
+      const emailMatches = employeesByEmail.get(email) ?? [];
+
+      if (emailMatches.length > 1) {
+        errors.push(this.getEmployeeImportTranslation('IMPORTAMBIGUOUSEMAIL', {
+          row: rowNumber,
+          email,
+        }));
+        return;
+      }
+
+      const employeeByEmail = emailMatches[0] ?? null;
+      const numericEmployeeCode = /^\d+$/.test(rawEmployeeCode) ? Number(rawEmployeeCode) : 0;
+      const employeeById = numericEmployeeCode > 0 ? employeesById.get(numericEmployeeCode) ?? null : null;
+      const emailEmployeeId = getEmployeeOptionId(employeeByEmail);
+      const codeEmployeeId = getEmployeeOptionId(employeeById);
+
+      if (emailEmployeeId && codeEmployeeId && emailEmployeeId !== codeEmployeeId) {
+        errors.push(this.getEmployeeImportTranslation('IMPORTCODEEMAILCONFLICT', {
+          row: rowNumber,
+          code: rawEmployeeCode,
+          email,
+        }));
+        return;
+      }
+
+      const existingEmployee = employeeByEmail ?? (
+        employeeById && this.employeeImportIdentityMatches(employeeById, row) ? employeeById : null
+      );
+      const existingEmployeeId = getEmployeeOptionId(existingEmployee) ?? null;
+
+      if (existingEmployeeId) {
+        const previousEmployeeRow = seenResolvedEmployeeIds.get(existingEmployeeId);
+
+        if (previousEmployeeRow) {
+          errors.push(this.getEmployeeImportTranslation('IMPORTDUPLICATEEMPLOYEE', {
+            row: rowNumber,
+            previousRow: previousEmployeeRow,
+            code: existingEmployeeId,
+          }));
+          return;
+        }
+
+        seenResolvedEmployeeIds.set(existingEmployeeId, rowNumber);
+
+        if (employeeCodeKey) {
+          resolvedEmployeeIdsByCode.set(employeeCodeKey, existingEmployeeId);
+        }
+      }
+
+      const preparedRow: PreparedEmployeeExcelRow = {
+        row,
+        rowNumber,
+        employeeCodeKey,
+        managerCodeKey,
+        existingEmployee,
+        existingEmployeeId,
+      };
+
+      preparedRows.push(preparedRow);
+
+      if (employeeCodeKey) {
+        preparedRowsByCode.set(employeeCodeKey, preparedRow);
+      }
+    });
+
+    preparedRows.forEach((preparedRow) => {
+      const {
+        row,
+        rowNumber,
+        employeeCodeKey,
+        managerCodeKey,
+        existingEmployee,
+        existingEmployeeId,
+      } = preparedRow;
+
+      if (managerCodeKey && managerCodeKey === employeeCodeKey) {
+        errors.push(this.getEmployeeImportTranslation('IMPORTSELFASMANAGER', {
+          row: rowNumber,
+          code: row?.codigo,
+        }));
+        return;
+      }
+
+      let managerId = managerCodeKey ? resolvedEmployeeIdsByCode.get(managerCodeKey) ?? null : null;
+
+      if (managerCodeKey && !preparedRowsByCode.has(managerCodeKey) && managerId === null) {
+        const numericManagerCode = /^\d+$/.test(managerCodeKey) ? Number(managerCodeKey) : 0;
+        managerId = numericManagerCode > 0 && employeesById.has(numericManagerCode)
+          ? numericManagerCode
+          : null;
+
+        if (managerId === null) {
+          errors.push(this.getEmployeeImportTranslation('IMPORTMANAGERNOTFOUND', {
+            row: rowNumber,
+            code: row?.codigoJefe,
+          }));
+          return;
+        }
+      }
+
+      const importedDemographics = this.getCanonicalEmployeeImportDemographics(
+        row?.demograficos,
+        demographicNames
+      );
+      const actionBase = {
+        rowNumber,
+        employeeCodeKey,
+        managerCodeKey,
+        managerId,
+      };
+
+      if (existingEmployee && existingEmployeeId) {
+        const payload = {
+          ...this.buildEmployeeImportPayload(row, managerId, importedDemographics),
+          IdEmpleado: existingEmployeeId,
+        };
+        const hasPendingManager = !!managerCodeKey && managerId === null;
+
+        if (
+          hasPendingManager ||
+          this.employeeImportPayloadHasChanges(existingEmployee, payload, Object.keys(importedDemographics))
+        ) {
+          plan.updates.push({ ...actionBase, payload });
+        } else {
+          plan.unchanged += 1;
+        }
+
+        return;
+      }
+
+      const newEmployeeDemographics: Record<string, string> = {};
+
+      demographicNames.forEach((fieldName) => {
+        newEmployeeDemographics[fieldName] = importedDemographics[fieldName] ?? '';
+      });
+
+      plan.creates.push({
+        ...actionBase,
+        payload: this.buildEmployeeImportPayload(row, managerId, newEmployeeDemographics),
+      });
+    });
+
+    if (errors.length) {
+      throw new Error(errors.join('\n'));
+    }
+
+    return plan;
+  }
+
+  private getNewEmployeeImportDemographicFields(originalData: any): string[] {
+    const knownFields = this.getEmployeeImportDemographicNames();
+    const seenFields = new Set<string>();
+    const importedFields = Array.isArray(originalData?.camposDemograficos)
+      ? originalData.camposDemograficos
+      : [];
+
+    return importedFields.filter((rawFieldName: any) => {
+      const fieldName = String(rawFieldName ?? '').trim();
+      const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
+
+      if (!fieldName || !normalizedFieldName || seenFields.has(normalizedFieldName)) {
+        return false;
+      }
+
+      seenFields.add(normalizedFieldName);
+      return !knownFields.has(normalizedFieldName);
+    }).map((fieldName: any) => String(fieldName).trim());
+  }
+
+  private async createEmployeeImportDemographicFields(fieldNames: string[]): Promise<void> {
+    for (const fieldName of fieldNames) {
+      await this.organizacionService.saveNewDemografico(
+        { NombreCampo: fieldName },
+        this.idOrganization
+      );
+
+      this.camposDemograficosOrganizacion = [
+        ...this.camposDemograficosOrganizacion,
+        { NombreCampo: fieldName },
+      ];
+    }
+  }
+
+  private getEmployeeImportApiError(error: any): string {
+    return String(
+      error?.response?.data?.error ??
+      error?.response?.data?.message ??
+      error?.message ??
+      error
+    );
+  }
+
+  private escapeEmployeeImportHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private updateEmployeeImportProgress(completed: number, total: number): void {
+    const normalizedTotal = Math.max(0, total);
+    const normalizedCompleted = Math.min(Math.max(0, completed), normalizedTotal);
+    const percentage = normalizedTotal > 0
+      ? Math.round((normalizedCompleted / normalizedTotal) * 100)
+      : 100;
+    const progressText = this.escapeEmployeeImportHtml(
+      this.getEmployeeImportTranslation('IMPORTPROGRESS', {
+        completed: normalizedCompleted,
+        total: normalizedTotal,
+      })
+    );
+
+    Swal.update({
+      html: `
+        <div class="employee-import-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percentage}">
+          <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;color:#536579;font-size:14px;">
+            <span>${progressText}</span>
+            <strong style="color:#17324d;white-space:nowrap;">${percentage}%</strong>
+          </div>
+          <div style="height:8px;overflow:hidden;border-radius:999px;background:#e7eef4;">
+            <div style="height:100%;width:${percentage}%;border-radius:inherit;background:#0b76c5;transition:width .2s ease;"></div>
+          </div>
+        </div>`,
+    });
+  }
+
+  private async uploadEmployeesExcel(originalData: any): Promise<void> {
+    const employees: any[] = Array.isArray(originalData?.empleados) ? originalData.empleados : [];
+
+    if (!employees.length) {
+      Swal.close();
       await Swal.fire(
         this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
-        this.translate.instant('MENUITEMS.EMPLOYEE.NOEMPLOYEESTOUPLOAD') || 'No hay empleados para subir.',
+        this.getEmployeeImportTranslation('NOEMPLOYEESTOUPLOAD'),
         'info'
       );
+      return;
+    }
+
+    let importPlan: EmployeeExcelImportPlan;
+    const newDemographicFields = this.getNewEmployeeImportDemographicFields(originalData);
+
+    try {
+      // Validate employees first without rejecting demographic columns that will be
+      // created as part of this same import.
+      const preflightPlan = this.prepareEmployeeExcelImport(originalData, true);
+
+      if (this.demoLimitsService.exceedsLimit(
+        'maxEmployeesPerOrganization',
+        this.getCurrentEmployeesCount(),
+        preflightPlan.creates.length,
+      )) {
+        Swal.close();
+        this.showEmployeeLimitReachedMessage(preflightPlan.creates.length);
+        return;
+      }
+
+      if (this.demoLimitsService.exceedsLimit(
+        'maxDemographicsPerOrganization',
+        this.camposDemograficosOrganizacion.length,
+        newDemographicFields.length,
+      )) {
+        Swal.close();
+        await Swal.fire({
+          title: 'Limite demo alcanzado',
+          text:
+            `Solo se pueden ingresar ${this.demoLimitsService.getLimit('maxDemographicsPerOrganization')} campos demograficos en esta demo.`,
+          icon: 'warning',
+        });
+        return;
+      }
+
+      if (newDemographicFields.length) {
+        Swal.fire({
+          title: this.translate.instant('MENUITEMS.EMPLOYEE.UPLOADMESSAGE'),
+          html: this.translate.instant('MENUITEMS.EMPLOYEE.PROCESSMESSAGE'),
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => Swal.showLoading(),
+        });
+        await this.createEmployeeImportDemographicFields(newDemographicFields);
+      }
+
+      // Rebuild the plan after the new demographic fields are available, so their
+      // values are included in the employee create and update payloads.
+      importPlan = this.prepareEmployeeExcelImport(originalData);
+    } catch (error: any) {
+      Swal.close();
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.VERIFY'),
+        html:
+          `<pre style="text-align:left;white-space:pre-wrap;max-height:50vh;overflow:auto">` +
+          this.escapeEmployeeImportHtml(this.getEmployeeImportApiError(error)) +
+          `</pre>`,
+        icon: 'warning',
+        width: 760,
+      });
+      return;
+    }
+
+    if (this.demoLimitsService.exceedsLimit(
+      'maxEmployeesPerOrganization',
+      this.getCurrentEmployeesCount(),
+      importPlan.creates.length,
+    )) {
+      Swal.close();
+      this.showEmployeeLimitReachedMessage(importPlan.creates.length);
       return;
     }
 
@@ -1667,60 +2625,154 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       title: this.translate.instant('MENUITEMS.EMPLOYEE.UPLOADMESSAGE'),
       html: this.translate.instant('MENUITEMS.EMPLOYEE.PROCESSMESSAGE'),
       allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
+      allowEscapeKey: false,
+      didOpen: () => Swal.showLoading(),
     });
 
+    let created = 0;
+    let updated = 0;
+    let processed = 0;
+    const totalToProcess = importPlan.creates.length + importPlan.updates.length;
+    const processingErrors: string[] = [];
+    const resolvedEmployeeIdsByCode = new Map(importPlan.resolvedEmployeeIdsByCode);
+    const resolveManagerId = (action: EmployeeExcelImportAction): number | null => {
+      if (!action.managerCodeKey) {
+        return action.managerId;
+      }
+
+      return resolvedEmployeeIdsByCode.get(action.managerCodeKey) ?? action.managerId;
+    };
+
     try {
-      const payload = {
-        idOrganizacion: originalData.idOrganizacion,
-        camposDemograficos: originalData.camposDemograficos,
-        empleados,
-      };
+      this.updateEmployeeImportProgress(processed, totalToProcess);
+      const pendingCreates = [...importPlan.creates];
 
-      console.log('payload (size): ', payload.empleados.length);
+      while (pendingCreates.length > 0) {
+        let processedAnyEmployee = false;
 
-      const result: any = await this.organizacionService.saveNewEmployeesExcel(payload);
-      const ok = result?.data?.message === 'Proceso finalizado';
-      const erroresServidor: string[] = result?.data?.errores ?? [];
+        for (let index = pendingCreates.length - 1; index >= 0; index -= 1) {
+          const action = pendingCreates[index];
+          const managerId = resolveManagerId(action);
+
+          if (action.managerCodeKey && managerId === null) {
+            continue;
+          }
+
+          pendingCreates.splice(index, 1);
+          processedAnyEmployee = true;
+
+          try {
+            const payload = this.setEmployeeImportManagerId(action.payload, managerId);
+            const response: any = await this.organizacionService.saveNewEmployee(payload);
+            const newEmployeeId = Number(response?.data?.newId);
+
+            if (
+              response?.data?.message !== 'Empleado insertado exitosamente' ||
+              !Number.isInteger(newEmployeeId) ||
+              newEmployeeId <= 0
+            ) {
+              throw new Error(response?.data?.message || 'Respuesta inesperada del servidor.');
+            }
+
+            if (action.employeeCodeKey) {
+              resolvedEmployeeIdsByCode.set(action.employeeCodeKey, newEmployeeId);
+            }
+
+            created += 1;
+          } catch (error) {
+            processingErrors.push(
+              this.getEmployeeImportTranslation('IMPORTROWERROR', {
+                row: action.rowNumber,
+                error: this.getEmployeeImportApiError(error),
+              })
+            );
+          } finally {
+            processed += 1;
+            this.updateEmployeeImportProgress(processed, totalToProcess);
+          }
+        }
+
+        if (!processedAnyEmployee) {
+          pendingCreates.forEach((action) => {
+            processingErrors.push(
+              this.getEmployeeImportTranslation('IMPORTMANAGERDEPENDENCYFAILED', {
+                row: action.rowNumber,
+                code: action.managerCodeKey,
+              })
+            );
+          });
+          processed += pendingCreates.length;
+          this.updateEmployeeImportProgress(processed, totalToProcess);
+          break;
+        }
+      }
+
+      for (const action of importPlan.updates) {
+        const managerId = resolveManagerId(action);
+
+        if (action.managerCodeKey && managerId === null) {
+          processingErrors.push(
+            this.getEmployeeImportTranslation('IMPORTMANAGERDEPENDENCYFAILED', {
+              row: action.rowNumber,
+              code: action.managerCodeKey,
+            })
+          );
+          processed += 1;
+          this.updateEmployeeImportProgress(processed, totalToProcess);
+          continue;
+        }
+
+        try {
+          const payload = this.setEmployeeImportManagerId(action.payload, managerId);
+          const response: any = await this.organizacionService.updateEmployee(payload);
+
+          if (response?.data?.message !== 'Empleado actualizado exitosamente') {
+            throw new Error(response?.data?.message || 'Respuesta inesperada del servidor.');
+          }
+
+          updated += 1;
+        } catch (error) {
+          processingErrors.push(
+            this.getEmployeeImportTranslation('IMPORTROWERROR', {
+              row: action.rowNumber,
+              error: this.getEmployeeImportApiError(error),
+              })
+            );
+        } finally {
+          processed += 1;
+          this.updateEmployeeImportProgress(processed, totalToProcess);
+        }
+      }
 
       Swal.close();
 
-      if (!ok || erroresServidor.length) {
+      const summary = this.getEmployeeImportTranslation('IMPORTSUMMARY', {
+        created,
+        updated,
+        unchanged: importPlan.unchanged,
+      });
+
+      if (processingErrors.length) {
         await Swal.fire({
-          title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+          title: this.getEmployeeImportTranslation('IMPORTPARTIAL'),
           html:
-            `${this.translate.instant('MENUITEMS.EMPLOYEE.ERRFOUNDINSERT')}<br>` +
+            `<p>${this.escapeEmployeeImportHtml(summary)}</p>` +
             `<pre style="text-align:left;white-space:pre-wrap;max-height:50vh;overflow:auto">` +
-            (erroresServidor.length
-              ? erroresServidor.join('\n')
-              : 'Respuesta inesperada del servidor.') +
+            this.escapeEmployeeImportHtml(processingErrors.join('\n')) +
             `</pre>`,
-          icon: 'error',
-          width: 700
+          icon: 'warning',
+          width: 760,
         });
       } else {
-        await Swal.fire(
-          this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
-          this.translate.instant('MENUITEMS.EMPLOYEE.EMPLOYEINSERTSUCCESS'),
-          'success'
-        );
+        await Swal.fire({
+          title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
+          text: summary,
+          icon: 'success',
+        });
       }
-    } catch (e: any) {
-      Swal.close();
-
-      await Swal.fire({
-        title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
-        html:
-          `${this.translate.instant('MENUITEMS.EMPLOYEE.ERRUPLOADDATA')}<br>` +
-          `<pre style="text-align:left;white-space:pre-wrap;max-height:50vh;overflow:auto">` +
-          (e?.response?.data?.error ?? e?.response?.data?.message ?? e?.message ?? e) +
-          `</pre>`,
-        icon: 'error',
-        width: 700,
-      });
     } finally {
-      // Refrescar lista
       this.getEmployeesByOrg();
+      this.getDemograficos();
     }
   }
 
@@ -1776,20 +2828,6 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
             this.convertExcelToJSON()
               .then(async () => {
                 console.log('this.jsonData: ', this.jsonData);
-                const employeesToUpload = Array.isArray(this.jsonData?.empleados)
-                  ? this.jsonData.empleados.length
-                  : 0;
-
-                if (this.demoLimitsService.exceedsLimit(
-                  'maxEmployeesPerOrganization',
-                  this.getCurrentEmployeesCount(),
-                  employeesToUpload,
-                )) {
-                  Swal.close();
-                  this.showEmployeeLimitReachedMessage(employeesToUpload);
-                  return;
-                }
-
                 await this.uploadEmployeesExcel(this.jsonData);
 
               })
@@ -1890,26 +2928,219 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       });
   }
 
+  private getEmployeeExportValue(employee: any, keys: string[]): string {
+    for (const key of keys) {
+      const value = employee?.[key];
+
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return String(value).trim();
+      }
+    }
+
+    return '';
+  }
+
+  private getEmployeeSendTypeForExport(employee: any): string {
+    const sendType = this.getEmployeeExportValue(employee, [
+      'TipoEnvioEncuesta',
+      'tipoEnvioEncuesta',
+      'TipoEnvio',
+      'tipoEnvio',
+    ]);
+    const normalizedSendType = this.normalizeEmployeeCodeKey(sendType);
+
+    if (normalizedSendType === '1' || normalizedSendType === 'CORREO' || normalizedSendType === 'MAIL' || normalizedSendType === 'EMAIL') {
+      return 'CORREO';
+    }
+
+    if (normalizedSendType === '2' || normalizedSendType === 'WHATSAPP') {
+      return 'WHATSAPP';
+    }
+
+    if (
+      normalizedSendType === '3' ||
+      normalizedSendType === 'CORREO Y WHATSAPP' ||
+      normalizedSendType === 'MAIL & WHATSAPP' ||
+      normalizedSendType === 'EMAIL AND WHATSAPP'
+    ) {
+      return 'CORREO Y WHATSAPP';
+    }
+
+    return 'NINGUNO';
+  }
+
+  private getEmployeeExportDemographicColumns(): string[] {
+    const columnsByKey = new Map<string, string>();
+
+    this.camposDinamicos.forEach((fieldName) => {
+      columnsByKey.set(this.normalizeEmployeeColumnKey(fieldName), fieldName);
+    });
+
+    this.camposDemograficosOrganizacion.forEach((field) => {
+      const fieldName = this.getDemographicFieldName(field);
+      const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
+
+      if (fieldName && !columnsByKey.has(normalizedFieldName)) {
+        columnsByKey.set(normalizedFieldName, fieldName);
+      }
+    });
+
+    return Array.from(columnsByKey.values());
+  }
+
   downloadExcelEmployeeTemplate(): void {
+    const templateEs = this.confslist.find(
+      (config: any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_SPANISH'
+    );
+    const templateEn = this.confslist.find(
+      (config: any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_ENG'
+    );
+    const template = this.langStoreValue === 'en' ? templateEn : templateEs;
 
-    const template_es = this.confslist.find((config:any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_SPANISH');
-    const template_en = this.confslist.find((config:any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_ENG');
+    if (!template?.Valor) {
+      Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+        text: this.translate.instant('MENUITEMS.EMPLOYEE.TEMPLATEDOWNLOADERROR'),
+        icon: 'error',
+      });
+      return;
+    }
 
-    const url = this.langStoreValue === 'en'
-      ? this.s3objectsServer + template_en.Valor
-      : this.s3objectsServer + template_es.Valor;
-
+    const url = this.s3objectsServer + template.Valor;
     const filename = this.langStoreValue === 'en'
       ? 'EmployeeTemplate_EN.xlsx'
       : 'PlantillaEmpleado_ES.xlsx';
+    const anchor = document.createElement('a');
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;          // sugiere nombre de archivo
-    a.rel = 'noopener';             // seguridad
-    document.body.appendChild(a);
-    a.click();
-    a.remove();                      // limpio
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
+  async downloadVisibleEmployeesExcel(): Promise<void> {
+    if (this.isExportingEmployees || this.dataSourceEmployees.length === 0) {
+      return;
+    }
+
+    this.isExportingEmployees = true;
+    const employeesToExport = [...this.dataSourceEmployees];
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('EMPLEADOS');
+
+      const fixedHeaders = [
+        'NOMBRES',
+        'APELLIDOS',
+        'TELEFONO',
+        'EMAIL',
+        'TIPO_ENVIO_ENCUESTA',
+        'CARGO',
+        'CODIGO',
+        'CODIGO_JEFE',
+      ];
+      const demographicHeaders = this.getEmployeeExportDemographicColumns();
+      const headers = [...fixedHeaders, ...demographicHeaders];
+
+      const headerRow = worksheet.getRow(1);
+      headers.forEach((header, index) => {
+        headerRow.getCell(index + 1).value = header;
+      });
+
+      employeesToExport.forEach((employee: any) => {
+        const employeeId = getEmployeeOptionId(employee) ?? 0;
+        const managerId = getEmployeeOptionManagerId(employee) ?? 0;
+
+        worksheet.addRow([
+          this.getEmployeeExportValue(employee, ['Nombres', 'nombres']),
+          this.getEmployeeExportValue(employee, ['Apellidos', 'apellidos']),
+          this.getEmployeeExportValue(employee, ['Celular', 'celular', 'Telefono', 'telefono']),
+          this.getEmployeeExportValue(employee, ['Email', 'email', 'Correo', 'correo']),
+          this.getEmployeeSendTypeForExport(employee),
+          this.getEmployeeCargoValue(employee),
+          employeeId,
+          managerId,
+          ...demographicHeaders.map((fieldName) => this.getEmployeeDemographicValue(employee, fieldName)),
+        ]);
+      });
+
+      if (worksheet.actualRowCount - 1 !== employeesToExport.length) {
+        throw new Error('La cantidad de empleados exportados no coincide con la tabla visible.');
+      }
+
+      headerRow.height = 28;
+      headerRow.eachCell((cell, columnNumber) => {
+        const isDemographic = columnNumber > fixedHeaders.length;
+        cell.font = {
+          bold: true,
+          color: { argb: isDemographic ? 'FF234760' : 'FFFFFFFF' },
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: isDemographic ? 'FFDDEDF8' : 'FF294F63' },
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD3DEE8' } },
+          left: { style: 'thin', color: { argb: 'FFD3DEE8' } },
+          bottom: { style: 'thin', color: { argb: 'FFD3DEE8' } },
+          right: { style: 'thin', color: { argb: 'FFD3DEE8' } },
+        };
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          return;
+        }
+
+        row.height = 22;
+        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+          const isDemographic = columnNumber > fixedHeaders.length;
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: isDemographic ? 'FFF1F7FC' : 'FFFFFFFF' },
+          };
+          cell.alignment = { vertical: 'middle', wrapText: false };
+          cell.border = {
+            bottom: { style: 'hair', color: { argb: 'FFE3EAF1' } },
+          };
+        });
+      });
+
+      const fixedWidths = [22, 22, 18, 32, 24, 26, 14, 16];
+      headers.forEach((_header, index) => {
+        worksheet.getColumn(index + 1).width = index < fixedWidths.length ? fixedWidths[index] : 22;
+      });
+
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+      worksheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: Math.max(1, worksheet.rowCount), column: headers.length },
+      };
+      workbook.creator = 'Just-Link 360';
+      workbook.modified = new Date();
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      saveAs(
+        new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        `Empleados_${dateSuffix}.xlsx`
+      );
+    } catch (error) {
+      console.error('Error al generar el archivo Excel de empleados:', error);
+      Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+        text: this.translate.instant('MENUITEMS.EMPLOYEE.EXCELDOWNLOADERROR'),
+        icon: 'error',
+      });
+    } finally {
+      this.isExportingEmployees = false;
+    }
   }
   
  

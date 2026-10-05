@@ -79,7 +79,7 @@
                     </button>
                   </mat-card-header>
 
-                  <mat-card-content style="margin-bottom: 10px;">
+                  <mat-card-content class="climate-card__description">
                     <p>{{ card.content }}</p>
                   </mat-card-content>
                 
@@ -150,21 +150,33 @@
                   
 
                   <!-- Resumen de grandes factores y preguntas -->
-                  <mat-card-content class="climate-structure" *ngIf="card.granFactores?.length">
-                    <div class="climate-structure__header">
+                  <mat-card-content
+                    class="climate-structure"
+                    [class.climate-structure--expanded]="isClimateStructureExpanded(card)"
+                    *ngIf="card.granFactores?.length">
+                    <button
+                      type="button"
+                      class="climate-structure__summary"
+                      [attr.aria-expanded]="isClimateStructureExpanded(card)"
+                      (click)="toggleClimateStructure(card, $event)">
                       <div class="climate-structure__title">
                         <span class="material-icons" aria-hidden="true">account_tree</span>
                         <span>{{ 'MENUITEMS.QUIZ.STRUCTURE.TITLE' | translate }}</span>
                       </div>
 
                       <div class="climate-structure__totals">
-                        <span>{{ card.granFactores.length }} {{ 'MENUITEMS.QUIZ.STRUCTURE.GRAND_FACTORS' | translate }}</span>
+                        <span>{{ card.granFactores.length }} {{ getClimateSurveyLabel(card.granFactores.length) }}</span>
                         <span>{{ getClimateFactorCount(card) }} {{ 'MENUITEMS.QUIZ.STRUCTURE.FACTORS' | translate }}</span>
                         <span>{{ getClimateQuestionCount(card) }} {{ 'MENUITEMS.QUIZ.STRUCTURE.QUESTIONS' | translate }}</span>
                       </div>
-                    </div>
 
-                    <div class="grand-factor" *ngFor="let cardx of card.granFactores">
+                      <mat-icon class="climate-structure__expand-icon" aria-hidden="true">
+                        {{ isClimateStructureExpanded(card) ? 'expand_less' : 'expand_more' }}
+                      </mat-icon>
+                    </button>
+
+                    <div class="climate-structure__content" *ngIf="isClimateStructureExpanded(card)">
+                    <div class="grand-factor" *ngFor="let cardx of getDisplayedGrandFactors(card)">
                       <div class="grand-factor__header">
                         <div class="grand-factor__copy">
                           <h3>{{ cardx.label }}</h3>
@@ -177,7 +189,7 @@
                       </div>
 
                       <mat-chip-set class="factor-chip-set" [attr.aria-label]="cardx.label">
-                        <mat-chip *ngFor="let factor of cardx.series"
+                        <mat-chip *ngFor="let factor of getDisplayedFactors(card, cardx)"
                           class="factor-chip"
                           [matTooltip]="getTooltipText(factor)"
                           matTooltipClass="factor-questions-tooltip"
@@ -189,25 +201,25 @@
                         </mat-chip>
                       </mat-chip-set>
                     </div>
+                    </div>
                   </mat-card-content>
                                   
                   <mat-divider style="margin-top: 5px;"></mat-divider>
                 
-                  <mat-card-actions>
+                  <mat-card-actions class="climate-card__actions">
 
-                      <button joyrideStep="step2"
+                      <button class="climate-card__action" joyrideStep="step2"
                         [title]="'MENUITEMS.TOUR.CLIMATE_LIST.EDIT_TITLE' | translate"
                         [text]="'MENUITEMS.TOUR.CLIMATE_LIST.EDIT_TEXT' | translate"
-                        [disabled]="!accessToEdit || loading" style="margin-left: auto; border-radius: 5px;" 
+                        [disabled]="!accessToEdit || loading"
                         mat-raised-button color="primary" (click)="editarQuiz(card)">
                         {{'MENUITEMS.QUIZ.EDIT' | translate}}
                       </button>
                     
-                      <button joyrideStep="step3"
+                      <button class="climate-card__action" joyrideStep="step3"
                             [title]="'MENUITEMS.TOUR.CLIMATE_LIST.SEND_TITLE' | translate"
                             [text]="'MENUITEMS.TOUR.CLIMATE_LIST.SEND_TEXT' | translate"
                             [disabled]="!accessToSend || loading"
-                            style="margin-left: 20px; border-radius: 5px;"
                             mat-raised-button color="primary"
                             (click)="adminEnvioQuizDialog(card)">
                       {{ 'MENUITEMS.QUIZ.SEND' | translate }}

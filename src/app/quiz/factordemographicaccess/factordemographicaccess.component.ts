@@ -92,6 +92,8 @@ import { Subscription } from 'rxjs';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { JoyrideModule, JoyrideService } from 'ngx-joyride';
 
 
 export interface ValorDemografico {
@@ -138,6 +140,8 @@ export interface FlujoConfig {
     MatCheckboxModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
+    JoyrideModule,
   
     BarChartModule, LineChartModule, AreaChartModule, PieChartModule 
   ],
@@ -226,16 +230,20 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
 
   gFactoresFiltrados = '';
 
-   data: FlujoConfig | null = null;
+  data: FlujoConfig | null = null;
   loading = false;
+  loadingClimates = false;
   error: string | null = null;
+  climateError: string | null = null;
 
 
   public seriess:any = []
 
   constructor(private languageService: LanguageService,private translate: TranslateService,
     private organizacionService: OrganizacionService, private authService: AuthService,
-     private router: Router,
+    private router: Router,
+    private joyrideService: JoyrideService,
+    private snackBar: MatSnackBar,
     ) {
     
     const factores = [
@@ -319,6 +327,32 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
 
   }
 
+  startAccessTour(): void {
+    setTimeout(() => {
+      const candidates = [
+        'factorAccessOverview',
+        'factorAccessClimate',
+        'factorAccessSummary',
+        'factorAccessStatuses',
+        'factorAccessFactors'
+      ];
+      const steps = candidates.filter((step) =>
+        document.querySelector(`[joyrideStep="${step}"]`)
+      );
+
+      this.joyrideService.startTour({
+        steps,
+        showPrevButton: true,
+        customTexts: {
+          prev: this.translate.instant('MENUITEMS.TOUR.NAV.PREV'),
+          next: this.translate.instant('MENUITEMS.TOUR.NAV.NEXT'),
+          done: this.translate.instant('MENUITEMS.TOUR.NAV.DONE'),
+          close: this.translate.instant('MENUITEMS.TOUR.NAV.CLOSE')
+        }
+      }).subscribe();
+    }, 100);
+  }
+
   ngOnDestroy(): void {
     this.selectedOrganizationSubscription?.unsubscribe();
   }
@@ -328,6 +362,8 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
       if (!organization) {
         this.idOrganization = 0;
         this.nombreOrganizacion = '';
+        this.idFlujo = 0;
+        this.nombreFlujo = '';
         this.dataSourceOrganizations = [];
         this.dataSourceClimas = [];
         this.data = null;
@@ -365,6 +401,10 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
     if(selectedId > 0){
       //this.editor?.setContent('');
       this.idOrganization = selectedId;
+      this.idFlujo = 0;
+      this.nombreFlujo = '';
+      this.objetivoFlujo = '';
+      this.imgFlujo = '';
       this.dataSourceClimas = [];
       this.nombreOrganizacion = 'cargando..'
       this.getFlujosLista();
@@ -382,17 +422,26 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
 
     //console.log('Se seleccionó el clima con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
-    this.idFlujo = selectedId;
-  
+    this.idFlujo = Number(selectedId) || 0;
+    this.data = null;
+    this.error = null;
+
+    if (!this.idFlujo) {
+      this.nombreFlujo = '';
+      this.objetivoFlujo = '';
+      this.imgFlujo = '';
+      return;
+    }
+
     const clima  = this.dataSourceClimas.find((c: { Id: number; }) => c.Id === this.idFlujo);
     if(this.accessToExport){
       this.btnDisabled = false;
     }
     
     ////console.log('clima:: ', clima);
-    this.nombreFlujo = clima.Nombre;
-    this.objetivoFlujo =  clima.Objetivo;
-    this.imgFlujo = clima.Imagen1Src;
+    this.nombreFlujo = clima?.Nombre ?? '';
+    this.objetivoFlujo = clima?.Objetivo ?? '';
+    this.imgFlujo = clima?.Imagen1Src ?? '';
 
     this.getFactoresAccesos();
 
@@ -436,36 +485,48 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
   }
 
   getFlujosLista(): void {
-
+    this.loadingClimates = true;
+    this.climateError = null;
     this.organizacionService.getFlujosLista(this.idOrganization)
         .then((response:any) => {
           ////console.log('Flujos Plantillas:', JSON.stringify(response.data));
           
-          this.dataSourceClimas = response.data.data;
+          this.dataSourceClimas = response?.data?.data ?? [];
           var org = this.dataSourceOrganizations.find((o: { Id: number; }) => o.Id === this.idOrganization);
-          this.nombreOrganizacion = org.Nombre;
+          this.nombreOrganizacion = org?.Nombre ?? this.nombreOrganizacion;
 
         })
         .catch((error:any) => {
           console.error('Error al obtener los flujos:', error);
+          this.dataSourceClimas = [];
+          this.climateError = this.translate.instant('MENUITEMS.QUIZ.FACTOR_ACCESS.CLIMATE_LOAD_ERROR');
+        })
+        .finally(() => {
+          this.loadingClimates = false;
         });
   };
 
   getFactoresAccesos(): void {
-
+    this.loading = true;
+    this.error = null;
     this.organizacionService.getGFactorsAccessByIdFlujo(this.idFlujo)
         .then((response:any) => {
           ////console.log('Flujos Plantillas:', JSON.stringify(response.data));
           
           console.log(response);
 
-          this.data = response.data;
+          this.data = response?.data ?? null;
           
          
 
         })
         .catch((error:any) => {
           console.error('Error al obtener los flujos:', error);
+          this.data = null;
+          this.error = this.translate.instant('MENUITEMS.QUIZ.FACTOR_ACCESS.ACCESS_LOAD_ERROR');
+        })
+        .finally(() => {
+          this.loading = false;
         });
   };
 
@@ -509,6 +570,47 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
     return count;
   }
 
+  get totalGrandFactors(): number {
+    return this.data?.GranFactores?.length ?? 0;
+  }
+
+  get totalDemographicFields(): number {
+    const fieldIds = new Set<number>();
+    this.data?.GranFactores?.forEach((gf) => {
+      gf.CamposDemograficos?.forEach((field) => fieldIds.add(field.IdCampoDemografico));
+    });
+    return fieldIds.size;
+  }
+
+  get totalSegmentValues(): number {
+    return (this.data?.GranFactores ?? []).reduce(
+      (factorTotal, gf) => factorTotal + (gf.CamposDemograficos ?? []).reduce(
+        (fieldTotal, field) => fieldTotal + (field.Valores?.length ?? 0),
+        0
+      ),
+      0
+    );
+  }
+
+  get totalRestrictedValues(): number {
+    return (this.data?.GranFactores ?? []).reduce(
+      (total, gf) => total + this.getRestrCountGF(gf),
+      0
+    );
+  }
+
+  get totalAllowedValues(): number {
+    return Math.max(this.totalSegmentValues - this.totalRestrictedValues, 0);
+  }
+
+  getAllowedCount(field: CampoDemografico): number {
+    return (field.Valores ?? []).filter((value) => !value.Restringido).length;
+  }
+
+  getRestrictedCount(field: CampoDemografico): number {
+    return (field.Valores ?? []).filter((value) => value.Restringido).length;
+  }
+
   async onToggle(
     gf: GranFactor,
     cd: CampoDemografico,
@@ -516,6 +618,7 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
     checked: boolean
   ) {
     if (!this.data) return;
+    const previousRestricted = v.Restringido;
     v._saving = true;
 
     console.log('TODOS LOS VALORES::');
@@ -533,7 +636,7 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
           "Estado": 0,
           "UsuarioCreacion": "optimusPrime"
         }
-        this.organizacionService.updateGFactorsAccessByIdFlujo(update_data);
+        await this.organizacionService.updateGFactorsAccessByIdFlujo(update_data);
         v.Restringido = false;
        
       } else {
@@ -545,14 +648,19 @@ export class FactorDemographicAccessComponent implements OnDestroy, OnInit {
           "Estado": 1,
           "UsuarioCreacion": "optimusPrime"
         }
-        this.organizacionService.updateGFactorsAccessByIdFlujo(update_data);
-        
+        await this.organizacionService.updateGFactorsAccessByIdFlujo(update_data);
+
         v.Restringido = true;
       }
     } catch (e) {
       // revertir UI si falló
-      v.Restringido = checked;
+      v.Restringido = previousRestricted;
       console.error(e);
+      this.snackBar.open(
+        this.translate.instant('MENUITEMS.QUIZ.FACTOR_ACCESS.UPDATE_ERROR'),
+        this.translate.instant('MENUITEMS.QUIZ.FACTOR_ACCESS.CLOSE'),
+        { duration: 4500 }
+      );
     } finally {
       v._saving = false;
     }

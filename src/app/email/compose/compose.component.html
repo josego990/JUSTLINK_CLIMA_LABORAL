@@ -1,225 +1,268 @@
 <section class="content">
-  <div class="content-block">
-    <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'Compose'" [items]="['Home','Email']" [active_item]="'Compose'"></app-breadcrumb>
+  <div class="content-block compose-workspace">
+    <div
+      class="block-header compose-page-header"
+      joyrideStep="composeOverview"
+      [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.OVERVIEW_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.OVERVIEW_TEXT' | translate">
+      <app-breadcrumb
+        [title]="'MENUITEMS.EMAILCOMPOSE.PAGE_TITLE' | translate"
+        [items]="['Home', 'Email']"
+        [active_item]="'Compose'">
+      </app-breadcrumb>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="compose-help-button"
+        (click)="startComposeTour()"
+        [matTooltip]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate"
+        [attr.aria-label]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate">
+        <mat-icon>help_outline</mat-icon>
+      </button>
     </div>
-    <div class="row">
-      <!-- menu de email 
-      <div class="col-xs-12 col-sm-12 col-md-3 col-lg-2">
-        <div class="card">
-          <div class="body">
-            <div id="mail-nav">
 
-              
-
-              <ul class="" id="mail-folders">
-                <li class="active">
-                  <a title="Inbox">Nuevo Correo
-                  </a>
-                </li>
-             
-                
-                 
-                <li>
-                  <a href="javascript:;" title="Sent">Enviados</a>
-                </li>
-                   
-                <li>
-                  <a href="javascript:;" title="Draft">Draft</a>
-                </li>
-                <li>
-                  <a href="javascript:;" title="Bin">Bin</a>
-                </li>
-                <li>
-                  <a href="javascript:;" title="Important">Important</a>
-                </li>
-                <li>
-                  <a href="javascript:;" title="Starred">Starred</a>
-                </li>
-
-              </ul>
-              <h6 class="b-b p-10 text-strong">Labels</h6>
-              <ul class="" id="mail-labels">
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-red">local_offer</i>Family</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-blue">local_offer</i>Work</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-orange">local_offer</i>Shop</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-cyan">local_offer</i>Themeforest</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-blue">local_offer</i>Google</a>
-                </li>
-              </ul>
-              <h6 class="b-b p-10 text-strong">Online</h6>
-              <ul class="online-user" id="online-offline">
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-green" title="Online">brightness_1</i>Sachin</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-indigo" title="Off Line">brightness_1</i>John
-                    Smith
-                  </a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-orange" title="Away">brightness_1</i>Askay</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-indigo" title="Off Line">brightness_1</i>Dhavan</a>
-                </li>
-                <li>
-                  <a href="javascript:;">
-                    <i class="material-icons col-indigo" title="Off Line">brightness_1</i>Lee</a>
-                </li>
-              </ul>
-            </div>
+    <section class="compose-setup-band">
+      <div
+        class="compose-context-control"
+        joyrideStep="composeContext"
+        [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.CONTEXT_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.CONTEXT_TEXT' | translate">
+        <div class="compose-section-label">
+          <span class="compose-section-label__icon"><mat-icon>category</mat-icon></span>
+          <div>
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.STEP_CONTEXT' | translate }}</span>
+            <strong>{{ 'MENUITEMS.EMAILCOMPOSE.CONTEXT_TITLE' | translate }}</strong>
           </div>
+        </div>
+
+        <mat-button-toggle-group
+          class="compose-context-toggle"
+          [formControl]="composeContextCtrl"
+          (change)="onComposeContextChange($event.value)"
+          [attr.aria-label]="'MENUITEMS.EMAILCOMPOSE.CONTEXT_TITLE' | translate">
+          <mat-button-toggle value="clima">
+            <mat-icon>groups</mat-icon>
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.CONTEXT_CLIMATE' | translate }}</span>
+          </mat-button-toggle>
+          <mat-button-toggle value="desempeno">
+            <mat-icon>workspace_premium</mat-icon>
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.CONTEXT_PERFORMANCE' | translate }}</span>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div
+        class="compose-scope-control"
+        joyrideStep="composeScope"
+        [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.SCOPE_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.SCOPE_TEXT' | translate">
+        <div class="active-organization">
+          <mat-icon>domain</mat-icon>
+          <div>
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.ACTIVE_ORGANIZATION' | translate }}</span>
+            <strong>{{ nombreOrganizacion || ('MENUITEMS.EMAILCOMPOSE.NO_ORGANIZATION' | translate) }}</strong>
+          </div>
+        </div>
+
+        <mat-form-field
+          *ngIf="isClimateContext()"
+          appearance="outline"
+          floatLabel="always"
+          subscriptSizing="dynamic"
+          class="compose-scope-select">
+          <mat-label>{{ 'MENUITEMS.EMAILCOMPOSE.SELECT_CLIMATE' | translate }}</mat-label>
+          <mat-select
+            [value]="idFlujo || null"
+            [disabled]="loadingClimas || !idOrganization"
+            (selectionChange)="onClimaChange($event.value)">
+            <mat-option *ngFor="let clima of dataSourceClimas" [value]="clima.Id">
+              {{ clima.Nombre }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix>assignment</mat-icon>
+          <mat-progress-spinner
+            *ngIf="loadingClimas"
+            matSuffix
+            diameter="18"
+            mode="indeterminate">
+          </mat-progress-spinner>
+        </mat-form-field>
+
+        <mat-form-field
+          *ngIf="isPerformanceContext()"
+          appearance="outline"
+          floatLabel="always"
+          subscriptSizing="dynamic"
+          class="compose-scope-select">
+          <mat-label>{{ 'MENUITEMS.EMAILCOMPOSE.SELECT_MODEL' | translate }}</mat-label>
+          <mat-select
+            [value]="selectedPerformanceModelId || null"
+            [disabled]="loadingPerformanceModels || !idOrganization"
+            (selectionChange)="onPerformanceModelChange($event.value)">
+            <mat-option *ngFor="let model of performanceModels" [value]="model.id">
+              {{ model.nombre }}<span *ngIf="model.codigo"> · {{ model.codigo }}</span>
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix>fact_check</mat-icon>
+          <mat-progress-spinner
+            *ngIf="loadingPerformanceModels"
+            matSuffix
+            diameter="18"
+            mode="indeterminate">
+          </mat-progress-spinner>
+        </mat-form-field>
+      </div>
+    </section>
+
+    <div class="compose-inline-alert compose-inline-alert--error" *ngIf="performanceModelsError && isPerformanceContext()">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ performanceModelsError }}</span>
+      <button mat-stroked-button type="button" (click)="loadPerformanceModels(idOrganization)">
+        <mat-icon>refresh</mat-icon>
+        {{ 'MENUITEMS.EMAILCOMPOSE.RETRY' | translate }}
+      </button>
+    </div>
+
+    <div class="compose-inline-alert compose-inline-alert--pending" *ngIf="isPerformanceContext()">
+      <mat-icon>construction</mat-icon>
+      <div>
+        <strong>{{ 'MENUITEMS.EMAILCOMPOSE.PERFORMANCE_PENDING_TITLE' | translate }}</strong>
+        <span>{{ 'MENUITEMS.EMAILCOMPOSE.PERFORMANCE_PENDING_TEXT' | translate }}</span>
+      </div>
+    </div>
+
+    <section class="compose-message-panel">
+      <div class="compose-panel-heading">
+        <span class="compose-panel-heading__icon"><mat-icon>forward_to_inbox</mat-icon></span>
+        <div>
+          <strong>{{ 'MENUITEMS.EMAILCOMPOSE.MESSAGE_TITLE' | translate }}</strong>
+          <span>{{ 'MENUITEMS.EMAILCOMPOSE.MESSAGE_SUBTITLE' | translate }}</span>
+        </div>
+        <span class="compose-context-badge" [class.compose-context-badge--performance]="isPerformanceContext()">
+          <mat-icon>{{ isClimateContext() ? 'groups' : 'workspace_premium' }}</mat-icon>
+          {{ (isClimateContext()
+            ? 'MENUITEMS.EMAILCOMPOSE.CONTEXT_CLIMATE'
+            : 'MENUITEMS.EMAILCOMPOSE.CONTEXT_PERFORMANCE') | translate }}
+        </span>
+      </div>
+
+      <form class="compose-form">
+        <div
+          class="compose-form-field compose-form-field--recipients"
+          joyrideStep="composeRecipients"
+          [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.RECIPIENTS_TITLE' | translate"
+          [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.RECIPIENTS_TEXT' | translate">
+          <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic">
+            <mat-label>{{ 'MENUITEMS.EMAILCOMPOSE.RECIPIENTS' | translate }}</mat-label>
+            <mat-select [formControl]="toTargetsCtrl" [disabled]="isPerformanceContext()">
+              <mat-option
+                *ngFor="let option of toOptions"
+                [value]="option.value"
+                [disabled]="isToTargetDisabled(option.value)">
+                {{ getToLabel(option.value) }}
+                <span *ngIf="isDemoTargetBlocked(option.value)" class="compose-demo-option-note">
+                  {{ 'MENUITEMS.EMAILCOMPOSE.DEMO_UNAVAILABLE' | translate }}
+                </span>
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix>group</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <div
+          class="compose-form-field compose-form-field--subject"
+          joyrideStep="composeSubject"
+          [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.SUBJECT_TITLE' | translate"
+          [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.SUBJECT_TEXT' | translate">
+          <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic">
+            <mat-label>{{ 'MENUITEMS.EMAILCOMPOSE.SUBJECT' | translate }}</mat-label>
+            <input matInput id="subject" [formControl]="subjectManualCtrl">
+            <mat-icon matPrefix>subject</mat-icon>
+            <mat-error *ngIf="subjectManualCtrl.hasError('required')">
+              {{ 'MENUITEMS.EMAILCOMPOSE.SUBJECT_REQUIRED' | translate }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="compose-form-field compose-form-field--manual" *ngIf="isCorreoSelected() && isClimateContext()">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>{{ 'MENUITEMS.EMAILCOMPOSE.MANUAL_EMAILS' | translate }}</mat-label>
+            <input
+              matInput
+              [formControl]="emailManualCtrl"
+              [placeholder]="'MENUITEMS.EMAILCOMPOSE.MANUAL_EMAILS_PLACEHOLDER' | translate">
+            <mat-icon matPrefix>alternate_email</mat-icon>
+            <mat-hint *ngIf="isDemoModeActive()">
+              {{ 'MENUITEMS.EMAILCOMPOSE.DEMO_EMAIL_LIMIT' | translate:{ limit: getDemoComposeLimit() } }}
+            </mat-hint>
+            <mat-error *ngIf="emailManualCtrl.hasError('required')">
+              {{ 'MENUITEMS.EMAILCOMPOSE.EMAIL_REQUIRED' | translate }}
+            </mat-error>
+            <mat-error *ngIf="emailManualCtrl.hasError('emailList')">
+              {{ 'MENUITEMS.EMAILCOMPOSE.EMAIL_INVALID' | translate }}
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </form>
+    </section>
+
+    <section
+      class="compose-editor-panel"
+      joyrideStep="composeEditor"
+      [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.EDITOR_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.EDITOR_TEXT' | translate">
+      <div class="compose-panel-heading compose-panel-heading--editor">
+        <span class="compose-panel-heading__icon compose-panel-heading__icon--editor"><mat-icon>design_services</mat-icon></span>
+        <div>
+          <strong>{{ 'MENUITEMS.EMAILCOMPOSE.EDITOR.TITLE' | translate }}</strong>
+          <span>{{ 'MENUITEMS.EMAILCOMPOSE.EDITOR.SUBTITLE' | translate }}</span>
+        </div>
+        <div class="editor-quick-reference">
+          <span><mat-icon>view_quilt</mat-icon>{{ 'MENUITEMS.EMAILCOMPOSE.EDITOR.BLOCKS' | translate }}</span>
+          <span><mat-icon>devices</mat-icon>{{ 'MENUITEMS.EMAILCOMPOSE.EDITOR.PREVIEW' | translate }}</span>
+          <span><mat-icon>tune</mat-icon>{{ 'MENUITEMS.EMAILCOMPOSE.EDITOR.STYLES' | translate }}</span>
         </div>
       </div>
--->
-      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
-        <div class="card">
-          <div class="boxs mail_listing">
-            <div class="inbox-center table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th colspan="1">
-                      <div class="inbox-header">
-                        {{'EMAILCOMPOSE.NEW_MESSAGE' | translate}}
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-              </table>
-            </div>
-            <div  class="row" >
-              <div class="col-lg-12">
-                <form  class="composeForm">
-                
 
-                    <div class="row">
-                      <div class="col-lg-6 col-md-6 col-sm-12">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>Climas {{nombreOrganizacion}}</mat-label>
-                          <mat-select (selectionChange)="onClimaChange($event.value)">
-                            <mat-option
-                              *ngFor="let climas of dataSourceClimas"
-                              [value]="climas.Id"
-                            >
-                              {{ climas.Nombre }}
-                            </mat-option>
-                          </mat-select>
+      <div #gjsHost class="gjs-host"></div>
+    </section>
 
-                          <mat-progress-spinner
-                              *ngIf="loadingClimas"
-                              matSuffix
-                              diameter="18"
-                              mode="indeterminate"
-                            >
-                          </mat-progress-spinner>
-
-                        </mat-form-field>
-                      </div>
-                    </div>
-
-
-                    <mat-form-field class="example-full-width" appearance="outline">
-                      <mat-label>Destinatarios</mat-label>
-
-                      <mat-select [formControl]="toTargetsCtrl" >
-                        <mat-option
-                          *ngFor="let opt of toOptions"
-                          [value]="opt.value"
-                          [disabled]="isToTargetDisabled(opt.value)"
-                        >
-                          {{ opt.label }}
-                          <span *ngIf="isDemoTargetBlocked(opt.value)" class="compose-demo-option-note">
-                            (no disponible en demo)
-                          </span>
-                        </mat-option>
-                      </mat-select>
-                    </mat-form-field>
-
-                    
-                   
-
-                    <!-- Email manual solo si está seleccionado "Correo" -->
-                    <div style="margin-top: 10px;" *ngIf="isCorreoSelected()">
-                      <mat-form-field class="example-full-width" appearance="outline">
-                        <mat-label>Correo/s</mat-label>
-                        <input matInput [formControl]="emailManualCtrl" placeholder="ej: usuario@dominio.com, otro@dominio.com">
-                        <mat-hint *ngIf="isDemoModeActive()">
-                          Modo demo: máximo {{ getDemoComposeLimit() }} correos separados por coma.
-                        </mat-hint>
-                        <mat-error *ngIf="emailManualCtrl.hasError('required')">Ingrese el correo</mat-error>
-                        <mat-error *ngIf="emailManualCtrl.hasError('emailList')">Ingrese correos válidos separados por coma</mat-error>
-                      </mat-form-field>
-                    </div>
-
-                    
-                    
-
-                  
-
-                  <div class="form-line">
-                    <mat-form-field class="example-full-width" appearance="outline">
-                      <mat-label>Asunto</mat-label>
-                      <input matInput id="subject" [formControl]="subjectManualCtrl" >
-                    </mat-form-field>
-                  </div>
-                  <!-- 
-                  <div class="compose-actions">
-                    
-                    <button mat-stroked-button (click)="loadTemplate()">Cargar</button>
-                    <button mat-stroked-button (click)="exportEmailHtml()">Exportar HTML Email</button>
-                  </div>
-                  -->
-                  <div #gjsHost class="gjs-host"></div>
-
-                  <!-- Opcional: salida para debug 
-                  <textarea
-                    class="debug-output"
-                    [(ngModel)]="exportedHtml"
-                    [ngModelOptions]="{ standalone: true }"
-                    rows="10">
-                  </textarea>
-
-                  <div class="compose-editor m-t-20">
-                    <div id="summernote"></div>
-                    <input type="file" class="default" multiple>
-                  </div>
-                  -->
-
-
-                </form>
-              </div>
-
-              <div class="col-lg-12">
-                <div class="m-l-25 m-b-20">
-                  <button style="border-radius: 5px;" mat-flat-button (click)="sendMail()" color="primary" >Enviar</button>
-                  <button style="border-radius: 5px; margin-left: 10px;"  mat-flat-button color="primary" (click)="saveTemplate()" [disabled]="!canSaveTemplate()">Guardar Plantilla</button>
-                  
-                </div>
-              </div>
-            </div>
-          </div>
+    <div
+      class="compose-action-bar"
+      joyrideStep="composeActions"
+      [title]="'MENUITEMS.TOUR.EMAIL_COMPOSE.ACTIONS_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.EMAIL_COMPOSE.ACTIONS_TEXT' | translate">
+      <div class="compose-action-context">
+        <mat-icon>{{ isClimateContext() ? 'assignment' : 'fact_check' }}</mat-icon>
+        <div>
+          <span>{{ nombreOrganizacion }}</span>
+          <strong>{{ selectedScopeName || ('MENUITEMS.EMAILCOMPOSE.SELECT_SCOPE_PENDING' | translate) }}</strong>
         </div>
+      </div>
+
+      <div class="compose-action-buttons">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          class="compose-send-button"
+          [disabled]="isClimateContext() && !canSendMail()"
+          (click)="isPerformanceContext() ? showPerformanceApiPendingMessage() : sendMail()">
+          <mat-progress-spinner *ngIf="loading" diameter="18" mode="indeterminate"></mat-progress-spinner>
+          <mat-icon *ngIf="!loading">send</mat-icon>
+          {{ 'MENUITEMS.EMAILCOMPOSE.SEND' | translate }}
+        </button>
+
+        <button
+          mat-stroked-button
+          type="button"
+          class="compose-save-button"
+          [disabled]="isClimateContext() && !canSaveTemplate()"
+          (click)="isPerformanceContext() ? showPerformanceApiPendingMessage() : saveTemplate()">
+          <mat-icon>save</mat-icon>
+          {{ 'MENUITEMS.EMAILCOMPOSE.SAVE_TEMPLATE' | translate }}
+        </button>
       </div>
     </div>
   </div>

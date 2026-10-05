@@ -219,8 +219,7 @@ export class DialogformSerieComponent implements OnInit {
   }
 
   closeDialog(): void {
-    //this.dialog.getDialogById('dialogserie')?.close();
-    this.dialogRef.close(true);
+    this.dialogRef.close();
   }
 
   deleteItem(item: any): void {
@@ -270,10 +269,14 @@ export class DialogformSerieComponent implements OnInit {
       }
       this.data.idGFactor = this.idGFactor;
 
-      const message = await this.insertarFactor(this.idGFactor);
-      this.showNotification('bg-green', message, 'bottom', 'right');
+      const result = await this.insertarFactor(this.idGFactor);
+      this.showNotification('bg-green', result.message, 'bottom', 'right');
       this.addSerieForm.reset();
-      this.dialogRef.close(true);
+      this.dialogRef.close({
+        created: true,
+        factor: result.serie,
+        idGFactor: this.idGFactor,
+      });
       return;
     } catch (err: any) {
       const errText = err?.message ?? String(err);
@@ -304,7 +307,7 @@ export class DialogformSerieComponent implements OnInit {
       Id: 0,
       IdFlujo: this.idFlujo,
       Clave: claveGF,
-      Etiqueta: 'generico',
+      Etiqueta: 'Gran factor Clima',
       Descripcion: 'Gran factor generado automáticamente'
     };
 
@@ -329,7 +332,9 @@ export class DialogformSerieComponent implements OnInit {
     return gfactor.Id;
   }
 
-  private async insertarFactor(idGFactor: number): Promise<string> {
+  private async insertarFactor(
+    idGFactor: number
+  ): Promise<{ message: string; serie: Serie }> {
     const fields: Field[] = [];
     const claveSerie = 'serie_' + this.seriesData.length;
     const etiqueta = this.addSerieForm.controls['iname'].value;
@@ -372,7 +377,10 @@ export class DialogformSerieComponent implements OnInit {
     this.data.gfactores = [...(this.data.gfactores || [])];
     this.seriesData = (this.data.gfactores || []).flatMap((gf: any) => gf.series || []);
 
-    return resulte.data.message;
+    return {
+      message: resulte.data.message,
+      serie,
+    };
   }
 
 

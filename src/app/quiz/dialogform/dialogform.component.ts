@@ -78,6 +78,7 @@ export class DialogformComponent implements OnDestroy, OnInit {
   langStoreValue?: string;
 
   loadingOrganizations = false;
+  isSavingClimate = false;
   private selectedOrganizationSubscription?: Subscription;
 
   url: string | null = null;
@@ -357,15 +358,19 @@ export class DialogformComponent implements OnDestroy, OnInit {
 
   //nuevo quiz / encuesta
   async onSubmitClick() {
+    if (this.isSavingClimate || !this.addCusForm.valid) {
+      return;
+    }
 
-    if(this.addCusForm.valid){
+    this.isSavingClimate = true;
+
+    try {
       if (!(await this.canCreateClimateInDemo())) {
         return;
       }
 
-     console.log('Form Values', this.addCusForm.value);
-      const tipoEvaluacion = Number(this.addCusForm.get('IdProof')?.value ?? 1);
-      
+      console.log('Form Values', this.addCusForm.value);
+
       const quiz: Quiz = {
         id: 0,
         idOrganization: this.idOrganization,
@@ -378,8 +383,8 @@ export class DialogformComponent implements OnDestroy, OnInit {
         subtitle: this.organizationName,
         imageSrc1: this.fileName,
         content: this.addCusForm.value.quizDesc,
-        score : this.addCusForm.value.score,
-        completed : false,
+        score: this.addCusForm.value.score,
+        completed: false,
         startDate: '01/01/2025',
         endDate: '01/01/2025',
         estado: 1,
@@ -398,59 +403,41 @@ export class DialogformComponent implements OnDestroy, OnInit {
           total_empleados_activos: 0,
           porcentaje: 0
         }
+      };
+
+      console.log('nuevo quiz armado::', quiz);
+      const response: any = await this.organizacionService.saveNewClima(quiz);
+
+      if (response?.data?.message !== 'Flujo creado exitosamente') {
+        await Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATEDERROR'),
+          icon: 'error',
+        });
+        return;
       }
-     console.log('nuevo quiz armado::', quiz);
-      /**   */
 
-      this.organizacionService.saveNewClima(quiz).then((amber:any) => {
+      if (this.fileChange) {
+        this.organizacionService.uploadFileV2(this.formFileData, () => undefined)
+          .catch((error) => console.error('Error al subir la imagen del clima:', error));
+      }
 
-        if(amber.data.message === 'Flujo creado exitosamente'){
-
-          //GUARDAR IMAGEN
-           if(this.fileChange){
-
-            console.log('a guardar la imagen..');
-
-            this.organizacionService.uploadFileV2(this.formFileData, (pct) => {
-              void pct;
-              // console.log('Subiendo archivo:', pct + '%');
-            })
-            .then(() => console.log('Archivo subido'))
-            .catch(err => {
-              console.error(err); 
-              //this.loading = false;  
-            });
-          }
-
-          Swal.fire({
-            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
-            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED'),
-            icon: 'success',
-          });
-          this.dialogRef.close(true);
-        }else{
-          Swal.fire({         
-            title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
-            text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATEDERROR'),
-            icon: 'error',
-          });
-        }
-      
-      }).catch((err) => {
-        console.error('ERROR AL GUARDAR NUEVO CLIMA!:: ', err);
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
+        text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED'),
+        icon: 'success',
       });
-    
-      //this.cardsData.push(quiz);
-
-      //globalData.next(this.cardsData);
-
-      
-    } else {
-     //console.log('FALTAN CAMPOS');
+      this.dialogRef.close(true);
+    } catch (error) {
+      console.error('ERROR AL GUARDAR NUEVO CLIMA!:: ', error);
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+        text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATEDERROR'),
+        icon: 'error',
+      });
+    } finally {
+      this.isSavingClimate = false;
     }
-
-    
-
   }
 
   async onSubmitBankClick() {

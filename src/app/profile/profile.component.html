@@ -1,0 +1,240 @@
+<section class="content">
+  <div class="content-block user-profile-page">
+    <div class="block-header user-profile-page__header">
+      <app-breadcrumb
+        [title]="'MENUITEMS.PROFILE.PAGE_TITLE' | translate"
+        [items]="['Home']"
+        [active_item]="'MENUITEMS.PROFILE.BREADCRUMB' | translate">
+      </app-breadcrumb>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="profile-refresh"
+        [disabled]="loading"
+        (click)="loadProfile()"
+        [matTooltip]="'MENUITEMS.PROFILE.REFRESH' | translate"
+        [attr.aria-label]="'MENUITEMS.PROFILE.REFRESH' | translate">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+
+    <div class="profile-loading" *ngIf="loading">
+      <mat-progress-spinner diameter="42" mode="indeterminate"></mat-progress-spinner>
+      <span>{{ 'MENUITEMS.PROFILE.LOADING' | translate }}</span>
+    </div>
+
+    <ng-container *ngIf="!loading">
+      <section class="profile-identity-band">
+        <div class="profile-avatar-wrap">
+          <span class="profile-avatar-fallback">{{ profileInitials }}</span>
+          <img
+            class="profile-avatar"
+            [src]="profileImageUrl"
+            [alt]="displayName"
+            (error)="onProfileImageError($event)">
+          <span class="profile-status-dot" [class.inactive]="!isActive"></span>
+        </div>
+
+        <div class="profile-identity">
+          <span>{{ 'MENUITEMS.PROFILE.ACCOUNT' | translate }}</span>
+          <h1>{{ displayName }}</h1>
+          <div class="profile-identity__meta">
+            <span><mat-icon>alternate_email</mat-icon>{{ username }}</span>
+            <span><mat-icon>business</mat-icon>{{ organizationName }}</span>
+          </div>
+        </div>
+
+        <div class="profile-role-list">
+          <span>{{ 'MENUITEMS.PROFILE.ASSIGNED_ROLES' | translate }}</span>
+          <div>
+            <span class="profile-role" *ngFor="let role of roleNames">
+              <mat-icon>verified_user</mat-icon>{{ role }}
+            </span>
+            <span class="profile-role profile-role--empty" *ngIf="roleNames.length === 0">
+              {{ 'MENUITEMS.PROFILE.NO_ROLE' | translate }}
+            </span>
+          </div>
+        </div>
+
+        <div class="profile-account-status" [class.inactive]="!isActive">
+          <mat-icon>{{ isActive ? 'check_circle' : 'block' }}</mat-icon>
+          <div>
+            <span>{{ 'MENUITEMS.PROFILE.ACCOUNT_STATUS' | translate }}</span>
+            <strong>{{ (isActive ? 'MENUITEMS.PROFILE.ACTIVE' : 'MENUITEMS.PROFILE.INACTIVE') | translate }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <div class="profile-load-warning" *ngIf="loadError">
+        <mat-icon>info_outline</mat-icon>
+        <span>{{ 'MENUITEMS.PROFILE.PARTIAL_DATA' | translate }}</span>
+      </div>
+
+      <div class="profile-workspace">
+        <aside class="profile-details-panel">
+          <div class="profile-section-heading">
+            <span class="profile-section-heading__icon"><mat-icon>person</mat-icon></span>
+            <div>
+              <strong>{{ 'MENUITEMS.PROFILE.BASIC_INFO' | translate }}</strong>
+              <span>{{ 'MENUITEMS.PROFILE.BASIC_INFO_SUBTITLE' | translate }}</span>
+            </div>
+          </div>
+
+          <dl class="profile-detail-list">
+            <div>
+              <dt><mat-icon>badge</mat-icon>{{ 'MENUITEMS.PROFILE.USERNAME' | translate }}</dt>
+              <dd>{{ username }}</dd>
+            </div>
+            <div>
+              <dt><mat-icon>mail_outline</mat-icon>{{ 'MENUITEMS.PROFILE.EMAIL' | translate }}</dt>
+              <dd>{{ email }}</dd>
+            </div>
+            <div>
+              <dt><mat-icon>phone</mat-icon>{{ 'MENUITEMS.PROFILE.PHONE' | translate }}</dt>
+              <dd>{{ phone }}</dd>
+            </div>
+            <div>
+              <dt><mat-icon>work_outline</mat-icon>{{ 'MENUITEMS.PROFILE.POSITION' | translate }}</dt>
+              <dd>{{ position }}</dd>
+            </div>
+            <div>
+              <dt><mat-icon>location_city</mat-icon>{{ 'MENUITEMS.PROFILE.CITY' | translate }}</dt>
+              <dd>{{ city }}</dd>
+            </div>
+            <div>
+              <dt><mat-icon>apartment</mat-icon>{{ 'MENUITEMS.PROFILE.ORGANIZATION' | translate }}</dt>
+              <dd>{{ organizationName }}</dd>
+            </div>
+          </dl>
+
+          <div class="profile-security-note">
+            <mat-icon>lock_outline</mat-icon>
+            <div>
+              <strong>{{ 'MENUITEMS.PROFILE.SECURITY_TITLE' | translate }}</strong>
+              <span>{{ 'MENUITEMS.PROFILE.SECURITY_TEXT' | translate }}</span>
+            </div>
+          </div>
+        </aside>
+
+        <main class="profile-access-panel">
+          <div class="profile-access-toolbar">
+            <div class="profile-section-heading">
+              <span class="profile-section-heading__icon profile-section-heading__icon--access">
+                <mat-icon>shield</mat-icon>
+              </span>
+              <div>
+                <strong>{{ 'MENUITEMS.PROFILE.ACCESS_TITLE' | translate }}</strong>
+                <span>{{ 'MENUITEMS.PROFILE.ACCESS_SUBTITLE' | translate }}</span>
+              </div>
+            </div>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="profile-access-search">
+              <mat-icon matPrefix>search</mat-icon>
+              <input
+                matInput
+                type="search"
+                [(ngModel)]="accessSearch"
+                [placeholder]="'MENUITEMS.PROFILE.SEARCH_ACCESS_PLACEHOLDER' | translate">
+              <button
+                *ngIf="accessSearch"
+                mat-icon-button
+                matSuffix
+                type="button"
+                (click)="accessSearch = ''"
+                [attr.aria-label]="'MENUITEMS.PROFILE.CLEAR_SEARCH' | translate">
+                <mat-icon>close</mat-icon>
+              </button>
+            </mat-form-field>
+          </div>
+
+          <div class="profile-access-summary">
+            <div>
+              <span class="profile-access-summary__icon"><mat-icon>apps</mat-icon></span>
+              <p><strong>{{ moduleAccesses.length }}</strong><span>{{ 'MENUITEMS.PROFILE.MODULES' | translate }}</span></p>
+            </div>
+            <div>
+              <span class="profile-access-summary__icon profile-access-summary__icon--actions"><mat-icon>rule</mat-icon></span>
+              <p><strong>{{ actionAccesses.length }}</strong><span>{{ 'MENUITEMS.PROFILE.ACTIONS' | translate }}</span></p>
+            </div>
+            <div>
+              <span class="profile-access-summary__icon profile-access-summary__icon--roles"><mat-icon>admin_panel_settings</mat-icon></span>
+              <p><strong>{{ roleNames.length }}</strong><span>{{ 'MENUITEMS.PROFILE.ROLES' | translate }}</span></p>
+            </div>
+          </div>
+
+          <div class="profile-admin-access" *ngIf="isAdministrator">
+            <mat-icon>verified</mat-icon>
+            <div>
+              <strong>{{ 'MENUITEMS.PROFILE.ADMIN_ACCESS_TITLE' | translate }}</strong>
+              <span>{{ 'MENUITEMS.PROFILE.ADMIN_ACCESS_TEXT' | translate }}</span>
+            </div>
+          </div>
+
+          <section class="profile-access-section">
+            <div class="profile-access-section__heading">
+              <div>
+                <mat-icon>grid_view</mat-icon>
+                <strong>{{ 'MENUITEMS.PROFILE.AVAILABLE_MODULES' | translate }}</strong>
+              </div>
+              <span>{{ filteredModules.length }}</span>
+            </div>
+
+            <div class="profile-module-grid" *ngIf="filteredModules.length; else noModules">
+              <a
+                *ngFor="let module of filteredModules; trackBy: trackModule"
+                class="profile-module-item"
+                [routerLink]="module.path">
+                <span><mat-icon>{{ module.icon }}</mat-icon></span>
+                <div>
+                  <strong>{{ module.title | translate }}</strong>
+                  <small *ngIf="module.category">{{ module.category | translate }}</small>
+                </div>
+                <mat-icon>chevron_right</mat-icon>
+              </a>
+            </div>
+
+            <ng-template #noModules>
+              <div class="profile-access-empty">
+                <mat-icon>apps_outage</mat-icon>
+                <span>{{ 'MENUITEMS.PROFILE.NO_MODULES' | translate }}</span>
+              </div>
+            </ng-template>
+          </section>
+
+          <section class="profile-access-section profile-access-section--actions">
+            <div class="profile-access-section__heading">
+              <div>
+                <mat-icon>task_alt</mat-icon>
+                <strong>{{ 'MENUITEMS.PROFILE.ACTION_PERMISSIONS' | translate }}</strong>
+              </div>
+              <span>{{ filteredActions.length }}</span>
+            </div>
+
+            <div class="profile-action-grid" *ngIf="filteredActions.length; else noActions">
+              <div
+                *ngFor="let action of filteredActions; trackBy: trackAction"
+                class="profile-action-item">
+                <span><mat-icon>check</mat-icon></span>
+                <div>
+                  <strong>{{ action.name | translate }}</strong>
+                  <small *ngIf="action.description">{{ action.description | translate }}</small>
+                  <code>{{ action.code }}</code>
+                </div>
+              </div>
+            </div>
+
+            <ng-template #noActions>
+              <div class="profile-access-empty">
+                <mat-icon>{{ isAdministrator ? 'verified_user' : 'rule_folder' }}</mat-icon>
+                <span>
+                  {{ (isAdministrator ? 'MENUITEMS.PROFILE.ADMIN_ACTIONS' : 'MENUITEMS.PROFILE.NO_ACTIONS') | translate }}
+                </span>
+              </div>
+            </ng-template>
+          </section>
+        </main>
+      </div>
+    </ng-container>
+  </div>
+</section>

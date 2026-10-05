@@ -13,18 +13,25 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { saveAs } from 'file-saver';
 import ExcelJS from 'exceljs';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
+import { Router } from '@angular/router';
 
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import {
   DemographicFiltersDialogComponent,
   DemographicSelection,
 } from '../dashboard1/dialogs/demographic-filters-dialog.component';
+import {
+  ActionPlanResponsible,
+  ActionPlanResponsibleDialogComponent,
+} from './action-plan-responsible-dialog.component';
 
-type ActionPlanTab = 'resumen' | 'brechas' | 'planes' | 'seguimiento' | 'plantilla';
+type ActionPlanTab = 'resumen' | 'brechas' | 'demograficos' | 'planes' | 'seguimiento' | 'plantilla';
 type PlanStatus = 'SIN_INICIAR' | 'EN_PROCESO' | 'EN_RIESGO' | 'COMPLETADO';
 type PlanPriority = 'ALTA' | 'MEDIA' | 'BAJA';
 
@@ -51,6 +58,8 @@ interface FactorMetric {
   total: number | null;
   top1: number | null;
   bottom1: number | null;
+  esOportunidad?: boolean;
+  prioridadSugerida?: PlanPriority | null;
 }
 
 interface QuestionMetric {
@@ -64,6 +73,8 @@ interface QuestionMetric {
   nsat: number | null;
   mean: number | null;
   total: number | null;
+  esOportunidad?: boolean;
+  prioridadSugerida?: PlanPriority | null;
 }
 
 interface ImprovementOpportunity {
@@ -81,6 +92,9 @@ interface ImprovementOpportunity {
   suggestedResource: string;
   suggestedKpi: string;
   source: 'factor' | 'pregunta' | 'general';
+  segment?: string;
+  criticalQuestion?: string;
+  participantCount?: number;
 }
 
 interface ActionTask {
@@ -93,28 +107,51 @@ interface ActionTask {
   done: boolean;
 }
 
+interface ActionPlanFollowUp {
+  id: number;
+  dateLabel: string;
+  createdAt: string;
+  createdBy: string;
+  comment: string;
+  progress: number | null;
+}
+
+interface ActionPlanEmailResult {
+  sent: number;
+  failed: number;
+  missing: number;
+}
+
 interface ActionPlan {
   id: number;
   opportunityId: string;
+  survey: string;
   factor: string;
   area: string;
   sponsor: string;
   scope: string;
   reason: string;
+  criticalQuestion?: string;
   action: string;
   resources: string;
   kpi: string;
   owner: string;
+  responsibleEmployeeId?: number | null;
+  responsibleEmployeeIds?: number[];
   term: string;
   dueDate: string;
   followUpFrequency: string;
-  log: string;
+  sendResponsibleEmails: boolean;
   validation: string;
   evidence: string;
   status: PlanStatus;
   priority: PlanPriority;
   createdAt: string;
   tasks: ActionTask[];
+  followUps: ActionPlanFollowUp[];
+  demographicFilters?: DemographicSelection[];
+  isPersisted?: boolean;
+  isDirty?: boolean;
 }
 
 interface PlanTemplateRow {
@@ -130,6 +167,24 @@ interface PlanTemplateRow {
   frequency: string;
   validation: string;
   evidence: string;
+}
+
+interface MetricSummary {
+  resultadoPct: number | null;
+  desfavorablePct: number | null;
+  nsat: number | null;
+  totalRespuestas: number | null;
+}
+
+interface LikertMetricCollection {
+  factors: FactorMetric[];
+  questions: QuestionMetric[];
+}
+
+interface GlobalLikertCatalogs {
+  surveys: Map<number, string>;
+  factors: Map<number, FactorMetric>;
+  questions: Map<number, QuestionMetric>;
 }
 
 @Component({
@@ -150,18 +205,20 @@ interface PlanTemplateRow {
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
+    TranslateModule,
   ],
   templateUrl: './clima-action-plans.component.html',
   styleUrls: ['./clima-action-plans.component.scss'],
 })
 export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   readonly targetScore = 80;
-  readonly tabs: Array<{ id: ActionPlanTab; label: string; icon: string }> = [
-    { id: 'resumen', label: 'Resumen', icon: 'dashboard' },
-    { id: 'brechas', label: 'Brechas priorizadas', icon: 'priority_high' },
-    { id: 'planes', label: 'Planes de acción', icon: 'assignment_turned_in' },
-    { id: 'seguimiento', label: 'Seguimiento', icon: 'timeline' },
-    { id: 'plantilla', label: 'Plantilla', icon: 'view_list' },
+  readonly tabs: Array<{ id: ActionPlanTab; labelKey: string; icon: string }> = [
+    { id: 'resumen', labelKey: 'TAB_SUMMARY', icon: 'dashboard' },
+    { id: 'brechas', labelKey: 'TAB_GAPS', icon: 'priority_high' },
+    { id: 'demograficos', labelKey: 'TAB_DEMOGRAPHIC_GAPS', icon: 'groups' },
+    { id: 'planes', labelKey: 'TAB_PLANS', icon: 'assignment_turned_in' },
+    { id: 'seguimiento', labelKey: 'TAB_FOLLOW_UP', icon: 'timeline' },
+    { id: 'plantilla', labelKey: 'TAB_TEMPLATE', icon: 'view_list' },
   ];
 
   selectedTab: ActionPlanTab = 'resumen';
@@ -177,6 +234,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   loadingClimas = false;
   loadingMetrics = false;
   loadingFilters = false;
+  loadingPlans = false;
 
   rawMetrics: any = null;
   demographicTree: any = null;
@@ -188,62 +246,69 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   factorMetrics: FactorMetric[] = [];
   questionMetrics: QuestionMetric[] = [];
   opportunities: ImprovementOpportunity[] = [];
+  demographicOpportunities: ImprovementOpportunity[] = [];
+  readonly collapsedDemographicFactorIds = new Set<string>();
   actionPlans: ActionPlan[] = [];
+  responsibleEmployees: ActionPlanResponsible[] = [];
+  loadingResponsibleEmployees = false;
+  readonly savingPlanIds = new Set<number>();
   selectedOpportunityId: string | null = null;
+  private computedSummary: MetricSummary | null = null;
+  private globalCatalogs: GlobalLikertCatalogs | null = null;
   private selectedOrganizationSubscription?: Subscription;
 
-  templateRows: PlanTemplateRow[] = [
-    {
-      factorArea: 'Clima general',
-      reason: 'Compartir resultados y alinear expectativas con líderes.',
-      appliesTo: 'Toda la organización',
-      actions: 'Presentar hallazgos, brechas principales y acuerdos de mejora.',
-      resources: 'Reuniones por área, comunicación visual y tablero de seguimiento.',
-      kpi: '100% de líderes con resultados socializados y plan definido.',
-      owner: 'Gerencia General / Recursos Humanos',
-      term: 'Corto plazo',
-      when: 'Primeras 2 semanas posteriores al cierre del clima',
-      frequency: 'Semanal',
-      validation: 'Acta o evidencia de socialización',
-      evidence: 'Correo, minuta, presentación o captura',
-    },
-    {
-      factorArea: 'Motivación y reconocimiento',
-      reason: 'Fortalecer reconocimiento, crecimiento y sentido de avance.',
-      appliesTo: 'Equipos con satisfacción baja en el factor',
-      actions: 'Diseñar rituales de reconocimiento y conversaciones de desarrollo.',
-      resources: 'Guías para líderes, agenda mensual y tablero de compromisos.',
-      kpi: 'Incrementar satisfacción del factor al menos 8 puntos.',
-      owner: 'RRHH / Líderes de área',
-      term: 'Mediano plazo',
-      when: '30 a 90 días',
-      frequency: 'Quincenal',
-      validation: 'Seguimiento de compromisos y participación',
-      evidence: 'Registro de sesiones y acuerdos',
-    },
-    {
-      factorArea: 'Comunicación',
-      reason: 'Reducir ambigüedad, ruido entre áreas y falta de información.',
-      appliesTo: 'Áreas impactadas',
-      actions: 'Implementar reuniones cortas de alineación y canales claros.',
-      resources: 'Calendario, minutas, responsables y FAQs.',
-      kpi: 'Reducir desfavorabilidad del factor a menos de 20%.',
-      owner: 'Líderes funcionales',
-      term: 'Corto / mediano plazo',
-      when: 'Inicio inmediato',
-      frequency: 'Semanal',
-      validation: 'Minutas y medición de pulso',
-      evidence: 'Minutas, capturas y resultados de pulso',
-    },
-  ];
+  get templateRows(): PlanTemplateRow[] {
+    return [1, 2, 3].map((row) => ({
+      factorArea: this.t(`TEMPLATE_ROW_${row}_FACTOR`),
+      reason: this.t(`TEMPLATE_ROW_${row}_REASON`),
+      appliesTo: this.t(`TEMPLATE_ROW_${row}_SCOPE`),
+      actions: this.t(`TEMPLATE_ROW_${row}_ACTIONS`),
+      resources: this.t(`TEMPLATE_ROW_${row}_RESOURCES`),
+      kpi: this.t(`TEMPLATE_ROW_${row}_KPI`),
+      owner: this.t(`TEMPLATE_ROW_${row}_OWNER`),
+      term: this.t(`TEMPLATE_ROW_${row}_TERM`),
+      when: this.t(`TEMPLATE_ROW_${row}_WHEN`),
+      frequency: this.t(`TEMPLATE_ROW_${row}_FREQUENCY`),
+      validation: this.t(`TEMPLATE_ROW_${row}_VALIDATION`),
+      evidence: this.t(`TEMPLATE_ROW_${row}_EVIDENCE`),
+    }));
+  }
 
   constructor(
+    private router: Router,
     private organizacionService: OrganizacionService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private translate: TranslateService,
   ) {}
+
+   existsRoute(routes: RouteInfo[], target: string): boolean {
+      return routes.some(route =>
+        route.path === target ||
+        this.existsRoute(route.submenu, target)
+      );
+    }
 
   ngOnInit(): void {
     this.setupSelectedOrganizationListener();
+
+    //validar accesos al modulo..
+    const stored = sessionStorage.getItem('routes');
+    if (stored) {
+      const routes: RouteInfo[] = JSON.parse(stored);
+      console.log('RUTAS DESDE sessionStorage:: ', routes);
+
+      //buscar path
+      const found = this.existsRoute(routes, '/dashboard/planes-accion-clima');
+      //console.log(found);
+
+      if(!found){
+        this.router.navigate(['/authentication/page404']);
+      }
+
+    }
+
+
+
   }
 
   ngOnDestroy(): void {
@@ -274,45 +339,131 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   }
 
   get generalScore(): number | null {
-    return this.getNumber(this.rawMetrics?.calificacionGeneral, ['pct_favorable', 'pct_top2', 'pct_general']);
+    return this.getNumber(this.computedSummary ?? this.rawMetrics?.resumen ?? this.rawMetrics?.calificacionGeneral, [
+      'resultadoPct', 'favorablePct', 'pct_favorable', 'pct_top2', 'pct_general',
+    ]);
   }
 
   get generalUnfavorable(): number | null {
-    return this.getNumber(this.rawMetrics?.calificacionGeneral, ['pct_desfavorable_restrictivo', 'pct_desfavorable']);
+    return this.getNumber(this.computedSummary ?? this.rawMetrics?.resumen ?? this.rawMetrics?.calificacionGeneral, [
+      'desfavorablePct', 'pct_desfavorable_restrictivo', 'pct_desfavorable',
+    ]);
   }
 
   get generalNsat(): number | null {
-    return this.getNumber(this.rawMetrics?.calificacionGeneral, ['nsat']);
+    return this.getNumber(this.computedSummary ?? this.rawMetrics?.resumen ?? this.rawMetrics?.calificacionGeneral, ['nsat']);
   }
 
   get totalResponses(): number | null {
-    return this.getNumber(this.rawMetrics?.calificacionGeneral, ['total_respuestas']);
+    return this.getNumber(this.computedSummary ?? this.rawMetrics?.resumen ?? this.rawMetrics?.calificacionGeneral, ['totalRespuestas', 'total_respuestas']);
   }
 
   get criticalOpportunities(): ImprovementOpportunity[] {
     return this.opportunities.filter((item) => item.priority === 'ALTA');
   }
 
+  get groupedDemographicOpportunities(): Array<{
+    id: string;
+    label: string;
+    questions: Array<{ id: string; label: string; items: ImprovementOpportunity[] }>;
+  }> {
+    const groups = new Map<string, {
+      id: string;
+      label: string;
+      questions: Map<string, { id: string; label: string; items: ImprovementOpportunity[] }>;
+    }>();
+
+    this.demographicOpportunities.forEach((opportunity) => {
+      const factorLabel = opportunity.factor || this.t('FACTOR_AREA');
+      const factorId = `demographic-factor-${this.normalizeKey(factorLabel)}`;
+      const factorGroup = groups.get(factorId) ?? {
+        id: factorId,
+        label: factorLabel,
+        questions: new Map<string, { id: string; label: string; items: ImprovementOpportunity[] }>(),
+      };
+
+      const questionLabel = opportunity.criticalQuestion?.trim() || this.t('QUESTION_FALLBACK');
+      const questionId = `${factorId}-question-${this.normalizeKey(questionLabel)}`;
+      const questionGroup = factorGroup.questions.get(questionId) ?? {
+        id: questionId,
+        label: questionLabel,
+        items: [],
+      };
+
+      questionGroup.items.push(opportunity);
+      factorGroup.questions.set(questionId, questionGroup);
+      groups.set(factorId, factorGroup);
+    });
+
+    return Array.from(groups.values()).map((group) => ({
+      id: group.id,
+      label: group.label,
+      questions: Array.from(group.questions.values()),
+    }));
+  }
+
+  getFactorOpportunityCount(factorGroup: {
+    questions: Array<{ items: ImprovementOpportunity[] }>;
+  }): number {
+    return factorGroup.questions.reduce((total, question) => total + question.items.length, 0);
+  }
+
+  isDemographicFactorCollapsed(factorId: string): boolean {
+    return this.collapsedDemographicFactorIds.has(factorId);
+  }
+
+  toggleDemographicFactor(factorId: string): void {
+    if (this.collapsedDemographicFactorIds.has(factorId)) {
+      this.collapsedDemographicFactorIds.delete(factorId);
+      return;
+    }
+
+    this.collapsedDemographicFactorIds.add(factorId);
+  }
+
+  get planOpportunities(): ImprovementOpportunity[] {
+    return [...this.opportunities, ...this.demographicOpportunities];
+  }
+
+  get visibleActionPlans(): ActionPlan[] {
+    if (!this.selectedFilters.length) return this.actionPlans;
+    const visibleOpportunityIds = new Set(this.planOpportunities.map((item) => item.id));
+    return this.actionPlans.filter((plan) =>
+      plan.demographicFilters?.length
+        ? this.planMatchesSelectedFilters(plan)
+        : visibleOpportunityIds.has(plan.opportunityId)
+    );
+  }
+
   get openOpportunities(): ImprovementOpportunity[] {
-    const planned = new Set(this.actionPlans.map((plan) => plan.opportunityId));
-    return this.opportunities.filter((item) => !planned.has(item.id));
+    const planned = new Set(this.visibleActionPlans.map((plan) => plan.opportunityId));
+    return this.planOpportunities.filter((item) => !planned.has(item.id));
   }
 
   get selectedOpportunity(): ImprovementOpportunity | null {
-    return this.opportunities.find((item) => item.id === this.selectedOpportunityId) ??
+    return this.planOpportunities.find((item) => item.id === this.selectedOpportunityId) ??
       this.openOpportunities[0] ??
-      this.opportunities[0] ??
+      this.planOpportunities[0] ??
       null;
   }
 
+  getOpportunitySelectionLabel(opportunity: ImprovementOpportunity): string {
+    const context = opportunity.area && opportunity.area !== this.t('ENTIRE_ORGANIZATION')
+      ? opportunity.area
+      : opportunity.granFactor;
+    const criticalQuestion = opportunity.criticalQuestion ? ` · ${opportunity.criticalQuestion}` : '';
+    return `${context} · ${opportunity.factor}${criticalQuestion} · ${this.getPriorityLabel(opportunity.priority)}`;
+  }
+
   get planSummary(): { total: number; completed: number; progress: number; atRisk: number; high: number } {
-    const total = this.actionPlans.length;
-    const completed = this.actionPlans.filter((plan) => this.getPlanProgress(plan) >= 100).length;
+    const plans = this.visibleActionPlans;
+    const total = plans.length;
+    const completed = plans.filter((plan) => this.getPlanProgress(plan) >= 100).length;
     const progress = total > 0
-      ? this.round(this.actionPlans.reduce((sum, plan) => sum + this.getPlanProgress(plan), 0) / total, 1)
+      ? this.round(plans.reduce((sum, plan) => sum + this.getPlanProgress(plan), 0) / total, 1)
       : 0;
-    const atRisk = this.actionPlans.filter((plan) => this.getEffectivePlanStatus(plan) === 'EN_RIESGO').length;
-    const high = this.actionPlans.filter((plan) => plan.priority === 'ALTA').length;
+    const atRisk = plans.filter((plan) => this.getEffectivePlanStatus(plan) === 'EN_RIESGO').length;
+    const high = plans.filter((plan) => plan.priority === 'ALTA').length;
 
     return { total, completed, progress, atRisk, high };
   }
@@ -427,10 +578,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     this.selectedClimaObjective = String(clima?.Objetivo ?? '');
 
     if (this.selectedClimaId) {
-      await Promise.all([
-        this.loadDemographicFilters(),
-        this.loadMetrics(),
-      ]);
+      await this.loadMetrics();
     }
   }
 
@@ -474,14 +622,14 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
 
       this.selectedFilters = result;
       this.filtrosDemograficos = this.buildFilterString(result);
-      void this.loadMetrics();
+      this.normalizeMetrics();
     });
   }
 
   clearFilters(): void {
     this.selectedFilters = [];
     this.filtrosDemograficos = '';
-    void this.loadMetrics();
+    this.normalizeMetrics();
   }
 
   async loadMetrics(): Promise<void> {
@@ -491,15 +639,15 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
 
     this.loadingMetrics = true;
     try {
-      const response = await this.organizacionService.getAllMetrics(
+      const response = await this.organizacionService.getClimaActionPlanLikertResults(
+        this.selectedOrganizationId!,
         this.selectedClimaId,
-        this.filtrosDemograficos,
-        this.filtrosGrandesFactores,
-        this.tipoFiltro
       );
       this.rawMetrics = response?.data?.data ?? null;
+      this.globalCatalogs = null;
+      this.demographicTree = this.buildDemographicTreeFromMetrics();
       this.normalizeMetrics();
-      this.loadStoredPlans();
+      await this.loadActionPlans();
     } catch (error) {
       console.error('Error al cargar métricas del clima:', error);
       Swal.fire('Planes de acción', 'No fue posible cargar las métricas del clima.', 'error');
@@ -509,6 +657,28 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   }
 
   normalizeMetrics(): void {
+    this.computedSummary = null;
+    if (this.isLikertActionPlanResponse()) {
+      const employees = this.getFilteredEmployees();
+      const collection = this.selectedFilters.length
+        ? this.aggregateEmployeeMetrics(employees)
+        : this.normalizeLikertActionPlanMetrics(this.rawMetrics);
+
+      this.factorMetrics = collection.factors
+        .filter((item) => item.factor.length > 0)
+        .sort((left, right) => this.nullLast(left.favorable, right.favorable));
+      this.questionMetrics = collection.questions
+        .filter((item) => item.pregunta.length > 0)
+        .sort((left, right) => this.nullLast(left.favorable, right.favorable));
+      if (this.selectedFilters.length) {
+        this.computedSummary = this.calculateSummary(this.factorMetrics);
+      }
+      this.opportunities = this.buildOpportunities();
+      this.demographicOpportunities = this.buildDemographicOpportunities();
+      this.selectedOpportunityId = this.openOpportunities[0]?.id ?? this.opportunities[0]?.id ?? null;
+      return;
+    }
+
     const factorSource = this.asArray(this.rawMetrics?.porcentajeSatisfaccionPorFactor).length
       ? this.asArray(this.rawMetrics?.porcentajeSatisfaccionPorFactor)
       : this.asArray(this.rawMetrics?.satisfaccionPorPregunta);
@@ -524,16 +694,437 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
       .sort((left, right) => this.nullLast(left.favorable, right.favorable));
 
     this.opportunities = this.buildOpportunities();
+    this.demographicOpportunities = [];
     this.selectedOpportunityId = this.openOpportunities[0]?.id ?? this.opportunities[0]?.id ?? null;
   }
 
-  createPlanFromOpportunity(opportunity: ImprovementOpportunity | null = this.selectedOpportunity): void {
+  private isLikertActionPlanResponse(): boolean {
+    return !!this.rawMetrics && (
+      !!this.rawMetrics?.globales ||
+      Array.isArray(this.rawMetrics?.granFactores) ||
+      Array.isArray(this.rawMetrics?.empleados) ||
+      this.rawMetrics?.metodoAplicacion === 'LIKERT-5'
+    );
+  }
+
+  private normalizeLikertActionPlanMetrics(source: any): LikertMetricCollection {
+    if (source?.globales) {
+      return this.normalizeFlatGlobalMetrics(source.globales);
+    }
+
+    const factors: FactorMetric[] = [];
+    const questions: QuestionMetric[] = [];
+
+    const surveys = this.asArray(
+      source?.granFactores ?? source?.GranFactores ?? source?.respuestasLikert ?? source?.RespuestasLikert ?? source?.resultadosLikert ?? source?.ResultadosLikert
+    );
+
+    surveys.forEach((survey: any) => {
+      const granFactor = String(
+        survey?.nombre ?? survey?.Nombre ?? survey?.etiqueta ?? survey?.Etiqueta ??
+        survey?.granFactor ?? survey?.GranFactor ?? survey?.EtiquetaGranFactor ?? this.t('SURVEY_FALLBACK')
+      ).trim();
+      const factorItems = this.asArray(
+        survey?.factores ?? survey?.Factores ?? survey?.factors ?? survey?.items ?? survey?.resultados
+      );
+
+      factorItems.forEach((item: any) => {
+        const factor = this.normalizeLikertFactorMetric(item, granFactor);
+        factors.push(factor);
+
+        this.asArray(item?.preguntas ?? item?.Preguntas ?? item?.preguntasLikert ?? item?.items ?? item?.resultados)
+          .forEach((question: any) => questions.push(
+            this.normalizeLikertQuestionMetric(question, factor)
+          ));
+      });
+    });
+
+    return { factors, questions };
+  }
+
+  private normalizeFlatGlobalMetrics(globales: any): LikertMetricCollection {
+    const surveyNames = new Map<number, string>();
+    const factorsById = new Map<number, FactorMetric>();
+
+    this.asArray(globales?.granFactores).forEach((survey) => {
+      surveyNames.set(
+        Number(this.getValue(survey, ['granFactorId', 'idGranFactor', 'id'])),
+        this.getCatalogLabel(survey, ['granFactor', 'granFactorNombre', 'encuesta', 'nombre', 'etiqueta']) || this.t('SURVEY_FALLBACK'),
+      );
+    });
+
+    const factors = this.asArray(globales?.factores).map((item) => {
+      const surveyId = Number(this.getValue(item, ['granFactorId', 'idGranFactor']));
+      const factor = this.normalizeLikertFactorMetric(item, surveyNames.get(surveyId) ?? this.t('SURVEY_FALLBACK'));
+      factorsById.set(factor.idFactor, factor);
+      return factor;
+    });
+
+    const questions = this.asArray(globales?.preguntas).map((item) => {
+      const factorId = Number(this.getValue(item, ['factorId', 'idFactor']));
+      const factor = factorsById.get(factorId) ?? {
+        idFactor: factorId,
+        factor: this.getCatalogLabel(item, ['factor', 'factorNombre']) || this.t('FACTOR_AREA'),
+        granFactor: surveyNames.get(Number(this.getValue(item, ['granFactorId', 'idGranFactor']))) ?? this.t('SURVEY_FALLBACK'),
+      } as FactorMetric;
+      return this.normalizeLikertQuestionMetric(item, factor);
+    });
+
+    return { factors, questions };
+  }
+
+  private normalizeLikertFactorMetric(item: any, granFactor: string): FactorMetric {
+    return {
+      idFactor: Number(item?.factorId ?? item?.FactorId ?? item?.idFactor ?? item?.IdFactor ?? item?.id ?? item?.Id ?? 0),
+      factor: this.getCatalogLabel(item, ['factor', 'factorNombre', 'nombre', 'etiqueta']),
+      granFactor,
+      favorable: this.getNumber(item, ['favorablePct', 'resultadoPct', 'pct_satisfaccion', 'pct_favorable', 'favorable_pct', 'resultado_pct']),
+      desfavorable: this.getNumber(item, ['desfavorablePct', 'pct_desfavorable', 'desfavorable_pct']),
+      restrictivo: this.getNumber(item, ['desfavorableRestrictivoPct', 'pct_desfavorable_restrictivo']),
+      nsat: this.getNumber(item, ['nsat']),
+      total: this.getNumber(item, ['totalRespuestas', 'total_respuestas', 'cantidadRespuestas']),
+      top1: null,
+      bottom1: null,
+      esOportunidad: this.getBoolean(item, ['esOportunidad']),
+      prioridadSugerida: this.normalizeSuggestedPriority(this.getValue(item, ['prioridadSugerida', 'prioridad_sugerida'])),
+    };
+  }
+
+  private normalizeLikertQuestionMetric(item: any, factor: FactorMetric): QuestionMetric {
+    return {
+      idPregunta: Number(item?.preguntaId ?? item?.PreguntaId ?? item?.idPregunta ?? item?.IdPregunta ?? item?.id ?? item?.Id ?? 0),
+      idFactor: factor.idFactor,
+      factor: factor.factor,
+      granFactor: factor.granFactor,
+      pregunta: this.getCatalogLabel(item, ['pregunta', 'preguntaTexto', 'texto', 'nombre', 'etiqueta']),
+      favorable: this.getNumber(item, ['favorablePct', 'resultadoPct', 'pct_favorable', 'favorable_pct', 'resultado_pct']),
+      desfavorable: this.getNumber(item, ['desfavorablePct', 'pct_desfavorable', 'desfavorable_pct']),
+      nsat: this.getNumber(item, ['nsat']),
+      mean: this.getNumber(item, ['puntajePromedio', 'mean']),
+      total: this.getNumber(item, ['totalRespuestas', 'total_respuestas', 'cantidadRespuestas']),
+      esOportunidad: this.getBoolean(item, ['esOportunidad']),
+      prioridadSugerida: this.normalizeSuggestedPriority(this.getValue(item, ['prioridadSugerida', 'prioridad_sugerida'])),
+    };
+  }
+
+  private getFilteredEmployees(): any[] {
+    const employees = this.asArray(this.rawMetrics?.empleados);
+    if (!this.selectedFilters.length) return employees;
+    return employees.filter((employee) => this.matchesSelectedDemographics(employee));
+  }
+
+  private matchesSelectedDemographics(employee: any): boolean {
+    const demographics = this.getEmployeeDemographics(employee);
+    return this.selectedFilters.every((filter) => {
+      const selectedValues = filter.valores.map((value) => this.normalizeKey(value || '(vacío)'));
+      if (!selectedValues.length) return true;
+      const employeeValues = demographics.get(this.normalizeKey(filter.nombreCampo)) ?? [];
+      return employeeValues.some((value) => selectedValues.includes(this.normalizeKey(value || '(vacío)')));
+    });
+  }
+
+  private getEmployeeDemographics(employee: any): Map<string, string[]> {
+    const demographics = new Map<string, string[]>();
+    this.getEmployeeDemographicEntries(employee).forEach((item) => {
+      const normalizedName = this.normalizeKey(item.campo);
+      demographics.set(normalizedName, [...(demographics.get(normalizedName) ?? []), item.valor]);
+    });
+
+    return demographics;
+  }
+
+  private getEmployeeDemographicEntries(employee: any): Array<{ id: number; campo: string; valor: string }> {
+    const source = employee?.demograficos ?? employee?.Demograficos ?? employee?.camposDemograficos ?? employee?.CamposDemograficos;
+    if (Array.isArray(source)) {
+      return source.flatMap((item) => {
+        const campo = this.getCatalogLabel(item, ['campo', 'nombreCampo', 'nombre']);
+        const id = Number(this.getValue(item, ['campoId', 'idCampo', 'id'])) || 0;
+        const rawValues = this.getValue(item, ['valor', 'value', 'valores', 'values']);
+        return (Array.isArray(rawValues) ? rawValues : [rawValues])
+          .filter((value) => value !== undefined && value !== null)
+          .map((value) => ({ id, campo, valor: String(value).trim() }));
+      }).filter((item) => item.campo.length > 0);
+    }
+
+    return source && typeof source === 'object'
+      ? Object.entries(source).flatMap(([campo, rawValue]) => (Array.isArray(rawValue) ? rawValue : [rawValue])
+        .filter((value) => value !== undefined && value !== null)
+        .map((value) => ({ id: 0, campo, valor: String(value).trim() })))
+      : [];
+  }
+
+  private buildDemographicTreeFromMetrics(): any {
+    const fieldMap = new Map<string, { id: number; campo: string }>();
+    this.asArray(this.rawMetrics?.demograficosDisponibles).forEach((item) => {
+      const campo = this.getCatalogLabel(item, ['campo', 'nombreCampo', 'nombre']);
+      if (campo) fieldMap.set(this.normalizeKey(campo), {
+        id: Number(this.getValue(item, ['campoId', 'idCampo', 'id'])) || 0,
+        campo,
+      });
+    });
+
+    this.getFilteredEmployees().forEach((employee) => {
+      this.getEmployeeDemographicEntries(employee).forEach((entry) => {
+        const key = this.normalizeKey(entry.campo);
+        if (!fieldMap.has(key)) fieldMap.set(key, { id: entry.id, campo: entry.campo });
+      });
+    });
+
+    const order = Array.from(fieldMap.values()).map((field, level) => ({ level, id: field.id, campo: field.campo }));
+    if (!order.length) return null;
+
+    const values: any[] = [];
+    this.getFilteredEmployees().forEach((employee) => {
+      const byField = new Map(this.getEmployeeDemographicEntries(employee).map((entry) => [this.normalizeKey(entry.campo), entry.valor]));
+      let nodes = values;
+      order.forEach((field) => {
+        const value = byField.get(this.normalizeKey(field.campo)) ?? '';
+        let node = nodes.find((item) => item.valor === value);
+        if (!node) {
+          node = { campo: field.campo, valor: value, total: 0, children: [] };
+          nodes.push(node);
+        }
+        node.total += 1;
+        nodes = node.children;
+      });
+    });
+
+    return { order, rootCampoId: order[0].id, rootCampo: order[0].campo, values };
+  }
+
+  private aggregateEmployeeMetrics(employees: any[]): LikertMetricCollection {
+    if (this.rawMetrics?.globales) {
+      return this.aggregateNormalizedEmployeeResponses(employees);
+    }
+
+    const factorMetrics: FactorMetric[] = [];
+    const questionMetrics: QuestionMetric[] = [];
+    employees.forEach((employee) => {
+      const collection = this.normalizeLikertActionPlanMetrics(employee);
+      factorMetrics.push(...collection.factors);
+      questionMetrics.push(...collection.questions);
+    });
+
+    return {
+      factors: this.aggregateFactorMetrics(factorMetrics),
+      questions: this.aggregateQuestionMetrics(questionMetrics),
+    };
+  }
+
+  private aggregateNormalizedEmployeeResponses(employees: any[]): LikertMetricCollection {
+    const catalogs = this.getGlobalCatalogs();
+    const factorMetrics: FactorMetric[] = [];
+    const questionMetrics: QuestionMetric[] = [];
+
+    employees.forEach((employee) => {
+      this.asArray(employee?.respuestas).forEach((answer) => {
+        const questionId = Number(this.getValue(answer, ['preguntaId', 'idPregunta']));
+        const factorId = Number(this.getValue(answer, ['factorId', 'idFactor']));
+        const surveyId = Number(this.getValue(answer, ['granFactorId', 'idGranFactor']));
+        const factor = catalogs.factors.get(factorId);
+        const surveyName = catalogs.surveys.get(surveyId) ?? factor?.granFactor ?? this.t('SURVEY_FALLBACK');
+        const factorName = factor?.factor ?? this.t('FACTOR_AREA');
+        const responseScore = this.getNumber(answer, ['resultadoPct']) ?? this.scoreToPercent(answer?.score);
+        const opportunity = this.getBoolean(answer, ['esOportunidad']) === true;
+        const total = 1;
+
+        factorMetrics.push({
+          idFactor: factorId,
+          factor: factorName,
+          granFactor: surveyName,
+          favorable: responseScore,
+          desfavorable: opportunity ? 100 : 0,
+          restrictivo: null,
+          nsat: responseScore === null ? null : this.round(responseScore - 50, 2),
+          total,
+          top1: null,
+          bottom1: null,
+        });
+
+        questionMetrics.push({
+          idPregunta: questionId,
+          idFactor: factorId,
+          factor: factorName,
+          granFactor: surveyName,
+          pregunta: catalogs.questions.get(questionId)?.pregunta ?? this.t('QUESTION_FALLBACK'),
+          favorable: responseScore,
+          desfavorable: opportunity ? 100 : 0,
+          nsat: responseScore === null ? null : this.round(responseScore - 50, 2),
+          mean: this.getNumber(answer, ['score']),
+          total,
+        });
+      });
+    });
+
+    return {
+      factors: this.aggregateFactorMetrics(factorMetrics),
+      questions: this.aggregateQuestionMetrics(questionMetrics),
+    };
+  }
+
+  private getGlobalCatalogs(): GlobalLikertCatalogs {
+    if (this.globalCatalogs) return this.globalCatalogs;
+
+    const collection = this.normalizeFlatGlobalMetrics(this.rawMetrics?.globales ?? {});
+    const surveys = new Map<number, string>();
+    this.asArray(this.rawMetrics?.globales?.granFactores).forEach((survey) => {
+      surveys.set(
+        Number(this.getValue(survey, ['granFactorId', 'idGranFactor', 'id'])),
+        this.getCatalogLabel(survey, ['granFactor', 'granFactorNombre', 'encuesta', 'nombre', 'etiqueta']) || this.t('SURVEY_FALLBACK'),
+      );
+    });
+    this.globalCatalogs = {
+      surveys,
+      factors: new Map(collection.factors.map((factor) => [factor.idFactor, factor])),
+      questions: new Map(collection.questions.map((question) => [question.idPregunta, question])),
+    };
+    return this.globalCatalogs;
+  }
+
+  private scoreToPercent(score: any): number | null {
+    const numericScore = Number(score);
+    if (!Number.isFinite(numericScore) || numericScore <= 0) return null;
+    const maxScore = this.getNumber(this.rawMetrics?.escala, ['maximo', 'maxScore', 'niveles', 'cantidadNiveles']) ?? 5;
+    return this.round((numericScore / maxScore) * 100, 2);
+  }
+
+  private aggregateFactorMetrics(metrics: FactorMetric[]): FactorMetric[] {
+    const groups = new Map<string, FactorMetric[]>();
+    metrics.forEach((metric) => {
+      const key = `${this.normalizeKey(metric.granFactor)}|${metric.idFactor || this.normalizeKey(metric.factor)}`;
+      groups.set(key, [...(groups.get(key) ?? []), metric]);
+    });
+
+    return Array.from(groups.values()).map((items) => {
+      const first = items[0];
+      return {
+        ...first,
+        favorable: this.weightedMetric(items, 'favorable'),
+        desfavorable: this.weightedMetric(items, 'desfavorable'),
+        restrictivo: this.weightedMetric(items, 'restrictivo'),
+        nsat: this.weightedMetric(items, 'nsat'),
+        total: items.reduce((sum, item) => sum + (item.total ?? 0), 0) || null,
+        esOportunidad: undefined,
+        prioridadSugerida: null,
+      };
+    });
+  }
+
+  private aggregateQuestionMetrics(metrics: QuestionMetric[]): QuestionMetric[] {
+    const groups = new Map<string, QuestionMetric[]>();
+    metrics.forEach((metric) => {
+      const key = `${this.normalizeKey(metric.granFactor)}|${metric.idFactor}|${metric.idPregunta || this.normalizeKey(metric.pregunta)}`;
+      groups.set(key, [...(groups.get(key) ?? []), metric]);
+    });
+
+    return Array.from(groups.values()).map((items) => {
+      const first = items[0];
+      return {
+        ...first,
+        favorable: this.weightedMetric(items, 'favorable'),
+        desfavorable: this.weightedMetric(items, 'desfavorable'),
+        nsat: this.weightedMetric(items, 'nsat'),
+        mean: this.weightedMetric(items, 'mean'),
+        total: items.reduce((sum, item) => sum + (item.total ?? 0), 0) || null,
+        esOportunidad: undefined,
+        prioridadSugerida: null,
+      };
+    });
+  }
+
+  private weightedMetric<T extends { total: number | null }>(items: T[], metric: keyof T): number | null {
+    let totalWeight = 0;
+    let weightedSum = 0;
+    items.forEach((item: any) => {
+      const value = item[metric];
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) return;
+      const weight = item.total && item.total > 0 ? item.total : 1;
+      totalWeight += weight;
+      weightedSum += Number(value) * weight;
+    });
+    return totalWeight ? this.round(weightedSum / totalWeight, 2) : null;
+  }
+
+  private calculateSummary(factors: FactorMetric[]): MetricSummary {
+    return {
+      resultadoPct: this.weightedMetric(factors, 'favorable'),
+      desfavorablePct: this.weightedMetric(factors, 'desfavorable'),
+      nsat: this.weightedMetric(factors, 'nsat'),
+      totalRespuestas: factors.reduce((sum, factor) => sum + (factor.total ?? 0), 0) || null,
+    };
+  }
+
+  private buildDemographicOpportunities(): ImprovementOpportunity[] {
+    const groups = new Map<string, { field: string; value: string; employees: any[] }>();
+    this.getFilteredEmployees().forEach((employee) => {
+      this.getEmployeeDemographics(employee).forEach((values, normalizedField) => {
+        values.forEach((value) => {
+          const cleanValue = value || '(vacío)';
+          const key = `${normalizedField}|${this.normalizeKey(cleanValue)}`;
+          const group = groups.get(key) ?? { field: normalizedField, value: cleanValue, employees: [] };
+          group.employees.push(employee);
+          groups.set(key, group);
+        });
+      });
+    });
+
+    return Array.from(groups.values()).flatMap((group) => {
+      const collection = this.aggregateEmployeeMetrics(group.employees);
+      const summary = this.calculateSummary(collection.factors);
+      const score = summary.resultadoPct;
+      const unfavorable = summary.desfavorablePct;
+      if (score === null || (score >= this.targetScore && (unfavorable ?? 0) < 25)) return [];
+
+      const fieldLabel = this.displayDemographicLabel(group.field);
+      const criticalFactor = this.getMostCriticalMetric(collection.factors);
+      const criticalQuestion = this.getMostCriticalMetric(collection.questions);
+      const focusFactor = criticalQuestion?.factor ?? criticalFactor?.factor ?? group.value;
+      const focusQuestion = criticalQuestion?.pregunta ?? '';
+      return [{
+        id: `demografico-${group.field}-${this.normalizeKey(group.value)}`,
+        factor: focusFactor,
+        granFactor: fieldLabel,
+        area: `${fieldLabel}: ${group.value}`,
+        reason: `${fieldLabel}: ${group.value} registra ${this.formatPercent(score)} de satisfacción y ${this.formatPercent(unfavorable)} de insatisfacción en ${group.employees.length} colaborador(es). Factor crítico: ${focusFactor}.${focusQuestion ? ` Pregunta crítica: "${focusQuestion}".` : ''}`,
+        score,
+        unfavorable,
+        gap: this.round(Math.max(0, this.targetScore - score), 1),
+        priority: this.getPriority(score, unfavorable),
+        scope: `${fieldLabel}: ${group.value}`,
+        suggestedAction: this.suggestActionForFactor(focusFactor),
+        suggestedResource: this.suggestResourcesForFactor(focusFactor),
+        suggestedKpi: `Elevar la satisfacción del segmento a ${this.targetScore}% o más.`,
+        source: 'general' as const,
+        segment: group.value,
+        criticalQuestion: focusQuestion,
+        participantCount: group.employees.length,
+      }];
+    }).sort((left, right) =>
+      this.priorityWeight(right.priority) - this.priorityWeight(left.priority) || right.gap - left.gap
+    );
+  }
+
+  private displayDemographicLabel(value: string): string {
+    return value.replace(/_/g, ' ').toLocaleLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  private getMostCriticalMetric<T extends { favorable: number | null; desfavorable: number | null }>(metrics: T[]): T | null {
+    return [...metrics].sort((left, right) =>
+      (right.desfavorable ?? 0) - (left.desfavorable ?? 0) ||
+      this.nullLast(left.favorable, right.favorable)
+    )[0] ?? null;
+  }
+
+  async createPlanFromOpportunity(opportunity: ImprovementOpportunity | null = this.selectedOpportunity): Promise<void> {
     if (!opportunity) {
       Swal.fire('Planes de acción', 'No hay una brecha seleccionada para crear el plan.', 'info');
       return;
     }
 
-    if (this.actionPlans.some((plan) => plan.opportunityId === opportunity.id)) {
+    if (this.actionPlans.some((plan) =>
+      plan.opportunityId === opportunity.id &&
+      this.filtersSignature(plan.demographicFilters ?? []) === this.filtersSignature(this.selectedFilters)
+    )) {
       Swal.fire('Planes de acción', 'Ya existe un plan para esta brecha.', 'info');
       return;
     }
@@ -545,60 +1136,164 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     const plan: ActionPlan = {
       id: Date.now(),
       opportunityId: opportunity.id,
+      survey: opportunity.granFactor,
       factor: opportunity.factor,
       area: opportunity.area,
       sponsor: 'Recursos Humanos / Líder del área',
       scope: opportunity.scope,
       reason: opportunity.reason,
+      criticalQuestion: opportunity.criticalQuestion,
       action: opportunity.suggestedAction,
       resources: opportunity.suggestedResource,
       kpi: opportunity.suggestedKpi,
-      owner: 'Pendiente asignar',
+      owner: this.t('PENDING_ASSIGNMENT'),
+      responsibleEmployeeId: null,
+      responsibleEmployeeIds: [],
       term: opportunity.priority === 'ALTA' ? 'Corto plazo' : opportunity.priority === 'MEDIA' ? 'Mediano plazo' : 'Largo plazo',
       dueDate: this.toDateInput(dueDate),
       followUpFrequency: opportunity.priority === 'ALTA' ? 'Semanal' : 'Quincenal',
-      log: '',
+      sendResponsibleEmails: false,
       validation: 'Revisión de evidencia y variación del indicador en seguimiento.',
       evidence: '',
       status: 'SIN_INICIAR',
       priority: opportunity.priority,
       createdAt: new Date().toISOString(),
       tasks: this.createDefaultTasks(opportunity, dueDate),
+      followUps: [],
+      demographicFilters: this.selectedFilters,
     };
 
-    this.actionPlans = [plan, ...this.actionPlans];
-    this.persistPlans();
+    this.actionPlans = [{ ...plan, isPersisted: false, isDirty: true }, ...this.actionPlans];
     this.selectedTab = 'planes';
   }
 
-  removePlan(plan: ActionPlan): void {
-    this.actionPlans = this.actionPlans.filter((item) => item.id !== plan.id);
-    this.persistPlans();
+  async removePlan(plan: ActionPlan): Promise<void> {
+    if (!this.selectedOrganizationId) return;
+    if (!plan.isPersisted) {
+      this.actionPlans = this.actionPlans.filter((item) => item.id !== plan.id);
+      return;
+    }
+    try {
+      await this.organizacionService.deleteClimaActionPlan(plan.id, this.selectedOrganizationId);
+      this.actionPlans = this.actionPlans.filter((item) => item.id !== plan.id);
+    } catch (error) {
+      console.error('Error al eliminar plan de acción:', error);
+      Swal.fire('Planes de acción', 'No fue posible eliminar el plan de acción.', 'error');
+    }
   }
 
   addTask(plan: ActionPlan): void {
-    plan.tasks = [
-      ...plan.tasks,
-      {
-        id: Date.now(),
-        title: 'Nueva tarea',
-        responsible: plan.owner || 'Pendiente',
-        deliverable: 'Evidencia de ejecución',
-        dueDate: plan.dueDate,
-        evidence: '',
-        done: false,
-      },
-    ];
-    this.persistPlans();
+    const task: ActionTask = {
+      id: 0,
+      title: 'Nueva tarea',
+      responsible: plan.owner || this.t('PENDING_ASSIGNMENT'),
+      deliverable: 'Evidencia de ejecución',
+      dueDate: plan.dueDate,
+      evidence: '',
+      done: false,
+    };
+
+    plan.tasks = [...plan.tasks, task];
+    this.onPlanChanged(plan);
   }
 
   removeTask(plan: ActionPlan, task: ActionTask): void {
     plan.tasks = plan.tasks.filter((item) => item.id !== task.id);
-    this.persistPlans();
+    this.onPlanChanged(plan);
   }
 
-  onPlanChanged(): void {
-    this.persistPlans();
+  onPlanChanged(plan: ActionPlan): void {
+    plan.isDirty = true;
+  }
+
+  async selectPlanResponsible(plan: ActionPlan): Promise<void> {
+    if (!this.selectedOrganizationId) return;
+    if (!this.responsibleEmployees.length) {
+      await this.loadResponsibleEmployees();
+    }
+    if (!this.responsibleEmployees.length) return;
+
+    const dialogRef = this.dialog.open(ActionPlanResponsibleDialogComponent, {
+      width: '1480px',
+      maxWidth: '98vw',
+      maxHeight: '88vh',
+      autoFocus: false,
+      data: {
+        employees: this.responsibleEmployees,
+        selectedIds: plan.responsibleEmployeeIds?.length
+          ? plan.responsibleEmployeeIds
+          : plan.responsibleEmployeeId ? [plan.responsibleEmployeeId] : [],
+      },
+    });
+    dialogRef.afterClosed().subscribe((employees?: ActionPlanResponsible[]) => {
+      if (!employees) return;
+      plan.owner = employees.map((employee) => employee.name).join(', ') || this.t('PENDING_ASSIGNMENT');
+      plan.responsibleEmployeeIds = employees.map((employee) => employee.id);
+      plan.responsibleEmployeeId = plan.responsibleEmployeeIds[0] ?? null;
+      plan.tasks = plan.tasks.map((task) => ({
+        ...task,
+        responsible: plan.owner,
+      }));
+      this.onPlanChanged(plan);
+    });
+  }
+
+  hasAssignedResponsibles(plan: ActionPlan): boolean {
+    return this.getAssignedResponsibleIds(plan).length > 0;
+  }
+
+  private getAssignedResponsibleIds(plan: ActionPlan): number[] {
+    const ids = [
+      ...(plan.responsibleEmployeeIds ?? []),
+      plan.responsibleEmployeeId,
+    ]
+      .map((employeeId) => Number(employeeId))
+      .filter((employeeId) => Number.isFinite(employeeId) && employeeId > 0);
+    return [...new Set(ids)];
+  }
+
+  private async loadResponsibleEmployees(): Promise<void> {
+    if (!this.selectedOrganizationId || this.loadingResponsibleEmployees) return;
+    this.loadingResponsibleEmployees = true;
+    try {
+      const response = await this.organizacionService.getEmployees(this.selectedOrganizationId);
+      this.responsibleEmployees = this.asArray(response?.data)
+        .map((employee) => this.normalizeResponsibleEmployee(employee))
+        .filter((employee): employee is ActionPlanResponsible => employee !== null);
+    } catch (error) {
+      console.error('Error al cargar empleados responsables:', error);
+      Swal.fire('Planes de acción', 'No fue posible cargar los empleados de la organización.', 'error');
+    } finally {
+      this.loadingResponsibleEmployees = false;
+    }
+  }
+
+  private normalizeResponsibleEmployee(employee: any): ActionPlanResponsible | null {
+    const id = Number(this.getValue(employee, ['idEmpleado', 'empleadoId', 'id']));
+    const firstName = this.getCatalogLabel(employee, ['nombres', 'nombre']);
+    const lastName = this.getCatalogLabel(employee, ['apellidos', 'apellido']);
+    const name = this.getCatalogLabel(employee, ['nombreCompleto']) || `${firstName} ${lastName}`.trim();
+    if (!id || !name) return null;
+
+    const excludedKeys = new Set([
+      'id', 'idempleado', 'empleadoid', 'idorganizacion', 'nombres', 'nombre', 'apellidos', 'apellido', 'nombrecompleto',
+      'cargo', 'celular', 'telefono', 'email', 'correo', 'tipioenvioencuesta', 'tipoenvioencuesta', 'fecharegistro',
+      'estado', 'activo', 'nombrejefe', 'idempleadojefe', 'idjefe', 'imagen', 'imagensrc',
+    ]);
+    const demographics = Object.entries(employee ?? {}).reduce<Record<string, string>>((result, [key, value]) => {
+      if (excludedKeys.has(this.normalizeKey(key).toLowerCase()) || value === null || value === undefined || typeof value === 'object') return result;
+      const text = String(value).trim();
+      if (text) result[key] = text;
+      return result;
+    }, {});
+
+    return {
+      id,
+      name,
+      cargo: this.getCatalogLabel(employee, ['cargo', 'puesto']),
+      email: this.getCatalogLabel(employee, ['email', 'correo']),
+      demographics,
+    };
   }
 
   getPlanProgress(plan: ActionPlan): number {
@@ -628,19 +1323,19 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
 
   getStatusLabel(status: PlanStatus): string {
     const labels: Record<PlanStatus, string> = {
-      SIN_INICIAR: 'Sin iniciar',
-      EN_PROCESO: 'En proceso',
-      EN_RIESGO: 'En riesgo',
-      COMPLETADO: 'Completado',
+      SIN_INICIAR: this.t('STATUS_NOT_STARTED'),
+      EN_PROCESO: this.t('STATUS_IN_PROGRESS'),
+      EN_RIESGO: this.t('STATUS_AT_RISK'),
+      COMPLETADO: this.t('STATUS_COMPLETED'),
     };
     return labels[status];
   }
 
   getPriorityLabel(priority: PlanPriority): string {
     const labels: Record<PlanPriority, string> = {
-      ALTA: 'Alta',
-      MEDIA: 'Media',
-      BAJA: 'Baja',
+      ALTA: this.t('PRIORITY_HIGH'),
+      MEDIA: this.t('PRIORITY_MEDIUM'),
+      BAJA: this.t('PRIORITY_LOW'),
     };
     return labels[priority];
   }
@@ -662,7 +1357,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   }
 
   getOpportunityById(id: string): ImprovementOpportunity | null {
-    return this.opportunities.find((item) => item.id === id) ?? null;
+    return this.planOpportunities.find((item) => item.id === id) ?? null;
   }
 
   getTopQuestionForFactor(factorId: number): QuestionMetric | null {
@@ -710,7 +1405,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     const gaps = workbook.addWorksheet('Brechas priorizadas');
     gaps.columns = [
       { header: 'Prioridad', key: 'prioridad', width: 14 },
-      { header: 'Gran factor', key: 'granFactor', width: 22 },
+      { header: this.t('SURVEY'), key: 'granFactor', width: 22 },
       { header: 'Factor', key: 'factor', width: 28 },
       { header: 'Área', key: 'area', width: 24 },
       { header: 'Razón', key: 'reason', width: 58 },
@@ -746,7 +1441,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
       { header: 'Validación', key: 'validation', width: 35 },
       { header: 'Evidencia', key: 'evidence', width: 35 },
     ];
-    this.actionPlans.forEach((plan) => plans.addRow({
+    this.visibleActionPlans.forEach((plan) => plans.addRow({
       factor: `${plan.factor} / ${plan.area}`,
       reason: plan.reason,
       scope: plan.scope,
@@ -773,7 +1468,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
       { header: 'Completada', key: 'done', width: 14 },
       { header: 'Evidencia', key: 'evidence', width: 35 },
     ];
-    this.actionPlans.forEach((plan) => {
+    this.visibleActionPlans.forEach((plan) => {
       plan.tasks.forEach((task) => tasks.addRow({
         plan: plan.factor,
         task: task.title,
@@ -853,7 +1548,8 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     this.factorMetrics.forEach((factor) => {
       const score = factor.favorable;
       const unfavorable = factor.desfavorable;
-      const shouldCreate = (score !== null && score < this.targetScore) ||
+      const shouldCreate = factor.esOportunidad === true ||
+        (score !== null && score < this.targetScore) ||
         (unfavorable !== null && unfavorable >= 25);
 
       if (!shouldCreate) {
@@ -862,7 +1558,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
 
       const topQuestion = this.getTopQuestionForFactor(factor.idFactor);
       opportunities.push({
-        id: `factor-${factor.idFactor || this.normalizeKey(factor.factor)}`,
+        id: `factor-${factor.idFactor || this.normalizeKey(factor.factor)}-${this.normalizeKey(factor.granFactor)}`,
         factor: factor.factor,
         granFactor: factor.granFactor,
         area: this.currentScopeLabel(),
@@ -870,18 +1566,19 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
         score,
         unfavorable,
         gap: this.round(Math.max(0, this.targetScore - (score ?? 0)), 1),
-        priority: this.getPriority(score, unfavorable),
+        priority: factor.prioridadSugerida ?? this.getPriority(score, unfavorable),
         scope: this.currentScopeLabel(),
         suggestedAction: this.suggestActionForFactor(factor.factor),
         suggestedResource: this.suggestResourcesForFactor(factor.factor),
         suggestedKpi: `Subir ${factor.factor} a ${this.targetScore}% de favorabilidad y reducir desfavorabilidad por debajo de 20%.`,
         source: 'factor',
+        criticalQuestion: topQuestion?.pregunta,
       });
     });
 
     this.questionMetrics
-      .filter((question) => (question.favorable ?? 100) < 65 || (question.desfavorable ?? 0) >= 35)
-      .slice(0, 8)
+      .filter((question) => question.esOportunidad === true ||
+        (question.favorable ?? 100) < 65 || (question.desfavorable ?? 0) >= 35)
       .forEach((question) => {
         opportunities.push({
           id: `pregunta-${question.idPregunta || this.normalizeKey(question.pregunta)}`,
@@ -892,12 +1589,13 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
           score: question.favorable,
           unfavorable: question.desfavorable,
           gap: this.round(Math.max(0, this.targetScore - (question.favorable ?? 0)), 1),
-          priority: this.getPriority(question.favorable, question.desfavorable),
+          priority: question.prioridadSugerida ?? this.getPriority(question.favorable, question.desfavorable),
           scope: this.currentScopeLabel(),
           suggestedAction: this.suggestActionForFactor(question.factor),
           suggestedResource: this.suggestResourcesForFactor(question.factor),
           suggestedKpi: `Mejorar el ítem crítico al menos 10 puntos y documentar acciones de cierre.`,
           source: 'pregunta',
+          criticalQuestion: question.pregunta,
         });
       });
 
@@ -906,8 +1604,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
         this.priorityWeight(right.priority) - this.priorityWeight(left.priority) ||
         right.gap - left.gap ||
         this.nullLast(left.score, right.score)
-      )
-      .slice(0, 18);
+      );
   }
 
   private buildFactorReason(factor: FactorMetric, topQuestion: QuestionMetric | null): string {
@@ -993,7 +1690,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
 
   private currentScopeLabel(): string {
     const chips = this.filterChips.map((chip) => `${chip.label}: ${chip.value}`);
-    return chips.length ? chips.join(' / ') : 'Toda la organización';
+    return chips.length ? chips.join(' / ') : this.t('ENTIRE_ORGANIZATION');
   }
 
   private buildFilterString(filters: DemographicSelection[]): string {
@@ -1032,31 +1729,427 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     return typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
   }
 
-  private loadStoredPlans(): void {
-    const raw = localStorage.getItem(this.storageKey());
-    if (!raw) {
+  private async loadActionPlans(): Promise<void> {
+    if (!this.selectedOrganizationId || !this.selectedClimaId) {
       this.actionPlans = [];
       return;
     }
 
+    this.loadingPlans = true;
     try {
-      this.actionPlans = JSON.parse(raw);
-    } catch {
+      const response = await this.organizacionService.getClimaActionPlans(
+        this.selectedOrganizationId,
+        this.selectedClimaId,
+      );
+      const payload = this.extractApiData(response);
+      const plans = Array.isArray(payload)
+        ? payload
+        : this.asArray(payload?.planes ?? payload?.items ?? payload);
+      this.actionPlans = plans
+        .map((plan) => this.normalizeApiPlan(plan))
+        .filter((plan): plan is ActionPlan => !!plan);
+    } catch (error) {
+      console.error('Error al cargar planes de acción:', error);
       this.actionPlans = [];
+      Swal.fire('Planes de acción', 'No fue posible recuperar los planes guardados.', 'error');
+    } finally {
+      this.loadingPlans = false;
     }
   }
 
-  private persistPlans(): void {
-    localStorage.setItem(this.storageKey(), JSON.stringify(this.actionPlans));
+  async savePlan(plan: ActionPlan): Promise<void> {
+    if (this.savingPlanIds.has(plan.id)) return;
+    if (!this.hasAssignedResponsibles(plan)) {
+      await Swal.fire({
+        title: this.t('RESPONSIBLES_REQUIRED_TITLE'),
+        text: this.t('RESPONSIBLES_REQUIRED_TEXT'),
+        icon: 'warning',
+        confirmButtonText: this.t('ACCEPT'),
+      });
+      return;
+    }
+
+    const shouldSendEmails = plan.sendResponsibleEmails === true;
+    const responsibleIds = this.getAssignedResponsibleIds(plan);
+    let emailRecipients: ActionPlanResponsible[] = [];
+    let missingEmailCount = 0;
+
+    if (shouldSendEmails) {
+      if (!responsibleIds.every((employeeId) => this.responsibleEmployees.some((employee) => employee.id === employeeId))) {
+        await this.loadResponsibleEmployees();
+      }
+
+      const selectedEmployees = responsibleIds
+        .map((employeeId) => this.responsibleEmployees.find((employee) => employee.id === employeeId))
+        .filter((employee): employee is ActionPlanResponsible => !!employee);
+      emailRecipients = selectedEmployees.filter((employee) => this.isValidEmail(employee.email));
+      missingEmailCount = responsibleIds.length - emailRecipients.length;
+
+      if (!emailRecipients.length) {
+        await Swal.fire({
+          title: this.t('EMAIL_RECIPIENTS_REQUIRED_TITLE'),
+          text: this.t('EMAIL_RECIPIENTS_REQUIRED_TEXT'),
+          icon: 'warning',
+          confirmButtonText: this.t('ACCEPT'),
+        });
+        return;
+      }
+    }
+
+    const wasPersisted = plan.isPersisted === true;
+    this.savingPlanIds.add(plan.id);
+    try {
+      const response = await this.organizacionService.saveClimaActionPlan(
+        this.toApiPlanPayload(plan),
+        wasPersisted ? plan.id : null,
+      );
+      const savedPlan = this.normalizeApiPlan(this.extractApiData(response));
+      let persistedPlan = savedPlan;
+      if (savedPlan) {
+        const index = this.actionPlans.findIndex((item) => item.id === plan.id);
+        if (index >= 0) {
+          this.actionPlans[index] = { ...savedPlan, isPersisted: true, isDirty: false };
+        }
+      } else {
+        await this.loadActionPlans();
+        persistedPlan = this.actionPlans.find((item) => item.opportunityId === plan.opportunityId) ?? null;
+      }
+
+      const savedMessage = this.extractApiMessage(response) || this.t(wasPersisted ? 'PLAN_UPDATED_SUCCESS' : 'PLAN_CREATED_SUCCESS');
+      if (shouldSendEmails && persistedPlan) {
+        const emailResult = await this.sendActionPlanEmails(persistedPlan, emailRecipients, missingEmailCount);
+        const hasEmailWarnings = emailResult.failed > 0 || emailResult.missing > 0;
+        await Swal.fire({
+          title: this.t(hasEmailWarnings ? 'EMAIL_PARTIAL_TITLE' : 'EMAIL_SUCCESS_TITLE'),
+          text: `${savedMessage} ${this.t(
+            hasEmailWarnings ? 'EMAIL_PARTIAL_TEXT' : 'EMAIL_SUCCESS_TEXT',
+            { sent: emailResult.sent, failed: emailResult.failed, missing: emailResult.missing },
+          )}`,
+          icon: hasEmailWarnings ? 'warning' : 'success',
+          confirmButtonText: this.t('ACCEPT'),
+        });
+        return;
+      }
+
+      await Swal.fire({
+        title: this.t(wasPersisted ? 'PLAN_UPDATED_TITLE' : 'PLAN_CREATED_TITLE'),
+        text: savedMessage,
+        icon: 'success',
+        confirmButtonText: this.t('ACCEPT'),
+      });
+    } catch (error) {
+      console.error('Error al guardar plan de acción:', error);
+      Swal.fire('Planes de acción', 'No fue posible guardar el plan de acción.', 'error');
+    } finally {
+      this.savingPlanIds.delete(plan.id);
+    }
   }
 
-  private storageKey(): string {
-    return [
-      'clima-action-plans',
-      this.selectedOrganizationId ?? 'org',
-      this.selectedClimaId ?? 'clima',
-      this.normalizeKey(this.filtrosDemograficos || 'sin-filtro'),
-    ].join(':');
+  private async sendActionPlanEmails(
+    plan: ActionPlan,
+    recipients: ActionPlanResponsible[],
+    missing: number,
+  ): Promise<ActionPlanEmailResult> {
+    const results = await Promise.allSettled(
+      recipients.map(async (recipient) => {
+        const payload = this.buildActionPlanEmailPayload(plan, recipient);
+        const response = await this.organizacionService.sendClimaActionPlanEmail(payload);
+        const responsePayload = response?.data ?? response;
+        if (responsePayload?.ok === false || responsePayload?.success === false) {
+          throw responsePayload;
+        }
+        return responsePayload;
+      }),
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(
+          `No fue posible enviar el plan de acción al responsable ${recipients[index]?.id}:`,
+          result.reason,
+        );
+      }
+    });
+
+    return {
+      sent: results.filter((result) => result.status === 'fulfilled').length,
+      failed: results.filter((result) => result.status === 'rejected').length,
+      missing,
+    };
+  }
+
+  private buildActionPlanEmailPayload(
+    plan: ActionPlan,
+    recipient: ActionPlanResponsible,
+  ): Record<string, unknown> {
+    const organizationId = Number(this.selectedOrganizationId);
+    const climaId = Number(this.selectedClimaId);
+    const accessCode = btoa(`${recipient.id}|${climaId}|${plan.id}`);
+    const portalUrl = `https://justlink360.net/#/portal-clima/planes-accion/${encodeURIComponent(accessCode)}`;
+    const isEnglish = this.translate.currentLang?.toLowerCase().startsWith('en');
+    const climateName = this.selectedClimaName || plan.survey || (isEnglish ? 'Workplace climate' : 'Clima laboral');
+    const dueDate = this.formatDate(plan.dueDate);
+    const subject = isEnglish
+      ? `Assigned workplace climate action plan - ${climateName}`
+      : `Plan de acción de clima asignado - ${climateName}`;
+    const copy = isEnglish
+      ? {
+          greeting: `Hello ${recipient.name},`,
+          intro: 'You have been assigned as an owner of a workplace climate action plan.',
+          plan: 'Assigned plan',
+          action: 'What will be done',
+          dueDate: 'Due date',
+          frequency: 'Follow-up frequency',
+          button: 'Open action plan',
+          notice: 'Use the following personal link to review activities, record evidence, and update progress.',
+          disclaimer: 'This link is personal and must not be shared. The information and progress of the plan are confidential within your organization.',
+        }
+      : {
+          greeting: `Hola ${recipient.name},`,
+          intro: 'Has sido asignado como responsable de un plan de acción de clima laboral.',
+          plan: 'Plan asignado',
+          action: 'Qué se hará',
+          dueDate: 'Fecha límite',
+          frequency: 'Periodicidad de seguimiento',
+          button: 'Abrir plan de acción',
+          notice: 'Ingresa mediante el siguiente enlace personal para consultar las tareas, registrar evidencias y actualizar el progreso.',
+          disclaimer: 'Este enlace es personal y no debe compartirse. La información y los avances del plan son confidenciales a lo interno de tu organización.',
+        };
+    const html = `
+      <!doctype html>
+      <html lang="${isEnglish ? 'en' : 'es'}">
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+        <body style="margin:0;background:#f3f6f8;font-family:Arial,sans-serif;color:#243746;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f6f8;padding:28px 12px;">
+            <tr><td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border:1px solid #dce5ea;border-radius:8px;overflow:hidden;">
+                <tr><td style="background:#123746;padding:20px 28px;color:#ffffff;"><strong style="font-size:21px;">Just-Link 360</strong><div style="font-size:12px;color:#c8d9df;margin-top:4px;">${this.escapeHtml(climateName)}</div></td></tr>
+                <tr><td style="padding:28px;">
+                  <p style="font-size:18px;font-weight:700;margin:0 0 12px;">${this.escapeHtml(copy.greeting)}</p>
+                  <p style="font-size:14px;line-height:1.6;margin:0 0 8px;">${this.escapeHtml(copy.intro)}</p>
+                  <p style="font-size:14px;line-height:1.6;margin:0 0 22px;">${this.escapeHtml(copy.notice)}</p>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7fafb;border-left:4px solid #176477;margin-bottom:22px;">
+                    <tr><td style="padding:16px 18px;">
+                      <div style="font-size:11px;text-transform:uppercase;color:#647985;font-weight:700;">${this.escapeHtml(copy.plan)}</div>
+                      <div style="font-size:18px;font-weight:700;color:#183542;margin:4px 0 13px;">${this.escapeHtml(plan.factor)}</div>
+                      <div style="font-size:11px;text-transform:uppercase;color:#647985;font-weight:700;">${this.escapeHtml(copy.action)}</div>
+                      <div style="font-size:13px;line-height:1.55;margin:4px 0 13px;">${this.escapeHtml(plan.action)}</div>
+                      <div style="font-size:13px;"><strong>${this.escapeHtml(copy.dueDate)}:</strong> ${this.escapeHtml(dueDate)} &nbsp; <strong>${this.escapeHtml(copy.frequency)}:</strong> ${this.escapeHtml(plan.followUpFrequency || '-')}</div>
+                    </td></tr>
+                  </table>
+                  <div style="text-align:center;margin:24px 0;"><a href="${this.escapeHtml(portalUrl)}" style="display:inline-block;background:#0866c6;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 22px;border-radius:6px;">${this.escapeHtml(copy.button)}</a></div>
+                  <p style="border-top:1px solid #e2e8ec;color:#687b86;font-size:11px;line-height:1.55;margin:24px 0 0;padding-top:16px;">${this.escapeHtml(copy.disclaimer)}</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>`;
+
+    return {
+      destinatario: recipient.email,
+      asunto: subject,
+      mensajeHtml: html,
+      organizationId,
+      IdModelo: plan.id,
+      IdEmpleado: recipient.id,
+      evaluaciones: [{
+        empleadoId: recipient.id,
+        nombreEmpleado: recipient.name,
+        planAccionId: plan.id,
+      }],
+      IdFlujo: climaId,
+      IdPlanAccion: plan.id,
+      codigoPlanResponsable: accessCode,
+      urlPlanAccion: portalUrl,
+    };
+  }
+
+  private isValidEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+  }
+
+  private toApiPlanPayload(plan: ActionPlan): any {
+    return {
+      idOrganizacion: this.selectedOrganizationId,
+      idFlujo: this.selectedClimaId,
+      oportunidadId: plan.opportunityId,
+      encuesta: plan.survey,
+      factor: plan.factor,
+      area: plan.area,
+      alcance: plan.scope,
+      motivo: plan.reason,
+      preguntaCritica: plan.criticalQuestion ?? '',
+      accion: plan.action,
+      recursos: plan.resources,
+      kpi: plan.kpi,
+      patrocinador: plan.sponsor,
+      responsableEmpleadoIds: this.getAssignedResponsibleIds(plan),
+      plazo: plan.term,
+      fechaLimite: plan.dueDate,
+      frecuenciaSeguimiento: plan.followUpFrequency,
+      validacion: plan.validation,
+      evidencia: plan.evidence,
+      estado: plan.status === 'EN_PROCESO' ? 'EN_PROGRESO' : plan.status,
+      prioridad: plan.priority,
+      filtrosDemograficos: plan.demographicFilters ?? [],
+      tareas: plan.tasks.map((task) => this.toApiTaskPayload(task)),
+    };
+  }
+
+  private toApiTaskPayload(task: ActionTask): any {
+    return {
+      ...(task.id > 0 ? { id: task.id } : {}),
+      titulo: task.title,
+      responsable: task.responsible,
+      entregable: task.deliverable,
+      fechaLimite: task.dueDate,
+      evidencia: task.evidence,
+      completada: task.done,
+    };
+  }
+
+  private normalizeApiPlan(source: any): ActionPlan | null {
+    source = source?.plan ?? source?.item ?? source;
+    if (!source || typeof source !== 'object') return null;
+    const id = Number(this.getValue(source, ['id', 'idPlan', 'planId']));
+    if (!Number.isFinite(id) || id <= 0) return null;
+
+    const responsibleItems = this.asArray(this.getValue(source, ['responsables', 'responsibleEmployees']));
+    const responsibleEmployeeIds = responsibleItems
+      .map((item) => Number(this.getValue(item, ['idEmpleado', 'empleadoId', 'id'])))
+      .filter((employeeId) => Number.isFinite(employeeId) && employeeId > 0);
+    const responseResponsibleIds = this.asArray(this.getValue(source, ['responsableEmpleadoIds', 'responsibleEmployeeIds']))
+      .map((employeeId) => Number(employeeId))
+      .filter((employeeId) => Number.isFinite(employeeId) && employeeId > 0);
+    const owner = responsibleItems
+      .map((item) => this.getCatalogLabel(item, ['nombreCompleto', 'nombre', 'name']))
+      .filter(Boolean)
+      .join(', ') || this.getCatalogLabel(source, ['responsablesTexto', 'owner', 'responsable']) || this.t('PENDING_ASSIGNMENT');
+
+    return {
+      id,
+      opportunityId: this.getCatalogLabel(source, ['oportunidadId', 'opportunityId']),
+      survey: this.getCatalogLabel(source, ['encuesta', 'survey']) || '-',
+      factor: this.getCatalogLabel(source, ['factor']) || '-',
+      area: this.getCatalogLabel(source, ['area', 'encuesta']) || '-',
+      sponsor: this.getCatalogLabel(source, ['patrocinador', 'sponsor']),
+      scope: this.getCatalogLabel(source, ['alcance', 'scope']),
+      reason: this.getCatalogLabel(source, ['motivo', 'reason']),
+      criticalQuestion: this.getCatalogLabel(source, ['preguntaCritica', 'criticalQuestion']),
+      action: this.getCatalogLabel(source, ['accion', 'action']),
+      resources: this.getCatalogLabel(source, ['recursos', 'resources']),
+      kpi: this.getCatalogLabel(source, ['kpi']),
+      owner,
+      responsibleEmployeeId: (responsibleEmployeeIds[0] ?? responseResponsibleIds[0]) ?? null,
+      responsibleEmployeeIds: responsibleEmployeeIds.length ? responsibleEmployeeIds : responseResponsibleIds,
+      term: this.getCatalogLabel(source, ['plazo', 'term']),
+      dueDate: this.normalizeApiDate(this.getValue(source, ['fechaLimite', 'dueDate'])),
+      followUpFrequency: this.getCatalogLabel(source, ['frecuenciaSeguimiento', 'followUpFrequency']),
+      sendResponsibleEmails: false,
+      validation: this.getCatalogLabel(source, ['validacion', 'validation']),
+      evidence: this.getCatalogLabel(source, ['evidencia', 'evidence']),
+      status: this.normalizePlanStatus(this.getCatalogLabel(source, ['estado', 'status'])),
+      priority: this.normalizeSuggestedPriority(this.getCatalogLabel(source, ['prioridad', 'priority'])) ?? 'MEDIA',
+      createdAt: String(this.getValue(source, ['creadoEn', 'createdAt', 'fechaCreacion']) ?? new Date().toISOString()),
+      tasks: this.asArray(this.getValue(source, ['tareas', 'tasks']))
+        .map((task) => this.normalizeApiTask(task))
+        .filter((task): task is ActionTask => !!task),
+      followUps: this.asArray(this.getValue(source, ['seguimientos', 'followUps']))
+        .map((followUp) => this.normalizeApiFollowUp(followUp))
+        .filter((followUp): followUp is ActionPlanFollowUp => !!followUp)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+      demographicFilters: this.asArray(this.getValue(source, ['filtrosDemograficos', 'demographicFilters'])),
+      isPersisted: true,
+      isDirty: false,
+    };
+  }
+
+  private normalizeApiTask(source: any): ActionTask | null {
+    source = source?.tarea ?? source?.task ?? source?.item ?? source;
+    if (!source || typeof source !== 'object') return null;
+    const id = Number(this.getValue(source, ['id', 'idTarea', 'taskId']));
+    return {
+      id: Number.isFinite(id) && id > 0 ? id : 0,
+      title: this.getCatalogLabel(source, ['titulo', 'title']) || 'Nueva tarea',
+      responsible: this.getCatalogLabel(source, ['responsable', 'responsible']),
+      deliverable: this.getCatalogLabel(source, ['entregable', 'deliverable']),
+      dueDate: this.normalizeApiDate(this.getValue(source, ['fechaLimite', 'dueDate'])),
+      evidence: this.getCatalogLabel(source, ['evidencia', 'evidence']),
+      done: this.getBoolean(source, ['completada', 'done']) ?? false,
+    };
+  }
+
+  private normalizeApiFollowUp(source: any): ActionPlanFollowUp | null {
+    source = source?.seguimiento ?? source?.followUp ?? source?.item ?? source;
+    if (!source || typeof source !== 'object') return null;
+    const id = Number(this.getValue(source, ['id', 'idSeguimiento', 'seguimientoId']));
+    if (!Number.isFinite(id) || id <= 0) return null;
+
+    const createdAt = String(this.getValue(source, ['creadoEn', 'createdAt', 'fechaCreacion']) ?? this.getValue(source, ['fecha']) ?? '');
+    return {
+      id,
+      dateLabel: this.formatApiDateTime(createdAt || this.getValue(source, ['fecha'])),
+      createdAt,
+      createdBy: this.getCatalogLabel(source, ['creadoPor', 'createdBy', 'usuarioCreador']) || 'No especificado',
+      comment: this.getCatalogLabel(source, ['comentario', 'comment']) || 'Sin comentario registrado.',
+      progress: this.getNumber(source, ['avancePct', 'progress', 'avance']),
+    };
+  }
+
+  private extractApiData(response: any): any {
+    return response?.data?.data ?? response?.data ?? response;
+  }
+
+  private extractApiMessage(response: any): string {
+    return String(response?.data?.message ?? response?.message ?? '').trim();
+  }
+
+  private normalizeApiDate(value: any): string {
+    if (!value) return '';
+    const text = String(value);
+    return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : this.toDateInput(new Date(text));
+  }
+
+  private formatApiDateTime(value: any): string {
+    if (!value) return 'Fecha no especificada';
+    const text = String(value).trim();
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) return text || 'Fecha no especificada';
+
+    return new Intl.DateTimeFormat(this.getLocale(), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  }
+
+  private normalizePlanStatus(value: string): PlanStatus {
+    const status = this.normalizeKey(value);
+    if (status === 'EN_PROGRESO') return 'EN_PROCESO';
+    if (status === 'EN_RIESGO' || status === 'COMPLETADO') return status;
+    return 'SIN_INICIAR';
+  }
+
+  private planMatchesSelectedFilters(plan: ActionPlan): boolean {
+    return (plan.demographicFilters ?? []).every((planFilter) => {
+      const selected = this.selectedFilters.find((filter) =>
+        Number(filter.idCampo) === Number(planFilter.idCampo) ||
+        this.normalizeKey(filter.nombreCampo) === this.normalizeKey(planFilter.nombreCampo)
+      );
+      if (!selected) return false;
+      const selectedValues = selected.valores.map((value) => this.normalizeKey(value));
+      return (planFilter.valores ?? []).some((value) => selectedValues.includes(this.normalizeKey(value)));
+    });
+  }
+
+  private filtersSignature(filters: DemographicSelection[]): string {
+    return (filters ?? [])
+      .map((filter) => `${filter.idCampo}:${[...(filter.valores ?? [])].map((value) => this.normalizeKey(value)).sort().join('|')}`)
+      .sort()
+      .join(';');
   }
 
   private clearMetrics(): void {
@@ -1064,8 +2157,12 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     this.factorMetrics = [];
     this.questionMetrics = [];
     this.opportunities = [];
+    this.demographicOpportunities = [];
     this.actionPlans = [];
+    this.responsibleEmployees = [];
     this.selectedOpportunityId = null;
+    this.computedSummary = null;
+    this.globalCatalogs = null;
   }
 
   private asArray(value: any): any[] {
@@ -1077,12 +2174,47 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   }
 
   private getNumber(item: any, keys: string[]): number | null {
-    for (const key of keys) {
-      const value = item?.[key];
-      if (value === undefined || value === null || value === '') continue;
+    const value = this.getValue(item, keys);
+    if (value !== undefined && value !== null && value !== '') {
       const parsed = Number(value);
       if (Number.isFinite(parsed)) return parsed;
     }
+    return null;
+  }
+
+  private getBoolean(item: any, keys: string[]): boolean | undefined {
+    const value = this.getValue(item, keys);
+    if (value !== undefined && value !== null && value !== '') {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'number') return value === 1;
+      const normalized = String(value).trim().toLowerCase();
+      return ['true', '1', 'si', 'sí', 'yes'].includes(normalized);
+    }
+    return undefined;
+  }
+
+  private getValue(item: any, keys: string[]): any {
+    if (!item || typeof item !== 'object') return undefined;
+
+    for (const key of keys) {
+      if (item[key] !== undefined) return item[key];
+      const matchingKey = Object.keys(item).find((itemKey) => itemKey.toLowerCase() === key.toLowerCase());
+      if (matchingKey) return item[matchingKey];
+    }
+
+    return undefined;
+  }
+
+  private getCatalogLabel(item: any, keys: string[]): string {
+    const value = this.getValue(item, keys);
+    return value === undefined || value === null ? '' : String(value).trim();
+  }
+
+  private normalizeSuggestedPriority(value: any): PlanPriority | null {
+    const normalized = this.normalizeKey(String(value ?? ''));
+    if (['ALTA', 'ALTO', 'HIGH'].includes(normalized)) return 'ALTA';
+    if (['MEDIA', 'MEDIO', 'MEDIUM'].includes(normalized)) return 'MEDIA';
+    if (['BAJA', 'BAJO', 'LOW'].includes(normalized)) return 'BAJA';
     return null;
   }
 
@@ -1107,18 +2239,18 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
   }
 
   formatPercent(value: number | null): string {
-    return value === null ? '-' : `${this.round(value, 1).toLocaleString('es-GT')}%`;
+    return value === null ? '-' : `${this.round(value, 1).toLocaleString(this.getLocale())}%`;
   }
 
   formatNumber(value: number | null): string {
-    return value === null ? '-' : this.round(value, 1).toLocaleString('es-GT');
+    return value === null ? '-' : this.round(value, 1).toLocaleString(this.getLocale());
   }
 
   formatDate(value: string): string {
     if (!value) return '-';
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString('es-GT');
+    return date.toLocaleDateString(this.getLocale());
   }
 
   formatHighlightedReason(value: string): string {
@@ -1141,5 +2273,13 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  }
+
+  t(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(`MENUITEMS.MAINPLNESCLIMA.ACTION_PLANS.${key}`, params);
+  }
+
+  private getLocale(): string {
+    return this.translate.currentLang?.toLowerCase().startsWith('en') ? 'en-US' : 'es-GT';
   }
 }

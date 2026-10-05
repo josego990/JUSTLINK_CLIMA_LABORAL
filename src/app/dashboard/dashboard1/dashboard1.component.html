@@ -705,7 +705,7 @@
     <div class="col-12 col-md-12 col-sm-12 col-xs-12">
 
           <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
-            <span>Resultados por Factor</span>
+            
           
             
           </h5>
@@ -716,7 +716,7 @@
 
         <div *ngFor="let g of gMetricasData;" class="mb-3">
           <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
-            <span *ngIf="(g.etiqueta || '').toLowerCase() !== 'generico'">{{ g.etiqueta }}</span>
+            <span *ngIf=" (g.etiqueta || '').toLowerCase() !== 'generico'">{{ g.etiqueta }}</span>
           
             <span [ngStyle]="getGFStyle(g)" title="Satisfacción ponderada del gran factor">
               {{ getGFPct(g) | number:'1.0-2' }}%

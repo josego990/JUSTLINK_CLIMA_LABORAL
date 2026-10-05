@@ -1,114 +1,286 @@
 <section class="content">
-  <div class="content-block">
-    <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'MENUITEMS.QUIZ.GFACCESSBYDEMOGRAPHIC' | translate" [items]="['Home']" [active_item]="'Factor Access'"></app-breadcrumb>
-    </div>
-    <div class="row" style="margin-left: 4px;">
-      <div class="col-md-4">
-        <mat-form-field appearance="fill" class="w-100">
-          <mat-label>Climas {{nombreOrganizacion}}</mat-label>
-          <mat-select (selectionChange)="onClimaChange($event.value)">
-            <mat-option
-              *ngFor="let climas of dataSourceClimas"
-              [value]="climas.Id"
-            >
-              {{ climas.Nombre }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+  <div class="content-block factor-access-page">
+    <div
+      class="block-header factor-access-header"
+      joyrideStep="factorAccessOverview"
+      [title]="'MENUITEMS.TOUR.FACTOR_ACCESS.OVERVIEW_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.FACTOR_ACCESS.OVERVIEW_TEXT' | translate">
+      <app-breadcrumb
+        [title]="'MENUITEMS.QUIZ.GFACCESSBYDEMOGRAPHIC' | translate"
+        [items]="['Home']"
+        [active_item]="'Factor Access'">
+      </app-breadcrumb>
 
+      <button
+        mat-icon-button
+        type="button"
+        class="factor-access-help-button"
+        (click)="startAccessTour()"
+        [matTooltip]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate"
+        [attr.aria-label]="'MENUITEMS.TOUR.SYSTEM_GUIDE' | translate">
+        <mat-icon>help_outline</mat-icon>
+      </button>
+    </div>
+
+    <section
+      class="climate-selector-band"
+      joyrideStep="factorAccessClimate"
+      [title]="'MENUITEMS.TOUR.FACTOR_ACCESS.CLIMATE_TITLE' | translate"
+      [text]="'MENUITEMS.TOUR.FACTOR_ACCESS.CLIMATE_TEXT' | translate">
+      <div class="climate-selector-band__identity">
+        <span class="climate-selector-band__icon" aria-hidden="true">
+          <mat-icon>tune</mat-icon>
+        </span>
+        <div>
+          <strong>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.CONFIGURATION_TITLE' | translate }}</strong>
+          <span>{{ nombreOrganizacion }}</span>
+        </div>
       </div>
 
-      <div class="restricciones-wrapper">
-        <ng-container *ngIf="loading">
-          <div class="center">
-            <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="climate-select">
+        <mat-label>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.SELECT_CLIMATE' | translate }}</mat-label>
+        <mat-select
+          [value]="idFlujo || null"
+          [disabled]="loadingClimates || !idOrganization"
+          (selectionChange)="onClimaChange($event.value)">
+          <mat-option *ngFor="let clima of dataSourceClimas" [value]="clima.Id">
+            {{ clima.Nombre }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>assignment</mat-icon>
+      </mat-form-field>
+
+      <div class="climate-selector-band__selection" *ngIf="idFlujo; else selectionPending">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.SELECTED_CLIMATE' | translate }}</span>
+          <strong>{{ nombreFlujo }}</strong>
+        </div>
+      </div>
+
+      <ng-template #selectionPending>
+        <div class="climate-selector-band__selection climate-selector-band__selection--pending">
+          <mat-icon>{{ loadingClimates ? 'sync' : 'info' }}</mat-icon>
+          <span>
+            {{ (loadingClimates
+              ? 'MENUITEMS.QUIZ.FACTOR_ACCESS.LOADING_CLIMATES'
+              : 'MENUITEMS.QUIZ.FACTOR_ACCESS.SELECT_CLIMATE_PROMPT') | translate }}
+          </span>
+        </div>
+      </ng-template>
+    </section>
+
+    <div class="inline-alert inline-alert--error" *ngIf="climateError">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ climateError }}</span>
+    </div>
+
+    <section class="factor-access-empty" *ngIf="!idFlujo && !loadingClimates && !climateError">
+      <span class="factor-access-empty__icon" aria-hidden="true">
+        <mat-icon>rule</mat-icon>
+      </span>
+      <div>
+        <h2>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.EMPTY_TITLE' | translate }}</h2>
+        <p>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.EMPTY_TEXT' | translate }}</p>
+      </div>
+    </section>
+
+    <section class="factor-access-loading" *ngIf="idFlujo && loading" role="status" aria-live="polite">
+      <mat-progress-spinner mode="indeterminate" diameter="44"></mat-progress-spinner>
+      <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.LOADING_ACCESS' | translate }}</span>
+    </section>
+
+    <section class="inline-alert inline-alert--error" *ngIf="idFlujo && !loading && error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error }}</span>
+      <button mat-stroked-button type="button" (click)="getFactoresAccesos()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.RETRY' | translate }}
+      </button>
+    </section>
+
+    <ng-container *ngIf="idFlujo && !loading && !error && data">
+      <section
+        class="access-summary"
+        joyrideStep="factorAccessSummary"
+        [title]="'MENUITEMS.TOUR.FACTOR_ACCESS.SUMMARY_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.FACTOR_ACCESS.SUMMARY_TEXT' | translate">
+        <div class="access-summary__heading">
+          <div>
+            <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.ACCESS_OVERVIEW' | translate }}</span>
+            <strong>{{ nombreFlujo }}</strong>
           </div>
-        </ng-container>
+          <span class="autosave-badge">
+            <mat-icon>cloud_done</mat-icon>
+            {{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.AUTOSAVE' | translate }}
+          </span>
+        </div>
 
-        <ng-container *ngIf="!loading && error">
-          <div class="error">{{ error }}</div>
-        </ng-container>
+        <div class="access-summary__metrics">
+          <div class="access-metric">
+            <span class="access-metric__icon access-metric__icon--factor"><mat-icon>account_tree</mat-icon></span>
+            <div><strong>{{ totalGrandFactors }}</strong><span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.GRAND_FACTORS' | translate }}</span></div>
+          </div>
+          <div class="access-metric">
+            <span class="access-metric__icon access-metric__icon--field"><mat-icon>category</mat-icon></span>
+            <div><strong>{{ totalDemographicFields }}</strong><span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.DEMOGRAPHIC_FIELDS' | translate }}</span></div>
+          </div>
+          <div class="access-metric">
+            <span class="access-metric__icon access-metric__icon--allowed"><mat-icon>visibility</mat-icon></span>
+            <div><strong>{{ totalAllowedValues }}</strong><span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.ALLOWED_ACCESS' | translate }}</span></div>
+          </div>
+          <div class="access-metric">
+            <span class="access-metric__icon access-metric__icon--restricted"><mat-icon>visibility_off</mat-icon></span>
+            <div><strong>{{ totalRestrictedValues }}</strong><span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICTED_ACCESS' | translate }}</span></div>
+          </div>
+        </div>
+      </section>
 
-        <ng-container *ngIf="!loading && !error && data">
-          <mat-accordion multi>
-            <mat-expansion-panel [expanded]="true" *ngFor="let gf of data.GranFactores; trackBy: trackByGF">
-              <mat-expansion-panel-header >
-                <mat-panel-title>
-                  {{ gf.Etiqueta }}
-                </mat-panel-title>
-                <mat-panel-description class="gf-sub">
-                  {{ gf.Descripcion || ' ' }}
-                  <span class="dot"></span>
-                  <span class="muted">Restringidos: {{ getRestrCountGF(gf) }}</span>
-                </mat-panel-description>
-              </mat-expansion-panel-header>
+      <section
+        class="permission-legend"
+        joyrideStep="factorAccessStatuses"
+        [title]="'MENUITEMS.TOUR.FACTOR_ACCESS.STATUS_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.FACTOR_ACCESS.STATUS_TEXT' | translate">
+        <div class="permission-legend__title">
+          <mat-icon>info_outline</mat-icon>
+          <strong>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.ACCESS_STATUS' | translate }}</strong>
+        </div>
+        <div class="permission-legend__item permission-legend__item--allowed">
+          <mat-icon>visibility</mat-icon>
+          <div>
+            <strong>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.ALLOWED' | translate }}</strong>
+            <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.ALLOWED_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="permission-legend__item permission-legend__item--restricted">
+          <mat-icon>visibility_off</mat-icon>
+          <div>
+            <strong>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICTED' | translate }}</strong>
+            <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICTED_HINT' | translate }}</span>
+          </div>
+        </div>
+      </section>
 
-             
-              Campos demográficos
-              <div class="cd-grid">
-                <mat-card class="cd-card"
-                    *ngFor="let cd of gf.CamposDemograficos; trackBy: trackByCD">
-                  <mat-card-header class="cd-header">
-                    <mat-card-title>{{ cd.NombreCampo }}</mat-card-title>
-                    <mat-card-subtitle style="color: #91a1a4">
-                      Tipo: {{ cd.TipoDato }}
-                    </mat-card-subtitle>
-                    
-                  </mat-card-header>
+      <mat-accordion
+        multi
+        class="factor-accordion"
+        joyrideStep="factorAccessFactors"
+        [title]="'MENUITEMS.TOUR.FACTOR_ACCESS.FACTORS_TITLE' | translate"
+        [text]="'MENUITEMS.TOUR.FACTOR_ACCESS.FACTORS_TEXT' | translate">
+        <mat-expansion-panel
+          class="factor-panel"
+          [expanded]="true"
+          *ngFor="let gf of data.GranFactores; trackBy: trackByGF">
+          <mat-expansion-panel-header collapsedHeight="76px" expandedHeight="76px">
+            <mat-panel-title class="factor-panel__title">
+              <span class="factor-panel__icon"><mat-icon>hub</mat-icon></span>
+              <span class="factor-panel__identity">
+                <strong>{{ gf.Etiqueta }}</strong>
+                <small>{{ gf.Descripcion || ('MENUITEMS.QUIZ.FACTOR_ACCESS.NO_DESCRIPTION' | translate) }}</small>
+              </span>
+            </mat-panel-title>
+            <mat-panel-description class="factor-panel__status">
+              <span class="factor-panel__field-count">
+                {{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.FIELD_COUNT' | translate:{ count: gf.CamposDemograficos.length || 0 } }}
+              </span>
+              <span
+                class="restriction-badge"
+                [class.restriction-badge--active]="getRestrCountGF(gf) > 0">
+                <mat-icon>{{ getRestrCountGF(gf) > 0 ? 'visibility_off' : 'verified_user' }}</mat-icon>
+                {{ (getRestrCountGF(gf) > 0
+                  ? 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICTION_COUNT'
+                  : 'MENUITEMS.QUIZ.FACTOR_ACCESS.NO_RESTRICTIONS') | translate:{ count: getRestrCountGF(gf) } }}
+              </span>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-                   
-                  <mat-card-content 
-                      *ngIf="cd.Valores?.length; else noValores" class="table-responsive">
-                    <table class="table">
-                      <tbody>
-                        <tr *ngFor="let v of cd.Valores; trackBy: trackByVal">
-                          <td>
-                            <strong>{{ v.Valor }}</strong>
-                          </td>
-                          <td class="text-end">
-                            <mat-slide-toggle
-                              class="access-toggle"
-                              [checked]="!v.Restringido"
-                              (change)="onToggle(gf, cd, v, $event.checked)"
-                              [disabled]="v._saving">
-                              <span class="muted">{{ !v.Restringido ? 'Permitido' : 'Restringido' }}</span>
-                            </mat-slide-toggle>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </mat-card-content >
-
-                  <ng-template #noValores>
-                    <div style="padding: 10px;" class="muted small">Sin valores registrados para este campo.</div>
-                  </ng-template>
-                </mat-card >
+          <div class="factor-panel__body">
+            <div class="factor-panel__body-heading">
+              <div>
+                <strong>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.DEMOGRAPHIC_SEGMENTS' | translate }}</strong>
+                <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.DEMOGRAPHIC_SEGMENTS_HINT' | translate }}</span>
               </div>
-            </mat-expansion-panel>
-          </mat-accordion>
-        </ng-container>
-      </div>
+            </div>
 
+            <div class="demographic-grid">
+              <article
+                class="demographic-card"
+                *ngFor="let cd of gf.CamposDemograficos; trackBy: trackByCD">
+                <div class="demographic-card__header">
+                  <span class="demographic-card__icon"><mat-icon>groups</mat-icon></span>
+                  <div class="demographic-card__identity">
+                    <strong>{{ cd.NombreCampo }}</strong>
+                    <span>
+                      {{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.TYPE' | translate }}: {{ cd.TipoDato }}
+                      · {{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.VALUE_COUNT' | translate:{ count: cd.Valores?.length || 0 } }}
+                    </span>
+                  </div>
+                  <div class="demographic-card__counts" *ngIf="cd.Valores?.length">
+                    <span class="demographic-card__count demographic-card__count--allowed">
+                      <mat-icon>check</mat-icon>{{ getAllowedCount(cd) }}
+                    </span>
+                    <span class="demographic-card__count demographic-card__count--restricted">
+                      <mat-icon>block</mat-icon>{{ getRestrictedCount(cd) }}
+                    </span>
+                  </div>
+                </div>
 
+                <div class="demographic-card__values" *ngIf="cd.Valores?.length; else noValues">
+                  <div
+                    class="access-value-row"
+                    [class.access-value-row--restricted]="value.Restringido"
+                    [class.access-value-row--saving]="value._saving"
+                    *ngFor="let value of cd.Valores; trackBy: trackByVal">
+                    <span class="access-value-row__name">{{ value.Valor }}</span>
+                    <span
+                      class="access-state"
+                      [class.access-state--restricted]="value.Restringido">
+                      <mat-icon>{{ value.Restringido ? 'visibility_off' : 'visibility' }}</mat-icon>
+                      {{ (value.Restringido
+                        ? 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICTED'
+                        : 'MENUITEMS.QUIZ.FACTOR_ACCESS.ALLOWED') | translate }}
+                    </span>
+                    <div class="access-value-row__control">
+                      <mat-progress-spinner
+                        *ngIf="value._saving"
+                        mode="indeterminate"
+                        diameter="18">
+                      </mat-progress-spinner>
+                      <mat-slide-toggle
+                        class="access-toggle"
+                        [checked]="!value.Restringido"
+                        [disabled]="value._saving"
+                        [matTooltip]="(value.Restringido
+                          ? 'MENUITEMS.QUIZ.FACTOR_ACCESS.ENABLE_ACCESS'
+                          : 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICT_ACCESS') | translate"
+                        [attr.aria-label]="((value.Restringido
+                          ? 'MENUITEMS.QUIZ.FACTOR_ACCESS.ENABLE_ACCESS'
+                          : 'MENUITEMS.QUIZ.FACTOR_ACCESS.RESTRICT_ACCESS') | translate) + ': ' + value.Valor"
+                        (change)="onToggle(gf, cd, value, $event.checked)">
+                      </mat-slide-toggle>
+                    </div>
+                  </div>
+                </div>
 
-    
+                <ng-template #noValues>
+                  <div class="demographic-card__empty">
+                    <mat-icon>inbox</mat-icon>
+                    <span>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.NO_VALUES' | translate }}</span>
+                  </div>
+                </ng-template>
+              </article>
+            </div>
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
 
-    </div>
-
-  
-
-   
-
-
-
-
-
-    
-
-
-
-
+      <section class="factor-access-empty factor-access-empty--compact" *ngIf="!data.GranFactores.length">
+        <span class="factor-access-empty__icon"><mat-icon>account_tree</mat-icon></span>
+        <div>
+          <h2>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.NO_FACTORS_TITLE' | translate }}</h2>
+          <p>{{ 'MENUITEMS.QUIZ.FACTOR_ACCESS.NO_FACTORS_TEXT' | translate }}</p>
+        </div>
+      </section>
+    </ng-container>
   </div>
 </section>

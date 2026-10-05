@@ -1,13 +1,625 @@
-.NgxEditorStyles {
-  overflow: auto;
-  display: block;
-  .NgxEditor__Content {
-    height: 400px;
-  }
+.compose-workspace {
+  padding-bottom: 28px;
+}
+
+.compose-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0 10px;
+}
+
+.compose-page-header app-breadcrumb {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.compose-help-button {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  color: #1f6687;
+  border: 1px solid #c9dce7;
+  background: #f2f8fb;
+}
+
+.compose-setup-band {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.85fr) minmax(480px, 1.15fr);
+  gap: 22px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 15px 17px;
+  border: 1px solid #dbe4ea;
+  border-left: 4px solid #267393;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(31, 51, 73, 0.05);
+}
+
+.compose-context-control,
+.compose-scope-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 14px;
+}
+
+.compose-context-control {
+  padding-right: 20px;
+  border-right: 1px solid #e0e7ec;
+}
+
+.compose-section-label,
+.active-organization {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+}
+
+.compose-section-label > div,
+.active-organization > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.compose-section-label__icon {
+  display: inline-grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #226b8a;
+  border-radius: 7px;
+  background: #e8f3f7;
+}
+
+.compose-section-label__icon mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.compose-section-label span,
+.active-organization span {
+  color: #778694;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.compose-section-label strong,
+.active-organization strong {
+  overflow: hidden;
+  color: #2b3b48;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-context-toggle {
+  flex: 1 1 auto;
+  min-width: 230px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.compose-context-toggle .mat-button-toggle {
+  flex: 1 1 50%;
+}
+
+.compose-context-toggle .mat-button-toggle-button {
+  width: 100%;
+}
+
+.compose-context-toggle .mat-button-toggle-label-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 12px;
+  line-height: 1.2;
+}
+
+.compose-context-toggle mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+}
+
+.compose-context-toggle .mat-button-toggle-checked {
+  color: #175f7e;
+  background: #e6f2f7;
+}
+
+.compose-scope-control {
+  justify-content: flex-end;
+}
+
+.active-organization {
+  flex: 0 1 190px;
+  padding-right: 14px;
+  border-right: 1px solid #e0e7ec;
+}
+
+.active-organization > mat-icon {
+  color: #536d7c;
+}
+
+.compose-scope-select {
+  flex: 1 1 320px;
+  max-width: 520px;
+  min-width: 240px;
+}
+
+.compose-scope-select mat-icon[matPrefix],
+.compose-form mat-icon[matPrefix] {
+  margin-right: 8px;
+  color: #647887;
+}
+
+.compose-inline-alert {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 50px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.compose-inline-alert > div {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.compose-inline-alert strong {
+  font-size: 12px;
+}
+
+.compose-inline-alert span {
+  line-height: 1.45;
+}
+
+.compose-inline-alert--pending {
+  color: #705012;
+  border: 1px solid #ead59e;
+  background: #fff9e9;
+}
+
+.compose-inline-alert--error {
+  color: #9d2735;
+  border: 1px solid #efc5cb;
+  background: #fff5f6;
+}
+
+.compose-inline-alert--error > span {
+  flex: 1 1 auto;
+}
+
+.compose-message-panel,
+.compose-editor-panel {
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid #dbe4ea;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(31, 51, 73, 0.05);
+}
+
+.compose-panel-heading {
+  display: flex;
+  align-items: center;
+  min-height: 62px;
+  gap: 10px;
+  padding: 10px 15px;
+  border-bottom: 1px solid #e2e9ee;
+  background: #f7f9fb;
+}
+
+.compose-panel-heading__icon {
+  display: inline-grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #236d8e;
+  border-radius: 7px;
+  background: #e8f3f7;
+}
+
+.compose-panel-heading__icon mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+}
+
+.compose-panel-heading__icon--editor {
+  color: #8a5e21;
+  background: #fff1dc;
+}
+
+.compose-panel-heading > div:not(.editor-quick-reference) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.compose-panel-heading strong {
+  color: #2b3946;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.compose-panel-heading span {
+  color: #778591;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.compose-context-badge {
+  display: inline-flex !important;
+  align-items: center;
+  flex-direction: row !important;
+  gap: 5px;
+  width: fit-content;
+  margin-left: auto;
+  padding: 4px 8px;
+  color: #226f4d !important;
+  border: 1px solid #bfe1ce;
+  border-radius: 999px;
+  background: #edf8f2;
+  font-size: 10px !important;
+  font-weight: 650;
+}
+
+.compose-context-badge mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+}
+
+.compose-context-badge--performance {
+  color: #775622 !important;
+  border-color: #ead5a4;
+  background: #fff7e6;
+}
+
+.compose-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 15px 15px;
+}
+
+.compose-form-field,
+.compose-form-field mat-form-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.compose-form-field--manual {
+  grid-column: 1 / -1;
 }
 
 .compose-demo-option-note {
   margin-left: 6px;
   color: #9ca3af;
+  font-size: 11px;
+}
+
+.compose-panel-heading--editor {
+  min-height: 58px;
+}
+
+.editor-quick-reference {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.editor-quick-reference span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  color: #526675;
+  border: 1px solid #dbe4e9;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.editor-quick-reference mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+}
+
+.gjs-host {
+  width: 100%;
+  min-width: 0;
+  min-height: 620px;
+  overflow: hidden;
+  background: #343a46;
+}
+
+.gjs-host .gjs-editor,
+.gjs-host .gjs-editor-cont {
+  min-height: 620px;
+}
+
+.gjs-host .gjs-pn-panels {
+  font-family: inherit;
+}
+
+.gjs-host .gjs-block {
+  min-height: 72px;
+  border-radius: 4px;
+}
+
+.gjs-host .gjs-block-label {
+  line-height: 1.25;
+}
+
+.compose-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 11px 15px;
+  border: 1px solid #dbe4ea;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(31, 51, 73, 0.05);
+}
+
+.compose-action-context {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+}
+
+.compose-action-context > mat-icon {
+  color: #4e7181;
+}
+
+.compose-action-context > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.compose-action-context span {
+  color: #778591;
+  font-size: 10px;
+}
+
+.compose-action-context strong {
+  overflow: hidden;
+  color: #2b3946;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.compose-action-buttons button {
+  min-height: 40px;
+}
+
+.compose-action-buttons button mat-icon,
+.compose-action-buttons button mat-progress-spinner {
+  margin-right: 6px;
+}
+
+.compose-send-button {
+  min-width: 118px;
+}
+
+.compose-save-button {
+  min-width: 160px;
+  color: #236d8e;
+  border-color: #9bc3d4;
+}
+
+.dark .compose-help-button {
+  color: #8bc7dc;
+  border-color: #385160;
+  background: #182a34;
+}
+
+.dark .compose-setup-band,
+.dark .compose-message-panel,
+.dark .compose-editor-panel,
+.dark .compose-action-bar {
+  border-color: #354452;
+  background: #171d25;
+  box-shadow: none;
+}
+
+.dark .compose-setup-band {
+  border-left-color: #4ca0bf;
+}
+
+.dark .compose-context-control,
+.dark .active-organization,
+.dark .compose-panel-heading {
+  border-color: #354452;
+}
+
+.dark .compose-section-label strong,
+.dark .active-organization strong,
+.dark .compose-panel-heading strong,
+.dark .compose-action-context strong {
+  color: #e1e8ee;
+}
+
+.dark .compose-section-label span,
+.dark .active-organization span,
+.dark .compose-panel-heading span,
+.dark .compose-action-context span {
+  color: #9cabb7;
+}
+
+.dark .compose-context-toggle {
+  border-color: #43515e;
+}
+
+.dark .compose-context-toggle .mat-button-toggle {
+  color: #bcc8d1;
+  background: #202832;
+}
+
+.dark .compose-context-toggle .mat-button-toggle-checked {
+  color: #9ed3e5;
+  background: #173445;
+}
+
+.dark .compose-panel-heading {
+  background: #202832;
+}
+
+.dark .editor-quick-reference span {
+  color: #b8c4cd;
+  border-color: #42515e;
+  background: #171d25;
+}
+
+.dark .compose-inline-alert--pending {
+  color: #e3c37d;
+  border-color: #6b5931;
+  background: #292416;
+}
+
+.dark .compose-inline-alert--error {
+  color: #f3a9b3;
+  border-color: #643640;
+  background: #2d1c21;
+}
+
+@media (max-width: 1199px) {
+  .compose-setup-band {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compose-context-control {
+    padding: 0 0 14px;
+    border-right: 0;
+    border-bottom: 1px solid #e0e7ec;
+  }
+
+  .compose-scope-control {
+    justify-content: flex-start;
+  }
+
+  .compose-scope-select {
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .compose-page-header {
+    align-items: flex-start;
+  }
+
+  .compose-help-button {
+    margin-top: 6px;
+  }
+
+  .compose-setup-band,
+  .compose-message-panel,
+  .compose-editor-panel,
+  .compose-action-bar {
+    border-radius: 6px;
+  }
+
+  .compose-context-control,
+  .compose-scope-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compose-context-toggle,
+  .compose-scope-select,
+  .active-organization {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .active-organization {
+    flex-basis: auto;
+    padding: 0 0 10px;
+    border-right: 0;
+    border-bottom: 1px solid #e0e7ec;
+  }
+
+  .compose-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compose-form-field--manual {
+    grid-column: auto;
+  }
+
+  .editor-quick-reference {
+    display: none;
+  }
+
+  .gjs-host,
+  .gjs-host .gjs-editor,
+  .gjs-host .gjs-editor-cont {
+    min-height: 560px;
+  }
+
+  .compose-action-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compose-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compose-action-buttons button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 479px) {
+  .compose-context-toggle .mat-button-toggle-label-content {
+    flex-direction: column;
+    gap: 3px;
+    min-height: 54px;
+    padding: 5px 8px;
+  }
+
+  .compose-context-toggle span {
+    white-space: normal;
+  }
+
+  .compose-context-badge {
+    display: none !important;
+  }
+
+  .compose-action-buttons {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

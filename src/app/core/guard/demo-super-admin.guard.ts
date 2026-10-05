@@ -21,6 +21,6 @@ export class DemoSuperAdminGuard {
       return true;
     }
 
-    return this.router.createUrlTree(['/dashboard/dashboard1']);
+    return this.router.createUrlTree(['/profile']);
   }
 }

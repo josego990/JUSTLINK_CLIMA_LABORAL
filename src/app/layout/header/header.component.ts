@@ -19,11 +19,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 
 import {
   OrganizacionService,
   SelectedOrganization,
 } from 'app/organization/services/organizacion.service';
+import { SidebarService } from '../sidebar/sidebar.service';
+import { RouteInfo } from '../sidebar/sidebar.metadata';
 
 interface Notifications {
   message: string;
@@ -48,7 +51,8 @@ interface Notifications {
         MatProgressSpinnerModule,
         MatSelectModule,
         MatTooltipModule,
-        FormsModule
+        FormsModule,
+        TranslateModule
     ],
     providers: [LanguageService]
 })
@@ -72,6 +76,7 @@ export class HeaderComponent
   organizations: SelectedOrganization[] = [];
   selectedOrganizationId: number | null = null;
   loadingOrganizations = false;
+  appMenuItems: RouteInfo[] = [];
 
   constructor(
     private organizationService: OrganizacionService,
@@ -81,7 +86,8 @@ export class HeaderComponent
     private configService: ConfigService,
     private authService: AuthService,
     private router: Router,
-    public languageService: LanguageService
+    public languageService: LanguageService,
+    private sidebarService: SidebarService
   ) {
     super();
   }
@@ -154,9 +160,13 @@ export class HeaderComponent
     this.subs.sink = this.organizationService.selectedOrganization$.subscribe((organization) => {
       this.selectedOrganizationId = organization?.Id ?? null;
     });
+    this.subs.sink = this.organizationService.organizationsChanged$.subscribe(() => {
+      this.loadOrganizationsForHeader();
+    });
     this.loadOrganizationsForHeader();
+    this.loadDynamicAppMenu();
 
-    this.homePage = 'dashboard/dashboard1';
+    this.homePage = 'profile';
 
     this.langStoreValue = localStorage.getItem('lang') as string;
     const val = this.listLang.filter((x) => x.lang === this.langStoreValue);
@@ -180,6 +190,53 @@ export class HeaderComponent
 
   trackByOrganizationId(_index: number, organization: SelectedOrganization): number {
     return organization.Id;
+  }
+
+  trackMenuItem(_index: number, menuItem: RouteInfo): string {
+    return `${menuItem.path ?? ''}:${menuItem.title}`;
+  }
+
+  getMenuNavigationPath(menuItem: RouteInfo): string | null {
+    if (this.isNavigableMenuItem(menuItem)) {
+      return menuItem.path;
+    }
+
+    return this.findFirstNavigablePath(menuItem.submenu ?? []);
+  }
+
+  navigateToMenu(menuItem: RouteInfo): void {
+    const path = this.getMenuNavigationPath(menuItem);
+    if (path) {
+      void this.router.navigateByUrl(path);
+    }
+  }
+
+  private loadDynamicAppMenu(): void {
+    this.subs.sink = this.sidebarService.getRouteInfo().subscribe((routes) => {
+      this.appMenuItems = routes.filter((item) => !item.groupTitle);
+    });
+  }
+
+  private isNavigableMenuItem(menuItem: RouteInfo): boolean {
+    return !!menuItem.path && (
+      menuItem.class === '' ||
+      (menuItem.submenu?.length ?? 0) === 0
+    );
+  }
+
+  private findFirstNavigablePath(menuItems: RouteInfo[]): string | null {
+    for (const menuItem of menuItems) {
+      if (this.isNavigableMenuItem(menuItem)) {
+        return menuItem.path;
+      }
+
+      const nestedPath = this.findFirstNavigablePath(menuItem.submenu ?? []);
+      if (nestedPath) {
+        return nestedPath;
+      }
+    }
+
+    return null;
   }
 
   private loadOrganizationsForHeader(): void {
@@ -223,11 +280,12 @@ export class HeaderComponent
 
   private syncSelectedOrganization(userOrganizationId?: number): void {
     const storedSelection = this.organizationService.selectedOrganizationSnapshot;
-    const storedSelectionIsAvailable = !!storedSelection &&
-      this.organizations.some((organization) => organization.Id === storedSelection.Id);
+    const storedOrganization = storedSelection
+      ? this.organizations.find((organization) => organization.Id === storedSelection.Id)
+      : null;
 
-    if (storedSelectionIsAvailable) {
-      this.organizationService.setSelectedOrganization(storedSelection);
+    if (storedOrganization) {
+      this.organizationService.setSelectedOrganization(storedOrganization);
       return;
     }
 

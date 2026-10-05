@@ -10,6 +10,7 @@ import { DesOrganigramaComponent } from './des-organigrama/des-organigrama.compo
 import { DesOrganizacionesComponent } from './des-organizaciones/des-organizaciones.component';
 import { DesPlanesSeguimientoComponent } from './des-planes-seguimiento/des-planes-seguimiento.component';
 import { DesWhatsappComponent } from './des-whatsapp/des-whatsapp.component';
+import { DesCriteriaBankComponent } from './des-criteria-bank/des-criteria-bank.component';
 import { DemoSuperAdminGuard } from '../core/guard/demo-super-admin.guard';
 
 export const DESEMPENO_ROUTE: Route[] = [
@@ -42,6 +43,10 @@ export const DESEMPENO_ROUTE: Route[] = [
   {
     path: 'evaluaciones',
     component: DesEvaluacionesComponent,
+  },
+  {
+    path: 'banco-criterios',
+    component: DesCriteriaBankComponent,
   },
   {
     path: 'campos-demograficos',

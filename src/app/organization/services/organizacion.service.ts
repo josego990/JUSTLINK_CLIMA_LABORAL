@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import axios from 'axios';
 import { environment } from '../../../environments/environment';
 import { SKIP_SESSION_VALIDATION } from '../../core/interceptor/session-validation.context';
@@ -28,6 +28,8 @@ export class OrganizacionService {
     this.readStoredSelectedOrganization()
   );
   public selectedOrganization$ = this.selectedOrganizationSubject.asObservable();
+  private organizationsChangedSubject = new Subject<void>();
+  public organizationsChanged$ = this.organizationsChangedSubject.asObservable();
 
 
   constructor(private http: HttpClient) {
@@ -118,6 +120,10 @@ export class OrganizacionService {
     } catch {
       // localStorage may be unavailable in some execution contexts.
     }
+  }
+
+  notifyOrganizationsChanged(): void {
+    this.organizationsChangedSubject.next();
   }
 
   private readStoredSelectedOrganization(): SelectedOrganization | null {
@@ -309,6 +315,63 @@ export class OrganizacionService {
   getDesempenoPositions(params?: Record<string, any>) {
     return axios
       .get(this.getRestApiEndpoint('api/desempeno/puestos'), { params });
+  }
+
+  getDesempenoCriteriaBank(idOrganizacion: number, params?: Record<string, any>) {
+    return axios
+      .get(
+        this.getRestApiEndpoint('api/desempeno/banco-criterios'),
+        this.getNoCacheConfig({
+          ...params,
+          organizationId: idOrganizacion,
+        })
+      );
+  }
+
+  saveDesempenoCriteriaBankCriterion(payload: any, criterionId?: number | string | null) {
+    const config = this.getNoCacheConfig();
+    const normalizedId = Number(criterionId);
+
+    if (Number.isInteger(normalizedId) && normalizedId > 0) {
+      return axios.put(
+        this.getRestApiEndpoint(`api/desempeno/banco-criterios/${normalizedId}`),
+        payload,
+        config
+      );
+    }
+
+    return axios.post(
+      this.getRestApiEndpoint('api/desempeno/banco-criterios'),
+      payload,
+      config
+    );
+  }
+
+  updateDesempenoCriteriaBankCriterionStatus(
+    criterionId: number | string,
+    organizationId: number,
+    active: boolean
+  ) {
+    return axios.patch(
+      this.getRestApiEndpoint(`api/desempeno/banco-criterios/${Number(criterionId)}/estado`),
+      { organizationId, active },
+      this.getNoCacheConfig()
+    );
+  }
+
+  deleteDesempenoCriteriaBankCriterion(criterionId: number | string, organizationId: number) {
+    return axios.delete(
+      this.getRestApiEndpoint(`api/desempeno/banco-criterios/${Number(criterionId)}`),
+      this.getNoCacheConfig({ organizationId })
+    );
+  }
+
+  importDesempenoCriteriaBank(payload: any) {
+    return axios.post(
+      this.getRestApiEndpoint('api/desempeno/banco-criterios/importar'),
+      payload,
+      this.getNoCacheConfig()
+    );
   }
 
   getDesempenoModels(idOrganizacion: number, params?: Record<string, any>) {
@@ -512,6 +575,22 @@ export class OrganizacionService {
   sendDesempenoEmail(payload: any) {
     return axios
       .post(this.getRestApiEndpoint('send-email-just-link-desempeno'), payload);
+  }
+
+  sendClimaActionPlanEmail(payload: any) {
+    return axios.post(
+      this.getRestApiEndpoint('send-email-just-link-clima-planes-accion'),
+      payload,
+      this.getNoCacheConfig()
+    );
+  }
+
+  sendDesempenoWhatsapp(payload: any) {
+    return axios.post(
+      this.getRestApiEndpoint('api/s-w-t-j-des'),
+      payload,
+      this.getNoCacheConfig()
+    );
   }
 
   saveDesempenoScale(scale: any) {
@@ -762,6 +841,62 @@ export class OrganizacionService {
    //console.log('DATA_FACTOR_A_GUARDAR: ', data_factor);
 
     return axios.post(this.getApiEndpoint('insert-factor'), data_factor);
+  }
+
+  renameClimateStructureElement(payload: {
+    tipoElemento: 'ENCUESTA' | 'FACTOR';
+    idOrganizacion: number;
+    idClima: number;
+    idElemento: number;
+    nuevoNombre: string;
+    descripcion?: string | null;
+    idEncuesta?: number;
+  }) {
+    const body = { ...payload } as any;
+    if (body.descripcion === undefined || body.descripcion === null) {
+      delete body.descripcion;
+    } else {
+      body.descripcion = String(body.descripcion);
+    }
+
+    return axios.post(
+      this.getRestApiEndpoint('api/clima/estructura/renombrar'),
+      body,
+      this.getNoCacheConfig()
+    );
+  }
+
+  updateGFactor(data_gfactor: any) {
+    return this.renameClimateStructureElement({
+      tipoElemento: 'ENCUESTA',
+      idOrganizacion: Number(
+        data_gfactor?.IdOrganizacion ??
+        data_gfactor?.idOrganizacion ??
+        this.selectedOrganizationSnapshot?.Id ??
+        0
+      ),
+      idClima: Number(data_gfactor?.IdFlujo ?? data_gfactor?.idFlujo ?? 0),
+      idElemento: Number(data_gfactor?.Id ?? data_gfactor?.IdGranFactor ?? data_gfactor?.idGranFactor ?? 0),
+      nuevoNombre: String(data_gfactor?.Etiqueta ?? data_gfactor?.nuevoNombre ?? '').trim(),
+      descripcion: data_gfactor?.Descripcion ?? data_gfactor?.descripcion ?? null,
+    });
+  }
+
+  updateFactor(data_factor: any) {
+    return this.renameClimateStructureElement({
+      tipoElemento: 'FACTOR',
+      idOrganizacion: Number(
+        data_factor?.IdOrganizacion ??
+        data_factor?.idOrganizacion ??
+        this.selectedOrganizationSnapshot?.Id ??
+        0
+      ),
+      idClima: Number(data_factor?.IdFlujo ?? data_factor?.idFlujo ?? 0),
+      idEncuesta: Number(data_factor?.IdGFactor ?? data_factor?.IdGranFactor ?? data_factor?.idGFactor ?? 0),
+      idElemento: Number(data_factor?.Id ?? data_factor?.IdFactor ?? data_factor?.idFactor ?? 0),
+      nuevoNombre: String(data_factor?.Etiqueta ?? data_factor?.nuevoNombre ?? '').trim(),
+      descripcion: data_factor?.Descripcion ?? data_factor?.descripcion ?? null,
+    });
   }
 
   deleteFactor(idFactor:number) {
@@ -1039,6 +1174,102 @@ export class OrganizacionService {
           FiltrosGf: filtrosGf,
           TipoFiltro: tipoFiltro         
         });
+  }
+
+  getClimaActionPlanLikertResults(idOrganizacion: number, idFlujo: number) {
+    return axios.get(
+      this.getRestApiEndpoint('api/clima/planes-accion/resultados-likert'),
+      this.getNoCacheConfig({ idOrganizacion, idFlujo })
+    );
+  }
+
+  getClimaActionPlans(idOrganizacion: number, idFlujo: number, params: Record<string, any> = {}) {
+    return axios.get(
+      this.getRestApiEndpoint('api/clima/planes-accion'),
+      this.getNoCacheConfig({ idOrganizacion, idFlujo, ...params })
+    );
+  }
+
+  saveClimaActionPlan(payload: any, planId?: number | null) {
+    const config = this.getNoCacheConfig();
+    const url = planId && planId > 0
+      ? this.getRestApiEndpoint(`api/clima/planes-accion/${planId}`)
+      : this.getRestApiEndpoint('api/clima/planes-accion');
+
+    return planId && planId > 0
+      ? axios.put(url, payload, config)
+      : axios.post(url, payload, config);
+  }
+
+  deleteClimaActionPlan(planId: number, idOrganizacion: number) {
+    return axios.delete(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}`),
+      this.getNoCacheConfig({ idOrganizacion })
+    );
+  }
+
+  createClimaActionPlanTask(planId: number, payload: any) {
+    return axios.post(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}/tareas`),
+      payload,
+      this.getNoCacheConfig()
+    );
+  }
+
+  updateClimaActionPlanTask(planId: number, taskId: number, payload: any) {
+    return axios.put(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}/tareas/${taskId}`),
+      payload,
+      this.getNoCacheConfig()
+    );
+  }
+
+  deleteClimaActionPlanTask(planId: number, taskId: number) {
+    return axios.delete(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}/tareas/${taskId}`),
+      this.getNoCacheConfig()
+    );
+  }
+
+  createClimaActionPlanFollowUp(planId: number, payload: any) {
+    return axios.post(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}/seguimientos`),
+      payload,
+      this.getNoCacheConfig()
+    );
+  }
+
+  getClimaActionPlanFollowUps(planId: number) {
+    return axios.get(
+      this.getRestApiEndpoint(`api/clima/planes-accion/${planId}/seguimientos`),
+      this.getNoCacheConfig()
+    );
+  }
+
+  getClimaActionPlanPortal(codigoPlanResponsable: string) {
+    return this.http.post(
+      this.getRestApiEndpoint('api/clima/planes-accion/portal'),
+      { codigoPlanResponsable },
+      this.getPublicRequestOptions()
+    );
+  }
+
+  saveClimaActionPlanPortalProgress(payload: {
+    codigoPlanResponsable: string;
+    tareas: Array<{
+      id: number;
+      completada: boolean;
+      evidencia?: string;
+    }>;
+    comentario?: string;
+  }, turnstileToken: string) {
+    return this.http.put(
+      this.getRestApiEndpoint('api/clima/planes-accion/portal/progreso'),
+      payload,
+      this.getPublicRequestOptions(undefined, {
+        'Turnstile-Token': turnstileToken,
+      })
+    );
   }
 
   generateClimaCorporateAiAnalysis(payload: {

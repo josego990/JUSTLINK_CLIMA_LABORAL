@@ -201,8 +201,7 @@ export class DialogformGFactorComponent implements OnInit {
   }
 
   closeDialog(): void {
-    //this.dialog.getDialogById('dialogserie')?.close();
-    this.dialogRef.close(true);
+    this.dialogRef.close();
   }
 
 
@@ -220,11 +219,15 @@ export class DialogformGFactorComponent implements OnInit {
     });
   }
 
-  guardaGFactor(){
+  async guardaGFactor(): Promise<void> {
 
-    if(this.addSerieForm.valid) {
-      this.loading = true;
+    if (!this.addSerieForm.valid || this.loading) {
+      return;
+    }
 
+    this.loading = true;
+
+    try {
       const series: Serie[] = []; 
 
       const gfactor: GFactor = {
@@ -244,67 +247,33 @@ export class DialogformGFactorComponent implements OnInit {
         "Descripcion": this.addSerieForm.controls['idesc'].value
       }
 
-      this.organizacionService.saveNewGFactor(newFactor).then((resulte: any) => {
+      const result: any = await this.organizacionService.saveNewGFactor(newFactor);
+      if (result?.data?.message !== 'Factor insertado correctamente') {
+        throw new Error(this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR'));
+      }
 
-        console.log('RESULTADO DE GUARDADO DE GRAN FACTOR:: ', resulte);
+      gfactor.Id = result.data.newId;
+      this.gfactoresData = [...(this.gfactoresData || []), gfactor];
+      this.data.gfactores = this.gfactoresData;
 
-        if(resulte.data.message === 'Factor insertado correctamente') {
-          
-          gfactor.Id = resulte.data.newId;
-          
-          this.gfactoresData.push(gfactor);
-          
-          this.gfactoresData = [...this.gfactoresData];
+      this.showNotification(
+        'bg-green',
+        this.translate.instant('MENUITEMS.QUIZ.GFINSERTSUCCESS'),
+        'bottom',
+        'right'
+      );
 
-          console.log('una vez finalizado.. ', this.gfactoresData);
-
-          this.loading = false;
-          this.showNotification(
-            'bg-green',
-            this.translate.instant('MENUITEMS.QUIZ.GFINSERTSUCCESS'),
-            'bottom',
-            'right'
-          );
-          
-          this.addSerieForm.reset();
-
-        }else{
-          this.loading = false;
-          this.showNotification(
-            'bg-red',
-            this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR'),
-            'bottom',
-            'right'
-          );
-        }
-
-       
-      }).catch((err)=> {
-        this.loading = false;
-        this.showNotification(
-          'bg-red',
-          this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR') + err,
-          'bottom',
-          'right'
-        );
-      
-      });
-
-
-    
-      //this.ponderacion_rest = this.ponderacion_rest - this.addSerieForm.controls['iscore'].value;
-      //this.data_request.ponderation_rest = this.ponderacion_rest;
-      //this.data_request = {...this.data_request};
-
-
-      //console.log('this.ponderacion_rest:', this.ponderacion_rest);
-
+      this.dialogRef.close({ created: true, gfactor });
+    } catch (error: any) {
+      this.showNotification(
+        'bg-red',
+        `${this.translate.instant('MENUITEMS.QUIZ.GFINSERTERROR')} ${error?.message ?? error}`,
+        'bottom',
+        'right'
+      );
+    } finally {
+      this.loading = false;
     }
-    else {
-      //console.log('form is not valid');
-    }
-
-
   }
 
 

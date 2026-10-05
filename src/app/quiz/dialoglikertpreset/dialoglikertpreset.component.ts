@@ -30,7 +30,7 @@ interface DialogLikertPresetData {
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule, MatRadioModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Editar valores Likert ({{ levels }} niveles)</h2>
+    <h2 mat-dialog-title>Editar opciones Likert ({{ levels }} niveles)</h2>
 
     <div mat-dialog-content>
       <p style="margin: 0 0 12px 0;">

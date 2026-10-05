@@ -300,6 +300,73 @@
   width: 100%;
 }
 
+.field-edit-action {
+  --mdc-icon-button-state-layer-size: 30px;
+  width: 30px;
+  height: 30px;
+  margin-right: 2px;
+  color: var(--editor-blue);
+}
+
+.field-edit-action mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+}
+
+::ng-deep .quiz-structure-edit-popup {
+  width: min(520px, calc(100vw - 32px));
+  border-radius: 10px;
+}
+
+::ng-deep .quiz-structure-edit {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+::ng-deep .quiz-structure-edit label {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+::ng-deep .quiz-structure-edit .swal2-input,
+::ng-deep .quiz-structure-edit .swal2-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+::ng-deep .quiz-structure-edit .swal2-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+::ng-deep .dark .quiz-structure-edit-popup,
+::ng-deep .dark-theme .quiz-structure-edit-popup {
+  background: #111722;
+  color: #eef4fb;
+}
+
+::ng-deep .dark .quiz-structure-edit label,
+::ng-deep .dark-theme .quiz-structure-edit label {
+  color: #b8c6d8;
+}
+
+::ng-deep .dark .quiz-structure-edit .swal2-input,
+::ng-deep .dark .quiz-structure-edit .swal2-textarea,
+::ng-deep .dark-theme .quiz-structure-edit .swal2-input,
+::ng-deep .dark-theme .quiz-structure-edit .swal2-textarea {
+  border-color: #34445c;
+  background: #151c29;
+  color: #eef4fb;
+}
+
 /* Botón alineado al mat-form-field (fill ≈ 56px) */
 .gf-add-btn {
   height: 56px;
@@ -338,6 +405,21 @@
 
 .questions-section {
   padding-bottom: 18px;
+}
+
+.questions-preview-button {
+  flex: 0 0 auto;
+  align-self: center;
+  min-height: 34px;
+  border-radius: 7px;
+  color: var(--editor-blue);
+}
+
+.questions-preview-button mat-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  font-size: 18px;
 }
 
 .questions-accordion {
@@ -419,6 +501,17 @@
 
 ::ng-deep .question-table .mat-mdc-form-field {
   margin: 8px 0;
+}
+
+::ng-deep .question-table .question-description-field {
+  margin: 8px 0;
+}
+
+::ng-deep .question-table textarea.question-description-input {
+  min-height: 42px;
+  resize: vertical;
+  line-height: 1.35;
+  overflow-y: hidden;
 }
 
 .dialog-footer {

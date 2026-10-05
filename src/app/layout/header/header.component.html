@@ -10,56 +10,39 @@
       </ul>
       <ul class="float-start navbar-nav navbar-left">
         <li class="nav-item btnAppList" ngbDropdown>
-          <!-- 
+          <!-- -->
           <button mat-icon-button [matMenuTriggerFor]="appDropdownMenu" class="nav-notification-icons">
             <app-feather-icons [icon]="'grid'" [class]="'header-icon'"></app-feather-icons>
           </button>
-          -->
+          
           <mat-menu #appDropdownMenu="matMenu" class="notification-dropdown app-dropdown" xPosition="before">
-            <div class="noti-list">
-              <ul class="menu">
-                <li class="nfc-header">
-                  <h5 class="mb-0">Applications</h5>
-                </li>
-                <li>
-                  <div class="row g-0 p-1">
-                    <div class="col-3 text-center"><a routerLink="/apps/chat" class="app-icons">
-                        <img src="assets/images/apps/chat.png">
-                        <p class="tx-12 mb-0">Chat</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/calendar" class="app-icons">
-                        <img src="assets/images/apps/calendar.png">
-                        <p class="tx-12 mb-0">Calendar</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/task" class="app-icons">
-                        <img src="assets/images/apps/task.png">
-                        <p class="tx-12 mb-0">Task</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/email/inbox" class="app-icons">
-                        <img src="assets/images/apps/mail.png">
-                        <p class="tx-12 mb-0">Mail</p>
-                      </a></div>
-                  </div>
-                  <div class="row g-0 p-1">
-                    <div class="col-3 text-center"><a routerLink="/advance-table" class="app-icons">
-                        <img src="assets/images/apps/table.png">
-                        <p class="tx-12 mb-0">Table</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/contacts" class="app-icons">
-                        <img src="assets/images/apps/contact.png">
-                        <p class="tx-12 mb-0">Contact</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/apps/support" class="app-icons">
-                        <img src="assets/images/apps/support.png">
-                        <p class="tx-12 mb-0">Support</p>
-                      </a></div>
-                    <div class="col-3 text-center"><a routerLink="/media/gallery" class="app-icons">
-                        <img src="assets/images/apps/gallery.png">
-                        <p class="tx-12 mb-0">Gallery</p>
-                      </a></div>
-                  </div>
-                </li>
-              </ul>
+            <div class="dynamic-app-menu">
+              <div class="dynamic-app-menu__header">
+                <span>Módulos disponibles</span>
+              </div>
+
+              @if (appMenuItems.length > 0) {
+              <div class="dynamic-app-grid">
+                @for (menuItem of appMenuItems; track trackMenuItem($index, menuItem)) {
+                <button
+                  type="button"
+                  class="dynamic-app-grid__item"
+                  [disabled]="!getMenuNavigationPath(menuItem)"
+                  [matTooltip]="menuItem.title | translate"
+                  (click)="navigateToMenu(menuItem)"
+                >
+                  <span class="dynamic-app-grid__icon" aria-hidden="true">
+                    <app-feather-icons [icon]="menuItem.icon || 'grid'" [class]="'dynamic-app-grid__icon-svg'"></app-feather-icons>
+                  </span>
+                  <span class="dynamic-app-grid__label">{{ menuItem.title | translate }}</span>
+                </button>
+                }
+              </div>
+              } @else {
+              <div class="dynamic-app-menu__empty">
+                No hay módulos disponibles para este usuario.
+              </div>
+              }
             </div>
           </mat-menu>
         </li>
@@ -189,7 +172,11 @@
             <div class="noti-list">
               <div class="menu ">
                 <div class="user_dw_menu">
-                  <!--  
+                  <button mat-menu-item routerLink="/profile" class="user-item-list">
+                    <app-feather-icons [icon]="'user'" [class]="'user-menu-icons'"></app-feather-icons>
+                    {{ 'MENUITEMS.PROFILE.MY_PROFILE' | translate }}
+                  </button>
+                  <!--
                   <button mat-menu-item class="user-item-list">
                     <app-feather-icons [icon]="'user'" [class]="'user-menu-icons'"></app-feather-icons>Account
                   </button>
@@ -201,7 +188,8 @@
                   </button>
                   -->
                   <button mat-menu-item (click)="logout()" class="user-item-list">
-                    <app-feather-icons [icon]="'log-out'" [class]="'user-menu-icons'"></app-feather-icons>Logout
+                    <app-feather-icons [icon]="'log-out'" [class]="'user-menu-icons'"></app-feather-icons>
+                    {{ 'MENUITEMS.PROFILE.LOGOUT' | translate }}
                   </button>
                 </div>
               </div>

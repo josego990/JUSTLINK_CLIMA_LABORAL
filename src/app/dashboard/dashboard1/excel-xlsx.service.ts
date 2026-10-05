@@ -82,6 +82,26 @@ export interface PreguntaRangoExport {
   distribucionJSON?: string | PreguntaRangoDistribucionItem[];
 }
 
+export interface PreguntaListaOpcionExport {
+  idOpcion?: number;
+  valor?: string;
+  etiqueta?: string;
+  conteo?: number;
+  porcentaje?: number;
+}
+
+export interface PreguntaListaExport {
+  idGranFactor?: number;
+  etiquetaGranFactor?: string;
+  idFactor?: number;
+  factor?: string;
+  idPregunta?: number;
+  pregunta?: string;
+  totalOpciones?: number;
+  totalRespuestas?: number;
+  opciones?: PreguntaListaOpcionExport[];
+}
+
 export interface EncuestaEnvioExcelColumn {
   key: string;
   header: string;
@@ -111,6 +131,7 @@ export interface ClimaExportData {
   granFactores?: Record<string, GranFactorGroup>;
   preguntasAbiertas?: PreguntaAbiertaExport[];
   preguntasRango?: PreguntaRangoExport[];
+  respuestasTipoLista?: PreguntaListaExport[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -1854,7 +1875,174 @@ if (climaData.granFactores) {
 
 
     // ───────────────────────────────────────────────────────────────────────────
-    // 7) HOJA 7: “Preguntas Abiertas” (agrupadas por Factor)
+    // 7) HOJA 7: “Respuestas de selección”
+    // ───────────────────────────────────────────────────────────────────────────
+    const preguntasListaRaw = Array.isArray(climaData.respuestasTipoLista)
+      ? climaData.respuestasTipoLista
+      : [];
+
+    const respuestasLista = preguntasListaRaw
+      .flatMap((item: PreguntaListaExport) => {
+        const opciones = Array.isArray(item.opciones) ? item.opciones : [];
+        const totalRespuestasInformado = Number(item.totalRespuestas ?? 0);
+        const totalRespuestas = totalRespuestasInformado > 0
+          ? totalRespuestasInformado
+          : opciones.reduce((total, opcion) => total + Number(opcion?.conteo ?? 0), 0);
+
+        return opciones.map((opcion, optionIndex) => ({
+          idGranFactor: Number(item.idGranFactor ?? 0),
+          etiquetaGranFactor: String(item.etiquetaGranFactor ?? 'General').trim() || 'General',
+          idFactor: Number(item.idFactor ?? 0),
+          factor: String(item.factor ?? 'Sin factor').trim() || 'Sin factor',
+          idPregunta: Number(item.idPregunta ?? 0),
+          pregunta: String(item.pregunta ?? '').trim(),
+          totalOpciones: Number(item.totalOpciones ?? opciones.length),
+          totalRespuestas,
+          idOpcion: Number(opcion?.idOpcion ?? 0),
+          valor: String(opcion?.valor ?? '').trim(),
+          etiqueta: String(opcion?.etiqueta ?? opcion?.valor ?? 'Sin etiqueta').trim() || 'Sin etiqueta',
+          conteo: Math.max(0, Number(opcion?.conteo ?? 0) || 0),
+          porcentaje: Math.max(0, Math.min(100, Number(opcion?.porcentaje ?? 0) || 0)),
+          optionIndex,
+        }));
+      })
+      .sort((a, b) => {
+        const byGranFactor = a.etiquetaGranFactor.localeCompare(
+          b.etiquetaGranFactor,
+          'es',
+          { sensitivity: 'base' },
+        );
+        if (byGranFactor !== 0) return byGranFactor;
+
+        const byFactor = a.factor.localeCompare(b.factor, 'es', { sensitivity: 'base' });
+        if (byFactor !== 0) return byFactor;
+        if (a.idPregunta !== b.idPregunta) return a.idPregunta - b.idPregunta;
+        return a.optionIndex - b.optionIndex;
+      });
+
+    if (respuestasLista.length > 0) {
+      const sheetList = workbook.addWorksheet('Respuestas de selección', {
+        views: [{ showGridLines: true }],
+      });
+      const totalColumns = 13;
+      const optionColors = [
+        'FFDDEBF7',
+        'FFE2F0D9',
+        'FFFCE4D6',
+        'FFE4DFEC',
+        'FFFFF2CC',
+        'FFDDEBF7',
+      ];
+
+      [14, 22, 12, 24, 12, 52, 12, 20, 28, 12, 14, 16, 14].forEach((width, index) => {
+        sheetList.getColumn(index + 1).width = width;
+      });
+
+      let rowList = 1;
+
+      if (climaData.header) {
+        const h = climaData.header as { nombre_clima: string; nombre_organizacion: string };
+        const titleRow = sheetList.getRow(rowList);
+        titleRow.getCell(1).value = `Respuestas de preguntas de selección • ${h.nombre_clima}`;
+        sheetList.mergeCells(rowList, 1, rowList, totalColumns);
+        titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true };
+        titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        rowList++;
+
+        const orgRow = sheetList.getRow(rowList);
+        orgRow.getCell(1).value = `Organización: ${h.nombre_organizacion}`;
+        sheetList.mergeCells(rowList, 1, rowList, totalColumns);
+        orgRow.getCell(1).font = { name: 'Calibri', size: 12, italic: true };
+        orgRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        rowList += 2;
+      }
+
+      if (Array.isArray(climaData.camposDemograficos) && climaData.camposDemograficos.length > 0) {
+        climaData.camposDemograficos.forEach((cd: DemograficoSeleccionado) => {
+          const rowDemo = sheetList.getRow(rowList);
+          rowDemo.getCell(1).value = `${cd.nombreCampo}: ${cd.valoresSeleccionados.join(', ')}`;
+          sheetList.mergeCells(rowList, 1, rowList, totalColumns);
+          rowDemo.getCell(1).font = { name: 'Calibri', size: 11 };
+          rowDemo.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+          rowList++;
+        });
+        rowList++;
+      }
+
+      const headerRowNumber = rowList;
+      const headerRow = sheetList.getRow(rowList);
+      [
+        'Id Gran Factor',
+        'Gran Factor',
+        'Id Factor',
+        'Factor',
+        'Id Pregunta',
+        'Pregunta',
+        'Id Opción',
+        'Valor',
+        'Etiqueta',
+        'Conteo',
+        'Porcentaje',
+        'Total respuestas',
+        'Total opciones',
+      ].forEach((label, index) => {
+        const cell = headerRow.getCell(index + 1);
+        cell.value = label;
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+      });
+      headerRow.height = 28;
+      rowList++;
+
+      respuestasLista.forEach((item, index) => {
+        const row = sheetList.getRow(rowList + index);
+        row.getCell(1).value = item.idGranFactor || '';
+        row.getCell(2).value = item.etiquetaGranFactor;
+        row.getCell(3).value = item.idFactor || '';
+        row.getCell(4).value = item.factor;
+        row.getCell(5).value = item.idPregunta || '';
+        row.getCell(6).value = item.pregunta;
+        row.getCell(7).value = item.idOpcion || '';
+        row.getCell(8).value = item.valor;
+        row.getCell(9).value = item.etiqueta;
+        row.getCell(10).value = item.conteo;
+        row.getCell(11).value = item.porcentaje / 100;
+        row.getCell(11).numFmt = '0.00%';
+        row.getCell(12).value = item.totalRespuestas;
+        row.getCell(13).value = item.totalOpciones;
+
+        for (let col = 1; col <= totalColumns; col++) {
+          const cell = row.getCell(col);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.alignment = {
+            horizontal: [2, 4, 6, 8, 9].includes(col) ? 'left' : 'center',
+            vertical: 'middle',
+            wrapText: [2, 4, 6, 8, 9].includes(col),
+          };
+          cell.border = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+
+          if (col >= 7 && col <= 11) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: optionColors[item.optionIndex % optionColors.length] },
+            };
+          }
+        }
+      });
+
+      sheetList.autoFilter = {
+        from: { row: headerRowNumber, column: 1 },
+        to: { row: headerRowNumber, column: totalColumns },
+      };
+      sheetList.views = [{ state: 'frozen', ySplit: headerRowNumber, showGridLines: true }];
+      sheetList.eachRow({ includeEmpty: false }, (row: any) => row.commit());
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // 8) HOJA 8: “Preguntas Abiertas” (agrupadas por Factor)
     // ───────────────────────────────────────────────────────────────────────────
     const preguntasAbiertasRaw = Array.isArray(climaData.preguntasAbiertas)
       ? climaData.preguntasAbiertas

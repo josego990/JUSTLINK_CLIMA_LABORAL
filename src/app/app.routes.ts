@@ -13,7 +13,12 @@ export const APP_ROUTE: Route[] = [
         component: MainLayoutComponent,
         canActivate: [AuthGuard],
         children: [
-            { path: '', redirectTo: '/authentication/signin', pathMatch: 'full' },
+            { path: '', redirectTo: '/profile', pathMatch: 'full' },
+            {
+                path: 'profile',
+                loadChildren: () =>
+                    import('./profile/profile.routes').then((m) => m.PROFILE_ROUTE),
+            },
             {
                 path: 'dashboard',
                 loadChildren: () =>
@@ -153,6 +158,13 @@ export const APP_ROUTE: Route[] = [
         loadChildren: () =>
             import('./portal-desempeno-evaluaciones/portal-desempeno-evaluaciones.routes').then(
                 (m) => m.PORTAL_DESEMPENO_EVALUACIONES_ROUTE
+            ),
+    },
+    {
+        path: 'portal-clima/planes-accion',
+        loadChildren: () =>
+            import('./portal-clima-planes-accion/portal-clima-planes-accion.routes').then(
+                (m) => m.PORTAL_CLIMA_PLANES_ACCION_ROUTE
             ),
     },
     
