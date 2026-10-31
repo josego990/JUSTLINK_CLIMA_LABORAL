@@ -34,5 +34,6 @@ $linear-colors: (
 );
 
 //Fonts Family
-$navbar-font-family: "Roboto", sans-serif;
-$sidebar-font-family: "Roboto", sans-serif;
+$app-font-family: "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif;
+$navbar-font-family: $app-font-family;
+$sidebar-font-family: $app-font-family;

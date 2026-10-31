@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/advance-table/advance-table.component.scss"],
+  "sourcesContent": [":host ::ng-deep .column-filter .mat-mdc-select-arrow {\r\n  display: none;\r\n}\r\n:host ::ng-deep .advance-table .mat-mdc-header-cell {\r\n  font-weight: 500;\r\n}\r\n"],
+  "mappings": ";AAAA,MAAA,UAAA,CAAA,cAAA,CAAA;AACE,WAAA;;AAEF,MAAA,UAAA,CAAA,cAAA,CAAA;AACE,eAAA;;",
+  "names": []
+}

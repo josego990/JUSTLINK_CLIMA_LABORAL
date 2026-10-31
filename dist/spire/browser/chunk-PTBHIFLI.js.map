@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/table.animations.ts"],
+  "sourcesContent": ["import {\r\n  trigger,\r\n  sequence,\r\n  animate,\r\n  transition,\r\n  style,\r\n} from '@angular/animations';\r\n\r\nexport const rowsAnimation = trigger('rowsAnimation', [\r\n  transition('void => *', [\r\n    style({\r\n      height: '*',\r\n      opacity: '0',\r\n      transform: 'translateY(-50px)',\r\n      'box-shadow': 'none',\r\n    }),\r\n    sequence([\r\n      animate(\r\n        '.30s ease',\r\n        style({\r\n          height: '*',\r\n          opacity: '.2',\r\n          transform: 'translateY(0)',\r\n          'box-shadow': 'none',\r\n        })\r\n      ),\r\n      animate(\r\n        '.30s ease',\r\n        style({ height: '*', opacity: 1, transform: 'translateY(0)' })\r\n      ),\r\n    ]),\r\n  ]),\r\n]);\r\n"],
+  "mappings": ";;;;;;;;;AAQO,IAAM,gBAAgB,QAAQ,iBAAiB;EACpD,WAAW,aAAa;IACtB,MAAM;MACJ,QAAQ;MACR,SAAS;MACT,WAAW;MACX,cAAc;KACf;IACD,SAAS;MACP,QACE,aACA,MAAM;QACJ,QAAQ;QACR,SAAS;QACT,WAAW;QACX,cAAc;OACf,CAAC;MAEJ,QACE,aACA,MAAM,EAAE,QAAQ,KAAK,SAAS,GAAG,WAAW,gBAAe,CAAE,CAAC;KAEjE;GACF;CACF;",
+  "names": []
+}

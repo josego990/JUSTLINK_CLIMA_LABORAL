@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/demographic-participation/demographic-participation.component.scss"],
+  "sourcesContent": [".row { display: flex; gap: 12px; align-items: center; }\n.field { width: 360px; max-width: 100%; }\n.chart-wrap { width: 100%; overflow: auto; }\n.my-20 { margin: 20px 0; }\n"],
+  "mappings": ";AAAA,CAAA;AAAO,WAAA;AAAe,OAAA;AAAW,eAAA;;AACjC,CAAA;AAAS,SAAA;AAAc,aAAA;;AACvB,CAAA;AAAc,SAAA;AAAa,YAAA;;AAC3B,CAAA;AAAS,UAAA,KAAA;;",
+  "names": []
+}

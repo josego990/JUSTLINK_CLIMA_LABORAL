@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/report-card-widget/report-card-widget.component.scss"],
+  "sourcesContent": [".card-inner .progress {\r\n  margin: 2px 0px;\r\n  height: 15px;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA,WAAA,CAAA;AACE,UAAA,IAAA;AACA,UAAA;;",
+  "names": []
+}

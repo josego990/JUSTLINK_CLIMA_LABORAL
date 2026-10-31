@@ -1,5 +1,217 @@
 
 @use "./assets/scss/apps/des-evaluaciones";
+@use "./assets/scss/theme/justlink-brand";
+
+:root {
+  --app-scale-factor: 1;
+  --app-body-font-size: 14px;
+  --app-small-font-size: 12px;
+  --app-control-font-size: 14px;
+  --app-overlay-font-size: calc(14px * var(--app-scale-factor));
+  --app-overlay-item-height: calc(48px * var(--app-scale-factor));
+  --app-font-family: "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif;
+  --mat-app-font-family: var(--app-font-family);
+  --mat-sys-body-font: var(--app-font-family);
+  --mat-sys-plain-font: var(--app-font-family);
+  --mat-sys-brand-font: var(--app-font-family);
+  --mdc-typography-font-family: var(--app-font-family);
+  --mdc-filled-button-label-text-font: var(--app-font-family);
+  --mdc-outlined-button-label-text-font: var(--app-font-family);
+  --mdc-protected-button-label-text-font: var(--app-font-family);
+  --mdc-text-button-label-text-font: var(--app-font-family);
+  --mat-radio-label-text-font: var(--app-font-family);
+  --mat-checkbox-label-text-font: var(--app-font-family);
+  --mat-select-trigger-text-font: var(--app-font-family);
+}
+
+html {
+  font-size: 16px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+html,
+body,
+app-root {
+  font-family: var(--app-font-family);
+}
+
+body {
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: var(--app-body-font-size) !important;
+}
+
+app-root {
+  display: block;
+  width: calc(100% / var(--app-scale-factor));
+  min-width: calc(100% / var(--app-scale-factor));
+  min-height: calc(100vh / var(--app-scale-factor));
+  zoom: var(--app-scale-factor);
+}
+
+app-root *:not(mat-icon):not(.mat-icon):not(.material-icons):not(.material-icons-outlined):not(.material-icons-round):not(.material-icons-sharp):not(.material-icons-two-tone):not(.fa):not(.fas):not(.far):not(.fab):not(.ti):not(.feather):not(code):not(pre):not(kbd):not(samp):not(.codigo-html),
+.cdk-overlay-container *:not(mat-icon):not(.mat-icon):not(.material-icons):not(.material-icons-outlined):not(.material-icons-round):not(.material-icons-sharp):not(.material-icons-two-tone):not(.fa):not(.fas):not(.far):not(.fab):not(.ti):not(.feather):not(code):not(pre):not(kbd):not(samp):not(.codigo-html),
+.swal2-container *:not(mat-icon):not(.mat-icon):not(.material-icons):not(.material-icons-outlined):not(.material-icons-round):not(.material-icons-sharp):not(.material-icons-two-tone):not(.fa):not(.fas):not(.far):not(.fab):not(.ti):not(.feather):not(code):not(pre):not(kbd):not(samp):not(.codigo-html),
+.ng-dropdown-panel *:not(mat-icon):not(.mat-icon):not(.material-icons):not(.material-icons-outlined):not(.material-icons-round):not(.material-icons-sharp):not(.material-icons-two-tone):not(.fa):not(.fas):not(.far):not(.fab):not(.ti):not(.feather):not(code):not(pre):not(kbd):not(samp):not(.codigo-html) {
+  font-family: var(--app-font-family) !important;
+}
+
+body,
+button,
+input,
+textarea,
+select,
+.mat-typography,
+.mat-mdc-button,
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-icon-button,
+.mat-mdc-card,
+.mat-mdc-card-title,
+.mat-mdc-card-subtitle,
+.mat-mdc-card-content,
+.mat-mdc-dialog-container,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-option,
+.mat-mdc-form-field,
+.mat-mdc-radio-button,
+.mat-mdc-checkbox,
+.mat-mdc-slide-toggle,
+.mat-mdc-radio-button .mdc-form-field,
+.mat-mdc-radio-button .mdc-label,
+.mat-mdc-checkbox .mdc-form-field,
+.mat-mdc-checkbox .mdc-label,
+.mat-mdc-slide-toggle .mdc-form-field,
+.mat-mdc-slide-toggle .mdc-label,
+.mdc-floating-label,
+.mat-mdc-floating-label,
+.mat-mdc-select-trigger,
+.mat-mdc-select-value,
+.mat-mdc-select-value-text,
+.mat-mdc-select-min-line,
+.mat-mdc-select-placeholder,
+.mat-mdc-input-element,
+.mdc-text-field__input,
+.mdc-form-field,
+.mdc-label,
+.mat-mdc-table,
+.mat-mdc-header-cell,
+.mat-mdc-cell,
+.mat-mdc-footer-cell,
+.mat-header-cell,
+.mat-cell,
+.mat-footer-cell,
+.mat-sort-header-content,
+.mat-mdc-paginator,
+.mat-mdc-chip,
+.mat-mdc-chip *,
+.mat-mdc-standard-chip,
+.mdc-evolution-chip__text-label,
+.mat-mdc-chip-action-label,
+.mat-mdc-tab-group,
+.mat-mdc-tooltip,
+.mat-mdc-snack-bar-container,
+.ngx-datatable,
+.ngx-datatable *,
+.datatable-header-cell,
+.datatable-body-cell,
+.ng-select,
+.ng-select *,
+.ng-dropdown-panel,
+.ng-dropdown-panel *,
+.dropdown-menu,
+.dropdown-menu *,
+.table,
+.table *,
+.form-control,
+.form-select,
+.form-label,
+.badge,
+.breadcrumb,
+.breadcrumb *,
+app-breadcrumb,
+app-breadcrumb *,
+.swal2-popup {
+  font-family: var(--app-font-family) !important;
+}
+
+.cdk-overlay-container,
+.cdk-overlay-pane,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel {
+  font-size: var(--app-overlay-font-size);
+}
+
+.cdk-overlay-pane {
+  max-width: calc(100vw - 24px) !important;
+}
+
+.mat-mdc-option,
+.mat-mdc-menu-item,
+.mdc-list-item__primary-text {
+  font-size: var(--app-overlay-font-size) !important;
+  line-height: 1.3;
+}
+
+.mat-mdc-option,
+.mat-mdc-menu-item {
+  min-height: var(--app-overlay-item-height) !important;
+}
+
+section.content,
+.content-block,
+.mat-mdc-table,
+.mat-mdc-card,
+.card {
+  min-width: 0;
+}
+
+.material-icons,
+.material-icons-outlined,
+.material-icons-round,
+.material-icons-sharp,
+.material-icons-two-tone,
+.mat-icon,
+.fa,
+.fas,
+.far,
+.fab,
+.ti,
+.feather,
+app-feather-icons,
+app-feather-icons * {
+  font-family: inherit;
+}
+
+.material-icons,
+.mat-icon.mat-ligature-font,
+.mat-icon.material-icons,
+.mat-icon.material-icons-outlined,
+.mat-icon.material-icons-round,
+.mat-icon.material-icons-sharp,
+.mat-icon.material-icons-two-tone {
+  font-family: "Material Icons" !important;
+}
+
+.material-icons-outlined {
+  font-family: "Material Icons Outlined" !important;
+}
+
+.material-icons-round {
+  font-family: "Material Icons Round" !important;
+}
+
+.material-icons-sharp {
+  font-family: "Material Icons Sharp" !important;
+}
+
+.material-icons-two-tone {
+  font-family: "Material Icons Two Tone" !important;
+}
 
 
 .org-filter-panel {

@@ -1,26 +1,296 @@
 
 
-.navbar-brand img {
-    max-height: 25px; /* Ajusta la altura según sea necesario */
-    width: auto; /* Mantiene la proporción */
+:host {
+  .navbar-header {
+    display: flex;
+    min-height: 60px;
+    align-items: center;
   }
+
+  .navbar-header .navbar-nav {
+    display: flex;
+    width: 100%;
+    align-items: center;
+  }
+
+  .navbar-header .nav-item.logo {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
   .navbar-brand {
     display: flex;
-    flex-direction: column; /* Acomoda los elementos en columna */
-    align-items: center; /* Centra el contenido */
-    text-decoration: none; /* Elimina el subrayado del enlace */
-    margin-left: 50px;
+    width: auto;
+    height: 60px;
+    min-width: 0;
+    align-items: center;
+    margin: 0;
+    padding: 0 0 0 18px;
   }
-  
+
   .logo-container {
     display: flex;
+    min-width: 0;
     align-items: center;
-    gap: 10px; /* Espacio entre las imágenes */
+    overflow: hidden;
   }
-  
-  .navbar-text {
-    margin-top: 5px; /* Espaciado entre imágenes y texto */
-    font-size: 14px; /* Ajusta el tamaño del texto */
-    color: #fff; /* Cambia el color según necesidad */
-    text-align: center;
+
+  .navbar-brand img {
+    display: block;
+    width: auto;
+    max-width: 162px;
+    height: 30px;
+    max-height: 30px;
+    object-fit: contain;
+    object-position: left center;
   }
+
+  .sidemenu-collapse {
+    flex: 0 0 auto;
+  }
+}
+
+:host-context(.light) {
+  .sidebar {
+    border-right: 1px solid #eadfce;
+    background: #fffaf4;
+    box-shadow: 8px 0 24px rgba(18, 43, 61, 0.06);
+  }
+
+  .navbar-header {
+    display: flex;
+    width: 260px;
+    height: 60px;
+    align-items: center;
+    border-top: 2px solid #112d40;
+    border-bottom: 1px solid #efe4d7;
+    background: #fffaf4;
+  }
+
+  .navbar-header .navbar-nav {
+    width: 100%;
+    align-items: center;
+  }
+
+  .navbar-header .nav-item.logo {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .navbar-brand {
+    display: flex;
+    width: auto;
+    height: 58px;
+    align-items: center;
+    margin-left: 0;
+    padding: 0 0 0 19px;
+  }
+
+  .logo-container {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+  }
+
+  .navbar-brand img {
+    display: block;
+    width: auto;
+    max-width: 160px;
+    height: 31px;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .sidemenu-collapse {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    margin: 0 12px 0 4px;
+    padding: 0;
+    color: #17354a;
+    border: 1px solid #eadfce;
+    border-radius: 6px;
+    background: #fffdf9;
+    transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .sidemenu-collapse:hover {
+    color: #c96717;
+    border-color: #f4bc82;
+    background: #fff0df;
+  }
+
+  .sidemenu-collapse .menuIcon {
+    color: currentColor;
+    font-size: 20px;
+  }
+
+  .sidebar .menu {
+    background: #fffaf4;
+  }
+
+  .sidebar .menu .list {
+    padding: 10px 8px 18px;
+  }
+
+  .sidebar .menu .list .header {
+    margin: 16px 11px 6px;
+    color: #7c8994;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .sidebar .menu .list > li > a,
+  .sidebar .menu .list > li > .menu-top {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    gap: 11px;
+    margin: 2px 3px;
+    padding: 8px 10px;
+    color: #243c4d;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    line-height: 1.25;
+    transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .sidebar .menu .list > li > a:hover,
+  .sidebar .menu .list > li > .menu-top:hover {
+    color: #17354a;
+    border-color: #f4d8bb;
+    background: #fff1e2;
+  }
+
+  .sidebar .menu .list > li > .menu-top .sidebarIcon {
+    flex: 0 0 19px;
+    width: 19px;
+    height: 19px;
+    color: #627686;
+  }
+
+  .sidebar .menu .list > li > .menu-top .hide-menu {
+    margin: 0;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .sidebar .menu .list > li.active > .menu-top,
+  .sidebar .menu .list > li.active-top > .menu-top {
+    color: #17354a;
+    border-color: #f5c591;
+    background: #fff0df;
+    box-shadow: inset 3px 0 0 #f58b2a;
+  }
+
+  .sidebar .menu .list > li.active > .menu-top .sidebarIcon,
+  .sidebar .menu .list > li.active-top > .menu-top .sidebarIcon {
+    color: #dd771d;
+  }
+
+  .sidebar .menu .list > li.active > :first-child span {
+    font-weight: 750;
+  }
+
+  .sidebar .menu .list .menu-toggle::before,
+  .sidebar .menu .list .menu-toggle::after {
+    right: 12px;
+    color: #82909a;
+  }
+
+  .sidebar .menu .list .ml-menu,
+  .sidebar .menu .list .ml-menu-2,
+  .sidebar .menu .list .ml-menu-3 {
+    margin: 2px 6px 5px;
+    padding: 3px 0 4px;
+    border-left: 1px solid #ecdcca;
+    background: transparent;
+  }
+
+  .sidebar .menu .list .ml-menu li a,
+  .sidebar .menu .list .ml-menu-2 li a,
+  .sidebar .menu .list .ml-menu-3 li a {
+    min-height: 33px;
+    margin: 1px 0;
+    padding: 7px 11px 7px 17px;
+    color: #617382;
+    border-radius: 0 5px 5px 0;
+    font-size: 12px !important;
+    font-weight: 550;
+    line-height: 1.25;
+  }
+
+  .sidebar .menu .list .ml-menu li a:hover,
+  .sidebar .menu .list .ml-menu-2 li a:hover,
+  .sidebar .menu .list .ml-menu-3 li a:hover,
+  .sidebar .menu .list .ml-menu li.active > a {
+    color: #bd6116;
+    background: #fff1e2;
+  }
+
+  .sidebar .menu .list .ml-menu .active a::before {
+    content: none;
+  }
+
+  .sidebar .sidebar-badge {
+    color: #a94f0d !important;
+    border: 1px solid #f3c493;
+    background: #ffead2;
+    font-size: 10px !important;
+    font-weight: 750 !important;
+  }
+}
+
+:host-context(.light.submenu-closed) {
+  .navbar-header {
+    width: 60px;
+  }
+
+  .navbar-brand {
+    width: 60px;
+    padding-left: 13px;
+  }
+
+  .navbar-brand img {
+    width: 31px;
+    max-width: 31px;
+    object-fit: cover;
+    object-position: left center;
+  }
+
+  .sidebar .menu .list {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .sidebar .menu .list > li > .menu-top {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .sidebar .menu .list > li > .menu-top .sidebarIcon {
+    margin: 0;
+  }
+}
+
+:host-context(.submenu-closed) {
+  .navbar-brand {
+    width: 60px;
+    padding-left: 14px;
+  }
+
+  .logo-container {
+    width: 32px;
+  }
+
+  .navbar-brand img {
+    width: auto;
+    max-width: none;
+    height: 26px;
+    max-height: 26px;
+  }
+}

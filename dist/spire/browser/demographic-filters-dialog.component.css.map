@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/dashboard/dashboard1/dialogs/demographic-filters-dialog.component.ts"],
+  "sourcesContent": ["\n    .cards {\n      display: grid;\n      gap: 12px;\n      grid-template-columns: repeat(3, minmax(260px, 1fr));\n    }\n    @media (max-width: 1400px) { .cards { grid-template-columns: repeat(2, minmax(260px, 1fr)); } }\n    @media (max-width: 900px)  { .cards { grid-template-columns: 1fr; } }\n    .dlg-title { display:flex; align-items:center; gap:.5rem; }\n    .dlg-content { display:flex; flex-direction:column; gap:12px; }\n    .chips { padding: 4px 0 8px; }\n    .card { border-radius:12px; }\n    .w-100 { width:100%; }\n    mat-card-header { display:flex;  align-items:center; }\n    .count { color:#64748b; font-size:.85rem; }\n    .values { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow:auto; padding-right:4px; }\n    .spacer { flex:1 1 auto; }\n  "],
+  "mappings": ";AACI,CAAA;AACE,WAAA;AACA,OAAA;AACA,yBAAA,OAAA,CAAA,EAAA,OAAA,KAAA,EAAA;;AAEF,OAAA,CAAA,SAAA,EAAA;AAA6B,GAL7B;AAKsC,2BAAA,OAAA,CAAA,EAAA,OAAA,KAAA,EAAA;;;AACtC,OAAA,CAAA,SAAA,EAAA;AAA6B,GAN7B;AAMsC,2BAAA;;;AACtC,CAAA;AAAa,WAAA;AAAc,eAAA;AAAoB,OAAA;;AAC/C,CAAA;AAAe,WAAA;AAAc,kBAAA;AAAuB,OAAA;;AACpD,CAAA;AAAS,WAAA,IAAA,EAAA;;AACT,CAAA;AAAQ,iBAAA;;AACR,CAAA;AAAS,SAAA;;AACT;AAAkB,WAAA;AAAe,eAAA;;AACjC,CAAA;AAAS,SAAA;AAAe,aAAA;;AACxB,CAAA;AAAU,WAAA;AAAc,kBAAA;AAAuB,OAAA;AAAS,cAAA;AAAkB,YAAA;AAAe,iBAAA;;AACzF,CAAA;AAAU,QAAA,EAAA,EAAA;;",
+  "names": []
+}

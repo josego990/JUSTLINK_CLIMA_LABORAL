@@ -38,6 +38,16 @@ type ToTarget = 'correo' | 'pendiente_llenar' | 'encuestas_completadas' | 'todos
 type ComposeContext = 'clima' | 'desempeno';
 type OrganizationOption = { Id: number; Nombre: string };
 type PerformanceModelOption = { id: number; nombre: string; codigo: string; raw: any };
+type ManualSendPhase = 'preparing' | 'sending' | 'finishing';
+
+interface ManualSendProgress {
+  active: boolean;
+  total: number;
+  completed: number;
+  successful: number;
+  failed: number;
+  phase: ManualSendPhase;
+}
 
 function renderizarPlantilla(
   plantilla: string,
@@ -99,6 +109,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
   langStoreValue?: string;
 
   public loading = false;
+  public manualSendProgress: ManualSendProgress = this.createEmptyManualSendProgress();
   public destinatarioIndividual = '';
   public nombreOrganizacion = '';
   public nombreClima = '';
@@ -234,6 +245,64 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
     }
 
     return this.toTargetsCtrl.value.length > 0;
+  }
+
+  get manualSendProgressPercent(): number {
+    if (!this.manualSendProgress.total) {
+      return 0;
+    }
+
+    return Math.round(
+      (this.manualSendProgress.completed / this.manualSendProgress.total) * 100
+    );
+  }
+
+  private createEmptyManualSendProgress(): ManualSendProgress {
+    return {
+      active: false,
+      total: 0,
+      completed: 0,
+      successful: 0,
+      failed: 0,
+      phase: 'preparing'
+    };
+  }
+
+  private startManualSendProgress(total: number): void {
+    this.manualSendProgress = {
+      active: true,
+      total,
+      completed: 0,
+      successful: 0,
+      failed: 0,
+      phase: 'preparing'
+    };
+  }
+
+  private markManualSendStarted(): void {
+    this.manualSendProgress = {
+      ...this.manualSendProgress,
+      phase: 'sending'
+    };
+  }
+
+  private registerManualSendResult(successful: boolean): void {
+    const completed = Math.min(
+      this.manualSendProgress.completed + 1,
+      this.manualSendProgress.total
+    );
+
+    this.manualSendProgress = {
+      ...this.manualSendProgress,
+      completed,
+      successful: this.manualSendProgress.successful + (successful ? 1 : 0),
+      failed: this.manualSendProgress.failed + (successful ? 0 : 1),
+      phase: completed === this.manualSendProgress.total ? 'finishing' : 'sending'
+    };
+  }
+
+  private resetManualSendProgress(): void {
+    this.manualSendProgress = this.createEmptyManualSendProgress();
   }
 
   isToTargetDisabled(target: ToTarget): boolean {
@@ -2678,10 +2747,12 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
         }
 
         this.loading = true;
+        this.startManualSendProgress(destinatarios.length);
 
         try {
           if (!this.gjs) {
             this.loading = false;
+            this.resetManualSendProgress();
             return;
           }
 
@@ -2692,6 +2763,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
 
           const p = this.exportedHtml.replaceAll('&quot;', '"');
           const asunto = this.subjectManualCtrl.value.trim();
+          this.markManualSendStarted();
 
           const resultados = await Promise.all(
             destinatarios.map((destinatario) => {
@@ -2719,13 +2791,18 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
                   destinatario,
                   ok: false,
                   message: err?.message ?? String(err),
-                }));
+                }))
+                .then((emailResult) => {
+                  this.registerManualSendResult(emailResult.ok);
+                  return emailResult;
+                });
             })
           );
 
           const exitosos = resultados.filter((x) => x.ok);
           const fallidos = resultados.filter((x) => !x.ok);
           this.demoLimitsService.registerComposeEmailsSent(exitosos.length);
+          this.resetManualSendProgress();
 
           if (!fallidos.length) {
             Swal.fire({
@@ -2754,6 +2831,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
             });
           }
         } catch (err: any) {
+          this.resetManualSendProgress();
           Swal.fire({
             title: 'Ocurrió un error',
             text: err?.message ?? String(err),
@@ -2761,6 +2839,7 @@ export class ComposeComponent implements AfterViewInit, OnDestroy {
           });
         } finally {
           this.loading = false;
+          this.resetManualSendProgress();
         }
 
 

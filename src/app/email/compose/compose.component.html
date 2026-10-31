@@ -265,5 +265,72 @@
         </button>
       </div>
     </div>
+
+    <div
+      *ngIf="manualSendProgress.active"
+      class="compose-send-progress-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+      [attr.aria-label]="'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.TITLE' | translate">
+      <div class="compose-send-progress-panel">
+        <div class="compose-send-progress-icon" aria-hidden="true">
+          <mat-icon>outgoing_mail</mat-icon>
+        </div>
+
+        <div class="compose-send-progress-heading">
+          <span>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.EYEBROW' | translate }}</span>
+          <h3>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.TITLE' | translate }}</h3>
+          <p *ngIf="manualSendProgress.phase === 'preparing'">
+            {{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.PREPARING' | translate }}
+          </p>
+          <p *ngIf="manualSendProgress.phase === 'sending'">
+            {{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.SENDING' | translate }}
+          </p>
+          <p *ngIf="manualSendProgress.phase === 'finishing'">
+            {{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.FINISHING' | translate }}
+          </p>
+        </div>
+
+        <div
+          class="compose-send-progress-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="manualSendProgressPercent">
+          <span [style.width.%]="manualSendProgressPercent"></span>
+        </div>
+
+        <div class="compose-send-progress-summary">
+          <strong>{{ manualSendProgressPercent }}%</strong>
+          <span>
+            {{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.DETAIL' | translate:{
+              completed: manualSendProgress.completed,
+              total: manualSendProgress.total
+            } }}
+          </span>
+        </div>
+
+        <div class="compose-send-progress-stats">
+          <div>
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.PROCESSED' | translate }}</span>
+            <strong>{{ manualSendProgress.completed }}</strong>
+          </div>
+          <div class="compose-send-progress-stat--success">
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.SUCCESSFUL' | translate }}</span>
+            <strong>{{ manualSendProgress.successful }}</strong>
+          </div>
+          <div class="compose-send-progress-stat--failed">
+            <span>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.FAILED' | translate }}</span>
+            <strong>{{ manualSendProgress.failed }}</strong>
+          </div>
+        </div>
+
+        <div class="compose-send-progress-note">
+          <mat-icon>info_outline</mat-icon>
+          <span>{{ 'MENUITEMS.EMAILCOMPOSE.DELIVERY_PROGRESS.KEEP_OPEN' | translate }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>

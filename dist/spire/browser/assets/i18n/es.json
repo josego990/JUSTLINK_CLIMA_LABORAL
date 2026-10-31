@@ -13,7 +13,7 @@
       "LOAD_ERROR": "No se pudo cargar la verificación. Recarga la página e inténtalo nuevamente.",
       "EXPIRED": "La verificación expiró. Complétala nuevamente para continuar."
     },
-    
+
     "USER":{
       "POST": "Gerente"
     },
@@ -33,6 +33,8 @@
         "DEMOGRAPHIC_FILTERS": "Filtros demográficos",
         "CLEAR": "Limpiar",
         "EXPORT": "Exportar",
+        "DOWNLOAD_PDF": "Descargar PDF",
+        "PDF_TITLE": "Planes de acción de clima",
         "ACTIVE_FILTERS": "Filtros activos:",
         "SELECT_CLIMATE": "Selecciona un clima",
         "SELECT_CLIMATE_HELP": "La empresa activa se toma del encabezado para calcular brechas, prioridades y planes sugeridos.",
@@ -51,6 +53,7 @@
         "AVERAGE_PROGRESS": "{{progress}}% de avance promedio",
         "PRIORITIZED_IMPROVEMENT_AREAS": "Áreas de mejora priorizadas (sugeridas)",
         "OPPORTUNITIES_DETECTED": "{{count}} oportunidades detectadas",
+        "OPPORTUNITIES_COUNT": "{{count}} oportunidades",
         "FOLLOW_UP_STATUS": "Estado de seguimiento",
         "COMPLETED": "Completados",
         "AT_RISK": "En riesgo",
@@ -139,6 +142,7 @@
         "SURVEY": "Encuesta",
         "SURVEY_FALLBACK": "Encuesta",
         "QUESTION_FALLBACK": "Pregunta",
+        "FACTOR": "Factor",
         "NO_GAPS": "No se detectan brechas críticas con los criterios actuales.",
         "NO_DEMOGRAPHIC_GAPS": "No se detectan oportunidades de mejora en los segmentos demográficos.",
         "NO_FOLLOW_UP_PLANS": "Aún no hay planes para dar seguimiento.",
@@ -210,13 +214,23 @@
       "ORGANIGRAMA": "Organigrama",
       "ADMINISTRAR": "Crear y Enviar Evaluaciones"
     },
-   
+
     "DASHBOARD": {
       "TEXT": "CLIMA ORGANIZACIONAL",
       "LIST": {
         "DASHBOARD1": "Dashboard",
         "DASHBOARD2": "Tablero 2",
         "DASHBOARD3": "Tablero 3"
+      },
+      "LOADING": {
+        "TITLE": "Preparando dashboard",
+        "GETTING_DATA": "Obteniendo datos del clima...",
+        "ORGANIZING_RESPONSES": "Organizando las respuestas...",
+        "INTERPRETING_DATA": "Interpretando los datos...",
+        "CALCULATING": "Realizando los cálculos...",
+        "PREPARING_CHARTS": "Preparando gráficas e indicadores...",
+        "FINALIZING": "Finalizando la presentación de resultados...",
+        "HINT": "El tiempo puede variar según el tamaño del clima."
       }
     },
     "ADVANCE-TABLE": {
@@ -225,15 +239,15 @@
 
     "ORGANIZATION": {
 
-      "EDITORGANIZATION": "Editar Organización", 
-      "TEXT": "ORGANIZACIÓN", 
+      "EDITORGANIZATION": "Editar Organización",
+      "TEXT": "ORGANIZACIÓN",
       "ROLE": "ROL DE USUARIO",
       "LIST": {
         "CREAR": "Organizaciones",
         "EMPLOYEE": "Empleados",
         "EMPLEADOS": "Empleados",
         "DEMOGRAFICOS": "Demográficos"
-        
+
       },
       "NAME": "NOMBRE",
         "COUNTRY": "PAÍS",
@@ -249,13 +263,13 @@
         "DELETE": "ELIMINAR",
         "EDIT": "EDITAR",
         "CREATEORG": "Crear Nueva Organización",
-        
+
         "EXPAND": "Expandir - Contraer",
         "REASON": "Razón Social",
         "ADDRESS": "DIRECCIÓN",
         "SUCCESS": "REALIZADO",
 
-        
+
         "ORGDELETED": "Se eliminó la organización.",
         "ERRORGDELETED": "Error al eliminar la organización:",
         "SOMEWRONG": "Algo salió mal",
@@ -299,7 +313,7 @@
         "DELETECONFIRMTEXT": "Se eliminará la organización {{name}}. Esta acción puede afectar sus datos relacionados.",
         "DELETECONFIRM": "SÍ, ELIMINAR"
 
-        
+
       },
   "EMPLOYEE": {
     "IDEMPLOYEE": "ID Empleado",
@@ -318,7 +332,7 @@
       "EDIT": "EDITAR",
       "CREATE": "Crear Empleado",
       "ADD": "AGREGAR EMPLEADO",
-      
+
       "EXPAND": "Expandir - Contraer",
 
       "ADDRESS": "DIRECCIÓN",
@@ -337,7 +351,7 @@
       "CANCEL": "CANCELAR",
       "DEMOGRAPHICDATA": "Datos Demográficos",
       "SUCCESS": "REALIZADO",
-      "ADDED": "Se agregó el empleado.", 
+      "ADDED": "Se agregó el empleado.",
 
       "SOMEWRONG": "Algo salió mal",
       "ERRMESSAGE": "Ha ocurrido un error inesperado.",
@@ -346,7 +360,7 @@
       "INVALIDFORM": "El formulario no es válido",
       "EXCELERROR": "Se encontraron errores en el archivo Excel ",
       "UPLOADMESSAGE": "Cargando archivo Excel de empleados...",
-      "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>", 
+      "PROCESSMESSAGE": "Procesando datos, por favor espera <b></b>",
       "FINISHMSGH": "¡Finalizado!",
       "FINISHMSGB": "Se ingresaron los registros con éxito.",
       "ERRFOUNDINSERT": "Se encontraron errores al insertar:",
@@ -375,17 +389,33 @@
       "ERRDELETEEMPLOYEE": "Error al eliminar empleado. ",
       "ERRACTIVEEMPLOYEE": "Error al activar empleado. ",
       "ERRCREATEEMPLOYEE": "Error al crear empleado. ",
-      
+
       "UPLOADEXCELEMPLOYEE": "Carga Excel Masivo",
       "DOWNLOADEXCELEMPLOYEE": "Descarga Plantilla Excel",
       "TEMPLATEDOWNLOADERROR": "No se encontró la configuración de la plantilla Excel.",
       "EXPORTEMPLOYEES": "Descargar empleados",
       "EXCELDOWNLOADERROR": "No fue posible generar el archivo Excel de empleados.",
-      
+
       "SENDINGBATCHES": "Cargando empleados por lotes...",
-      
-      
+
+
       "SENDTYPENONE": "Ninguno",
+      "SENDTYPEEMAIL": "Email",
+      "SENDTYPEWHATSAPP": "WhatsApp",
+      "SENDTYPEBOTH": "Email y WhatsApp",
+      "BULKSELECTED": "{{count}} seleccionado(s)",
+      "BULKSENDTYPE": "Tipo de envío",
+      "BULKAPPLY": "Aplicar",
+      "BULKSENDREQUIREDTITLE": "Seleccione un tipo de envío",
+      "BULKSENDREQUIRED": "Elija el tipo de envío que desea asignar al grupo seleccionado.",
+      "BULKSENDUNCHANGEDTITLE": "Sin cambios pendientes",
+      "BULKSENDUNCHANGED": "Todos los empleados seleccionados ya tienen ese tipo de envío.",
+      "BULKSENDCONFIRMTITLE": "¿Cambiar el tipo de envío?",
+      "BULKSENDCONFIRMTEXT": "Se asignará {{type}} a {{count}} empleado(s). Los demás datos no serán modificados.",
+      "BULKSENDCONFIRM": "Sí, cambiar",
+      "BULKSENDPROGRESS": "Actualizando tipo de envío...",
+      "BULKSENDSUCCESS": "Se actualizó el tipo de envío de {{count}} empleado(s).",
+      "BULKSENDERROR": "No fue posible actualizar el tipo de envío de los empleados.",
       "PRIMARYDATA": "Datos principales",
       "CONTACTSENDDATA": "Contacto y envío",
       "ASSIGNEDTO": "Asignado a",
@@ -395,12 +425,15 @@
       "SEARCHPLACEHOLDER": "Nombre o apellido",
       "CLEARSEARCH": "Limpiar búsqueda",
       "FILTERPOSITION": "Filtrar por puesto",
+      "SHOWONLYACTIVE": "Mostrar solo activos",
       "FILTERRESULTS": "{{visible}} de {{total}} empleados",
       "LOADINGEMPLOYEES": "Cargando empleados...",
       "CLEARFILTERS": "Limpiar filtros",
-      "NOFILTERRESULTS": "No hay empleados que coincidan con los filtros."
+      "NOFILTERRESULTS": "No hay empleados que coincidan con los filtros.",
+      "SELECTPAGE": "Seleccionar empleados de la página actual",
+      "PAGINATION": "Paginación de empleados"
 
-    
+
 
 
 
@@ -410,22 +443,39 @@
 
     "DEMOGRAPHICS":{
       "ACTIVE": "Activo",
+      "ACTIVATE": "Activar campo",
+      "CANCEL": "Cancelar",
+      "CLOSE": "Cerrar",
+      "CREATEDIALOGSUBTITLE": "Agrega un campo para clasificar empleados y resultados por segmentos.",
       "INACTIVE": "Inactivo",
       "TEXT": "DEMOGRÁFICOS",
+      "TITLE": "Campos demográficos",
+      "SUBTITLE": "Administra los campos que segmentan empleados, encuestas y resultados.",
       "FIELD": "Nombre Campo",
+      "FIELDHELP": "Campo disponible para segmentación",
+      "FIELDREQUIRED": "Ingrese el nombre del campo demográfico",
       "DATATYPE": "Tipo Dato",
       "DATECREATE": "Fecha Creado",
+      "DEACTIVATE": "Desactivar campo",
+      "EMPTYTITLE": "Aún no hay campos demográficos",
+      "EMPTYDESC": "Crea el primer campo para poder segmentar empleados y resultados.",
+      "GENERALDATA": "Datos del campo",
+      "GENERALDATADESC": "Define el nombre visible del demográfico para esta organización.",
+      "REFRESH": "Actualizar demográficos",
+      "REGISTERED": "Campos registrados",
+      "SELECTEDORG": "Organización seleccionada",
       "STATE": "Estado",
       "ACTIONS": "Acciones",
       "CREATENEW": "Crear nuevo campo demográfico",
       "EXPAND": "Expandir - Contraer",
       "SAVE": "GUARDAR",
+      "SAVING": "Guardando...",
       "MESSAGES": {
         "FIELDDEACTIVATE": "Se desactivó el campo.",
         "ERROR": "Algo anda mal",
         "ERRORMESSAGE": "Ocurrió un error. ",
         "FIELDACTIVATE": "Se activó el campo.",
-        "FIELDADDED": "Se activó el campo.",
+        "FIELDADDED": "Campo demográfico creado correctamente.",
 
 
 
@@ -450,11 +500,11 @@
     "ADDGRANDFACTORTITLE": "Nueva Encuesta",
     "GRANDFACTORNAME": "Nombre de la Encuesta",
     "INSERTGRANDFACTORNAME": "Ingrese el nombre de la Encuesta",
-        "GRANDFACTORDESC": "Descripción de la Encuesta",  
-    "INSERTGRANDFACTORDESC": "Ingrese la descripción de la Encuesta",  
-    "CLOSE": "CERRAR",  
-    "GFINSERTSUCCESS": "Encuesta creada correctamente",  
-    "GFINSERTERROR": "Ocurrió un error al guardar la nueva Encuesta", 
+        "GRANDFACTORDESC": "Descripción de la Encuesta",
+    "INSERTGRANDFACTORDESC": "Ingrese la descripción de la Encuesta",
+    "CLOSE": "CERRAR",
+    "GFINSERTSUCCESS": "Encuesta creada correctamente",
+    "GFINSERTERROR": "Ocurrió un error al guardar la nueva Encuesta",
     "FACTORNAME": "Nombre del Factor",
     "FACTORDESC": "Descripción del Factor",
     "EDITSELECTEDSURVEY": "Editar encuesta seleccionada",
@@ -471,10 +521,41 @@
 
 
 
-    
+
       "TEXT": "CLIMA",
       "CREATE": "Crear nuevo clima",
       "REFRESH": "Actualizar climas",
+      "TEMPLATES": {
+        "DIALOG_SUBTITLE": "Define los datos generales y decide si quieres comenzar desde cero o con una estructura preparada.",
+        "START_TITLE": "¿Cómo quieres comenzar?",
+        "START_DESCRIPTION": "Puedes construir una encuesta nueva o utilizar una metodología como punto de partida.",
+        "BLANK_TITLE": "Desde cero",
+        "BLANK_DESCRIPTION": "Crea el clima vacío y configura después sus encuestas, factores y preguntas.",
+        "FROM_TEMPLATE_TITLE": "A partir de plantilla",
+        "FROM_TEMPLATE_DESCRIPTION": "Crea automáticamente una estructura editable con factores y preguntas.",
+        "FACTORS": "factores",
+        "QUESTIONS": "preguntas",
+        "GALLUP_NAME": "Gallup Q12",
+        "GALLUP_DESCRIPTION": "Compromiso y experiencia laboral organizados en cuatro factores.",
+        "GALLUP_DEFAULT_NAME": "Encuesta de compromiso Gallup Q12",
+        "GALLUP_DEFAULT_DESCRIPTION": "Medición de compromiso y experiencia laboral basada en los temas de Gallup Q12.",
+        "GPTW_NAME": "Great Place to Work",
+        "GPTW_DESCRIPTION": "Confianza organizacional desde credibilidad, respeto, equidad, orgullo y camaradería.",
+        "GPTW_DEFAULT_NAME": "Encuesta de clima Great Place to Work",
+        "GPTW_DEFAULT_DESCRIPTION": "Medición de confianza y experiencia organizacional basada en cinco dimensiones de Great Place to Work.",
+        "NOM035_NAME": "NOM-035 México",
+        "NOM035_DESCRIPTION": "Guías I, II y III con factores de riesgo psicosocial y entorno organizacional.",
+        "NOM035_DEFAULT_NAME": "Evaluación NOM-035 México",
+        "NOM035_DEFAULT_DESCRIPTION": "Evaluación de acontecimientos traumáticos, factores de riesgo psicosocial y entorno organizacional.",
+        "NOM035_GUIDANCE": "La plantilla contiene las Guías I, II y III en secciones independientes. Antes de asignarla, conserva la Guía I y únicamente la Guía II o III que corresponda al tamaño del centro de trabajo.",
+        "DETAILS_TITLE": "Datos del clima",
+        "DETAILS_DESCRIPTION": "Puedes ajustar el nombre, la descripción, la escala y la imagen antes de crear el clima.",
+        "REQUIRED_TITLE": "Selecciona una plantilla",
+        "REQUIRED_TEXT": "Elige Gallup Q12, Great Place to Work o NOM-035 México para continuar.",
+        "CREATED_SUCCESS": "Clima creado correctamente a partir de la plantilla seleccionada.",
+        "PARTIAL_ERROR_TITLE": "La plantilla no se completó",
+        "PARTIAL_ERROR_TEXT": "El clima fue creado, pero su estructura no pudo cargarse por completo. Ábrelo para revisar el contenido e intenta la carga nuevamente si es necesario."
+      },
        "EDIT": "EDITAR ENCUESTA",
       "SEND": "ENVÍOS",
       "FACTORS": "Factores",
@@ -512,7 +593,8 @@
       "DEACTIVATECLIMA": "Desactivar Clima",
       "DELETECLIMA": "Eliminar Clima",
       "UPLOADEXCELCLIMA": "Carga Excel",
-      "DOWNLOADEXCELCLIMA": "Obtener Plantilla",
+      "DOWNLOADEXCELCLIMA": "Obtener Plantilla excel para carga masiva",
+      "DOWNLOADCURRENTCLIMA": "Descargar este clima",
       "n": "Carga Excel",
       "GFACCESSBYDEMOGRAPHIC": "ADMINISTRAR ACCESOS A FACTORES",
       "FACTOR_ACCESS": {
@@ -559,7 +641,7 @@
 
 
       "FIELDTYPE": "Tipo de Pregunta",
-      
+
 
       "LISTSELECTION": "Selección de Lista",
 
@@ -584,6 +666,9 @@
         "ONLYPERMMITED": "Sólo se permiten",
         "FIELDISREQUIRED": "ETIQUETA es obligatoria.",
         "NO_SURVEY_DATA_SHEET": "No se encontró una hoja de datos válida. Use la hoja ENCUESTA de la plantilla.",
+        "NO_CLIMATE_DATA_TITLE": "No hay datos para descargar",
+        "NO_CLIMATE_DATA_TEXT": "El clima actual todavía no tiene encuestas, factores o preguntas configuradas.",
+        "CURRENT_CLIMATE_DOWNLOAD_ERROR": "No fue posible generar el archivo Excel del clima actual.",
         "FACTOR_WITHOUT_SURVEY": "Se encontró 'FACTOR' sin una 'ENCUESTA' previa.",
         "QUESTION_WITHOUT_FACTOR": "Se encontró una pregunta sin un 'FACTOR' definido previamente.",
         "ISSUESFIND": "Errores encontrados",
@@ -607,7 +692,7 @@
         "QUESTIONADDED": "Se agregó la pregunta con éxito",
         "NOTPERMMITED": "No permitido",
         "SUCCESS": "¡Éxito!"
- 
+
       },
 
 
@@ -634,7 +719,7 @@
         "COMPLETED": "Contestadas:",
         "PENDING": "Pendientes:",
         "COMPLETEDPERCENT": "Completado:"
-        
+
 
       },
       "STRUCTURE": {
@@ -644,7 +729,9 @@
         "GRAND_FACTORS": "grandes factores",
         "FACTORS": "factores",
         "QUESTIONS": "preguntas",
-        "NO_QUESTIONS": "Este factor no tiene preguntas."
+        "NO_QUESTIONS": "Este factor no tiene preguntas.",
+        "SHOW_DETAILS": "Ver detalle",
+        "SHOW_LESS": "Contraer"
       },
       "EDITOR": {
         "SETUP": "Clasificación de la encuesta",
@@ -706,7 +793,7 @@
         "UPDATE_ERROR": "No fue posible actualizar el acceso. Se restauró el estado anterior.",
         "LOAD_ERROR": "No fue posible cargar los roles y accesos de la empresa."
       },
-      
+
       "ACCESSDATA": {
         "ACCESSDASHBOARD": "Visualizar el módulo Dashboard CLIMA",
         "ACCESSDASHBOARDDESC": "Permite la visualización del módulo.",
@@ -817,12 +904,12 @@
         "VIEWPLANEER": "Visualizar planes de acción para climas",
         "ADMINPLANEER": "Permite la visualización del módulo de planes de seguimiento para climas organizacionales"
 
-        
-      }
-    
 
-      
-     
+      }
+
+
+
+
     },
 
 
@@ -831,7 +918,7 @@
       "ACCESS": "ACCESOS",
       "ORGANIZATION_REQUIRED_TITLE": "Empresa requerida",
       "ORGANIZATION_REQUIRED_TEXT": "Selecciona una empresa en el encabezado antes de administrar usuarios."
-     
+
     },
 
     "EMAILCOMPOSE":{
@@ -867,6 +954,18 @@
       "SELECT_SCOPE_PENDING": "Selecciona el clima o modelo relacionado",
       "SEND": "Enviar correo",
       "SAVE_TEMPLATE": "Guardar plantilla",
+      "DELIVERY_PROGRESS": {
+        "EYEBROW": "Entrega en curso",
+        "TITLE": "Enviando correos",
+        "PREPARING": "Preparando los mensajes para cada destinatario...",
+        "SENDING": "Procesando la lista de destinatarios...",
+        "FINISHING": "Finalizando el envío y preparando el resultado...",
+        "DETAIL": "{{completed}} de {{total}} destinatarios procesados",
+        "PROCESSED": "Procesados",
+        "SUCCESSFUL": "Enviados",
+        "FAILED": "Fallidos",
+        "KEEP_OPEN": "No cierres esta ventana mientras termina el envío. El resumen aparecerá automáticamente."
+      },
       "TARGETS": {
         "EMAIL": "Correos específicos",
         "ALL_ACTIVE": "Todos los empleados activos",
@@ -981,12 +1080,12 @@
       "TURNSTILE_CONFIG_REQUIRED": "Configura la site key de Cloudflare Turnstile para habilitar el acceso.",
       "TURNSTILE_LOAD_ERROR": "No se pudo cargar la verificación de seguridad. Recarga la página e inténtalo de nuevo.",
 
-      
 
 
-      "ALLRIGHTS": "Todos los derechos reservados."  
-      
-      
+
+      "ALLRIGHTS": "Todos los derechos reservados."
+
+
 
 
     },
@@ -997,18 +1096,18 @@
       "NOTVALID": "La encuesta ya fue respondida.",
       "GREETEENGS": "te agradece por ayudar a hacer un mejor entorno laboral. Antes de llenar la encuesta ten en cuenta lo siguiente:",
       "TO": "a la encuesta",
-      "SURVEY": " ",
+      "SURVEY": "Encuesta",
       "CONDITION1": "*Esta encuesta solo se puede contestar una sola vez. Completa todas las preguntas en una sola sesión.",
       "CONDITION2": "*No cierres ni recargues la pestaña hasta finalizar, o podrías perder tus respuestas.",
       "CONDITION3": "*Sé honesto y sincero en tus respuestas; tu opinión es totalmente confidencial y muy valiosa",
       "CONDITION4": "*Si necesitas detenerte, asegúrate de responder todas las preguntas antes de cerrar.",
       "COMPLETED": "Completado",
-      
+
       "GREETEENGS_APDE": "Estimado Colaborador",
       "CONDITION1_APDE": "Nos interesa conocer tu opinión acerca del funcionamiento de Colegios APDE, cómo podemos mejorar el trabajo que hacemos y la forma en la que lo estamos realizando.",
       "CONDITION2_APDE": "Desde ya agradecemos tu tiempo y valoramos tu opinión acerca de los aspectos presentados a continuación.",
-      
-      
+
+
       "CONDITION3_APDE_1": "Te pedimos que respondas honestamente, toda la información que brindes la recibiremos de manera ",
       "CONDITION3_APDE_2": "anónima,",
       "CONDITION3_APDE_3": " por lo tanto ",
@@ -1016,9 +1115,9 @@
       "CONDITION3_APDE_5": " para que utilices este instrumento de forma constructiva y así ayudar a fortalecer nuestro ambiente laboral.",
 
       "SEND": "ENVIAR ENCUESTA"
-        
 
-      
+
+
     },
 
      "DYNAMIC": {
@@ -1033,9 +1132,9 @@
 
 
       "SEND": "ENVIAR ENCUESTA"
-        
 
-      
+
+
     },
 
     "TOUR": {
@@ -1116,10 +1215,10 @@
         "OVERVIEW_TITLE": "Administración de envíos",
         "OVERVIEW_TEXT": "Este diálogo muestra el estado del clima y permite administrar las encuestas de cada empleado.",
         "ACTIONS_TITLE": "Acciones masivas",
-        "ACTIONS_TEXT": "Asigna las encuestas a los empleados vigentes y realiza posteriormente los envíos pendientes.",
+        "ACTIONS_TEXT": "Selecciona empleados en la tabla para asignar, enviar o exportar únicamente esos registros.",
         "ASSIGN_SURVEYS": "Asignar encuestas",
-        "ASSIGN_DIALOG_TITLE": "Asignar las encuestas a todos los empleados",
-        "ASSIGN_DIALOG_TEXT": "Está a punto de asignar las encuestas a los empleados vigentes. Posteriormente podrá realizar los envíos.",
+        "ASSIGN_DIALOG_TITLE": "Asignar encuestas seleccionadas",
+        "ASSIGN_DIALOG_TEXT": "Se asignarán encuestas a <strong>{{count}}</strong> de los {{selected}} empleados seleccionados que aún no tienen una encuesta. Posteriormente podrá realizar los envíos.",
         "ASSIGN_CONFIRM": "Sí, asignar",
         "ASSIGN_CANCEL": "Cancelar",
         "SEND_PENDING": "Enviar pendientes",
@@ -1131,8 +1230,21 @@
         "EMPLOYEE_RESULTS": "Resultados por empleado",
         "SHOWING_RECORDS": "Mostrando {{shown}} de {{total}} registros",
         "DOWNLOAD_EXCEL": "Descargar Excel",
+        "DOWNLOAD_SELECTED": "Descargar seleccionados ({{count}})",
+        "SELECTED_SUMMARY": "{{selected}} empleados seleccionados · {{visible}} visibles con los filtros actuales",
+        "CLEAR_SELECTION": "Limpiar selección",
+        "SELECT_VISIBLE": "Seleccionar todos los empleados visibles",
+        "SELECT_EMPLOYEE": "Seleccionar a {{employee}}",
         "DELIVERY_TYPE": "Tipo de envío",
         "STATUS": "Estado",
+        "DEMOGRAPHIC_FILTER": "Demográfico",
+        "DEMOGRAPHIC_FIELD": "Campo demográfico",
+        "DEMOGRAPHIC_VALUES": "Valores demográficos",
+        "ALL_DEMOGRAPHICS": "Todos los demográficos",
+        "ALL_DEMOGRAPHIC_VALUES": "Todos los valores",
+        "DEMOGRAPHIC_WITHOUT_VALUE": "Sin información",
+        "CLEAR_DEMOGRAPHIC_FILTER": "Limpiar filtro demográfico",
+        "SELECTED_RECORDS": "Registros seleccionados",
         "ALL": "Todos",
         "EMAIL_CHANNEL": "Correo",
         "WHATSAPP_CHANNEL": "WhatsApp",
@@ -1171,15 +1283,27 @@
         "ERROR_TITLE": "Ocurrió un error",
         "SOMETHING_WRONG_TITLE": "Algo salió mal",
         "ASSIGN_SUCCESS": "Las encuestas fueron asignadas correctamente.",
+        "SELECTION_REQUIRED_TITLE": "Selecciona empleados",
+        "SELECTION_REQUIRED_TEXT": "Marca al menos un empleado en la tabla para realizar esta operación.",
+        "NO_ASSIGNABLE_TITLE": "Sin encuestas por asignar",
+        "NO_ASSIGNABLE_TEXT": "Los empleados seleccionados ya tienen una encuesta asignada.",
+        "NO_PENDING_TITLE": "Sin envíos pendientes",
+        "NO_PENDING_TEXT": "Ninguno de los empleados seleccionados tiene una encuesta creada pendiente de envío.",
+        "NO_INCOMPLETE_TITLE": "Sin encuestas pendientes de completar",
+        "NO_INCOMPLETE_TEXT": "Ninguno de los empleados seleccionados tiene una encuesta pendiente de completar.",
         "QUESTIONS_UNAVAILABLE": "No fue posible obtener las preguntas para este clima.",
         "NO_QUESTIONS": "La encuesta aún no tiene preguntas. Ingrese preguntas antes de enviarla a los empleados.",
         "QUESTIONS_ERROR": "Ocurrió un error al obtener las preguntas del clima: {{error}}",
         "SEND_ALL_TITLE": "Enviar encuestas",
-        "SEND_ALL_TEXT": "Se enviarán las encuestas pendientes a todos los empleados vigentes. ¿Desea continuar?",
-        "SEND_ALL_CONFIRM": "Sí, enviar todas",
+        "SEND_ALL_TEXT": "Se enviarán <strong>{{count}}</strong> encuestas creadas de los {{selected}} empleados seleccionados. ¿Desea continuar?",
+        "SEND_ALL_CONFIRM": "Sí, enviar seleccionadas",
         "SEND_INCOMPLETE_TITLE": "Enviar encuestas pendientes de completar",
-        "SEND_INCOMPLETE_TEXT": "Se reenviará la encuesta a los empleados que aún no la han completado. ¿Desea continuar?",
-        "SEND_INCOMPLETE_CONFIRM": "Sí, enviar las pendientes",
+        "SEND_INCOMPLETE_TEXT": "Se reenviará la encuesta a <strong>{{count}}</strong> de los {{selected}} empleados seleccionados que aún no la han completado. ¿Desea continuar?",
+        "SEND_INCOMPLETE_CONFIRM": "Sí, enviar seleccionadas",
+        "EMAIL_SUBJECT_LABEL": "Asunto del correo",
+        "EMAIL_SUBJECT_PLACEHOLDER": "Escribe el asunto que recibirán los empleados",
+        "EMAIL_SUBJECT_REQUIRED": "Ingresa el asunto del correo.",
+        "DEFAULT_EMAIL_SUBJECT": "Encuesta Clima Organizacional",
         "PROCESS_SUCCESS": "Proceso exitoso",
         "PROCESS_WITHOUT_SUCCESS": "No hubo envíos exitosos",
         "PROCESS_PARTIAL": "Proceso parcialmente exitoso",
@@ -1211,15 +1335,15 @@
         "BOTH_SEND_ERROR": "No fue posible enviar la encuesta por correo ni por WhatsApp.",
         "NO_DETAIL": "Sin detalle",
         "NO_EXPORT_DATA_TITLE": "Sin datos para exportar",
-        "NO_EXPORT_DATA_TEXT": "No hay registros visibles en la tabla para descargar.",
+        "NO_EXPORT_DATA_TEXT": "Selecciona al menos un empleado en la tabla para descargarlo.",
         "RESEND_UNAVAILABLE_TITLE": "Reenvío no disponible",
         "RESEND_UNAVAILABLE_TEXT": "La encuesta ya fue enviada. El modo demo no permite volver a enviarla.",
         "SUMMARY_TITLE": "Resumen de estados",
         "SUMMARY_TEXT": "Estas tarjetas muestran cuántas encuestas están creadas, enviadas, iniciadas y contestadas.",
         "FILTERS_TITLE": "Filtros de resultados",
-        "FILTERS_TEXT": "Filtra los registros por canal de envío o estado de la encuesta para localizar casos específicos.",
+        "FILTERS_TEXT": "Filtra por canal, estado o valores demográficos. El checkbox del encabezado selecciona únicamente los registros visibles.",
         "TABLE_TITLE": "Detalle por empleado",
-        "TABLE_TEXT": "Consulta los datos y el estado de cada encuesta. La última columna permite crear o enviar una encuesta individual."
+        "TABLE_TEXT": "Selecciona empleados para aplicar acciones masivas o exportarlos. La última columna conserva las acciones individuales."
       }
     },
 
@@ -1680,8 +1804,15 @@
       "SCENARIOS_HELP": "Asigna por puesto los escenarios que aplicarán y ajusta sus ponderaciones para que los activos de cada puesto sumen 100%.",
       "SCENARIOS_BY_POSITION_HELP": "Los escenarios marcados aquí determinan qué relaciones se crearán para este puesto dentro del modelo.",
       "SCENARIOS_BY_POSITION_EMPTY": "Selecciona al menos un puesto en la sección de participantes para asignar sus escenarios de evaluación.",
+      "SCENARIO_POSITIONS_TITLE": "Puestos a configurar",
       "SCENARIO": "Escenario",
       "SCENARIO_ACTIVE": "Activo",
+      "SCENARIO_RELATION_DESCRIPTION": {
+        "BOSS_TO_EMPLOYEE": "El jefe evalúa a {{position}}.",
+        "EMPLOYEE_TO_BOSS": "Los colaboradores evalúan a {{position}}.",
+        "PEER": "Los pares evalúan a {{position}}.",
+        "SELF": "La persona con el puesto {{position}} realiza su autoevaluación."
+      },
       "WEIGHT": "Ponderación",
       "ACTIVE_SCENARIOS_COUNT": "Escenarios activos: {{count}}",
       "SCENARIO_WEIGHT_TOTAL": "Ponderación total: {{total}}%",

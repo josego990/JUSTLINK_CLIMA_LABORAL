@@ -1,172 +1,260 @@
-<section class="content">
+<section class="content demographics-page">
   <div class="content-block">
     <div class="block-header">
-      <!-- breadcrumb -->
-      <app-breadcrumb [title]="'MENUITEMS.DEMOGRAPHICS.TEXT' | translate" [items]="['Home','DEMOGRAFICOS']" ></app-breadcrumb>
+      <app-breadcrumb
+        [title]="'MENUITEMS.DEMOGRAPHICS.TEXT' | translate"
+        [items]="['Home', 'DEMOGRAFICOS']">
+      </app-breadcrumb>
     </div>
-    <div class="row">
-      <div class="col-lg-12 col-md-12 col-sm-12 col-12">
-        <div style="margin-left: -50px;" class="card">
-          
-          <div class="body">
-            
 
+    <div class="demographics-workspace">
+      <div class="demographics-toolbar" role="toolbar">
+        <div class="demographics-toolbar__identity">
+          <span class="demographics-toolbar__icon" aria-hidden="true">
+            <mat-icon>tune</mat-icon>
+          </span>
+          <div>
+            <h2>{{ 'MENUITEMS.DEMOGRAPHICS.TITLE' | translate }}</h2>
+            <p>{{ 'MENUITEMS.DEMOGRAPHICS.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
 
-            <!-- Envuélvelo con un form que use [formGroup]="orgForm" -->
-            <div>
-              <div class="body table-responsive">
-                <table mat-table [dataSource]="dataSourceDemograficos" class="table">
+        <div class="demographics-toolbar__actions">
+          <button
+            mat-icon-button
+            type="button"
+            class="demographics-refresh-button"
+            [disabled]="!idOrganization"
+            [matTooltip]="'MENUITEMS.DEMOGRAPHICS.REFRESH' | translate"
+            [attr.aria-label]="'MENUITEMS.DEMOGRAPHICS.REFRESH' | translate"
+            (click)="getDemograficosByOrg()">
+            <mat-icon>refresh</mat-icon>
+          </button>
 
-                  <!-- Id -->
-                  <ng-container matColumnDef="Id">
-                    <th mat-header-cell *matHeaderCellDef> ID </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
-                  </ng-container>
-                
-                  <!-- IdOrganizacion -->
-                  <ng-container matColumnDef="IdOrganizacion">
-                    <th mat-header-cell *matHeaderCellDef> Id Org. </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.IdOrganizacion }} </td>
-                  </ng-container>
-                
-                  <!-- Nombres -->
-                  <ng-container matColumnDef="NombreCampo">
-                    <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.DEMOGRAPHICS.FIELD' | translate}} </th>
-                    <td mat-cell *matCellDef="let element"> {{ element.NombreCampo }} </td>
-                  </ng-container>
-                
-                  <!-- Apellidos -->
-                  <ng-container matColumnDef="TipoDato">
-                    <th mat-header-cell *matHeaderCellDef>{{'MENUITEMS.DEMOGRAPHICS.DATATYPE' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{ element.TipoDato }} </td>
-                  </ng-container>
-                
-                  <!-- NumeroIdentificacion -->
-                  <ng-container matColumnDef="FechaCreacion">
-                    <th mat-header-cell *matHeaderCellDef>{{'MENUITEMS.DEMOGRAPHICS.DATECREATE' | translate}}</th>
-                    <td mat-cell *matCellDef="let element"> {{ element.FechaCreacion }} </td>
-                  </ng-container>
-                
-                  <!-- TipoIdentificacion -->
-                  <ng-container matColumnDef="Estado">
-                    <th mat-header-cell *matHeaderCellDef>{{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}</th>
-                    <td mat-cell *matCellDef="let element">
-                      <mat-chip-set>
-                        <mat-chip
-                            [ngStyle]="isActive(element.Estado)
-                              ? {'background-color':'#e6f4ea','color':'#1e4620','border':'1px solid #c6e3cc'}
-                              : {'background-color':'#feeceb','color':'#7a1a16','border':'1px solid #f5c6c3'}"
-                            selected
-                          >
-                            {{ ('MENUITEMS.DEMOGRAPHICS.' + (isActive(element.Estado) ? 'ACTIVE' : 'INACTIVE')) | translate }}
-                          </mat-chip>
-                      </mat-chip-set>
-                    </td>
-                  </ng-container>
-                
-                  <!-- Acciones -->
-                  <ng-container matColumnDef="Acciones">
-                    <th mat-header-cell *matHeaderCellDef>{{'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate}}</th>
-                    <td mat-cell *matCellDef="let element">
-                      <a  mat-icon-button [color]="element.Estado === true ? 'warn' : 'accent'" 
-                              (click)="deleteItem(element)">
-                        <mat-icon>
-                          {{ element.Estado === true ? 'delete' : 'loop' }}
-                        </mat-icon>
-                      </a>
-                    </td>
-                  </ng-container>
-                
-                  <!-- Header & Row definitions -->
-                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
-                
-              </div>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            class="demographics-add-button"
+            [disabled]="isButtonDisabled"
+            (click)="openCreateDemographicDialog()">
+            <mat-icon>add</mat-icon>
+            <span>{{ 'MENUITEMS.DEMOGRAPHICS.CREATENEW' | translate }}</span>
+          </button>
+        </div>
+      </div>
 
-            
-              <mat-accordion>
-                <mat-expansion-panel [expanded]="false">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      {{'MENUITEMS.DEMOGRAPHICS.CREATENEW' | translate}}
-                    </mat-panel-title>
-                    <mat-panel-description>
-                      {{'MENUITEMS.DEMOGRAPHICS.EXPAND' | translate}}
-                    </mat-panel-description>
-                  </mat-expansion-panel-header>
+      <div class="demographics-summary-bar">
+        <div class="demographics-count">
+          <span class="demographics-count__icon" aria-hidden="true">
+            <mat-icon>badge</mat-icon>
+          </span>
+          <div>
+            <strong>{{ dataSourceDemograficos?.length || 0 }}</strong>
+            <span>{{ 'MENUITEMS.DEMOGRAPHICS.REGISTERED' | translate }}</span>
+          </div>
+        </div>
 
-                  <!-- Nuestro formulario con [formGroup]="orgForm" -->
-                  <form class="m-4" [formGroup]="demograficosForm" >
-                 
-                   
-                    
-                    <div class="row">
-                   
-                      <div class="col-md-6">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>ID Org.</mat-label>
-                          <input matInput formControlName="IdOrganizacion"/>
-                        </mat-form-field>
-                      </div>
-                
-                      <div class="col-md-6">
-                        <mat-form-field appearance="fill" class="w-100">
-                          <mat-label>{{'MENUITEMS.DEMOGRAPHICS.FIELD' | translate}} </mat-label>
-                          <input matInput formControlName="NombreCampo" required />
-                        </mat-form-field>
-                      </div>
-                    </div>
-                
-                  
-                     
-         
-                  </form>
-                  
-                  
-                  
-                  
-                  
-                  
-                  <!-- FIN formulario -->
+        <div class="demographics-selected-org">
+          <span>{{ 'MENUITEMS.DEMOGRAPHICS.SELECTEDORG' | translate }}</span>
+          <strong>{{ dataSourceOrganizations?.[0]?.Nombre || '-' }}</strong>
+        </div>
+      </div>
 
-                  <mat-dialog-actions align="end">
-                    <div class="save-actions">
-                      <button
-                        class="save-demographic-button"
-                        mat-raised-button
-                        color="primary"
-                        type="button"
-                        [disabled]="isSavingDemografico"
-                        (click)="onSubmit()"
-                      >
-                        <mat-spinner
-                          *ngIf="isSavingDemografico"
-                          class="save-button-spinner"
-                          diameter="18"
-                        ></mat-spinner>
-                        <span>
-                          {{ isSavingDemografico ? 'Guardando...' : ('MENUITEMS.DEMOGRAPHICS.SAVE' | translate) }}
-                        </span>
-                      </button>
+      <div class="demographics-table-panel">
+        <div class="demographics-table-scroll">
+          <table mat-table [dataSource]="dataSourceDemograficos" class="demographics-table">
+            <ng-container matColumnDef="Id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="demographics-id">#{{ element.Id }}</span>
+              </td>
+            </ng-container>
 
-                      <div class="saving-demographic-message" *ngIf="isSavingDemografico">
-                        <mat-spinner diameter="24"></mat-spinner>
-                        <span>Guardando campo demográfico, por favor espera...</span>
-                      </div>
-                    </div>
-                  </mat-dialog-actions>
+            <ng-container matColumnDef="NombreCampo">
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'MENUITEMS.DEMOGRAPHICS.FIELD' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element">
+                <div class="demographics-field-cell">
+                  <span class="demographics-field-cell__icon" aria-hidden="true">
+                    <mat-icon>dataset</mat-icon>
+                  </span>
+                  <div>
+                    <strong>{{ element.NombreCampo || '-' }}</strong>
+                    <span>{{ 'MENUITEMS.DEMOGRAPHICS.FIELDHELP' | translate }}</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
 
+            <ng-container matColumnDef="TipoDato">
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'MENUITEMS.DEMOGRAPHICS.DATATYPE' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element">
+                <span class="demographics-type-pill">
+                  {{ element.TipoDato || '-' }}
+                </span>
+              </td>
+            </ng-container>
 
-                </mat-expansion-panel>
-              </mat-accordion>
-            </div>
+            <ng-container matColumnDef="FechaCreacion">
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'MENUITEMS.DEMOGRAPHICS.DATECREATE' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element">
+                {{ element.FechaCreacion ? (element.FechaCreacion | date:'dd/MM/yyyy') : '-' }}
+              </td>
+            </ng-container>
 
-            
+            <ng-container matColumnDef="Estado">
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'MENUITEMS.DEMOGRAPHICS.STATE' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element">
+                <span
+                  class="demographics-status"
+                  [class.demographics-status--active]="isActive(element.Estado)"
+                  [class.demographics-status--inactive]="!isActive(element.Estado)">
+                  {{ ('MENUITEMS.DEMOGRAPHICS.' + (isActive(element.Estado) ? 'ACTIVE' : 'INACTIVE')) | translate }}
+                </span>
+              </td>
+            </ng-container>
 
+            <ng-container matColumnDef="Acciones">
+              <th mat-header-cell *matHeaderCellDef class="demographics-actions-header">
+                {{ 'MENUITEMS.DEMOGRAPHICS.ACTIONS' | translate }}
+              </th>
+              <td mat-cell *matCellDef="let element" class="demographics-actions-cell">
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="demographics-row-action"
+                  [class.demographics-row-action--delete]="isActive(element.Estado)"
+                  [class.demographics-row-action--restore]="!isActive(element.Estado)"
+                  [matTooltip]="(isActive(element.Estado)
+                    ? 'MENUITEMS.DEMOGRAPHICS.DEACTIVATE'
+                    : 'MENUITEMS.DEMOGRAPHICS.ACTIVATE') | translate"
+                  [attr.aria-label]="(isActive(element.Estado)
+                    ? 'MENUITEMS.DEMOGRAPHICS.DEACTIVATE'
+                    : 'MENUITEMS.DEMOGRAPHICS.ACTIVATE') | translate"
+                  (click)="deleteItem(element)">
+                  <mat-icon>{{ isActive(element.Estado) ? 'delete_outline' : 'restore' }}</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <div class="demographics-empty-state" *ngIf="!dataSourceDemograficos?.length">
+            <span class="demographics-empty-state__icon" aria-hidden="true">
+              <mat-icon>dataset</mat-icon>
+            </span>
+            <h3>{{ 'MENUITEMS.DEMOGRAPHICS.EMPTYTITLE' | translate }}</h3>
+            <p>{{ 'MENUITEMS.DEMOGRAPHICS.EMPTYDESC' | translate }}</p>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              [disabled]="isButtonDisabled"
+              (click)="openCreateDemographicDialog()">
+              <mat-icon>add</mat-icon>
+              {{ 'MENUITEMS.DEMOGRAPHICS.CREATENEW' | translate }}
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<ng-template #createDemographicDialog>
+  <div class="demographic-dialog-shell">
+    <div class="demographic-dialog-header">
+      <div class="demographic-dialog-title">
+        <span class="demographic-dialog-title__icon" aria-hidden="true">
+          <mat-icon>add_chart</mat-icon>
+        </span>
+        <div>
+          <h2>{{ 'MENUITEMS.DEMOGRAPHICS.CREATENEW' | translate }}</h2>
+          <p>{{ 'MENUITEMS.DEMOGRAPHICS.CREATEDIALOGSUBTITLE' | translate }}</p>
+        </div>
+      </div>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="demographic-dialog-close"
+        [disabled]="isSavingDemografico"
+        [attr.aria-label]="'MENUITEMS.DEMOGRAPHICS.CLOSE' | translate"
+        (click)="closeCreateDemographicDialog()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <form [formGroup]="demograficosForm" (ngSubmit)="onSubmit()">
+      <mat-dialog-content class="demographic-dialog-content">
+        <section class="demographic-form-section">
+          <div class="demographic-section-heading">
+            <span class="demographic-section-heading__icon" aria-hidden="true">
+              <mat-icon>badge</mat-icon>
+            </span>
+            <div>
+              <h3>{{ 'MENUITEMS.DEMOGRAPHICS.GENERALDATA' | translate }}</h3>
+              <p>{{ 'MENUITEMS.DEMOGRAPHICS.GENERALDATADESC' | translate }}</p>
+            </div>
+          </div>
+
+          <div class="demographic-form-grid">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="demographic-field">
+              <mat-label>ID Org.</mat-label>
+              <input matInput formControlName="IdOrganizacion" />
+              <mat-icon matSuffix>domain</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="demographic-field demographic-field--wide">
+              <mat-label>{{ 'MENUITEMS.DEMOGRAPHICS.FIELD' | translate }}</mat-label>
+              <input matInput formControlName="NombreCampo" required autocomplete="off" />
+              <mat-icon matSuffix>text_fields</mat-icon>
+              <mat-error *ngIf="demograficosForm.get('NombreCampo')?.hasError('required')">
+                {{ 'MENUITEMS.DEMOGRAPHICS.FIELDREQUIRED' | translate }}
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </section>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end" class="demographic-dialog-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          class="demographic-cancel-button"
+          [disabled]="isSavingDemografico"
+          (click)="closeCreateDemographicDialog()">
+          {{ 'MENUITEMS.DEMOGRAPHICS.CANCEL' | translate }}
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          class="demographic-save-button"
+          [disabled]="isSavingDemografico">
+          <mat-spinner
+            *ngIf="isSavingDemografico"
+            class="save-button-spinner"
+            diameter="18">
+          </mat-spinner>
+          <span>
+            {{ isSavingDemografico
+              ? ('MENUITEMS.DEMOGRAPHICS.SAVING' | translate)
+              : ('MENUITEMS.DEMOGRAPHICS.SAVE' | translate) }}
+          </span>
+        </button>
+      </mat-dialog-actions>
+    </form>
+  </div>
+</ng-template>

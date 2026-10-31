@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/core/guard/demo-super-admin.guard.ts"],
+  "sourcesContent": ["import { Injectable } from '@angular/core';\nimport { Router } from '@angular/router';\nimport { DemoLimitsService } from '../../config/demo-limits.service';\nimport { AuthService } from '../service/auth.service';\n\n@Injectable({\n  providedIn: 'root',\n})\nexport class DemoSuperAdminGuard {\n  constructor(\n    private authService: AuthService,\n    private demoLimitsService: DemoLimitsService,\n    private router: Router,\n  ) {}\n\n  canActivate() {\n    if (\n      !this.demoLimitsService.isDemoModeActive() ||\n      this.demoLimitsService.isSuperAdminRole(this.authService.currentUserValue?.roles)\n    ) {\n      return true;\n    }\n\n    return this.router.createUrlTree(['/profile']);\n  }\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAQM,IAAO,sBAAP,MAAO,qBAAmB;EAC9B,YACU,aACA,mBACA,QAAc;AAFd,SAAA,cAAA;AACA,SAAA,oBAAA;AACA,SAAA,SAAA;EACP;EAEH,cAAW;AACT,QACE,CAAC,KAAK,kBAAkB,iBAAgB,KACxC,KAAK,kBAAkB,iBAAiB,KAAK,YAAY,kBAAkB,KAAK,GAChF;AACA,aAAO;IACT;AAEA,WAAO,KAAK,OAAO,cAAc,CAAC,UAAU,CAAC;EAC/C;;;uCAhBW,sBAAmB,mBAAA,WAAA,GAAA,mBAAA,iBAAA,GAAA,mBAAA,MAAA,CAAA;IAAA;EAAA;;4EAAnB,sBAAmB,SAAnB,qBAAmB,WAAA,YAFlB,OAAM,CAAA;EAAA;;;sEAEP,qBAAmB,CAAA;UAH/B;WAAW;MACV,YAAY;KACb;;;",
+  "names": []
+}

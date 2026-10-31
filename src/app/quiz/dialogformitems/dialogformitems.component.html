@@ -54,6 +54,13 @@
         <mat-icon style="color: #217346;">file_download</mat-icon>
         <span style="color: #217346;">{{'MENUITEMS.QUIZ.DOWNLOADEXCELCLIMA' | translate}}</span>
       </button>
+      <button
+        [disabled]="!accessToUploadExcelClima || downloadingCurrentClimate"
+        mat-menu-item
+        (click)="downloadCurrentClimate()">
+        <mat-icon style="color: #217346;">download</mat-icon>
+        <span style="color: #217346;">{{'MENUITEMS.QUIZ.DOWNLOADCURRENTCLIMA' | translate}}</span>
+      </button>
      <!-- Botón para cargar Excel -->
       <button  [disabled]="!accessToUploadExcelClima" mat-menu-item (click)="fileInput.click()">
         <mat-icon style="color: #217346;">table_view</mat-icon>

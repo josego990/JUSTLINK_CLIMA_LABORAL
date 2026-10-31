@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/authentication/signin/signin.component.scss"],
+  "sourcesContent": [".turnstile-wrapper {\n  margin: 1rem 0 1.25rem;\n  width: 100%;\n}\n\n.turnstile-shell {\n  width: 100%;\n  min-height: 76px;\n  padding: 0.75rem 1rem;\n  border: 1px solid #d7dde8;\n  border-radius: 8px;\n  background: #fff;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n\n.turnstile-shell--disabled {\n  padding: 0;\n  min-height: 0;\n  border: 0;\n  background: transparent;\n}\n\n.turnstile-host {\n  min-height: 65px;\n  display: flex;\n  justify-content: center;\n  width: 100%;\n}\n\n.turnstile-host--disabled {\n  min-height: 0;\n}\n\n.turnstile-help {\n  margin-top: 0.5rem;\n  font-size: 0.875rem;\n}\n\n.turnstile-help--warning {\n  color: #b45309;\n}\n\n.turnstile-help--danger {\n  color: #b91c1c;\n}\n"],
+  "mappings": ";AAAA,CAAA;AACE,UAAA,KAAA,EAAA;AACA,SAAA;;AAGF,CAAA;AACE,SAAA;AACA,cAAA;AACA,WAAA,QAAA;AACA,UAAA,IAAA,MAAA;AACA,iBAAA;AACA,cAAA;AACA,WAAA;AACA,mBAAA;AACA,eAAA;;AAGF,CAAA;AACE,WAAA;AACA,cAAA;AACA,UAAA;AACA,cAAA;;AAGF,CAAA;AACE,cAAA;AACA,WAAA;AACA,mBAAA;AACA,SAAA;;AAGF,CAAA;AACE,cAAA;;AAGF,CAAA;AACE,cAAA;AACA,aAAA;;AAGF,CAAA;AACE,SAAA;;AAGF,CAAA;AACE,SAAA;;",
+  "names": []
+}

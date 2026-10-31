@@ -893,7 +893,7 @@ select * from jl_order order by 1 desc
 
     select * from dbo.Menu
     select * from dbo.MenuAction
-    .
+    
 
     JL_sp_Order_CreatePending
 
@@ -901,4 +901,18 @@ select * from jl_order order by 1 desc
 
 
 
+-----------OPTIMIZACION CARGA DE DATOS 
 
+EXEC dbo.DES_sp_Respuestas_Modelo_Agrupadas_Obtener
+    @IdOrganizacion = 29,
+    @IdModelo = 4;
+
+    select * from dbo.DES_Modelo
+
+
+    
+
+    EXEC dbo.DES_sp_Modelos_Listar
+    @IdOrganizacion = 29,
+    @Pagina = 1,
+    @Limite = 100;

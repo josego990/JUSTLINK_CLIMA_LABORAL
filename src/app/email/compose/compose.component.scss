@@ -438,6 +438,168 @@
   border-color: #9bc3d4;
 }
 
+.compose-send-progress-overlay {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgba(15, 39, 55, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.compose-send-progress-panel {
+  width: min(440px, 100%);
+  padding: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-top: 4px solid #ff8a1f;
+  border-radius: 8px;
+  background: #fffaf4;
+  box-shadow: 0 22px 60px rgba(15, 39, 55, 0.28);
+}
+
+.compose-send-progress-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 16px;
+  color: #fff;
+  border-radius: 50%;
+  background: #ff8a1f;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(255, 138, 31, 0.28);
+}
+
+.compose-send-progress-icon mat-icon {
+  width: 27px;
+  height: 27px;
+  font-size: 27px;
+}
+
+.compose-send-progress-heading span {
+  display: block;
+  margin-bottom: 4px;
+  color: #d7640a;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.compose-send-progress-heading h3 {
+  margin: 0;
+  color: #102c3e;
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.compose-send-progress-heading p {
+  min-height: 20px;
+  margin: 5px 0 0;
+  color: #61727e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.compose-send-progress-track {
+  height: 9px;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #e7ded4;
+}
+
+.compose-send-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #ff8a1f;
+  transition: width 220ms ease;
+}
+
+.compose-send-progress-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.compose-send-progress-summary strong {
+  color: #102c3e;
+  font-size: 14px;
+}
+
+.compose-send-progress-summary span {
+  color: #6b7983;
+  font-size: 10px;
+  text-align: right;
+}
+
+.compose-send-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+  border: 1px solid #eadfd4;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.compose-send-progress-stats > div {
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-right: 1px solid #eadfd4;
+}
+
+.compose-send-progress-stats > div:last-child {
+  border-right: 0;
+}
+
+.compose-send-progress-stats span {
+  color: #77848d;
+  font-size: 9px;
+  text-align: center;
+}
+
+.compose-send-progress-stats strong {
+  margin-top: 2px;
+  color: #18384c;
+  font-size: 17px;
+}
+
+.compose-send-progress-stat--success strong {
+  color: #178249;
+}
+
+.compose-send-progress-stat--failed strong {
+  color: #c43d37;
+}
+
+.compose-send-progress-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 16px;
+  color: #667681;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.compose-send-progress-note mat-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  color: #d7640a;
+  font-size: 16px;
+}
+
 .dark .compose-help-button {
   color: #8bc7dc;
   border-color: #385160;
@@ -511,6 +673,40 @@
   color: #f3a9b3;
   border-color: #643640;
   background: #2d1c21;
+}
+
+.dark .compose-send-progress-panel {
+  border-color: #43515e;
+  border-top-color: #ff8a1f;
+  background: #171d25;
+}
+
+.dark .compose-send-progress-heading h3,
+.dark .compose-send-progress-summary strong {
+  color: #edf2f5;
+}
+
+.dark .compose-send-progress-heading p,
+.dark .compose-send-progress-summary span,
+.dark .compose-send-progress-note {
+  color: #aab6bf;
+}
+
+.dark .compose-send-progress-track {
+  background: #3b4650;
+}
+
+.dark .compose-send-progress-stats {
+  border-color: #43515e;
+  background: #202832;
+}
+
+.dark .compose-send-progress-stats > div {
+  border-color: #43515e;
+}
+
+.dark .compose-send-progress-stats strong {
+  color: #edf2f5;
 }
 
 @media (max-width: 1199px) {
@@ -621,5 +817,13 @@
 
   .compose-action-buttons {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compose-send-progress-overlay {
+    padding: 14px;
+  }
+
+  .compose-send-progress-panel {
+    padding: 21px 18px;
   }
 }

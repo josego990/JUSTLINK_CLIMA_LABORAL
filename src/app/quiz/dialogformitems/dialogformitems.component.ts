@@ -40,6 +40,8 @@ import { DialogLikertPresetComponent } from '../dialoglikertpreset/dialoglikertp
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '@core';
 
@@ -171,6 +173,7 @@ export class DialogformItemsComponent implements OnInit {
   public jsonDatax: any | null = null;
 
   loading = false;
+  downloadingCurrentClimate = false;
   rows = [];
   newUserImg = 'assets/images/user/user1.jpg';
   datas: NgxDatablex[] = [];
@@ -1453,8 +1456,8 @@ export class DialogformItemsComponent implements OnInit {
 
   downloadExcelTemplate(): void {
     const url = this.langStoreValue === 'en'
-      ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH.xlsx'
-      : 'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL.xlsx';
+      ? 'https://justlink-objects.s3.us-east-1.amazonaws.com/Template_SURVEY_FORMAT_ENGLISH_v2.xlsx'
+      : 'https://justlink-clima360-objects.s3.us-east-1.amazonaws.com/Plantilla_ENCUESTA_FORMATO_ESPANOL_v2.xlsx';
 
     const filename = this.langStoreValue === 'en'
       ? 'SurveyTemplate_EN.xlsx'
@@ -1479,6 +1482,282 @@ export class DialogformItemsComponent implements OnInit {
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  async downloadCurrentClimate(): Promise<void> {
+    if (this.downloadingCurrentClimate) {
+      return;
+    }
+
+    this.downloadingCurrentClimate = true;
+
+    try {
+      const exportRows = this.buildCurrentClimateExcelRows();
+      if (exportRows.length === 0) {
+        await Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NO_CLIMATE_DATA_TITLE'),
+          text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.NO_CLIMATE_DATA_TEXT'),
+          icon: 'info',
+        });
+        return;
+      }
+
+      const templateUrl = new URL(
+        'assets/data/Plantilla_ENCUESTA_FORMATO_ESPANOL_v2.xlsx',
+        document.baseURI,
+      ).toString();
+      const response = await fetch(templateUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await response.arrayBuffer());
+
+      const worksheet = workbook.getWorksheet('ENCUESTA');
+      if (!worksheet) {
+        throw new Error('No se encontro la hoja ENCUESTA en la plantilla.');
+      }
+
+      const styleTemplates = {
+        survey: this.captureExcelRowStyle(worksheet, 2),
+        factor: this.captureExcelRowStyle(worksheet, 3),
+        question: this.captureExcelRowStyle(worksheet, 4),
+      };
+      const lastRowToClear = Math.max(worksheet.actualRowCount, exportRows.length + 1);
+
+      for (let rowNumber = 2; rowNumber <= lastRowToClear; rowNumber += 1) {
+        const row = worksheet.getRow(rowNumber);
+        for (let column = 1; column <= 4; column += 1) {
+          row.getCell(column).value = null;
+        }
+      }
+
+      exportRows.forEach((exportRow, index) => {
+        const row = worksheet.getRow(index + 2);
+        const styleTemplate = exportRow.type === 'ENCUESTA'
+          ? styleTemplates.survey
+          : exportRow.type === 'FACTOR'
+            ? styleTemplates.factor
+            : styleTemplates.question;
+
+        if (styleTemplate.height !== undefined) {
+          row.height = styleTemplate.height;
+        }
+        [exportRow.type, exportRow.label, exportRow.description, exportRow.options]
+          .forEach((value, columnIndex) => {
+            const cell = row.getCell(columnIndex + 1);
+            cell.value = value;
+            cell.style = this.cloneExcelConfig(styleTemplate.cells[columnIndex].style);
+            cell.dataValidation = this.cloneExcelConfig(
+              styleTemplate.cells[columnIndex].dataValidation,
+            );
+          });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(
+        new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        this.buildCurrentClimateExcelFilename(),
+      );
+    } catch (error) {
+      console.error('Error al descargar el clima en Excel:', error);
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.ERROR'),
+        text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CURRENT_CLIMATE_DOWNLOAD_ERROR'),
+        icon: 'error',
+      });
+    } finally {
+      this.downloadingCurrentClimate = false;
+    }
+  }
+
+  private buildCurrentClimateExcelRows(): Array<{
+    type: string;
+    label: string;
+    description: string;
+    options: string;
+  }> {
+    const rows: Array<{
+      type: string;
+      label: string;
+      description: string;
+      options: string;
+    }> = [];
+    const unsupportedTypes = new Set<string>();
+
+    for (const survey of this.granFactores || []) {
+      rows.push({
+        type: 'ENCUESTA',
+        label: this.getClimateExcelText(survey, ['label', 'Etiqueta', 'value']),
+        description: this.getClimateExcelText(survey, ['desc', 'Descripcion', 'description']),
+        options: '',
+      });
+
+      for (const factor of survey?.series || []) {
+        rows.push({
+          type: 'FACTOR',
+          label: this.getClimateExcelText(factor, ['label', 'Etiqueta', 'value']),
+          description: this.getClimateExcelText(factor, ['desc', 'Descripcion', 'description']),
+          options: '',
+        });
+
+        for (const question of factor?.fields || []) {
+          const questionType = this.getClimateExcelQuestionType(question);
+          if (!questionType) {
+            unsupportedTypes.add(String(question?.type ?? question?.Tipo ?? '-'));
+            continue;
+          }
+
+          rows.push({
+            type: questionType,
+            label: this.getClimateExcelText(question, ['label', 'Etiqueta', 'name', 'NombreCampo']),
+            description: this.getClimateExcelText(
+              question,
+              ['desc', 'Desc', 'Descripcion', 'description'],
+            ),
+            options: questionType === 'LISTA' || questionType === 'LISTA DEMOGRAFICO'
+              ? this.getClimateExcelQuestionOptions(question)
+              : '',
+          });
+        }
+      }
+    }
+
+    if (unsupportedTypes.size > 0) {
+      throw new Error(`Tipos de pregunta no compatibles: ${Array.from(unsupportedTypes).join(', ')}`);
+    }
+
+    return rows;
+  }
+
+  private getClimateExcelQuestionType(question: any): string {
+    const type = this.normalizeExcelText(question?.type ?? question?.Tipo).replace(/[ _-]+/g, ' ');
+
+    switch (type) {
+      case 'RADIO':
+      case 'LIKERT':
+        return 'LIKERT';
+      case 'TEXT':
+      case 'TEXTAREA':
+      case 'PREGUNTA ABIERTA':
+      case 'OPEN QUESTION':
+        return 'PREGUNTA ABIERTA';
+      case 'IATEXT':
+      case 'PREGUNTA IA':
+      case 'AI QUESTION':
+      case 'IA QUESTION':
+        return 'PREGUNTA IA';
+      case 'SLIDER':
+      case 'RANGO':
+      case 'RANGE':
+        return 'RANGO';
+      case 'SELECT':
+      case 'LISTA':
+      case 'LIST':
+        return 'LISTA';
+      case 'SELECTDEM':
+      case 'LISTA DEMOGRAFICO':
+      case 'DEMOGRAPHIC LIST':
+        return 'LISTA DEMOGRAFICO';
+      default:
+        return '';
+    }
+  }
+
+  private getClimateExcelQuestionOptions(question: any): string {
+    const rawOptions = question?.options ?? question?.Opciones;
+    const options = this.parseClimateExcelOptions(rawOptions);
+
+    if (options.length > 0) {
+      return options.join('|');
+    }
+
+    const storedList = question?.Lista ?? question?.lista;
+    return this.parseClimateExcelOptions(storedList).join('|');
+  }
+
+  private parseClimateExcelOptions(value: any): string[] {
+    if (Array.isArray(value)) {
+      return value
+        .map((option: any) => {
+          if (typeof option === 'string' || typeof option === 'number') {
+            return String(option).trim();
+          }
+
+          return this.getClimateExcelText(
+            option,
+            ['label', 'Etiqueta', 'text', 'Nombre', 'name', 'value', 'Valor'],
+          );
+        })
+        .filter(Boolean);
+    }
+
+    if (typeof value !== 'string' || !value.trim()) {
+      return [];
+    }
+
+    const normalizedValue = value.trim();
+    if (normalizedValue.startsWith('[')) {
+      try {
+        return this.parseClimateExcelOptions(JSON.parse(normalizedValue));
+      } catch {
+        // Continues with the pipe-delimited format expected by the template.
+      }
+    }
+
+    return normalizedValue.split('|').map((option) => option.trim()).filter(Boolean);
+  }
+
+  private getClimateExcelText(source: any, keys: string[]): string {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (value !== undefined && value !== null && String(value).trim()) {
+        return String(value).trim();
+      }
+    }
+
+    return '';
+  }
+
+  private captureExcelRowStyle(worksheet: ExcelJS.Worksheet, rowNumber: number): {
+    height: number | undefined;
+    cells: Array<{ style: any; dataValidation: any }>;
+  } {
+    const row = worksheet.getRow(rowNumber);
+    return {
+      height: row.height,
+      cells: [1, 2, 3, 4].map((column) => ({
+        style: this.cloneExcelConfig(row.getCell(column).style),
+        dataValidation: this.cloneExcelConfig(row.getCell(column).dataValidation),
+      })),
+    };
+  }
+
+  private cloneExcelConfig<T>(value: T): T {
+    return value == null ? value : JSON.parse(JSON.stringify(value));
+  }
+
+  private buildCurrentClimateExcelFilename(): string {
+    const climateName = String(this.card?.title || `Clima_${this.idFlujo}`)
+      .trim()
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+      .replace(/\s+/g, '_');
+    const now = new Date();
+    const timestamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('') + '_' + [
+      String(now.getHours()).padStart(2, '0'),
+      String(now.getMinutes()).padStart(2, '0'),
+      String(now.getSeconds()).padStart(2, '0'),
+    ].join('');
+
+    return `Clima_${climateName}_${timestamp}.xlsx`;
   }
 
   onGranFactorChange(event: any): void {

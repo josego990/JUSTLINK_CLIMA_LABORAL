@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/secure/configs/config.component.scss"],
+  "sourcesContent": [".config-disclaimer {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0 20px 16px;\n  padding: 12px 14px;\n  border: 1px solid #f59e0b;\n  border-radius: 4px;\n  background: #fff7ed;\n  color: #92400e;\n  font-size: 14px;\n  line-height: 1.4;\n\n  mat-icon {\n    flex: 0 0 auto;\n    color: #d97706;\n  }\n}\n"],
+  "mappings": ";AAAA,CAAA;AACE,WAAA;AACA,eAAA;AACA,OAAA;AACA,UAAA,EAAA,KAAA;AACA,WAAA,KAAA;AACA,UAAA,IAAA,MAAA;AACA,iBAAA;AACA,cAAA;AACA,SAAA;AACA,aAAA;AACA,eAAA;;AAEA,CAbF,kBAaE;AACE,QAAA,EAAA,EAAA;AACA,SAAA;;",
+  "names": []
+}

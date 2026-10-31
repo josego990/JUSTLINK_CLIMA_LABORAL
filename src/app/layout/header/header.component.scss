@@ -91,6 +91,43 @@
   }
 }
 
+:host-context(.light) {
+  .user_profile > button[mat-button] {
+    min-height: 44px;
+    padding: 3px 9px 3px 5px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .user_profile > button[mat-button]:hover {
+    border-color: #f1d1ae;
+    background: #fff5e9;
+  }
+
+  .user_profile .chip {
+    gap: 8px;
+  }
+
+  .user_profile .chip .user_img {
+    width: 36px !important;
+    height: 36px !important;
+    border: 2px solid #f59a43;
+    box-shadow: 0 0 0 2px #fff4e6;
+  }
+
+  .user_profile .user-text .user-username {
+    color: #17354a;
+    font-weight: 750;
+  }
+
+  .user_profile .user-text .user-fullname {
+    color: #6e7c87;
+    font-weight: 550;
+    opacity: 1;
+  }
+}
+
 ::ng-deep .app-dropdown:has(.dynamic-app-menu) {
   width: min(480px, calc(100vw - 28px));
   max-width: min(480px, calc(100vw - 28px)) !important;

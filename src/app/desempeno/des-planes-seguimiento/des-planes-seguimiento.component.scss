@@ -51,6 +51,32 @@
   white-space: nowrap;
 }
 
+.follow-filter-actions {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.justlink-pdf-button {
+  --mdc-outlined-button-container-shape: 8px;
+  --mdc-outlined-button-label-text-color: #102635;
+  --mdc-outlined-button-outline-color: rgba(255, 139, 37, 0.58);
+  background: #fff7ed !important;
+  border-color: rgba(255, 139, 37, 0.58) !important;
+  color: #102635 !important;
+  font-weight: 850;
+}
+
+.justlink-pdf-button mat-icon {
+  color: #ff7f1f;
+  margin-right: 5px;
+}
+
+.justlink-pdf-button:hover:not(:disabled) {
+  background: #ffe7c7 !important;
+  border-color: #ff8b25 !important;
+}
+
 .follow-loading,
 .follow-empty {
   align-items: center;
@@ -1402,6 +1428,11 @@ h2[mat-dialog-title] {
   .mini-score {
     align-items: flex-start;
     text-align: left;
+  }
+
+  .follow-filter-actions,
+  .follow-filter-actions button {
+    width: 100%;
   }
 
   .plan-form .wide {

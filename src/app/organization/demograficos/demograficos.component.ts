@@ -1,38 +1,30 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 
 import Swal from 'sweetalert2';
 
-import { FormBuilder, FormGroup, Validators, FormsModule,
+import { FormBuilder, Validators,
   ReactiveFormsModule, UntypedFormGroup
  } from '@angular/forms';
- import {
-  MAT_DATE_LOCALE,
-  MatOptionModule,
-  MatRippleModule,
-} from '@angular/material/core';
- import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { OrganizacionService } from '../services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
-import { MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
-import { CommonModule, DatePipe } from '@angular/common'; 
+import { CommonModule } from '@angular/common';
 import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 import { AuthService } from '@core';
 
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../core/service/language.service';
-import { TranslateModule } from '@ngx-translate/core'; 
-import { MatChipsModule } from '@angular/material/chips';
+import { TranslateModule } from '@ngx-translate/core';
 import { DemoLimitsService } from 'app/config/demo-limits.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subscription } from 'rxjs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-demograficos-organizacion',
@@ -40,27 +32,25 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./demograficos.component.scss'],
 
   imports: [
-    BreadcrumbComponent,MatChipsModule,
+    BreadcrumbComponent,
     MatDialogModule,
     MatTableModule,
     MatIconModule,
-    MatExpansionModule,
-    FormsModule,
     ReactiveFormsModule,
     MatFormFieldModule,
-    MatOptionModule,
-    MatRippleModule,
-    MatSelectModule,
     MatButtonModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     CommonModule,
     TranslateModule,
 ],
 })
 export class CrearDemograficosComponent implements OnDestroy, OnInit {
+  @ViewChild('createDemographicDialog') createDemographicDialog?: TemplateRef<unknown>;
+
   public demograficosForm: UntypedFormGroup;
-  public dialogRef?: MatDialogRef<CrearDemograficosComponent> 
+  public dialogRef?: MatDialogRef<unknown>;
 
   public dataSourceOrganizations:any = [];
   public dataSourceDemograficos:any = [];
@@ -75,7 +65,6 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
 
   displayedColumns: string[] = [
     'Id',
-    'IdOrganizacion',
     'NombreCampo',
     'TipoDato',
     'FechaCreacion',
@@ -87,7 +76,8 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
     private fb: FormBuilder,private router: Router,private authService: AuthService,
     private organizacionService: OrganizacionService,private languageService: LanguageService,private translate: TranslateService,
     private demoLimitsService: DemoLimitsService,
-    
+    private dialog: MatDialog,
+
   ) {
     // Inicializamos el formulario y definimos validaciones:
     this.demograficosForm = this.fb.group({
@@ -95,7 +85,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
       NombreCampo: ['', Validators.required],
     });
 
-    
+
   }
 
   existsRoute(routes: RouteInfo[], target: string): boolean {
@@ -104,7 +94,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
       this.existsRoute(route.submenu, target)
     );
   }
-  
+
   ngOnInit() {
 
     //jjg aquí se cambia el idioma al cargar
@@ -118,7 +108,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
     });
 
    //console.log('CURRENT USER DESDE EMPLOYEE:: ', this.authService.currentUserValue);
-  
+
     const stored = sessionStorage.getItem('routes');
     if (stored) {
       const routes: RouteInfo[] = JSON.parse(stored);
@@ -194,21 +184,21 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
   onOrganizationChange(selectedId: number) {
    //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
-    
+
     if(selectedId > 0){
       this.idOrganization = selectedId;
       this.demograficosForm.get('IdOrganizacion')?.setValue(selectedId);
       this.getDemograficosByOrg();
       this.isButtonDisabled = false;
     }
-    
+
   }
 
   getOrganizations(): void {
     this.organizacionService.getOrganizations()
         .then((response:any) => {
          //console.log('Organizaciones:', JSON.stringify(response.data));
-          
+
           this.dataSourceOrganizations = response.data;
         })
         .catch((error:any) => {
@@ -224,15 +214,15 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
     this.organizacionService.getOrganizationById(idOrganization)
         .then((response:any) => {
           ////console.log('Organizaciones:', JSON.stringify(response.data));
-          
+
           this.dataSourceOrganizations = response.data;
 
           this.idOrganization = idOrganization;
-       
+
 
           //this.getEmployeesByOrg();
           this.getDemograficosByOrg();
-         
+
 
         })
         .catch((error:any) => {
@@ -241,15 +231,51 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
   }
 
   getDemograficosByOrg(): void {
+    if (!this.idOrganization) {
+      this.dataSourceDemograficos = [];
+      return;
+    }
+
     this.organizacionService.getDemograficos(this.idOrganization)
       .then((response:any) => {
         //console.log('Empleados:', JSON.stringify(response.data));
-        
+
         this.dataSourceDemograficos = response.data;
       })
       .catch((error:any) => {
         console.error('Error al obtener organizaciones:', error);
       });
+  }
+
+  openCreateDemographicDialog(): void {
+    if (!this.idOrganization || !this.createDemographicDialog) {
+      return;
+    }
+
+    this.demograficosForm.reset({
+      IdOrganizacion: this.idOrganization,
+      NombreCampo: '',
+    });
+    this.demograficosForm.markAsPristine();
+    this.demograficosForm.markAsUntouched();
+
+    this.dialogRef = this.dialog.open(this.createDemographicDialog, {
+      width: 'min(560px, calc(100vw - 32px))',
+      maxWidth: '96vw',
+      panelClass: 'demographic-dialog-panel',
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: this.isSavingDemografico,
+    });
+  }
+
+  closeCreateDemographicDialog(): void {
+    if (this.isSavingDemografico) {
+      return;
+    }
+
+    this.dialogRef?.close();
+    this.dialogRef = undefined;
   }
 
   deleteDemografico(idDemografico:number): void {
@@ -261,7 +287,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
                   title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
                   text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDDEACTIVATE'),
                   icon: 'success',
-                });      
+                });
     })
     .catch((error:any) => {
       console.error('Error al eliminar campo:', error);
@@ -282,7 +308,7 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
         title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
         text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDACTIVATE'),
         icon: 'success',
-      });      
+      });
     })
     .catch((error:any) => {
       console.error('Error al activar campo:', error);
@@ -325,12 +351,17 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
         .then((response:any) => {
          //console.log('Campo creado?:', response.data);
           this.getDemograficosByOrg();
-          this.demograficosForm.get('IdOrganizacion')?.setValue('');
+          this.demograficosForm.reset({
+            IdOrganizacion: this.idOrganization,
+            NombreCampo: '',
+          });
+          this.dialogRef?.close();
+          this.dialogRef = undefined;
           Swal.fire({
             title: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.SUCCESS'),
             text: this.translate.instant('MENUITEMS.DEMOGRAPHICS.MESSAGES.FIELDADDED'),
             icon: 'success',
-          });          
+          });
         })
         .catch((error:any) => {
           console.error('Error al crear campo:', error.response.data.error);
@@ -343,15 +374,16 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
         .finally(() => {
           this.isSavingDemografico = false;
         });
-  
+
     } else {
       console.warn('Formulario inválido');
+      this.demograficosForm.markAllAsTouched();
     }
   }
 
   deleteItem(item:any){
    //console.log('DELETE ITEM:: ', item);
-    
+
 
     if (item.Estado === true) {
       // Acción de desactivación
@@ -362,40 +394,40 @@ export class CrearDemograficosComponent implements OnDestroy, OnInit {
     }
 
   }
-  
+
 
   parseFechaManual(fechaTexto: string): string | null {
     if (!fechaTexto || typeof fechaTexto !== 'string') {
       console.warn('Fecha vacía o no es string:', fechaTexto);
       return null;
     }
-  
+
     const partes = fechaTexto.split('/');
     if (partes.length !== 3) {
       console.warn('La fecha no tiene 3 partes:', fechaTexto);
       return null;
     }
-  
+
     const [diaStr, mesStr, anioStr] = partes;
-  
+
     const dia = parseInt(diaStr, 10);
     const mes = parseInt(mesStr, 10) - 1;
     const anio = parseInt(anioStr, 10);
-  
+
     const fecha = new Date(anio, mes, dia);
-  
+
     if (isNaN(fecha.getTime())) {
       console.warn('La fecha es inválida:', fechaTexto, fecha);
       return null;
     }
-  
+
     // Retornar formato YYYY-MM-DD
     return fecha.toISOString().split('T')[0];
   }
-  
-  
 
-  
-  
- 
+
+
+
+
+
 }

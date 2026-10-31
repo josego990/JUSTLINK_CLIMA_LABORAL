@@ -1,0 +1,863 @@
+/* JustLink 360 light brand layer. Dark mode keeps its current palette. */
+body.light {
+  --jl-navy: #112d40;
+  --jl-navy-soft: #173d56;
+  --jl-orange: #f58b2a;
+  --jl-orange-strong: #d97018;
+  --jl-orange-soft: #fff0df;
+  --jl-cream: #fffaf4;
+  --jl-surface: #fffdf9;
+  --jl-border: #eadfce;
+  --jl-border-strong: #dec9ae;
+  --jl-text: #1f3748;
+  --jl-muted: #6e7d87;
+  background: #f6f1ea;
+  color: var(--jl-text);
+}
+
+body.light .navbar,
+body.light .navbar.active {
+  border-bottom: 1px solid var(--jl-border);
+  background: var(--jl-cream) !important;
+  box-shadow: 0 3px 16px rgba(18, 43, 61, 0.06);
+}
+
+body.light .navbar .container-fluid {
+  box-shadow: none;
+}
+
+body.light .navbar .nav-notification-icons,
+body.light .navbar .collapse-menu-icon .sidemenu-collapse {
+  color: var(--jl-navy);
+  border-radius: 6px;
+}
+
+body.light .navbar .nav-notification-icons:hover,
+body.light .navbar .collapse-menu-icon .sidemenu-collapse:hover {
+  color: var(--jl-orange-strong);
+  background: var(--jl-orange-soft);
+}
+
+body.light .navbar .header-icon,
+body.light .navbar .header-icon .feather,
+body.light .navbar .nav-notification-icons .mat-icon {
+  color: currentColor;
+}
+
+body.light .org-context-field .mat-mdc-text-field-wrapper {
+  border-radius: 6px;
+  background: var(--jl-surface) !important;
+}
+
+body.light .org-context-field .mdc-notched-outline__leading,
+body.light .org-context-field .mdc-notched-outline__notch,
+body.light .org-context-field .mdc-notched-outline__trailing {
+  border-color: var(--jl-border-strong) !important;
+}
+
+body.light section.content {
+  color: var(--jl-text);
+}
+
+body.light .breadcrumb-main .page-title {
+  color: var(--jl-navy);
+  font-weight: 750;
+}
+
+body.light .breadcrumb-main .breadcrumb-list,
+body.light .breadcrumb-main li.active {
+  color: var(--jl-muted);
+}
+
+body.light .breadcrumb-main li a,
+body.light .breadcrumb-main .breadcrumb-icon .feather {
+  color: var(--jl-orange-strong) !important;
+}
+
+body.light .card,
+body.light .mat-mdc-card,
+body.light .mat-expansion-panel,
+body.light .mat-drawer-container {
+  border-color: var(--jl-border);
+  background: var(--jl-surface);
+}
+
+body.light .card,
+body.light .mat-mdc-card {
+  border-radius: 8px;
+  box-shadow: 0 7px 18px rgba(18, 43, 61, 0.045);
+}
+
+body.light .card .header,
+body.light .mat-mdc-card-header {
+  border-color: #eee2d3;
+  color: var(--jl-navy);
+}
+
+body.light .card .header h2,
+body.light .mat-mdc-card-header .mat-mdc-card-title,
+body.light .card .card-inside-title {
+  color: var(--jl-navy);
+  font-weight: 700;
+}
+
+body.light .mat-expansion-panel-header:hover,
+body.light .mat-expansion-panel-header.mat-expanded {
+  background: #fff7ee;
+}
+
+body.light .mat-expansion-panel-header-title,
+body.light .mat-expansion-panel-header-description {
+  color: var(--jl-navy);
+}
+
+body.light .mat-mdc-form-field {
+  --mdc-outlined-text-field-outline-color: #dac7af;
+  --mdc-outlined-text-field-hover-outline-color: #bb9165;
+  --mdc-outlined-text-field-focus-outline-color: #e4771e;
+  --mdc-outlined-text-field-focus-label-text-color: #c96819;
+  --mdc-filled-text-field-container-color: #fffaf4;
+  --mdc-filled-text-field-active-indicator-color: #d9c4a8;
+  --mdc-filled-text-field-focus-active-indicator-color: #e4771e;
+  --mat-select-focused-arrow-color: #c96819;
+}
+
+body.light .mat-mdc-text-field-wrapper {
+  border-radius: 6px;
+  background: var(--jl-surface);
+}
+
+body.light .mat-mdc-input-element,
+body.light .mat-mdc-select-value,
+body.light .mat-mdc-select-arrow,
+body.light .mdc-floating-label {
+  color: var(--jl-text);
+}
+
+body.light .mat-mdc-form-field-hint,
+body.light .mat-mdc-form-field-error {
+  font-weight: 550;
+}
+
+body.light .mat-mdc-raised-button.mat-primary,
+body.light .mat-mdc-unelevated-button.mat-primary,
+body.light .mat-mdc-fab.mat-primary,
+body.light .mat-mdc-mini-fab.mat-primary {
+  --mdc-protected-button-container-color: var(--jl-orange);
+  --mdc-protected-button-label-text-color: #112d40;
+  --mdc-filled-button-container-color: var(--jl-orange);
+  --mdc-filled-button-label-text-color: #112d40;
+  box-shadow: 0 5px 12px rgba(217, 112, 24, 0.18);
+}
+
+body.light .btn-primary,
+body.light .formSubmitBtn {
+  color: #112d40 !important;
+  border-color: var(--jl-orange) !important;
+  background: var(--jl-orange) !important;
+  box-shadow: 0 5px 12px rgba(217, 112, 24, 0.16);
+}
+
+body.light .btn-primary:hover,
+body.light .formSubmitBtn:hover {
+  border-color: var(--jl-orange-strong) !important;
+  background: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-outlined-button.mat-primary,
+body.light .btn-outline-primary {
+  --mdc-outlined-button-outline-color: #d7b993;
+  --mdc-outlined-button-label-text-color: var(--jl-navy);
+  color: var(--jl-navy) !important;
+  border-color: #d7b993 !important;
+  background: var(--jl-surface) !important;
+}
+
+body.light .mat-mdc-outlined-button.mat-primary:hover,
+body.light .btn-outline-primary:hover {
+  color: #a95310 !important;
+  border-color: #efa963 !important;
+  background: var(--jl-orange-soft) !important;
+}
+
+body.light .mat-mdc-button:not(:disabled),
+body.light .mat-mdc-icon-button:not(:disabled) {
+  --mdc-text-button-label-text-color: var(--jl-navy);
+  --mdc-icon-button-icon-color: var(--jl-navy);
+}
+
+body.light .mat-mdc-checkbox {
+  --mdc-checkbox-selected-icon-color: var(--jl-orange-strong);
+  --mdc-checkbox-selected-hover-icon-color: var(--jl-orange-strong);
+  --mdc-checkbox-selected-focus-icon-color: var(--jl-orange-strong);
+  --mdc-checkbox-selected-pressed-icon-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-radio-button {
+  --mdc-radio-selected-icon-color: var(--jl-orange-strong);
+  --mdc-radio-selected-hover-icon-color: var(--jl-orange-strong);
+  --mdc-radio-selected-focus-icon-color: var(--jl-orange-strong);
+  --mdc-radio-selected-pressed-icon-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-tab-group {
+  --mat-tab-header-active-label-text-color: var(--jl-navy);
+  --mat-tab-header-active-ripple-color: var(--jl-orange);
+  --mat-tab-header-inactive-label-text-color: #667985;
+  --mat-tab-header-active-focus-label-text-color: var(--jl-navy);
+  --mat-tab-header-active-hover-label-text-color: var(--jl-navy);
+  --mdc-tab-indicator-active-indicator-color: var(--jl-orange);
+}
+
+body.light .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+  font-weight: 750;
+}
+
+body.light .mat-mdc-table,
+body.light .mat-table,
+body.light table.table {
+  background: var(--jl-surface);
+}
+
+body.light .mat-mdc-header-row,
+body.light .mat-header-row,
+body.light table.table thead th {
+  background: #fff4e6;
+}
+
+body.light .mat-mdc-header-cell,
+body.light .mat-header-cell,
+body.light table.table thead th {
+  color: var(--jl-navy);
+  border-bottom-color: #ead8c2;
+  font-weight: 750;
+}
+
+body.light .mat-mdc-cell,
+body.light .mat-cell,
+body.light table.table td {
+  color: #3e5361;
+  border-bottom-color: #f0e6da;
+}
+
+body.light .mat-mdc-row:hover,
+body.light .mat-row:hover,
+body.light table.table tbody tr:hover {
+  background: #fff8ef;
+}
+
+body.light .mat-mdc-paginator {
+  color: var(--jl-muted);
+  border-top: 1px solid #eee2d3;
+  background: var(--jl-surface);
+}
+
+body.light .page-item.active .page-link {
+  border-color: var(--jl-orange);
+  background: var(--jl-orange);
+  box-shadow: 0 4px 10px rgba(217, 112, 24, 0.18);
+}
+
+body.light .mat-mdc-menu-panel,
+body.light .mat-mdc-select-panel,
+body.light .mat-autocomplete-panel {
+  border: 1px solid var(--jl-border);
+  border-radius: 7px;
+  background: var(--jl-surface);
+  box-shadow: 0 10px 24px rgba(18, 43, 61, 0.12);
+}
+
+body.light .mat-mdc-menu-item,
+body.light .mat-mdc-option {
+  color: var(--jl-text);
+}
+
+body.light .mat-mdc-menu-item:hover,
+body.light .mat-mdc-option:hover:not(.mdc-list-item--disabled),
+body.light .mat-mdc-option.mat-mdc-option-active {
+  background: var(--jl-orange-soft);
+}
+
+body.light .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  background: #ffe7ca;
+}
+
+body.light .mat-mdc-dialog-container .mdc-dialog__surface {
+  border: 1px solid var(--jl-border);
+  border-radius: 8px;
+  background: var(--jl-surface);
+  box-shadow: 0 18px 42px rgba(18, 43, 61, 0.18);
+}
+
+body.light .mat-mdc-dialog-container .mdc-dialog__title {
+  color: var(--jl-navy);
+  border-bottom: 1px solid #efe2d3;
+  font-weight: 750;
+}
+
+body.light .mat-mdc-dialog-actions {
+  border-top: 1px solid #efe2d3;
+}
+
+body.light .mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--jl-navy);
+  --mdc-snackbar-supporting-text-color: #fffaf4;
+  --mat-snack-bar-button-color: #ffd099;
+}
+
+body.light .swal2-popup {
+  border: 1px solid var(--jl-border);
+  border-radius: 8px;
+  background: var(--jl-surface);
+  color: var(--jl-text);
+}
+
+body.light .swal2-title {
+  color: var(--jl-navy);
+}
+
+body.light .swal2-confirm {
+  border-radius: 6px !important;
+  background: var(--jl-orange) !important;
+  color: var(--jl-navy) !important;
+}
+
+body.light .swal2-cancel {
+  border-radius: 6px !important;
+  background: #e6ecee !important;
+  color: var(--jl-navy) !important;
+}
+
+body.light .org-filter-panel {
+  border-color: var(--jl-border);
+  border-radius: 8px;
+  background: var(--jl-surface);
+  box-shadow: 0 7px 18px rgba(18, 43, 61, 0.045);
+}
+
+body.light .org-filter-title {
+  color: var(--jl-navy);
+}
+
+body.light .org-filter-help,
+body.light .org-filter-count {
+  color: var(--jl-muted);
+}
+
+body.light .org-filter-item {
+  border-color: #eadfce;
+  border-radius: 6px;
+  background: #fff7ee;
+}
+
+body.light .dynamic-app-menu {
+  padding: 12px;
+  background: var(--jl-surface);
+}
+
+body.light .dynamic-app-menu__header {
+  color: var(--jl-navy);
+  font-weight: 750;
+}
+
+body.light .dynamic-app-grid__item {
+  color: var(--jl-navy);
+  border-radius: 6px;
+}
+
+body.light .dynamic-app-grid__item:hover:not(:disabled),
+body.light .dynamic-app-grid__item:focus-visible:not(:disabled) {
+  border-color: #f0c18f;
+  background: #fff2e3;
+}
+
+body.light .dynamic-app-grid__icon {
+  color: #c9691c;
+  border-radius: 6px;
+  background: #ffe7ca;
+}
+
+body.light .dynamic-app-grid__label,
+body.light .dynamic-app-menu__empty {
+  color: var(--jl-navy);
+}
+
+body.light .profile-menu .user-item-list {
+  color: var(--jl-text);
+}
+
+body.light .profile-menu .user-item-list:hover {
+  color: var(--jl-orange-strong);
+  background: var(--jl-orange-soft);
+}
+
+body.light .mat-mdc-chip,
+body.light .mat-mdc-chip.mat-mdc-standard-chip {
+  color: #8f4d18;
+  border: 1px solid #f0c79d;
+  border-radius: 6px;
+  background: #fff1e2;
+}
+
+body.light .mat-button-toggle-group {
+  border-color: var(--jl-border-strong);
+  border-radius: 6px;
+  background: var(--jl-surface);
+}
+
+body.light .mat-button-toggle {
+  color: var(--jl-text);
+  border-color: var(--jl-border);
+  background: transparent;
+}
+
+body.light .mat-button-toggle-checked {
+  color: var(--jl-navy);
+  background: #ffe8cc;
+}
+
+body.light .mat-stepper-horizontal,
+body.light .mat-stepper-vertical {
+  border: 1px solid var(--jl-border);
+  border-radius: 8px;
+  background: var(--jl-surface);
+}
+
+body.light .mat-step-header .mat-step-icon,
+body.light .mat-step-header .mat-step-icon-selected,
+body.light .mat-step-header .mat-step-icon-state-done {
+  color: var(--jl-navy);
+  background: #ffe1bc;
+}
+
+body.light .mat-step-header .mat-step-label,
+body.light .mat-step-header .mat-step-label.mat-step-label-active {
+  color: var(--jl-text);
+}
+
+body.light .mat-datepicker-content,
+body.light .mat-calendar,
+body.light .mat-timepicker-content {
+  border: 1px solid var(--jl-border);
+  border-radius: 8px;
+  background: var(--jl-surface);
+  color: var(--jl-text);
+}
+
+body.light .mat-calendar-body-selected,
+body.light .mat-calendar-body-cell-content:hover {
+  color: var(--jl-navy);
+  background: #ffe1bc;
+}
+
+body.light .mat-calendar-body-today:not(.mat-calendar-body-selected) {
+  border-color: var(--jl-orange);
+}
+
+body.light .mat-mdc-progress-spinner {
+  --mdc-circular-progress-active-indicator-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-progress-bar {
+  --mdc-linear-progress-active-indicator-color: var(--jl-orange);
+  --mdc-linear-progress-track-color: #f6e7d6;
+}
+
+body.light .dropdown-menu,
+body.light .ng-dropdown-panel,
+body.light .ng-select .ng-select-container {
+  border-color: var(--jl-border);
+  border-radius: 6px;
+  background: var(--jl-surface);
+  box-shadow: 0 10px 24px rgba(18, 43, 61, 0.1);
+}
+
+body.light .dropdown-menu .dropdown-item:hover,
+body.light .ng-dropdown-panel .ng-option:hover,
+body.light .ng-dropdown-panel .ng-option-marked {
+  color: var(--jl-navy);
+  background: var(--jl-orange-soft);
+}
+
+body.light .badge:not(.bg-success):not(.bg-danger):not(.bg-warning):not(.bg-info) {
+  color: #945019;
+  border: 1px solid #f0c89f;
+  border-radius: 5px;
+  background: #fff0df;
+}
+
+/* Final light-mode brand normalization for Material, dialogs and reusable modules. */
+body.light {
+  --jl-focus-ring: rgba(245, 139, 42, 0.18);
+  --jl-panel-shadow: 0 10px 24px rgba(18, 43, 61, 0.08);
+  --jl-row-hover: #fff8ef;
+  --jl-row-selected: #ffe8cc;
+}
+
+body.light .mat-mdc-dialog-container {
+  --mdc-dialog-container-color: var(--jl-surface);
+  --mdc-dialog-subhead-color: var(--jl-navy);
+  --mdc-dialog-supporting-text-color: var(--jl-text);
+}
+
+body.light .mat-mdc-dialog-container .mdc-dialog__surface,
+body.light .mat-mdc-dialog-surface,
+body.light .climate-editor-dialog-panel .mat-mdc-dialog-surface,
+body.light .climate-send-dialog-panel .mat-mdc-dialog-surface,
+body.light .employee-create-dialog .mat-mdc-dialog-surface,
+body.light .employee-edit-dialog-panel .mat-mdc-dialog-surface,
+body.light .organization-form-dialog .mat-mdc-dialog-surface,
+body.light .demographic-dialog-panel .mat-mdc-dialog-surface,
+body.light .des-evaluaciones-dialog-panel .mat-mdc-dialog-surface,
+body.light .criteria-bank-editor-dialog .mat-mdc-dialog-surface,
+body.light .criteria-bank-import-dialog .mat-mdc-dialog-surface {
+  border: 1px solid var(--jl-border) !important;
+  border-radius: 8px !important;
+  background: var(--jl-surface) !important;
+  color: var(--jl-text) !important;
+  box-shadow: 0 18px 42px rgba(18, 43, 61, 0.18) !important;
+}
+
+body.light .climate-editor-dialog,
+body.light .climate-send-dialog,
+body.light .employee-create-shell,
+body.light .employee-edit-shell,
+body.light .organization-dialog-shell,
+body.light .demographic-dialog-shell {
+  --editor-ink: var(--jl-text);
+  --editor-muted: var(--jl-muted);
+  --editor-line: var(--jl-border);
+  --editor-panel: var(--jl-surface);
+  --editor-soft: var(--jl-cream);
+  --editor-blue: var(--jl-orange-strong);
+  --employee-ink: var(--jl-text);
+  --employee-muted: var(--jl-muted);
+  --employee-line: var(--jl-border);
+  --employee-soft: var(--jl-cream);
+  --employee-panel: var(--jl-surface);
+  --employee-header: var(--jl-cream);
+  --employee-footer: var(--jl-surface);
+  --employee-title-icon-bg: var(--jl-orange-soft);
+  --employee-section-icon-bg: var(--jl-orange-soft);
+  --employee-blue: var(--jl-orange-strong);
+  --dialog-ink: var(--jl-text);
+  --dialog-muted: var(--jl-muted);
+  --dialog-line: var(--jl-border);
+  --dialog-panel: var(--jl-surface);
+  --dialog-soft: var(--jl-cream);
+  --dialog-header: var(--jl-cream);
+  --send-surface: var(--jl-surface);
+  --send-surface-soft: var(--jl-cream);
+  --send-surface-strong: #fff4e6;
+  --send-border: var(--jl-border);
+  --send-border-strong: var(--jl-border-strong);
+  --send-text: var(--jl-text);
+  --send-text-soft: var(--jl-navy);
+  --send-muted: var(--jl-muted);
+  --send-primary: var(--jl-orange-strong);
+  --send-primary-soft: var(--jl-orange-soft);
+  --send-filter-active: var(--jl-navy);
+  --send-filter-active-text: #fffaf4;
+  --send-shadow: var(--jl-panel-shadow);
+  color: var(--jl-text) !important;
+  background: var(--jl-cream) !important;
+}
+
+body.light .des-evaluaciones-page,
+body.light .des-evaluaciones-dialog-panel {
+  --eval-surface: var(--jl-surface);
+  --eval-surface-soft: var(--jl-cream);
+  --eval-surface-strong: #fff4e6;
+  --eval-toolbar: linear-gradient(180deg, #fffaf4 0%, #fffdf9 100%);
+  --eval-border: var(--jl-border);
+  --eval-border-strong: var(--jl-border-strong);
+  --eval-text: var(--jl-text);
+  --eval-text-soft: var(--jl-navy);
+  --eval-muted: var(--jl-muted);
+  --eval-primary: var(--jl-orange-strong);
+  --eval-primary-soft: var(--jl-orange-soft);
+  --eval-primary-border: #f0c18f;
+  --eval-json-text: #ffe1bc;
+}
+
+body.light .criteria-bank-page,
+body.light .criteria-bank-editor-dialog,
+body.light .criteria-bank-import-dialog {
+  --bank-ink: var(--jl-text);
+  --bank-muted: var(--jl-muted);
+  --bank-border: var(--jl-border);
+  --bank-surface: var(--jl-surface);
+  --bank-soft: var(--jl-cream);
+  --bank-accent: var(--jl-orange-strong);
+}
+
+body.light .organization-page {
+  --organization-ink: var(--jl-text);
+  --organization-muted: var(--jl-muted);
+  --organization-line: var(--jl-border);
+  --organization-panel: var(--jl-surface);
+  --organization-soft: var(--jl-cream);
+  --organization-header: #fff4e6;
+  --organization-accent: var(--jl-orange-strong);
+}
+
+body.light .demographics-page {
+  --demographics-ink: var(--jl-text);
+  --demographics-muted: var(--jl-muted);
+  --demographics-line: var(--jl-border);
+  --demographics-panel: var(--jl-surface);
+  --demographics-soft: var(--jl-cream);
+  --demographics-header: #fff4e6;
+  --demographics-accent: var(--jl-orange-strong);
+  --demographics-blue: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-dialog-container .dialog-title-row,
+body.light .mat-mdc-dialog-container .employee-create-header,
+body.light .mat-mdc-dialog-container .employee-edit-header,
+body.light .mat-mdc-dialog-container .organization-dialog-header,
+body.light .mat-mdc-dialog-container .demographic-dialog-header,
+body.light .mat-mdc-dialog-container .send-dialog-header,
+body.light .mat-mdc-dialog-container .modalHeader,
+body.light .mat-mdc-dialog-container [mat-dialog-title],
+body.light .mat-mdc-dialog-container h2[mat-dialog-title] {
+  border-color: var(--jl-border) !important;
+  background: linear-gradient(90deg, #fff7ee 0%, #fffdf9 78%) !important;
+  color: var(--jl-navy) !important;
+}
+
+body.light .mat-mdc-dialog-container .dialog-title-icon,
+body.light .mat-mdc-dialog-container .send-dialog-title-icon,
+body.light .mat-mdc-dialog-container .employee-create-title__icon,
+body.light .mat-mdc-dialog-container .employee-edit-title__icon,
+body.light .mat-mdc-dialog-container .organization-dialog-title__icon,
+body.light .mat-mdc-dialog-container .demographic-dialog-title__icon,
+body.light .mat-mdc-dialog-container .dialog-heading-icon,
+body.light .mat-mdc-dialog-container .section-heading__icon,
+body.light .mat-mdc-dialog-container .employee-section-heading__icon,
+body.light .mat-mdc-dialog-container .organization-section-heading__icon,
+body.light .mat-mdc-dialog-container .demographic-section-heading__icon,
+body.light .bank-title-icon,
+body.light .criterion-avatar,
+body.light .organization-toolbar__icon,
+body.light .organization-count__icon,
+body.light .organization-empty-state__icon,
+body.light .demographics-field-cell__icon,
+body.light .demographics-count__icon,
+body.light .demographics-empty-state__icon {
+  background: var(--jl-orange-soft) !important;
+  color: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-dialog-container .section-heading__icon--green,
+body.light .mat-mdc-dialog-container .employee-section-heading__icon--green,
+body.light .mat-mdc-dialog-container .organization-section-heading__icon--green {
+  background: #e8f6ef !important;
+  color: #27805d !important;
+}
+
+body.light .mat-mdc-dialog-container .editor-section,
+body.light .mat-mdc-dialog-container .employee-form-section,
+body.light .mat-mdc-dialog-container .employee-edit-section,
+body.light .mat-mdc-dialog-container .organization-form-section,
+body.light .mat-mdc-dialog-container .demographic-form-section,
+body.light .mat-mdc-dialog-container .mat-mdc-card,
+body.light .mat-mdc-dialog-container .mat-expansion-panel,
+body.light .mat-mdc-dialog-container .send-table-wrapper,
+body.light .mat-mdc-dialog-container .summary-panel,
+body.light .mat-mdc-dialog-container .filter-panel,
+body.light .mat-mdc-dialog-container .dialog-panel,
+body.light .mat-mdc-dialog-container .criteria-bank-card {
+  border-color: var(--jl-border) !important;
+  background: var(--jl-surface) !important;
+  box-shadow: 0 2px 8px rgba(18, 43, 61, 0.045) !important;
+}
+
+body.light .mat-mdc-dialog-container .climate-editor-content,
+body.light .mat-mdc-dialog-container .employee-dialog-content,
+body.light .mat-mdc-dialog-container .employee-edit-content,
+body.light .mat-mdc-dialog-container .organization-dialog-content,
+body.light .mat-mdc-dialog-container .dialog-content,
+body.light .mat-mdc-dialog-container .mat-mdc-dialog-content,
+body.light .mat-mdc-dialog-content {
+  background: var(--jl-cream) !important;
+}
+
+body.light .mat-mdc-dialog-container .climate-editor-content form[id^="form_"] .text-inside,
+body.light .mat-mdc-dialog-container [class*="empty"],
+body.light .mat-mdc-dialog-container [class*="drop"],
+body.light .mat-mdc-dialog-container [class*="upload"] {
+  border-color: var(--jl-border-strong) !important;
+  background: #fffdf9 !important;
+}
+
+body.light .mat-mdc-dialog-container .questions-preview-button,
+body.light .mat-mdc-dialog-container .organization-row-action--edit,
+body.light .mat-mdc-dialog-container button.mat-mdc-icon-button:not(:disabled),
+body.light .mat-mdc-dialog-container a:not(.btn):not(.mat-mdc-button) {
+  color: var(--jl-navy) !important;
+}
+
+body.light .mat-mdc-dialog-container .questions-preview-button:hover,
+body.light .mat-mdc-dialog-container button.mat-mdc-icon-button:hover:not(:disabled) {
+  background: var(--jl-orange-soft) !important;
+  color: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-form-field {
+  --mdc-outlined-text-field-outline-color: var(--jl-border-strong);
+  --mdc-outlined-text-field-hover-outline-color: #efa963;
+  --mdc-outlined-text-field-focus-outline-color: var(--jl-orange);
+  --mdc-outlined-text-field-focus-label-text-color: var(--jl-orange-strong);
+  --mdc-outlined-text-field-caret-color: var(--jl-orange-strong);
+  --mdc-filled-text-field-container-color: var(--jl-surface);
+  --mdc-filled-text-field-hover-active-indicator-color: #efa963;
+  --mdc-filled-text-field-focus-active-indicator-color: var(--jl-orange);
+  --mdc-filled-text-field-focus-label-text-color: var(--jl-orange-strong);
+  --mdc-filled-text-field-caret-color: var(--jl-orange-strong);
+  --mat-select-focused-arrow-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__leading,
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__notch,
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__trailing {
+  border-color: var(--jl-border-strong) !important;
+}
+
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover .mdc-notched-outline__leading,
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover .mdc-notched-outline__notch,
+body.light .mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover .mdc-notched-outline__trailing,
+body.light .mat-mdc-form-field .mdc-text-field--outlined.mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-notched-outline__leading,
+body.light .mat-mdc-form-field .mdc-text-field--outlined.mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-notched-outline__notch,
+body.light .mat-mdc-form-field .mdc-text-field--outlined.mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-notched-outline__trailing {
+  border-color: var(--jl-orange) !important;
+}
+
+body.light .mat-mdc-form-field .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+  background: var(--jl-surface) !important;
+}
+
+body.light .mat-mdc-form-field .mdc-line-ripple::after {
+  border-bottom-color: var(--jl-orange) !important;
+}
+
+body.light .mat-mdc-form-field .mat-mdc-form-field-focus-overlay {
+  background-color: rgba(245, 139, 42, 0.05) !important;
+}
+
+body.light .mat-mdc-select-arrow,
+body.light .mat-mdc-select-value,
+body.light .mat-mdc-select-placeholder,
+body.light .mat-mdc-input-element,
+body.light .mdc-floating-label {
+  color: var(--jl-text) !important;
+}
+
+body.light .mat-mdc-form-field.mat-focused .mdc-floating-label,
+body.light .mat-mdc-form-field.mat-focused .mat-mdc-select-arrow {
+  color: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-menu-panel,
+body.light .mat-mdc-select-panel,
+body.light .mat-mdc-autocomplete-panel,
+body.light .mdc-menu-surface.mat-mdc-select-panel,
+body.light .ng-dropdown-panel,
+body.light .employee-cargo-autocomplete-panel,
+body.light .employee-demographic-autocomplete-panel,
+body.light .employee-edit-autocomplete-panel,
+body.light .values-panel {
+  border: 1px solid var(--jl-border) !important;
+  border-radius: 7px !important;
+  background: var(--jl-surface) !important;
+  color: var(--jl-text) !important;
+  box-shadow: var(--jl-panel-shadow) !important;
+}
+
+body.light .mat-mdc-option,
+body.light .mat-mdc-menu-item,
+body.light .ng-dropdown-panel .ng-option {
+  color: var(--jl-text) !important;
+}
+
+body.light .mat-mdc-option:hover:not(.mdc-list-item--disabled),
+body.light .mat-mdc-option.mat-mdc-option-active,
+body.light .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled),
+body.light .mat-mdc-menu-item:hover,
+body.light .ng-dropdown-panel .ng-option:hover,
+body.light .ng-dropdown-panel .ng-option-marked,
+body.light .ng-dropdown-panel .ng-option-selected {
+  background: var(--jl-orange-soft) !important;
+  color: var(--jl-navy) !important;
+}
+
+body.light .mat-mdc-option.mdc-list-item--selected .mdc-list-item__primary-text,
+body.light .mat-mdc-option.mdc-list-item--selected .mat-pseudo-checkbox,
+body.light .mat-pseudo-checkbox-checked,
+body.light .mat-pseudo-checkbox-minimal.mat-pseudo-checkbox-checked::after {
+  color: var(--jl-orange-strong) !important;
+  border-color: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-button-base {
+  --mat-text-button-state-layer-color: var(--jl-orange);
+  --mat-outlined-button-state-layer-color: var(--jl-orange);
+  --mat-protected-button-state-layer-color: var(--jl-orange);
+  --mat-filled-button-state-layer-color: var(--jl-orange);
+}
+
+body.light .mat-mdc-tab-group,
+body.light .mat-mdc-tab-nav-bar {
+  --mdc-tab-indicator-active-indicator-color: var(--jl-orange);
+  --mat-tab-header-active-ripple-color: var(--jl-orange);
+  --mat-tab-header-active-label-text-color: var(--jl-orange-strong);
+  --mat-tab-header-active-focus-label-text-color: var(--jl-orange-strong);
+  --mat-tab-header-active-hover-label-text-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label,
+body.light .mat-mdc-tab-link.mdc-tab--active .mdc-tab__text-label {
+  color: var(--jl-orange-strong) !important;
+}
+
+body.light .mat-mdc-standard-chip,
+body.light .mat-mdc-chip,
+body.light .mdc-evolution-chip {
+  --mdc-chip-elevated-container-color: #fff1e2;
+  --mdc-chip-label-text-color: #8f4d18;
+  --mdc-chip-with-icon-icon-color: var(--jl-orange-strong);
+  --mdc-chip-with-trailing-icon-trailing-icon-color: var(--jl-orange-strong);
+  border-color: #f0c79d !important;
+  background: #fff1e2 !important;
+  color: #8f4d18 !important;
+}
+
+body.light .mat-mdc-progress-spinner,
+body.light .mat-mdc-spinner {
+  --mdc-circular-progress-active-indicator-color: var(--jl-orange-strong);
+}
+
+body.light .mat-mdc-progress-bar {
+  --mdc-linear-progress-active-indicator-color: var(--jl-orange);
+  --mdc-linear-progress-track-color: #f6e7d6;
+}
+
+body.light .mat-mdc-row:hover,
+body.light .mat-mdc-table .mat-mdc-row:hover,
+body.light .mat-expansion-panel-header:hover,
+body.light .grand-factor-panel.mat-expansion-panel:hover,
+body.light .mat-mdc-list-item:hover,
+body.light .list-group-item:hover {
+  background: var(--jl-row-hover) !important;
+}
+
+body.light .mat-expansion-panel,
+body.light .grand-factor-panel.mat-expansion-panel,
+body.light .mat-mdc-list-item,
+body.light .list-group-item,
+body.light .bank-toolbar,
+body.light .bank-summary,
+body.light .bank-filters,
+body.light .results-bar {
+  border-color: var(--jl-border) !important;
+}

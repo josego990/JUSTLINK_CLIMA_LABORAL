@@ -20,6 +20,10 @@ import Swal from 'sweetalert2';
 import { OrganizacionService } from '../../organization/services/organizacion.service';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import {
+  ActionPlanPdfPlan,
+  ActionPlanPdfService,
+} from '../../shared/services/action-plan-pdf.service';
+import {
   performanceGapToPercent,
   performanceScoreToPercent,
 } from '../shared/performance-score.utils';
@@ -274,6 +278,7 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
   constructor(
     private organizacionService: OrganizacionService,
     private dialog: MatDialog,
+    private actionPlanPdf: ActionPlanPdfService,
   ) {}
 
   ngOnInit(): void {
@@ -323,10 +328,15 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
     );
   }
 
+  get createdPlanCount(): number {
+    return (this.groupedData?.employees ?? [])
+      .reduce((total, employee) => total + this.getEmployeePlans(employee).length, 0);
+  }
+
   get summaryCards(): Array<{ label: string; value: string; hint: string; icon: string; tone: string }> {
     const employees = this.groupedData?.employees ?? [];
     const opportunities = employees.reduce((total, employee) => total + employee.opportunities.length, 0);
-    const plans = employees.reduce((total, employee) => total + this.getEmployeePlans(employee).length, 0);
+    const plans = this.createdPlanCount;
     const averageScore = this.averageNumbers(employees.map((employee) => employee.score));
     const averageTarget = this.averageNumbers(employees.map((employee) => employee.target));
 
@@ -507,6 +517,60 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
     return this.employeePlansByKey.get(this.getEmployeeKey(employee)) ?? [];
   }
 
+  downloadCreatedPlansPdf(): void {
+    const employees = this.groupedData?.employees ?? [];
+    const planEntries: Array<{ employee: FollowEmployeeResult; plan: EmployeeActionPlan }> = [];
+
+    employees.forEach((employee) => {
+      this.getEmployeePlans(employee).forEach((plan) => {
+        planEntries.push({ employee, plan });
+      });
+    });
+
+    if (!planEntries.length) {
+      Swal.fire('PDF', 'No hay planes de acción creados para descargar.', 'info');
+      return;
+    }
+
+    try {
+      const modelName = this.groupedData?.modelo || this.selectedModel?.nombre || 'Modelo de desempeño';
+      const generatedAt = new Date().toLocaleDateString('es-GT');
+
+      this.actionPlanPdf.download(
+        {
+          eyebrow: 'Desempeño',
+          title: 'Planes de acción de desempeño',
+          subtitle: 'Consolidado de planes creados para seguimiento de brechas de desempeño.',
+          organization: this.selectedOrganizationName,
+          context: `${modelName}${this.groupedData?.modeloCodigo ? ` | ${this.groupedData.modeloCodigo}` : ''}`,
+          generatedAt,
+          summary: [
+            { label: 'Modelo', value: modelName },
+            { label: 'Empleados evaluados', value: employees.length },
+            { label: 'Planes creados', value: planEntries.length },
+            {
+              label: 'Empleados con plan',
+              value: employees.filter((employee) => this.getEmployeePlans(employee).length > 0).length,
+            },
+            {
+              label: 'Completados',
+              value: planEntries.filter(({ plan }) => plan.status === 'COMPLETADO').length,
+            },
+            {
+              label: 'En proceso',
+              value: planEntries.filter(({ plan }) => plan.status === 'EN_PROCESO').length,
+            },
+          ],
+          plans: planEntries.map(({ employee, plan }) => this.buildPerformancePdfPlan(employee, plan)),
+        },
+        `Planes_Accion_Desempeno_${this.selectedOrganizationName || 'Organizacion'}_${modelName}_${generatedAt}.pdf`,
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de planes de acción de desempeño:', error);
+      Swal.fire('PDF', 'No fue posible generar el PDF de planes de acción.', 'error');
+    }
+  }
+
   getEmployeeKey(employee: FollowEmployeeResult): string {
     return employee.id ? `emp-${employee.id}` : `emp-${this.normalizeKey(employee.name)}-${this.normalizeKey(employee.position)}`;
   }
@@ -555,6 +619,70 @@ export class DesPlanesSeguimientoComponent implements OnDestroy, OnInit {
 
   getPriorityClass(priority: PlanPriority): string {
     return priority.toLowerCase();
+  }
+
+  getPlanStatusLabel(status: PlanStatus): string {
+    const labels: Record<PlanStatus, string> = {
+      PENDIENTE: 'Pendiente',
+      EN_PROCESO: 'En proceso',
+      COMPLETADO: 'Completado',
+      CANCELADO: 'Cancelado',
+    };
+
+    return labels[status] ?? status;
+  }
+
+  getActionPlanProgress(plan: EmployeeActionPlan): number {
+    if (!plan.tasks.length) {
+      return plan.status === 'COMPLETADO' ? 100 : 0;
+    }
+
+    return this.round((plan.tasks.filter((task) => task.done).length / plan.tasks.length) * 100, 1);
+  }
+
+  getActionPlanProgressLabel(plan: EmployeeActionPlan): string {
+    return `${this.getActionPlanProgress(plan)}%`;
+  }
+
+  buildPerformancePdfPlan(employee: FollowEmployeeResult, plan: EmployeeActionPlan): ActionPlanPdfPlan {
+    const opportunity = this.getPerformancePlanOpportunity(employee, plan);
+
+    return {
+      title: plan.title,
+      subtitle: `${employee.name} | ${employee.position || 'Sin puesto'}`,
+      priority: plan.priority,
+      status: this.getPlanStatusLabel(plan.status),
+      progress: this.getActionPlanProgressLabel(plan),
+      owner: plan.responsible,
+      dueDate: this.formatDate(plan.dueDate),
+      objective: plan.objective,
+      action: plan.action,
+      evidence: plan.evidence,
+      reason: opportunity
+        ? `${opportunity.dimension} / ${opportunity.criterion}: ${opportunity.item}`
+        : null,
+      meta: [
+        { label: 'Empleado', value: employee.name },
+        { label: 'Puesto', value: employee.position },
+        { label: 'Resultado', value: this.formatScore(employee.score) },
+        { label: 'Brecha', value: this.formatGap(employee.gap) },
+        { label: 'Escenario', value: opportunity?.scenario },
+        { label: 'Evaluación', value: opportunity?.evaluation },
+      ],
+      tasks: plan.tasks.map((task) => ({
+        title: task.title,
+        responsible: task.responsible,
+        dueDate: this.formatDate(task.dueDate),
+        done: task.done,
+      })),
+    };
+  }
+
+  private getPerformancePlanOpportunity(
+    employee: FollowEmployeeResult,
+    plan: EmployeeActionPlan,
+  ): FollowOpportunity | null {
+    return employee.opportunities.find((opportunity) => opportunity.id === plan.opportunityId) ?? null;
   }
 
   formatScore(value: number | null): string {
@@ -1977,6 +2105,16 @@ export class DesEmployeeResultsDialogComponent {
 
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="close()">Cancelar</button>
+      <button
+        mat-stroked-button
+        class="justlink-pdf-button"
+        type="button"
+        (click)="downloadPdf()"
+        [disabled]="!plans.length"
+      >
+        <mat-icon>picture_as_pdf</mat-icon>
+        Descargar PDF
+      </button>
       <button mat-flat-button color="primary" type="button" (click)="save()">Guardar planes</button>
     </mat-dialog-actions>
   `,
@@ -1992,6 +2130,7 @@ export class DesEmployeeActionPlansDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: EmployeePlansDialogData,
     private ref: MatDialogRef<DesEmployeeActionPlansDialogComponent>,
     private dialog: MatDialog,
+    private actionPlanPdf: ActionPlanPdfService,
   ) {
     this.plans = JSON.parse(JSON.stringify(data.plans ?? []));
     this.savedOpportunityIds = new Set(
@@ -2089,6 +2228,43 @@ export class DesEmployeeActionPlansDialogComponent {
     this.ref.close(this.plans);
   }
 
+  downloadPdf(): void {
+    if (!this.plans.length) {
+      Swal.fire('PDF', 'No hay planes de acción para descargar.', 'info');
+      return;
+    }
+
+    try {
+      const generatedAt = new Date().toLocaleDateString('es-GT');
+      this.actionPlanPdf.download(
+        {
+          eyebrow: 'Desempeño',
+          title: `Planes de acción - ${this.data.employee.name}`,
+          subtitle: 'Detalle de planes definidos para seguimiento individual.',
+          organization: this.data.helpers.selectedOrganizationName,
+          context: this.data.employee.position,
+          generatedAt,
+          summary: [
+            { label: 'Empleado', value: this.data.employee.name },
+            { label: 'Puesto', value: this.data.employee.position },
+            { label: 'Resultado', value: this.data.helpers.formatScore(this.data.employee.score) },
+            { label: 'Brecha', value: this.data.helpers.formatGap(this.data.employee.gap) },
+            { label: 'Planes', value: this.plans.length },
+            {
+              label: 'Avance promedio',
+              value: `${this.averageProgress()}%`,
+            },
+          ],
+          plans: this.plans.map((plan) => this.data.helpers.buildPerformancePdfPlan(this.data.employee, plan)),
+        },
+        `Planes_Accion_Desempeno_${this.data.employee.name}_${generatedAt}.pdf`,
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de planes de acción del empleado:', error);
+      Swal.fire('PDF', 'No fue posible generar el PDF de planes de acción.', 'error');
+    }
+  }
+
   private openResponsiblePicker(currentResponsible: string): MatDialogRef<DesResponsibleEmployeePickerDialogComponent, FollowEmployeeDirectoryItem | undefined> {
     return this.dialog.open(DesResponsibleEmployeePickerDialogComponent, {
       width: '760px',
@@ -2175,6 +2351,15 @@ export class DesEmployeeActionPlansDialogComponent {
       .toUpperCase()
       .replace(/[^A-Z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '');
+  }
+
+  private averageProgress(): number {
+    if (!this.plans.length) {
+      return 0;
+    }
+
+    const total = this.plans.reduce((sum, plan) => sum + this.data.helpers.getActionPlanProgress(plan), 0);
+    return Math.round((total / this.plans.length) * 10) / 10;
   }
 
   private scrollPlanIntoView(opportunityId: string): void {

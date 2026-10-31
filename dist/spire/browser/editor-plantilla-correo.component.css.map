@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/quiz/maileditor/editor-plantilla-correo.component.scss"],
+  "sourcesContent": ["//@import 'ckeditor5/ckeditor5.css';\n\n@media print {\n\tbody {\n\t\tmargin: 0 !important;\n\t}\n}\n\n.main-container {\n\tfont-family: var(--app-font-family, \"TT Interphases\", \"Inter\", \"Segoe UI\", Arial, sans-serif);\n\twidth: fit-content;\n\tmargin-left: auto;\n\tmargin-right: auto;\n}\n\n.ck-content {\n\tfont-family: var(--app-font-family, \"TT Interphases\", \"Inter\", \"Segoe UI\", Arial, sans-serif);\n\tline-height: 1.6;\n\tword-break: break-word;\n}\n\n.editor-container_classic-editor .editor-container__editor {\n\tmin-width: 795px;\n\tmax-width: 795px;\n}\n\n.barra-herramientas { \n    display: flex; \n    gap: 8px; \n    align-items: center; \n    margin-bottom: 12px; \n} \n\n.codigo-html { \n    width: 100%; \n    font-family: monospace; \n} \nbutton { \n    padding: 8px 16px; \n    border-radius: 4px; cursor: pointer; \n}\n"],
+  "mappings": ";AAEA,OAAA;AACC;AACC,YAAA;;;AAIF,CAAA;AACC,eAAA,IAAA,iBAAA,EAAA,gBAAA,EAAA,OAAA,EAAA,UAAA,EAAA,KAAA,EAAA;AACA,SAAA;AACA,eAAA;AACA,gBAAA;;AAGD,CAAA;AACC,eAAA,IAAA,iBAAA,EAAA,gBAAA,EAAA,OAAA,EAAA,UAAA,EAAA,KAAA,EAAA;AACA,eAAA;AACA,cAAA;;AAGD,CAAA,gCAAA,CAAA;AACC,aAAA;AACA,aAAA;;AAGD,CAAA;AACI,WAAA;AACA,OAAA;AACA,eAAA;AACA,iBAAA;;AAGJ,CAAA;AACI,SAAA;AACA,eAAA;;AAEJ;AACI,WAAA,IAAA;AACA,iBAAA;AAAoB,UAAA;;",
+  "names": []
+}

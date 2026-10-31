@@ -676,7 +676,7 @@
 
 .mail-history-email-paper ::ng-deep .mail-template {
   color: #334155;
-  font-family: Arial, sans-serif;
+  font-family: var(--app-font-family, "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif);
   font-size: 14px;
   line-height: 1.65;
 }

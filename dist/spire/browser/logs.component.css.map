@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/secure/logs/logs.component.scss"],
+  "sourcesContent": [":host {\n  display: block;\n}\n\n/* Truncamiento en encabezados y celdas */\n.truncate-text {\n  display: inline-block;\n  max-width: 100%;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n/* Altura fija de filas */\ntable.mat-table {\n  .mat-header-cell,\n  .mat-cell {\n    height: 48px;\n    line-height: 48px;\n    padding: 0 16px;\n    box-sizing: border-box;\n  }\n}\n\n/* Selecciona la columna por su clase que Angular Material añade automáticamente: */\n.mat-column-DetalleError {\n  flex: 0 0 150px;    /* ancho fijo de 150px */\n  max-width: 150px;   /* no se expanda más allá */\n  min-width: 150px;   /* no se encoja más acá */\n  overflow: hidden;   /* oculta contenido que desborde */\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.mat-column-email {\n  flex: 1 1 250px;    /* ancho inicial 250px, pero puede crecer */\n  max-width: 300px;\n  min-width: 200px;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n"],
+  "mappings": ";;;AAAA;AACE,WAAA;;AAIF,CAAA;AACE,WAAA;AACA,aAAA;AACA,eAAA;AACA,YAAA;AACA,iBAAA;;AAKA,KAAA,CAAA,UAAA,CAAA;AAAA,KAAA,CAAA,UAAA,CAAA;AAEE,UAAA;AACA,eAAA;AACA,WAAA,EAAA;AACA,cAAA;;AAKJ,CAAA;AACE,QAAA,EAAA,EAAA;AACA,aAAA;AACA,aAAA;AACA,YAAA;AACA,iBAAA;AACA,eAAA;;AAGF,CAAA;AACE,QAAA,EAAA,EAAA;AACA,aAAA;AACA,aAAA;AACA,YAAA;AACA,iBAAA;AACA,eAAA;;",
+  "names": []
+}

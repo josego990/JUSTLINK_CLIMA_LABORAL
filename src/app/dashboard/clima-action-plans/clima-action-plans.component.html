@@ -361,10 +361,22 @@
             </mat-select>
           </mat-form-field>
 
-          <button mat-flat-button color="primary" type="button" (click)="createPlanFromOpportunity()">
-            <mat-icon>add</mat-icon>
-            {{ t('ADD_PLAN') }}
-          </button>
+          <div class="plans-toolbar-actions">
+            <button mat-flat-button color="primary" type="button" (click)="createPlanFromOpportunity()">
+              <mat-icon>add</mat-icon>
+              {{ t('ADD_PLAN') }}
+            </button>
+
+            <button
+              mat-stroked-button
+              class="justlink-pdf-button"
+              type="button"
+              (click)="downloadPlansPdf()"
+              [disabled]="!visibleActionPlans.length">
+              <mat-icon>picture_as_pdf</mat-icon>
+              {{ t('DOWNLOAD_PDF') }}
+            </button>
+          </div>
         </div>
 
         <div class="empty-state slim" *ngIf="!visibleActionPlans.length">

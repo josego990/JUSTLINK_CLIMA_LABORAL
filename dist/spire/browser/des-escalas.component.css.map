@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/desempeno/des-escalas/des-escalas.component.ts"],
+  "sourcesContent": ["\n    .scale-row-clickable {\n      cursor: pointer;\n    }\n\n    .scale-row-selected td {\n      background: rgba(59, 130, 246, 0.08);\n    }\n\n    .scale-empty {\n      padding: 1.5rem;\n      text-align: center;\n      color: #64748b;\n    }\n\n    .scale-detail-table th,\n    .scale-detail-table td {\n      vertical-align: middle;\n    }\n\n    .scale-detail-table .mat-mdc-form-field {\n      width: 100%;\n    }\n\n    .scale-panel-note {\n      color: #64748b;\n      font-size: 0.9rem;\n    }\n\n    .scale-badge {\n      display: inline-flex;\n      align-items: center;\n      padding: 0.25rem 0.6rem;\n      border-radius: 999px;\n      font-size: 0.75rem;\n      font-weight: 600;\n    }\n  "],
+  "mappings": ";AACI,CAAA;AACE,UAAA;;AAGF,CAAA,mBAAA;AACE,cAAA,KAAA,EAAA,EAAA,GAAA,EAAA,GAAA,EAAA;;AAGF,CAAA;AACE,WAAA;AACA,cAAA;AACA,SAAA;;AAGF,CAAA,mBAAA;AAAA,CAAA,mBAAA;AAEE,kBAAA;;AAGF,CALA,mBAKA,CAAA;AACE,SAAA;;AAGF,CAAA;AACE,SAAA;AACA,aAAA;;AAGF,CAAA;AACE,WAAA;AACA,eAAA;AACA,WAAA,QAAA;AACA,iBAAA;AACA,aAAA;AACA,eAAA;;",
+  "names": []
+}

@@ -24,6 +24,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Subscription } from 'rxjs';
 import { saveAs } from 'file-saver';
 import ExcelJS from 'exceljs';
@@ -185,7 +187,9 @@ function isValidPhoneE164(value: any): boolean {
     DatePipe,
     MatInputModule,
     MatAutocompleteModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatSlideToggleModule,
+    MatPaginatorModule
 ],
   
 })
@@ -203,6 +207,10 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
   public dataSourceOrganizations:any = [];
   public dataSourceEmployees:any = [];
+  public pagedEmployees: any[] = [];
+  public employeePageIndex = 0;
+  public employeePageSize = 25;
+  public readonly employeePageSizeOptions = [10, 25, 50, 100];
   private allEmployees: any[] = [];
   public cargoOptions: string[] = [];
   public filteredCargoOptions: string[] = [];
@@ -211,7 +219,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   public employeeSearchTerm = '';
   public selectedPositionFilters: string[] = [];
   public selectedDemographicFilters: Record<string, string[]> = {};
+  public showOnlyActiveEmployees = true;
   public selectedEmployeeIds = new Set<number>();
+  public bulkEmployeeSendType: number | null = null;
   public isLoadingEmployees = false;
   public isProcessingBulkEmployeeAction = false;
   public isExportingEmployees = false;
@@ -263,22 +273,12 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   displayedColumns: string[] = [
     'Seleccionar',
     'Id',
-    'IdOrganizacion',
-    'Nombres',
-    'Apellidos',
-    'Cargo',
-    //'NumeroIdentificacion',
-    //'TipoIdentificacion',
-    'Celular',
-    'Email',
-    //'Cargo',
-    //'FechaIngreso',
+    'DatosContacto',
+    'TipoEnvioEncuesta',
     'estado',
     'NombreJefe',
-    'TipoEnvioEncuesta',
-    'FechaRegistro',
+    'Editar',
     'Borrar',
-    'Editar'
   ];
 
   //accesos
@@ -438,6 +438,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         this.idOrganization = 0;
         this.employeeForm.get('IdOrganizacion')?.setValue(null);
         this.dataSourceEmployees = [];
+        this.pagedEmployees = [];
         this.allEmployees = [];
         this.resetEmployeeFilters(false);
         this.refreshCargoOptions();
@@ -572,6 +573,62 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     return this.isEmployeeActive(employee) ? 'Activo' : 'Inactivo';
   }
 
+  getEmployeeSendTypeLabel(value: unknown): string {
+    const translationKeyByType: Record<number, string> = {
+      0: 'MENUITEMS.EMPLOYEE.SENDTYPENONE',
+      1: 'MENUITEMS.EMPLOYEE.SENDTYPEEMAIL',
+      2: 'MENUITEMS.EMPLOYEE.SENDTYPEWHATSAPP',
+      3: 'MENUITEMS.EMPLOYEE.SENDTYPEBOTH',
+    };
+
+    return this.translate.instant(
+      translationKeyByType[Number(value)] ?? translationKeyByType[0]
+    );
+  }
+
+  getEmployeeTableFullName(employee: any): string {
+    const fullName = getEmployeeOptionFullName(employee);
+
+    if (fullName) {
+      return fullName;
+    }
+
+    return [employee?.Nombres, employee?.Apellidos]
+      .filter((value) => String(value ?? '').trim())
+      .join(' ')
+      .trim() || `Empleado #${employee?.Id ?? ''}`;
+  }
+
+  getEmployeeTableCargo(employee: any): string {
+    return this.getEmployeeCargoValue(employee);
+  }
+
+  getEmployeeTablePhone(employee: any): string {
+    return String(
+      employee?.Celular ??
+      employee?.celular ??
+      employee?.Telefono ??
+      employee?.telefono ??
+      employee?.Phone ??
+      employee?.phone ??
+      ''
+    ).trim();
+  }
+
+  getEmployeeTableEmail(employee: any): string {
+    return String(
+      employee?.Email ??
+      employee?.email ??
+      employee?.Correo ??
+      employee?.correo ??
+      ''
+    ).trim();
+  }
+
+  getEmployeeTableDemographicValue(employee: any, fieldName: string): string {
+    return this.getEmployeeDemographicValue(employee, fieldName);
+  }
+
   get selectedEmployeeCount(): number {
     return this.selectedEmployeeIds.size;
   }
@@ -585,13 +642,13 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   }
 
   get areAllVisibleEmployeesSelected(): boolean {
-    return this.dataSourceEmployees.length > 0 && this.dataSourceEmployees.every((employee: any) =>
+    return this.pagedEmployees.length > 0 && this.pagedEmployees.every((employee: any) =>
       this.selectedEmployeeIds.has(this.getEmployeeId(employee))
     );
   }
 
   get areSomeVisibleEmployeesSelected(): boolean {
-    return !this.areAllVisibleEmployeesSelected && this.dataSourceEmployees.some((employee: any) =>
+    return !this.areAllVisibleEmployeesSelected && this.pagedEmployees.some((employee: any) =>
       this.selectedEmployeeIds.has(this.getEmployeeId(employee))
     );
   }
@@ -615,7 +672,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   toggleVisibleEmployeeSelection(checked: boolean): void {
     const nextSelection = new Set(this.selectedEmployeeIds);
 
-    this.dataSourceEmployees.forEach((employee: any) => {
+    this.pagedEmployees.forEach((employee: any) => {
       const employeeId = this.getEmployeeId(employee);
 
       if (!employeeId) {
@@ -630,6 +687,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
   clearEmployeeSelection(): void {
     this.selectedEmployeeIds = new Set<number>();
+    this.bulkEmployeeSendType = null;
   }
 
   async bulkDeactivateSelectedEmployees(): Promise<void> {
@@ -638,6 +696,104 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
 
   async bulkActivateSelectedEmployees(): Promise<void> {
     await this.processSelectedEmployeesByStatus(false);
+  }
+
+  async bulkUpdateSelectedEmployeeSendType(): Promise<void> {
+    if (this.isProcessingBulkEmployeeAction) {
+      return;
+    }
+
+    if (this.bulkEmployeeSendType === null) {
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDREQUIREDTITLE'),
+        text: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDREQUIRED'),
+        icon: 'info',
+      });
+      return;
+    }
+
+    const sendType = Number(this.bulkEmployeeSendType);
+    const selectedEmployees = this.getSelectedEmployees();
+    const targetEmployees = selectedEmployees.filter((employee) =>
+      Number(employee?.TipoEnvioEncuesta ?? employee?.tipoEnvioEncuesta ?? 0) !== sendType
+    );
+
+    if (targetEmployees.length === 0) {
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDUNCHANGEDTITLE'),
+        text: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDUNCHANGED'),
+        icon: 'info',
+      });
+      return;
+    }
+
+    const sendTypeLabel = this.getEmployeeSendTypeLabel(sendType);
+    const confirmation = await Swal.fire({
+      title: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDCONFIRMTITLE'),
+      html: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDCONFIRMTEXT', {
+        type: `<b>${sendTypeLabel}</b>`,
+        count: `<b>${targetEmployees.length}</b>`,
+      }),
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDCONFIRM'),
+      cancelButtonText: this.translate.instant('MENUITEMS.EMPLOYEE.CANCEL'),
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) {
+      return;
+    }
+
+    const employeeIds = targetEmployees
+      .map((employee) => this.getEmployeeId(employee))
+      .filter((employeeId) => employeeId > 0);
+
+    this.isProcessingBulkEmployeeAction = true;
+    Swal.fire({
+      title: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDPROGRESS'),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const response: any = await this.organizacionService.updateEmployeesSendType(
+        this.idOrganization,
+        employeeIds,
+        sendType,
+      );
+      const updatedCount = Number(response?.data?.data?.actualizados ?? employeeIds.length);
+
+      this.allEmployees.forEach((employee) => {
+        if (employeeIds.includes(this.getEmployeeId(employee))) {
+          employee.TipoEnvioEncuesta = sendType;
+        }
+      });
+
+      Swal.close();
+      this.clearEmployeeSelection();
+      this.getEmployeesByOrg();
+
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.SUCCESS'),
+        text: this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDSUCCESS', {
+          count: updatedCount,
+        }),
+        icon: 'success',
+      });
+    } catch (error: any) {
+      Swal.close();
+      await Swal.fire({
+        title: this.translate.instant('MENUITEMS.EMPLOYEE.SOMEWRONG'),
+        text: error?.response?.data?.message
+          || this.translate.instant('MENUITEMS.EMPLOYEE.BULKSENDERROR'),
+        icon: 'error',
+      });
+    } finally {
+      this.isProcessingBulkEmployeeAction = false;
+    }
   }
 
   private getManagerNameById(managerId: number | null): string {
@@ -822,6 +978,17 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     this.applyEmployeeFilters();
   }
 
+  onShowOnlyActiveEmployeesChange(checked: boolean): void {
+    this.showOnlyActiveEmployees = checked;
+    this.applyEmployeeFilters();
+  }
+
+  onEmployeePageChange(event: PageEvent): void {
+    this.employeePageIndex = event.pageIndex;
+    this.employeePageSize = event.pageSize;
+    this.refreshEmployeePage();
+  }
+
   getEmployeeDemographicFilterOptions(fieldName: string): string[] {
     const normalizedFieldName = this.normalizeEmployeeColumnKey(fieldName);
     const optionKey = Object.keys(this.demographicOptionsByField).find(
@@ -847,7 +1014,8 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   hasActiveEmployeeFilters(): boolean {
     return !!this.employeeSearchTerm.trim() ||
       this.selectedPositionFilters.length > 0 ||
-      Object.values(this.selectedDemographicFilters).some((values) => values.length > 0);
+      Object.values(this.selectedDemographicFilters).some((values) => values.length > 0) ||
+      !this.showOnlyActiveEmployees;
   }
 
   get visibleEmployeeCount(): number {
@@ -862,6 +1030,7 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     this.employeeSearchTerm = '';
     this.selectedPositionFilters = [];
     this.selectedDemographicFilters = {};
+    this.showOnlyActiveEmployees = true;
 
     if (applyFilters) {
       this.applyEmployeeFilters();
@@ -910,10 +1079,26 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       const matchesName = !normalizedSearch ||
         this.getEmployeeNameSearchValue(employee).includes(normalizedSearch);
 
-      return matchesName &&
+      return (!this.showOnlyActiveEmployees || this.isEmployeeActive(employee)) &&
+        matchesName &&
         this.matchesEmployeePositionFilter(employee) &&
         this.matchesEmployeeDemographicFilters(employee);
     });
+
+    this.refreshEmployeePage(true);
+  }
+
+  private refreshEmployeePage(resetPage = false): void {
+    if (resetPage) {
+      this.employeePageIndex = 0;
+    }
+
+    const pageSize = Math.max(1, Number(this.employeePageSize) || 25);
+    const lastPageIndex = Math.max(0, Math.ceil(this.dataSourceEmployees.length / pageSize) - 1);
+    this.employeePageIndex = Math.min(this.employeePageIndex, lastPageIndex);
+
+    const start = this.employeePageIndex * pageSize;
+    this.pagedEmployees = this.dataSourceEmployees.slice(start, start + pageSize);
   }
 
   private setupDemographicAutocompleteControls(): void {
@@ -1036,6 +1221,8 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       this.idOrganization = selectedId;
       this.allEmployees = [];
       this.dataSourceEmployees = [];
+      this.pagedEmployees = [];
+      this.employeePageIndex = 0;
       this.resetEmployeeFilters(false);
       this.employeeForm.get('IdOrganizacion')?.setValue(selectedId);
       this.employeeForm.get('IdEmpleadoJefe')?.setValue(null);
@@ -1121,14 +1308,8 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     return [
       'Seleccionar',
       'Id',
-      'IdOrganizacion',
-      'Nombres',
-      'Apellidos',
-      'Cargo',
-      'Celular',
-      'Email',
+      'DatosContacto',
       'TipoEnvioEncuesta',
-      'FechaRegistro',
       'estado',
       'NombreJefe',
     ];
@@ -1137,6 +1318,13 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
   private getHiddenEmployeeColumnKeys(): Set<string> {
     return new Set([
       ...this.getEmployeeBaseColumns(),
+      'IdOrganizacion',
+      'Nombres',
+      'Apellidos',
+      'Cargo',
+      'Celular',
+      'Email',
+      'FechaRegistro',
       'Estado',
       'ESTADO',
       'activo',
@@ -1271,6 +1459,8 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
         console.error('Error al obtener empleados:', error);
         this.allEmployees = [];
         this.dataSourceEmployees = [];
+        this.pagedEmployees = [];
+        this.employeePageIndex = 0;
         this.refreshEmployeeTableColumns();
       })
       .finally(() => {
@@ -2988,6 +3178,27 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
     return Array.from(columnsByKey.values());
   }
 
+  private getEmployeeExportFileName(): string {
+    const organizationName = String(
+      this.dataSourceOrganizations[0]?.Nombre ??
+      this.dataSourceOrganizations[0]?.nombre ??
+      'Organizacion'
+    )
+      .trim()
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+      .replace(/\s+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') || 'Organizacion';
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const dateTime = [
+      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`,
+    ].join('_');
+
+    return `Empleados_${organizationName}_${dateTime}.xlsx`;
+  }
+
   downloadExcelEmployeeTemplate(): void {
     const templateEs = this.confslist.find(
       (config: any) => config.Nombre === 'TEMPLATE_EXCEL_EMP_SPANISH'
@@ -3126,10 +3337,9 @@ export class CrearEmpleadosComponent implements OnDestroy, OnInit {
       workbook.modified = new Date();
 
       const buffer = await workbook.xlsx.writeBuffer();
-      const dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       saveAs(
         new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-        `Empleados_${dateSuffix}.xlsx`
+        this.getEmployeeExportFileName()
       );
     } catch (error) {
       console.error('Error al generar el archivo Excel de empleados:', error);

@@ -161,25 +161,55 @@
                 </div>
 
                 <div
-                  class="big-factor-list"
-                  [attr.data-performance-guide]="firstCard ? 'performance-card-dimensions' : null">
-                  <div
-                    class="big-factor-card"
-                    *ngFor="let bigFactor of card.bigFactors; let firstDimension = first; trackBy: trackByAnyId">
-                    <div
-                      class="big-factor-head"
-                      [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-dimension' : null">
-                      <strong>{{ bigFactor.name }}</strong>
-                      <span>{{ bigFactor.weight }}%</span>
+                  class="evaluation-structure"
+                  [class.evaluation-structure--expanded]="isEvaluationStructureExpanded(card)">
+                  <button
+                    type="button"
+                    class="evaluation-structure__summary"
+                    [attr.aria-expanded]="isEvaluationStructureExpanded(card)"
+                    [attr.data-performance-guide]="firstCard ? 'performance-card-dimensions' : null"
+                    (click)="toggleEvaluationStructure(card, $event)">
+                    <div class="evaluation-structure__title">
+                      <span class="material-icons" aria-hidden="true">account_tree</span>
+                      <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS' | translate }}</span>
                     </div>
+
+                    <div class="evaluation-structure__totals">
+                      <span>{{ card.bigFactors.length }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.DIMENSIONS' | translate }}</span>
+                      <span>{{ getEvaluationCriteriaCount(card) }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.COMPETENCIES' | translate }}</span>
+                      <span>{{ getEvaluationQuestionCount(card) }} {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.QUESTIONS' | translate }}</span>
+                    </div>
+
+                    <mat-icon class="evaluation-structure__expand-icon" aria-hidden="true">
+                      {{ isEvaluationStructureExpanded(card) ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  </button>
+
+                  <div
+                    class="evaluation-structure__content"
+                    *ngIf="isEvaluationStructureExpanded(card)">
                     <div
-                      class="factor-chip-list"
-                      [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-criteria' : null">
-                      <span
-                        class="factor-chip"
-                        *ngFor="let factor of getDistinctFactorSummaries(bigFactor); trackBy: trackByFactorSummary">
-                        {{ factor.name }} ({{ factor.questionCount }})
-                      </span>
+                      class="big-factor-card"
+                      *ngFor="let bigFactor of card.bigFactors; let firstDimension = first; trackBy: trackByAnyId">
+                      <div
+                        class="big-factor-head"
+                        [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-dimension' : null">
+                        <strong>{{ bigFactor.name }}</strong>
+                        <span>{{ bigFactor.weight }}%</span>
+                      </div>
+                      <div
+                        class="factor-chip-list"
+                        [attr.data-performance-guide]="firstCard && firstDimension ? 'performance-card-criteria' : null">
+                        <span
+                          class="factor-chip"
+                          *ngFor="let factor of getDistinctFactorSummaries(bigFactor); trackBy: trackByFactorSummary">
+                          {{ factor.name }} ({{ factor.questionCount }})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="evaluation-structure__empty" *ngIf="card.bigFactors.length === 0">
+                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.NO_DIMENSIONS' | translate }}
                     </div>
                   </div>
                 </div>
@@ -724,45 +754,70 @@
               <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_EMPTY' | translate }}</span>
             </div>
 
-            <mat-accordion
-              class="position-scenario-configs"
-              multi
+            <div
+              class="position-scenario-workspace"
               *ngIf="draftEvaluation.participants.positions.length > 0">
-              <mat-expansion-panel
-                class="position-scenario-config-panel"
-                [class.evaluator-only]="isPositionEvaluatorOnly(position)"
-                *ngFor="let position of draftEvaluation.participants.positions; let positionIndex = index; trackBy: trackByPosition"
-                [expanded]="positionIndex === 0">
-                <mat-expansion-panel-header>
-                  <mat-panel-title>
-                    <mat-icon>badge</mat-icon>
-                    {{ position }}
-                  </mat-panel-title>
-                  <mat-panel-description>
-                    <ng-container *ngIf="isPositionEvaluatorOnly(position); else activePositionScenarios">
-                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
-                    </ng-container>
-                    <ng-template #activePositionScenarios>
-                      <span class="position-scenario-summary">
-                        <span>
+              <aside class="position-scenario-nav">
+                <div class="position-scenario-nav-header">
+                  <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_POSITIONS_TITLE' | translate }}</span>
+                  <strong>{{ draftEvaluation.participants.positions.length }}</strong>
+                </div>
+
+                <div class="position-scenario-nav-list" role="list">
+                  <button
+                    type="button"
+                    class="position-scenario-nav-item"
+                    [class.active]="selectedScenarioPosition === position"
+                    [class.invalid]="!isPositionEvaluatorOnly(position) && isPositionScenarioWeightInvalid(position)"
+                    [attr.aria-pressed]="selectedScenarioPosition === position"
+                    (click)="selectScenarioPosition(position)"
+                    *ngFor="let position of draftEvaluation.participants.positions; trackBy: trackByPosition">
+                    <span class="position-scenario-nav-icon">
+                      <mat-icon>badge</mat-icon>
+                    </span>
+                    <span class="position-scenario-nav-copy">
+                      <strong>{{ position }}</strong>
+                      <small *ngIf="isPositionEvaluatorOnly(position); else positionScenarioCount">
+                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.EVALUATOR_ONLY' | translate }}
+                      </small>
+                      <ng-template #positionScenarioCount>
+                        <small>
                           {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.ACTIVE_SCENARIOS_COUNT' | translate: {
                             count: getActivePositionScenarios(position).length
                           } }}
-                        </span>
-                        <span
-                          class="scenario-weight-total"
-                          [class.invalid]="isPositionScenarioWeightInvalid(position)">
-                          <mat-icon *ngIf="isPositionScenarioWeightInvalid(position)">error_outline</mat-icon>
-                          {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_WEIGHT_TOTAL' | translate: {
-                            total: getPositionScenarioWeightTotal(position)
-                          } }}
-                        </span>
-                      </span>
-                    </ng-template>
-                  </mat-panel-description>
-                </mat-expansion-panel-header>
+                          · {{ getPositionScenarioWeightTotal(position) }}%
+                        </small>
+                      </ng-template>
+                    </span>
+                    <mat-icon class="position-scenario-nav-arrow">chevron_right</mat-icon>
+                  </button>
+                </div>
+              </aside>
 
-                <ng-template matExpansionPanelContent>
+              <section class="position-scenario-detail" *ngIf="selectedScenarioPosition as position">
+                <div class="position-scenario-detail-header">
+                  <div class="position-scenario-detail-title">
+                    <span class="position-scenario-detail-icon">
+                      <mat-icon>badge</mat-icon>
+                    </span>
+                    <div>
+                      <span>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.POSITION' | translate }}</span>
+                      <h5>{{ position }}</h5>
+                    </div>
+                  </div>
+
+                  <span
+                    class="scenario-weight-total"
+                    [class.invalid]="isPositionScenarioWeightInvalid(position)"
+                    *ngIf="!isPositionEvaluatorOnly(position)">
+                    <mat-icon *ngIf="isPositionScenarioWeightInvalid(position)">error_outline</mat-icon>
+                    {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_WEIGHT_TOTAL' | translate: {
+                      total: getPositionScenarioWeightTotal(position)
+                    } }}
+                  </span>
+                </div>
+
+                <div class="position-scenario-detail-controls">
                   <mat-checkbox
                     class="position-evaluator-only-toggle"
                     [ngModel]="isPositionEvaluatorOnly(position)"
@@ -786,47 +841,64 @@
                   <div class="position-scenario-help">
                     {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIOS_BY_POSITION_HELP' | translate }}
                   </div>
+                </div>
 
-                  <div
-                    class="scenario-row"
+                <div class="scenario-card-grid">
+                  <article
+                    class="scenario-config-card"
                     [class.inactive]="!isPositionScenarioSelected(position, scenario.key)"
                     [class.not-applicable]="!isPositionScenarioStructurallyApplicable(position, scenario.key)"
                     *ngFor="let scenario of getPositionScenarioOptions(position); trackBy: trackByEvaluationScenario">
-                    <mat-checkbox
-                      [ngModel]="isPositionScenarioSelected(position, scenario.key)"
-                      (ngModelChange)="setPositionScenarioSelected(position, scenario.key, $event)"
-                      [disabled]="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
-                      {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_ACTIVE' | translate }}
-                    </mat-checkbox>
-                    <mat-form-field appearance="outline">
-                      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO' | translate }}</mat-label>
-                      <input matInput [ngModel]="scenario.name" readonly />
-                    </mat-form-field>
-                    <mat-form-field appearance="outline">
-                      <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
-                      <input
-                        matInput
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        [disabled]="
-                          !isPositionScenarioSelected(position, scenario.key) ||
-                          !isPositionScenarioStructurallyApplicable(position, scenario.key)
-                        "
-                        [ngModel]="scenario.weight"
-                        (ngModelChange)="setPositionScenarioWeight(position, scenario.key, $event)" />
-                    </mat-form-field>
-                    <span
-                      class="scenario-not-applicable"
-                      *ngIf="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
-                      <mat-icon>block</mat-icon>
-                      {{ getScenarioNotApplicableTranslationKey(scenario.key) | translate }}
-                    </span>
-                  </div>
-                </ng-template>
-              </mat-expansion-panel>
-            </mat-accordion>
+                    <div class="scenario-config-card-header">
+                      <div class="scenario-config-identity">
+                        <span class="scenario-config-icon">
+                          <mat-icon>{{ getScenarioRelationIcon(scenario.key) }}</mat-icon>
+                        </span>
+                        <div>
+                          <h6>{{ scenario.name }}</h6>
+                          <p>
+                            {{ getScenarioRelationDescriptionKey(scenario.key) | translate: { position: position } }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <mat-checkbox
+                        [ngModel]="isPositionScenarioSelected(position, scenario.key)"
+                        (ngModelChange)="setPositionScenarioSelected(position, scenario.key, $event)"
+                        [disabled]="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                        {{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_ACTIVE' | translate }}
+                      </mat-checkbox>
+                    </div>
+
+                    <div class="scenario-config-card-footer">
+                      <mat-form-field appearance="outline" class="scenario-weight-field">
+                        <mat-label>{{ 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.WEIGHT' | translate }}</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          [disabled]="
+                            !isPositionScenarioSelected(position, scenario.key) ||
+                            !isPositionScenarioStructurallyApplicable(position, scenario.key)
+                          "
+                          [ngModel]="scenario.weight"
+                          (ngModelChange)="setPositionScenarioWeight(position, scenario.key, $event)" />
+                        <span matTextSuffix>%</span>
+                      </mat-form-field>
+
+                      <span
+                        class="scenario-not-applicable"
+                        *ngIf="!isPositionScenarioStructurallyApplicable(position, scenario.key)">
+                        <mat-icon>block</mat-icon>
+                        {{ getScenarioNotApplicableTranslationKey(scenario.key) | translate }}
+                      </span>
+                    </div>
+                  </article>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </mat-tab>

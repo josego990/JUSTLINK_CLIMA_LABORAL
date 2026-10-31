@@ -161,6 +161,31 @@
     -->
 
     <ng-container *ngIf="idFlujo > 0; else noDashboardData">
+    <section
+      class="dashboard-main-loader"
+      *ngIf="loadingGeneral"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true">
+      <div class="dashboard-main-loader__spinner" aria-hidden="true">
+        <mat-progress-spinner mode="indeterminate" diameter="38" strokeWidth="4"></mat-progress-spinner>
+      </div>
+      <div class="dashboard-main-loader__content">
+        <span class="dashboard-main-loader__eyebrow">
+          {{ 'MENUITEMS.DASHBOARD.LOADING.TITLE' | translate }}
+        </span>
+        <strong>{{ dashboardLoadingMessageKey | translate }}</strong>
+        <span class="dashboard-main-loader__hint">
+          {{ 'MENUITEMS.DASHBOARD.LOADING.HINT' | translate }}
+        </span>
+      </div>
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    </section>
+    <div class="dashboard-section-error" *ngIf="summaryError">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ summaryError }}</span>
+      <button mat-stroked-button (click)="retryDashboardSection('resumen')">Reintentar</button>
+    </div>
     <div class="row">
       <div class="col-12">
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px 0;">
@@ -193,7 +218,7 @@
             ✅ <strong>Contestadas:</strong> {{ totalContestadas }}
           </div>
           <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-            📋 <strong>Pendientes:</strong> {{ totalCreadas - totalContestadas }}
+            📋 <strong>Pendientes:</strong> {{ totalPendientes }}
           </div>
           <div style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
             📊 <strong>Completado:</strong> {{ porcentajeEnvio | number:'1.0-2' }}%
@@ -710,10 +735,6 @@
             
           </h5>
 
-         <div class="card-loader" *ngIf="loadingFactores">
-          <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-         </div>
-
         <div *ngFor="let g of gMetricasData;" class="mb-3">
           <h5 class="mb-2" style="display:flex;align-items:center;gap:.5rem;">
             <span *ngIf=" (g.etiqueta || '').toLowerCase() !== 'generico'">{{ g.etiqueta }}</span>
@@ -817,6 +838,19 @@
     </div>
 
 
+    <section #specialQuestionsPanel class="dashboard-lazy-panel">
+      <div class="dashboard-section-loader" *ngIf="loadingSpecialQuestions">
+        <mat-progress-spinner mode="indeterminate" diameter="42"></mat-progress-spinner>
+        <span>Cargando preguntas especiales...</span>
+      </div>
+
+      <div class="dashboard-section-error" *ngIf="specialQuestionsError">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ specialQuestionsError }}</span>
+        <button mat-stroked-button (click)="retryDashboardSection('preguntas-especiales')">Reintentar</button>
+      </div>
+
+      <ng-container *ngIf="specialQuestionsLoaded">
     <section class="list-response-section" *ngIf="listResponseCharts.length > 0">
       <div class="list-response-section-header">
         <mat-icon>list_alt</mat-icon>
@@ -868,9 +902,6 @@
     <div class="row">
       <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
         <mat-card *ngIf="sliderRows.length > 0">
-          <div class="card-loader" *ngIf="loadingCalificacion">
-              <mat-progress-spinner mode="indeterminate" diameter="56"></mat-progress-spinner>
-            </div>
           <mat-card-header>
             <mat-card-title>Resultados de Rangos (NPS)</mat-card-title>
           </mat-card-header>
@@ -883,6 +914,13 @@
         </mat-card>
       </div>
     </div>
+
+        <div class="dashboard-section-empty" *ngIf="listResponseCharts.length === 0 && sliderRows.length === 0">
+          <mat-icon>fact_check</mat-icon>
+          <span>Este clima no tiene resultados de preguntas especiales.</span>
+        </div>
+      </ng-container>
+    </section>
 
 
     <div class="row">
@@ -903,6 +941,19 @@
       </div>
     </div>
 
+    <section #participationPanel class="dashboard-lazy-panel">
+      <div class="dashboard-section-loader" *ngIf="loadingParticipation">
+        <mat-progress-spinner mode="indeterminate" diameter="42"></mat-progress-spinner>
+        <span>Cargando participación...</span>
+      </div>
+
+      <div class="dashboard-section-error" *ngIf="participationError">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ participationError }}</span>
+        <button mat-stroked-button (click)="retryDashboardSection('participacion')">Reintentar</button>
+      </div>
+
+      <ng-container *ngIf="participationLoaded">
     <div class="row">
       <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12">
         <mat-card>
@@ -930,148 +981,166 @@
       </div>
     </div>
 
-
-    <div class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12" *ngFor="let m of commentsDataNorm">
-      <mat-card>
-
-        <mat-card-header class="qa-header">
-           <mat-icon mat-card-avatar class="avatar-icon" aria-label="Feedback">comment</mat-icon>
-
-          <div style="margin-left: 5px;" class="w-100">
-            <!-- Fila 1: Pregunta + Resultado mayoritario -->
-            <div class="title-row">
-              <mat-card-title class="qa-title">{{ m.Pregunta }}</mat-card-title>
-
-             
-            </div>
-          </div>
-
-          
-        </mat-card-header>
-
-        <mat-card-content>
-          <div class="row">
-            <div class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
-                *ngFor="let c of m.ComentariosJSON">
-              <mat-card class="comment-card">
-              
-
-                <mat-card-content>
-                  {{ c.Comentario }}
-                </mat-card-content>
-              </mat-card>
-            </div>
-          </div>
-        </mat-card-content>
-
-      </mat-card>
-    </div>
+        <div class="dashboard-section-empty" *ngIf="participacionRows.length === 0 && rowsPendientes.length === 0">
+          <mat-icon>groups</mat-icon>
+          <span>No hay datos de participación para los filtros seleccionados.</span>
+        </div>
+      </ng-container>
+    </section>
 
 
-    <div class="col-12 col-md-12 mb-12 col-sm-12 col-xs-12" *ngFor="let m of commentsData">
-      <mat-card>
+    <section #commentsPanel class="dashboard-lazy-panel dashboard-comments-panel">
+      <div class="dashboard-section-loader" *ngIf="loadingComments">
+        <mat-progress-spinner mode="indeterminate" diameter="42"></mat-progress-spinner>
+        <span>Cargando comentarios...</span>
+      </div>
 
-        <mat-card-header class="qa-header">
-           <mat-icon mat-card-avatar class="avatar-icon" aria-label="Feedback">insights</mat-icon>
+      <div class="dashboard-section-error" *ngIf="commentsError">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ commentsError }}</span>
+        <button mat-stroked-button (click)="retryDashboardSection('comentarios')">Reintentar</button>
+      </div>
 
-          <div style="margin-left: 5px;" class="w-100">
-            <!-- Fila 1: Pregunta + Resultado mayoritario -->
-            <div class="title-row">
-              <mat-card-title class="qa-title">{{ m.Pregunta }}</mat-card-title>
+      <ng-container *ngIf="commentsLoaded">
+        <div
+          class="dashboard-comment-question"
+          *ngFor="let m of commentQuestions; trackBy: trackByCommentQuestion"
+        >
+          <mat-card>
+            <mat-card-header class="qa-header">
+              <mat-icon mat-card-avatar class="avatar-icon" aria-label="Comentarios">
+                {{ m.Tipo === 'IATEXT' ? 'insights' : 'comment' }}
+              </mat-icon>
 
-              <div class="overall" [ngClass]="{
-                  'overall-positive': m._overall === 'POSITIVE',
-                  'overall-negative': m._overall === 'NEGATIVE',
-                  'overall-neutral' : m._overall === 'NEUTRAL',
-                  'overall-mixed'   : m._overall === 'MIXED'
-                }">
-                <mat-icon class="sentiment-icon">
-                  {{
-                    m._overall === 'POSITIVE' ? 'sentiment_satisfied' :
-                    m._overall === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
-                    'sentiment_neutral'
-                  }}
-                </mat-icon>
-                <span>{{ m._overall | titlecase }}</span>
+              <div class="dashboard-comment-heading">
+                <div class="title-row">
+                  <mat-card-title class="qa-title">{{ m.Pregunta }}</mat-card-title>
+
+                  <div
+                    *ngIf="m.Tipo === 'IATEXT' && m.ComentariosJSON.length > 0"
+                    class="overall"
+                    [ngClass]="{
+                      'overall-positive': m._overall === 'POSITIVE',
+                      'overall-negative': m._overall === 'NEGATIVE',
+                      'overall-neutral': m._overall === 'NEUTRAL',
+                      'overall-mixed': m._overall === 'MIXED'
+                    }"
+                  >
+                    <mat-icon class="sentiment-icon">
+                      {{
+                        m._overall === 'POSITIVE' ? 'sentiment_satisfied' :
+                        m._overall === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
+                        'sentiment_neutral'
+                      }}
+                    </mat-icon>
+                    <span>{{ m._overall | titlecase }}</span>
+                  </div>
+                </div>
+
+                <mat-chip-set class="meta-row">
+                  <mat-chip class="chip-factor">Factor: {{ m.Factor }}</mat-chip>
+                  <mat-chip>{{ m.Tipo === 'IATEXT' ? 'Texto con análisis' : 'Texto abierto' }}</mat-chip>
+
+                  <ng-container *ngIf="m.Tipo === 'IATEXT'">
+                    <mat-chip class="chip-pos">Positivas: {{ m._counts?.POSITIVE || 0 }}</mat-chip>
+                    <mat-chip class="chip-neg">Negativas: {{ m._counts?.NEGATIVE || 0 }}</mat-chip>
+                    <mat-chip class="chip-neu">Neutrales: {{ m._counts?.NEUTRAL || 0 }}</mat-chip>
+                    <mat-chip class="chip-mix">Mixtas: {{ m._counts?.MIXED || 0 }}</mat-chip>
+                  </ng-container>
+
+                  <mat-chip>Total: {{ m.pagination.totalRegistros }}</mat-chip>
+                </mat-chip-set>
               </div>
-            </div>
+            </mat-card-header>
 
-            <!-- Fila 2: Chips de factor y distribución -->
-            <div class="meta-row">
-              <mat-chip-set class="meta-row">
-                <mat-chip
-                  class="chip-factor"
-                  [style.--mdc-chip-elevated-container-color]="'#e3f2fd'"
-                  [style.--mdc-chip-label-text-color]="'#1976d2'">
-                  Factor: {{ m.Factor }}
-                </mat-chip>
+            <mat-card-content>
+              <div class="dashboard-comment-loading" *ngIf="m.loading">
+                <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+                <span>Cargando respuestas...</span>
+              </div>
 
-                <mat-chip
-                  class="chip-pos"
-                  [style.--mdc-chip-elevated-container-color]="'#e8f5e9'"
-                  [style.--mdc-chip-label-text-color]="'#2e7d32'">
-                  Positivas: {{ m._counts?.POSITIVE || 0 }}
-                </mat-chip>
+              <div class="dashboard-comment-error" *ngIf="m.error && !m.loading">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ m.error }}</span>
+                <button mat-stroked-button (click)="loadCommentQuestionPage(m.IdPregunta, m.pagination.pagina)">
+                  Reintentar
+                </button>
+              </div>
 
-                <mat-chip
-                  class="chip-neg"
-                  [style.--mdc-chip-elevated-container-color]="'#ffebee'"
-                  [style.--mdc-chip-label-text-color]="'#c62828'">
-                  Negativas: {{ m._counts?.NEGATIVE || 0 }}
-                </mat-chip>
+              <div class="row" *ngIf="!m.loading && !m.error">
+                <div
+                  class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
+                  *ngFor="let c of m.ComentariosJSON"
+                >
+                  <div class="comment-card">
+                    <div class="comment-card-header" *ngIf="m.Tipo === 'IATEXT'">
+                      <mat-icon
+                        class="sentiment-icon"
+                        [ngClass]="{
+                          'icon-positive': c.Sentiment === 'POSITIVE',
+                          'icon-negative': c.Sentiment === 'NEGATIVE',
+                          'icon-neutral': c.Sentiment === 'NEUTRAL',
+                          'icon-mixed': c.Sentiment === 'MIXED'
+                        }"
+                      >
+                        {{
+                          c.Sentiment === 'POSITIVE' ? 'sentiment_satisfied' :
+                          c.Sentiment === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
+                          'sentiment_neutral'
+                        }}
+                      </mat-icon>
+                      <span class="comment-sent">{{ c.Sentiment | titlecase }}</span>
+                    </div>
 
-                <mat-chip
-                  class="chip-neu"
-                  [style.--mdc-chip-elevated-container-color]="'#eeeeee'"
-                  [style.--mdc-chip-label-text-color]="'#424242'">
-                  Neutrales: {{ m._counts?.NEUTRAL || 0 }}
-                </mat-chip>
+                    <div class="comment-card-content">{{ c.Comentario }}</div>
+                  </div>
+                </div>
+              </div>
 
-                <mat-chip
-                  class="chip-mix"
-                  [style.--mdc-chip-elevated-container-color]="'#f3e5f5'"
-                  [style.--mdc-chip-label-text-color]="'#6a1b9a'">
-                  Mixtas: {{ m._counts?.MIXED || 0 }}
-                </mat-chip>
+              <div
+                class="dashboard-comment-empty"
+                *ngIf="!m.loading && !m.error && m.ComentariosJSON.length === 0"
+              >
+                No hay respuestas para esta pregunta con los filtros seleccionados.
+              </div>
 
-                <mat-chip> Total: {{ m._total || 0 }} </mat-chip>
-              </mat-chip-set>
-            </div>
-          </div>
-        </mat-card-header>
+              <div
+                class="dashboard-comments-pagination"
+                *ngIf="!m.loading && !m.error && m.pagination.totalRegistros > 0"
+              >
+                <span>
+                  Página {{ m.pagination.pagina }} de {{ m.pagination.totalPaginas }}
+                  · {{ m.pagination.totalRegistros }} respuestas
+                </span>
+                <div>
+                  <button
+                    mat-stroked-button
+                    [disabled]="m.loading || m.pagination.pagina <= 1"
+                    (click)="loadCommentQuestionPage(m.IdPregunta, m.pagination.pagina - 1)"
+                  >
+                    <mat-icon>chevron_left</mat-icon>
+                    Anterior
+                  </button>
+                  <button
+                    mat-stroked-button
+                    [disabled]="m.loading || m.pagination.pagina >= m.pagination.totalPaginas"
+                    (click)="loadCommentQuestionPage(m.IdPregunta, m.pagination.pagina + 1)"
+                  >
+                    Siguiente
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
 
-        <mat-card-content>
-          <div class="row">
-            <div class="col-md-6 mb-6 col-sm-12 col-xs-12 col-lg-6 col-xl-4"
-                *ngFor="let c of m.ComentariosJSON">
-              <mat-card class="comment-card">
-                <mat-card-header>
-                  <!-- Icono por comentario, sin repetir texto grande -->
-                  <mat-icon class="sentiment-icon" [ngClass]="{
-                      'icon-positive': c.Sentiment === 'POSITIVE',
-                      'icon-negative': c.Sentiment === 'NEGATIVE', 
-                      'icon-neutral' : c.Sentiment === 'NEUTRAL',
-                      'icon-mixed'   : c.Sentiment === 'MIXED'
-                    }">
-                    {{
-                      c.Sentiment === 'POSITIVE' ? 'sentiment_satisfied' :
-                      c.Sentiment === 'NEGATIVE' ? 'sentiment_very_dissatisfied' :
-                      'sentiment_neutral'
-                    }}
-                  </mat-icon>
-                  <span class="comment-sent">{{ c.Sentiment | titlecase }}</span>
-                </mat-card-header>
-
-                <mat-card-content>
-                  {{ c.Comentario }}
-                </mat-card-content>
-              </mat-card>
-            </div>
-          </div>
-        </mat-card-content>
-
-      </mat-card>
-    </div>
+        <div class="dashboard-section-empty" *ngIf="commentQuestions.length === 0">
+          <mat-icon>forum</mat-icon>
+          <span>No hay comentarios para los filtros seleccionados.</span>
+        </div>
+      </ng-container>
+    </section>
 
     </ng-container>
 

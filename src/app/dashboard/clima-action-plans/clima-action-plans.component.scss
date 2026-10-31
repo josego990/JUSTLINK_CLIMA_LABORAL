@@ -744,6 +744,33 @@
   flex: 1;
 }
 
+.plans-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  justify-content: flex-end;
+}
+
+.justlink-pdf-button {
+  --mdc-outlined-button-container-shape: 8px;
+  --mdc-outlined-button-label-text-color: #102635;
+  --mdc-outlined-button-outline-color: rgba(255, 139, 37, 0.58);
+  background: #fff7ed !important;
+  border-color: rgba(255, 139, 37, 0.58) !important;
+  color: #102635 !important;
+  font-weight: 850;
+}
+
+.justlink-pdf-button mat-icon {
+  color: #ff7f1f;
+}
+
+.justlink-pdf-button:hover:not(:disabled) {
+  background: #ffe7c7 !important;
+  border-color: #ff8b25 !important;
+}
+
 .plan-list {
   gap: 18px;
 }
@@ -1117,6 +1144,11 @@
 
   .hero-score {
     align-items: flex-start;
+    width: 100%;
+  }
+
+  .plans-toolbar-actions,
+  .plans-toolbar-actions button {
     width: 100%;
   }
 

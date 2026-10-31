@@ -26,6 +26,13 @@ import { LanguageService } from '../../core/service/language.service';
 import { TranslateModule } from '@ngx-translate/core'; 
 import { DemoLimitsService } from 'app/config/demo-limits.service';
 import { Subscription } from 'rxjs';
+import {
+  CLIMATE_TEMPLATES,
+  ClimateCreationMode,
+  ClimateTemplateDefinition,
+  ClimateTemplateId,
+  loadClimateTemplateItems,
+} from './climate-templates';
 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -68,7 +75,7 @@ export class DialogformComponent implements OnDestroy, OnInit {
   bankData: QuizBank[] = [];
   unitList: string[] = [];
   totalQuestionsSelected = 0;
-  public metodoAplicacion = 0;
+  public metodoAplicacion = 1;
 
   public qname = '';
   public qdesc = '';
@@ -79,6 +86,11 @@ export class DialogformComponent implements OnDestroy, OnInit {
 
   loadingOrganizations = false;
   isSavingClimate = false;
+  creationMode: ClimateCreationMode = 'blank';
+  selectedTemplateId: ClimateTemplateId | null = null;
+  readonly climateTemplates = CLIMATE_TEMPLATES;
+  private autoFilledTemplateName = '';
+  private autoFilledTemplateDescription = '';
   private selectedOrganizationSubscription?: Subscription;
 
   url: string | null = null;
@@ -326,6 +338,64 @@ export class DialogformComponent implements OnDestroy, OnInit {
     console.log(this.metodoAplicacion);
   }
 
+  setCreationMode(mode: ClimateCreationMode): void {
+    if (this.isSavingClimate) {
+      return;
+    }
+
+    this.creationMode = mode;
+    if (mode === 'blank') {
+      this.selectedTemplateId = null;
+    }
+  }
+
+  selectClimateTemplate(template: ClimateTemplateDefinition): void {
+    if (this.isSavingClimate) {
+      return;
+    }
+
+    this.creationMode = 'template';
+    this.selectedTemplateId = template.id;
+
+    const nameControl = this.addCusForm.get('quizName');
+    const descriptionControl = this.addCusForm.get('quizDesc');
+    const defaultName = this.translate.instant(template.defaultNameKey);
+    const defaultDescription = this.translate.instant(template.defaultDescriptionKey);
+
+    if (
+      nameControl &&
+      (!nameControl.dirty || !String(nameControl.value ?? '').trim() || nameControl.value === this.autoFilledTemplateName)
+    ) {
+      nameControl.setValue(defaultName);
+      nameControl.markAsPristine();
+      this.autoFilledTemplateName = defaultName;
+    }
+
+    if (
+      descriptionControl &&
+      (
+        !descriptionControl.dirty ||
+        !String(descriptionControl.value ?? '').trim() ||
+        descriptionControl.value === this.autoFilledTemplateDescription
+      )
+    ) {
+      descriptionControl.setValue(defaultDescription);
+      descriptionControl.markAsPristine();
+      this.autoFilledTemplateDescription = defaultDescription;
+    }
+
+    this.metodoAplicacion = template.evaluationMethod;
+    this.addCusForm.get('MetodoAplicacion')?.setValue(template.evaluationMethod);
+  }
+
+  isTemplateSelected(template: ClimateTemplateDefinition): boolean {
+    return this.creationMode === 'template' && this.selectedTemplateId === template.id;
+  }
+
+  private getSelectedTemplate(): ClimateTemplateDefinition | null {
+    return this.climateTemplates.find((template) => template.id === this.selectedTemplateId) ?? null;
+  }
+
   private async canCreateClimateInDemo(): Promise<boolean> {
     const climateLimit = this.demoLimitsService.getLimit('maxClimatesPerOrganization');
 
@@ -365,9 +435,23 @@ export class DialogformComponent implements OnDestroy, OnInit {
     this.isSavingClimate = true;
 
     try {
+      const selectedTemplate = this.creationMode === 'template' ? this.getSelectedTemplate() : null;
+      if (this.creationMode === 'template' && !selectedTemplate) {
+        await Swal.fire({
+          title: this.translate.instant('MENUITEMS.QUIZ.TEMPLATES.REQUIRED_TITLE'),
+          text: this.translate.instant('MENUITEMS.QUIZ.TEMPLATES.REQUIRED_TEXT'),
+          icon: 'info',
+        });
+        return;
+      }
+
       if (!(await this.canCreateClimateInDemo())) {
         return;
       }
+
+      const templateItems = selectedTemplate
+        ? await loadClimateTemplateItems(selectedTemplate)
+        : null;
 
       console.log('Form Values', this.addCusForm.value);
 
@@ -391,7 +475,7 @@ export class DialogformComponent implements OnDestroy, OnInit {
         granFactores: [],
         series: [],
         fields: [],
-        tipoEvaluacion: this.metodoAplicacion.toString(),
+        tipoEvaluacion: String(this.addCusForm.value.MetodoAplicacion || this.metodoAplicacion || 1),
         estadoEnvio: '',
         estadisticasEnvio: {
           total: 0,
@@ -417,6 +501,29 @@ export class DialogformComponent implements OnDestroy, OnInit {
         return;
       }
 
+      if (selectedTemplate && templateItems) {
+        const newClimateId = Number(response?.data?.newId);
+        if (!Number.isFinite(newClimateId) || newClimateId <= 0) {
+          throw new Error('El backend no devolvio el identificador del clima creado.');
+        }
+
+        try {
+          await this.organizacionService.saveNewPreguntasExcel({
+            idFlujo: newClimateId,
+            preguntas: templateItems,
+          });
+        } catch (templateError) {
+          console.error('El clima se creo, pero no fue posible aplicar la plantilla:', templateError);
+          await Swal.fire({
+            title: this.translate.instant('MENUITEMS.QUIZ.TEMPLATES.PARTIAL_ERROR_TITLE'),
+            text: this.translate.instant('MENUITEMS.QUIZ.TEMPLATES.PARTIAL_ERROR_TEXT'),
+            icon: 'warning',
+          });
+          this.dialogRef.close(true);
+          return;
+        }
+      }
+
       if (this.fileChange) {
         this.organizacionService.uploadFileV2(this.formFileData, () => undefined)
           .catch((error) => console.error('Error al subir la imagen del clima:', error));
@@ -424,7 +531,11 @@ export class DialogformComponent implements OnDestroy, OnInit {
 
       await Swal.fire({
         title: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.SUCCESS'),
-        text: this.translate.instant('MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED'),
+        text: this.translate.instant(
+          selectedTemplate
+            ? 'MENUITEMS.QUIZ.TEMPLATES.CREATED_SUCCESS'
+            : 'MENUITEMS.QUIZ.MESSAGES.CLIMATECREATED',
+        ),
         icon: 'success',
       });
       this.dialogRef.close(true);

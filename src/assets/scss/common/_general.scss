@@ -9,7 +9,7 @@
 body {
   @include mixins.transition(all 0.5s);
   background-color: #f0eff3;
-  font-family: "Roboto", sans-serif;
+  font-family: "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif;
   font-size: 14px;
 }
 
@@ -222,7 +222,7 @@ table {
   background: #eee;
   color: black;
   font-size: 14px;
-  font-family: sans-serif, Verdana;
+  font-family: var(--app-font-family, "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif);
   padding: 10px;
   pointer-events: none;
 }

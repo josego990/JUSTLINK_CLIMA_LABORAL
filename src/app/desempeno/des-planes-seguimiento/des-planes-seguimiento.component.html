@@ -38,6 +38,19 @@
             <span>Generado</span>
             <strong>{{ formatDate(groupedData.fechaGeneracion) }}</strong>
           </div>
+
+          <div class="follow-filter-actions">
+            <button
+              mat-stroked-button
+              class="justlink-pdf-button"
+              type="button"
+              (click)="downloadCreatedPlansPdf()"
+              [disabled]="!groupedData || isLoadingResults || createdPlanCount === 0"
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              Descargar PDF
+            </button>
+          </div>
         </div>
 
         <mat-progress-bar

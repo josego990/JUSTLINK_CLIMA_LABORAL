@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/assign-task/assign-task.component.scss"],
+  "sourcesContent": [":host ::ng-deep .user-image {\r\n  border-radius: 50%;\r\n}\r\n"],
+  "mappings": ";AAAA,MAAA,UAAA,CAAA;AACE,iBAAA;;",
+  "names": []
+}

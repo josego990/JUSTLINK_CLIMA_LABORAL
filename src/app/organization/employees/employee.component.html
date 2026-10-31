@@ -132,6 +132,12 @@
 
               <div class="employee-filter-footer">
                 <div class="employee-filter-summary">
+                  <mat-slide-toggle
+                    class="employee-active-filter"
+                    [checked]="showOnlyActiveEmployees"
+                    (change)="onShowOnlyActiveEmployeesChange($event.checked)">
+                    {{ 'MENUITEMS.EMPLOYEE.SHOWONLYACTIVE' | translate }}
+                  </mat-slide-toggle>
                   <span class="employee-filter-results">
                     {{ 'MENUITEMS.EMPLOYEE.FILTERRESULTS' | translate:{ visible: visibleEmployeeCount, total: totalEmployeeCount } }}
                   </span>
@@ -161,8 +167,29 @@
             <div class="employee-bulk-actions-row" *ngIf="selectedEmployeeCount > 0 && !isLoadingEmployees">
               <div class="employee-bulk-actions">
                 <span class="employee-bulk-actions__count">
-                  {{ selectedEmployeeCount }} seleccionado(s)
+                  {{ 'MENUITEMS.EMPLOYEE.BULKSELECTED' | translate:{ count: selectedEmployeeCount } }}
                 </span>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="employee-bulk-send-type">
+                  <mat-label>{{ 'MENUITEMS.EMPLOYEE.BULKSENDTYPE' | translate }}</mat-label>
+                  <mat-select
+                    [(ngModel)]="bulkEmployeeSendType"
+                    [ngModelOptions]="{ standalone: true }"
+                    [disabled]="isProcessingBulkEmployeeAction">
+                    <mat-option [value]="0">{{ 'MENUITEMS.EMPLOYEE.SENDTYPENONE' | translate }}</mat-option>
+                    <mat-option [value]="1">{{ 'MENUITEMS.EMPLOYEE.SENDTYPEEMAIL' | translate }}</mat-option>
+                    <mat-option [value]="2">{{ 'MENUITEMS.EMPLOYEE.SENDTYPEWHATSAPP' | translate }}</mat-option>
+                    <mat-option [value]="3">{{ 'MENUITEMS.EMPLOYEE.SENDTYPEBOTH' | translate }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="employee-bulk-send-apply"
+                  [disabled]="bulkEmployeeSendType === null || isProcessingBulkEmployeeAction"
+                  (click)="bulkUpdateSelectedEmployeeSendType()">
+                  <mat-icon>send</mat-icon>
+                  {{ 'MENUITEMS.EMPLOYEE.BULKAPPLY' | translate }}
+                </button>
                 <button
                   *ngIf="selectedActiveEmployeeCount > 0"
                   mat-stroked-button
@@ -210,16 +237,16 @@
               </div>
 
               <div class="table-responsive employee-table-scroll">
-                <table mat-table [dataSource]="dataSourceEmployees" class="table employee-table">
+                <table mat-table [dataSource]="pagedEmployees" class="table employee-table">
 
                 <ng-container matColumnDef="Seleccionar">
                   <th mat-header-cell *matHeaderCellDef class="employee-selection-cell">
                     <mat-checkbox
                       [checked]="areAllVisibleEmployeesSelected"
                       [indeterminate]="areSomeVisibleEmployeesSelected"
-                      [disabled]="!dataSourceEmployees.length || isProcessingBulkEmployeeAction"
+                      [disabled]="!pagedEmployees.length || isProcessingBulkEmployeeAction"
                       (change)="toggleVisibleEmployeeSelection($event.checked)"
-                      aria-label="Seleccionar empleados visibles">
+                      [attr.aria-label]="'MENUITEMS.EMPLOYEE.SELECTPAGE' | translate">
                     </mat-checkbox>
                   </th>
                   <td mat-cell *matCellDef="let element" class="employee-selection-cell">
@@ -235,62 +262,48 @@
 
                 <!-- Id -->
                 <ng-container matColumnDef="Id">
-                  <th mat-header-cell *matHeaderCellDef> ID </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Id }} </td>
-                </ng-container>
-              
-                <!-- IdOrganizacion -->
-                <ng-container matColumnDef="IdOrganizacion">
-                  <th mat-header-cell *matHeaderCellDef> Id Org. </th>
-                  <td mat-cell *matCellDef="let element"> {{ idOrganization }} </td>
-                </ng-container>
-              
-                <!-- Nombres -->
-                <ng-container matColumnDef="Nombres">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.NAME' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Nombres }} </td>
-                </ng-container>
-              
-                <!-- Apellidos -->
-                <ng-container matColumnDef="Apellidos">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.LNAME' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Apellidos }} </td>
-                </ng-container>
-
-                <!-- Cargo -->
-                <ng-container matColumnDef="Cargo">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.POSITION' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Cargo || element.cargo || '-' }} </td>
-                </ng-container>
-              
-              
-                <!-- Celular -->
-                <ng-container matColumnDef="Celular">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.PHONE' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Celular }} </td>
-                </ng-container>
-              
-                <!-- Email -->
-                <ng-container matColumnDef="Email">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.ORGANIZATION.MAIL' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> {{ element.Email }} </td>
-                </ng-container>
-              
-              
-                <!-- TipoEnvioEncuesta -->
-                <ng-container matColumnDef="TipoEnvioEncuesta">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.SENDTYPE' | translate}} </th>
-                  <td mat-cell *matCellDef="let element"> 
-                    {{ element.TipoEnvioEncuesta === 1 ? 'Mail' : element.TipoEnvioEncuesta === 2 ? 'Whatsapp' : element.TipoEnvioEncuesta === 3 ? 'Mail & Whatsapp' :  'Otro' }} 
+                  <th mat-header-cell *matHeaderCellDef> Empleado </th>
+                  <td mat-cell *matCellDef="let element" class="employee-identity-cell">
+                    <div class="employee-identity-name">{{ getEmployeeTableFullName(element) }}</div>
+                    <div class="employee-identity-meta">
+                      <span>#{{ element.Id }}</span>
+                      <span>{{ getEmployeeTableCargo(element) || 'Sin cargo' }}</span>
+                    </div>
                   </td>
                 </ng-container>
-              
-                <!-- FechaRegistro -->
-                <ng-container matColumnDef="FechaRegistro">
-                  <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.REGDATE' | translate}}</th>
-                  <td mat-cell *matCellDef="let element"> {{ element.FechaRegistro | date }} </td>
+
+                <!-- Contacto agrupado -->
+                <ng-container matColumnDef="DatosContacto">
+                  <th mat-header-cell *matHeaderCellDef> Contacto </th>
+                  <td mat-cell *matCellDef="let element" class="employee-contact-cell">
+                    <div class="employee-contact-stack">
+                      <span>
+                        <mat-icon aria-hidden="true">phone</mat-icon>
+                        {{ getEmployeeTablePhone(element) || '-' }}
+                      </span>
+                      <span class="employee-contact-email" [title]="getEmployeeTableEmail(element)">
+                        <mat-icon aria-hidden="true">mail_outline</mat-icon>
+                        {{ getEmployeeTableEmail(element) || '-' }}
+                      </span>
+                    </div>
+                  </td>
                 </ng-container>
-              
+
+                <!-- TipoEnvioEncuesta -->
+                <ng-container matColumnDef="TipoEnvioEncuesta">
+                  <th mat-header-cell *matHeaderCellDef> Encuesta </th>
+                  <td mat-cell *matCellDef="let element" class="employee-survey-cell">
+                    <div class="employee-survey-stack">
+                      <span class="employee-survey-type">
+                        {{ getEmployeeSendTypeLabel(element.TipoEnvioEncuesta) }}
+                      </span>
+                      <span class="employee-survey-date" *ngIf="element.FechaRegistro">
+                        {{ element.FechaRegistro | date:'shortDate' }}
+                      </span>
+                    </div>
+                  </td>
+                </ng-container>
+
                 <ng-container matColumnDef="estado">
                   <th mat-header-cell *matHeaderCellDef> {{'MENUITEMS.EMPLOYEE.STATUS' | translate}}</th>
                   <td mat-cell *matCellDef="let element">
@@ -305,20 +318,24 @@
                 </ng-container>
 
                 <ng-container matColumnDef="NombreJefe">
-                  <th mat-header-cell *matHeaderCellDef> NOMBRE JEFE</th>
-                  <td mat-cell *matCellDef="let element"> {{ getEmployeeManagerDisplay(element) }} </td>
+                  <th mat-header-cell *matHeaderCellDef> Jefe</th>
+                  <td mat-cell *matCellDef="let element" class="employee-manager-cell">
+                    {{ getEmployeeManagerDisplay(element) }}
+                  </td>
                 </ng-container>
 
                 <ng-container *ngFor="let campo of camposDinamicos" [matColumnDef]="campo">
                   <th mat-header-cell *matHeaderCellDef class="employee-demographic-header-cell">
                     <div class="employee-demographic-heading">
                       <span class="employee-demographic-heading__mark" aria-hidden="true"></span>
-                      <span class="employee-demographic-heading__label">{{ campo }}</span>
+                      <span class="employee-demographic-heading__label" [title]="campo">{{ campo }}</span>
                     </div>
                   </th>
                   <td mat-cell *matCellDef="let element" class="employee-demographic-cell">
-                    <span class="employee-demographic-value">
-                      {{ element[campo] !== null && element[campo] !== undefined && element[campo] !== '' ? element[campo] : '-' }}
+                    <span
+                      class="employee-demographic-value"
+                      [title]="getEmployeeTableDemographicValue(element, campo)">
+                      {{ getEmployeeTableDemographicValue(element, campo) || '-' }}
                     </span>
                   </td>
                 </ng-container>
@@ -366,6 +383,18 @@
                 </tr>
                 </table>
               </div>
+
+              <mat-paginator
+                *ngIf="dataSourceEmployees.length > employeePageSizeOptions[0]"
+                class="employee-paginator"
+                [length]="dataSourceEmployees.length"
+                [pageIndex]="employeePageIndex"
+                [pageSize]="employeePageSize"
+                [pageSizeOptions]="employeePageSizeOptions"
+                showFirstLastButtons
+                [attr.aria-label]="'MENUITEMS.EMPLOYEE.PAGINATION' | translate"
+                (page)="onEmployeePageChange($event)">
+              </mat-paginator>
               
             </div>
           </div>

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/config/config.service.ts"],
+  "sourcesContent": ["import { Injectable } from '@angular/core';\r\nimport { InConfiguration } from '../core/models/config.interface';\r\n\r\n@Injectable({\r\n  providedIn: 'root',\r\n})\r\nexport class ConfigService {\r\n  public configData!: InConfiguration;\r\n\r\n  constructor() {\r\n    this.setConfigData();\r\n  }\r\n\r\n  setConfigData() {\r\n    this.configData = {\r\n      layout: {\r\n        rtl: false, // options: true & false\r\n        variant: 'light', // options: light & dark\r\n        theme_color: 'white', // options: white, black, purple, blue, cyan, green, orange\r\n        logo_bg_color: 'white', // options: white, black, purple, blue, cyan, green, orange\r\n        sidebar: {\r\n          collapsed: false, // options: true & false\r\n          backgroundColor: 'light', // options: light & dark\r\n        },\r\n      },\r\n    };\r\n  }\r\n}"],
+  "mappings": ";;;;;;;AAMM,IAAO,gBAAP,MAAO,eAAa;EAGxB,cAAA;AACE,SAAK,cAAa;EACpB;EAEA,gBAAa;AACX,SAAK,aAAa;MAChB,QAAQ;QACN,KAAK;;QACL,SAAS;;QACT,aAAa;;QACb,eAAe;;QACf,SAAS;UACP,WAAW;;UACX,iBAAiB;;;;;EAIzB;;;uCApBW,gBAAa;IAAA;EAAA;;4EAAb,gBAAa,SAAb,eAAa,WAAA,YAFZ,OAAM,CAAA;EAAA;;;sEAEP,eAAa,CAAA;UAHzB;WAAW;MACV,YAAY;KACb;;;",
+  "names": []
+}

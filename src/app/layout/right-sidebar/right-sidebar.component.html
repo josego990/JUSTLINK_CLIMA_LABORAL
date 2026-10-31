@@ -64,6 +64,23 @@
             </ul>
           </div>
         </div>
+        <div class="rightSetting app-scale-setting">
+          <h6 class="font-medium m-b-10">Application size</h6>
+          <div class="app-scale-options" role="radiogroup" aria-label="Application size">
+            @for (option of applicationScaleOptions; track option.id) {
+            <button
+              type="button"
+              class="app-scale-option"
+              [class.active]="applicationScale === option.id"
+              [attr.aria-checked]="applicationScale === option.id"
+              role="radio"
+              (click)="setApplicationScale(option.id)">
+              <span>{{ option.label }}</span>
+              <small>{{ option.percentage }}%</small>
+            </button>
+            }
+          </div>
+        </div>
         <div class="rightSetting">
           <h6 class="font-medium m-b-10">RTL Layout</h6>
           <mat-slide-toggle class="mt-2" [checked]="isRtl" (change)="switchDirection($event)"></mat-slide-toggle>

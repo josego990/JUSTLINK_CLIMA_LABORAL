@@ -1,53 +1,600 @@
-// nombre.component.scss
-
-// Estilo general para todos los controles
-div {
-  margin-left: 5px;
+:host {
+  display: block;
 }
 
-// Estilo específico para el tipo de archivo
-input[type="file"] {
-  // Puedes agregar estilos específicos para el control de archivo aquí
-  margin-left: 5px;
+.demographics-page {
+  --demographics-ink: #243448;
+  --demographics-muted: #68778b;
+  --demographics-line: #dfe7ef;
+  --demographics-panel: #ffffff;
+  --demographics-soft: #f6f9fc;
+  --demographics-header: #fff4e8;
+  --demographics-accent: #ff8f2a;
+  --demographics-blue: #2079a6;
+  --demographics-green: #27805d;
 }
 
-input[type="textarea"] {
-  // Puedes agregar estilos específicos para el control de archivo aquí
-  margin-left: 10px;
+.demographics-workspace {
+  display: flex;
+  min-height: calc(100dvh - 150px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--demographics-line);
+  border-radius: 8px;
+  background: var(--demographics-panel);
+  box-shadow: 0 10px 30px rgba(30, 49, 73, 0.07);
 }
 
-// Estilo específico para el tipo de slider y su label
-input[type="range"], label {
-  display: inline-block;
-  vertical-align: middle;
+.demographics-toolbar {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #f3ddc3;
+  background: linear-gradient(90deg, #fff7ee 0%, #ffffff 72%);
 }
 
-.save-actions {
+.demographics-toolbar__identity,
+.demographics-toolbar__actions,
+.demographics-count,
+.demographics-field-cell,
+.demographics-actions-cell {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
+}
+
+.demographics-toolbar__identity {
+  min-width: 0;
+  gap: 12px;
+}
+
+.demographics-toolbar__icon,
+.demographics-count__icon,
+.demographics-empty-state__icon,
+.demographics-field-cell__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.demographics-toolbar__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  background: #ffead4;
+  color: #c76512;
+}
+
+.demographics-toolbar h2 {
+  margin: 0;
+  color: var(--demographics-ink);
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.demographics-toolbar p {
+  margin: 2px 0 0;
+  color: var(--demographics-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.demographics-toolbar__actions {
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.demographics-refresh-button {
+  border: 1px solid #f1cfa8;
+  border-radius: 6px;
+  background: var(--demographics-panel);
+  color: #995419;
+}
+
+.demographics-add-button {
+  min-height: 40px;
+  border-radius: 6px;
+}
+
+.demographics-add-button mat-icon {
+  margin-right: 7px;
+}
+
+.demographics-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--demographics-line);
+  background: var(--demographics-panel);
+}
+
+.demographics-count {
+  gap: 9px;
+}
+
+.demographics-count__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: #e6f5ee;
+  color: var(--demographics-green);
+}
+
+.demographics-count > div,
+.demographics-selected-org,
+.demographics-field-cell > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.demographics-count strong {
+  color: var(--demographics-ink);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.demographics-count span:last-child,
+.demographics-selected-org span {
+  color: var(--demographics-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.demographics-selected-org {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.demographics-selected-org strong {
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--demographics-ink);
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demographics-table-panel {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--demographics-panel);
+}
+
+.demographics-table-scroll {
+  flex: 1 1 auto;
+  height: max(390px, calc(100dvh - 300px));
+  min-height: 0;
+  overflow: auto;
+}
+
+.demographics-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--demographics-panel);
+}
+
+.demographics-table th.mat-mdc-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 48px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid #f0d8bc;
+  background: var(--demographics-header);
+  background-clip: padding-box;
+  color: #405166;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 #f4e1c9;
+}
+
+.demographics-table td.mat-mdc-cell {
+  height: 64px;
+  border-bottom: 1px solid #edf1f5;
+  color: var(--demographics-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.demographics-table .mat-mdc-row:hover td.mat-mdc-cell {
+  background: #fffaf4;
+}
+
+.demographics-id {
+  color: #627389;
+  font-weight: 700;
+}
+
+.demographics-field-cell {
+  min-width: 240px;
+  gap: 10px;
+}
+
+.demographics-field-cell__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: #e7f3f9;
+  color: var(--demographics-blue);
+}
+
+.demographics-field-cell strong,
+.demographics-field-cell span:last-child {
+  overflow: hidden;
+  max-width: 320px;
+  text-overflow: ellipsis;
+}
+
+.demographics-field-cell strong {
+  color: var(--demographics-ink);
+  font-size: 13px;
+}
+
+.demographics-field-cell span:last-child {
+  color: var(--demographics-muted);
+  font-size: 11px;
+}
+
+.demographics-type-pill,
+.demographics-status {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.demographics-type-pill {
+  padding: 0 10px;
+  border: 1px solid #d6e4ef;
+  background: #f3f8fc;
+  color: #315f78;
+}
+
+.demographics-status {
+  padding: 0 12px;
+}
+
+.demographics-status--active {
+  border: 1px solid #c6e3cc;
+  background: #e6f4ea;
+  color: #1e4620;
+}
+
+.demographics-status--inactive {
+  border: 1px solid #f5c6c3;
+  background: #feeceb;
+  color: #7a1a16;
+}
+
+.demographics-actions-header,
+.demographics-actions-cell {
+  width: 108px;
+  min-width: 108px;
+  text-align: center;
+}
+
+.demographics-actions-cell {
+  justify-content: center;
+}
+
+.demographics-row-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+}
+
+.demographics-row-action--delete {
+  color: #bd3d49;
+}
+
+.demographics-row-action--restore {
+  color: var(--demographics-green);
+}
+
+.demographics-empty-state {
+  display: flex;
+  min-height: 390px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.demographics-empty-state__icon {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #fff0df;
+  color: #c76512;
+}
+
+.demographics-empty-state__icon mat-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+}
+
+.demographics-empty-state h3 {
+  margin: 0;
+  color: var(--demographics-ink);
+  font-size: 16px;
+}
+
+.demographics-empty-state p {
+  max-width: 420px;
+  margin: 6px 0 18px;
+  color: var(--demographics-muted);
+  font-size: 13px;
+}
+
+.demographic-dialog-shell {
+  --dialog-ink: #243448;
+  --dialog-muted: #68778b;
+  --dialog-line: #dfe7ef;
+  --dialog-panel: #ffffff;
+  --dialog-soft: #f6f9fc;
+}
+
+.demographic-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--dialog-line);
+  background: linear-gradient(90deg, #fff7ee 0%, #ffffff 76%);
+}
+
+.demographic-dialog-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.demographic-dialog-title__icon,
+.demographic-section-heading__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+}
+
+.demographic-dialog-title__icon {
+  width: 40px;
+  height: 40px;
+  background: #ffead4;
+  color: #c76512;
+}
+
+.demographic-dialog-title h2 {
+  margin: 0;
+  color: var(--dialog-ink);
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.demographic-dialog-title p {
+  margin: 3px 0 0;
+  color: var(--dialog-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.demographic-dialog-close {
+  flex: 0 0 auto;
+  border-radius: 6px;
+}
+
+.demographic-dialog-content {
+  padding: 18px 20px 4px !important;
+  background: var(--dialog-panel);
+}
+
+.demographic-form-section {
+  padding: 14px;
+  border: 1px solid var(--dialog-line);
+  border-radius: 8px;
+  background: var(--dialog-soft);
+}
+
+.demographic-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.demographic-section-heading__icon {
+  width: 34px;
+  height: 34px;
+  background: #e7f3f9;
+  color: #2079a6;
+}
+
+.demographic-section-heading h3 {
+  margin: 0;
+  color: var(--dialog-ink);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.demographic-section-heading p {
+  margin: 2px 0 0;
+  color: var(--dialog-muted);
+  font-size: 12px;
+}
+
+.demographic-form-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.demographic-field {
   width: 100%;
 }
 
-.save-demographic-button {
-  min-width: 120px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+.demographic-dialog-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px 20px !important;
+  border-top: 1px solid var(--dialog-line);
 }
 
-.saving-demographic-message {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #58667e;
-  font-size: 13px;
-  font-weight: 600;
+.demographic-cancel-button,
+.demographic-save-button {
+  min-height: 38px;
+  border-radius: 6px;
+}
+
+.demographic-save-button {
+  min-width: 126px;
 }
 
 .save-button-spinner {
+  margin-right: 8px;
   --mdc-circular-progress-active-indicator-color: currentColor;
 }
 
+:host ::ng-deep .demographic-dialog-panel .mat-mdc-dialog-container {
+  --mdc-dialog-container-shape: 8px;
+}
+
+:host-context(.dark) .demographics-page {
+  --demographics-ink: #edf3fa;
+  --demographics-muted: #a3afc0;
+  --demographics-line: #303b4d;
+  --demographics-panel: #151c28;
+  --demographics-soft: #1c2533;
+  --demographics-header: #1c2938;
+  --demographics-accent: #ffb86d;
+  --demographics-blue: #83c7ee;
+  --demographics-green: #65d49b;
+}
+
+:host-context(.dark) .demographics-toolbar {
+  border-bottom-color: #3b485a;
+  background: #1c2938;
+}
+
+:host-context(.dark) .demographics-toolbar__icon,
+:host-context(.dark) .demographics-empty-state__icon {
+  background: rgba(247, 147, 47, 0.16);
+  color: #ffb86d;
+}
+
+:host-context(.dark) .demographics-count__icon {
+  background: rgba(55, 170, 118, 0.16);
+}
+
+:host-context(.dark) .demographics-refresh-button {
+  border-color: #3a4960;
+  background: #182230;
+  color: #c7d3df;
+}
+
+:host-context(.dark) .demographics-table th.mat-mdc-header-cell {
+  border-bottom-color: #3b485a;
+  color: #cbd6e2;
+  box-shadow: 0 1px 0 #3b485a;
+}
+
+:host-context(.dark) .demographics-table td.mat-mdc-cell {
+  border-bottom-color: #283344;
+}
+
+:host-context(.dark) .demographics-table .mat-mdc-row:hover td.mat-mdc-cell {
+  background: #1a2432;
+}
+
+:host-context(.dark) .demographics-field-cell__icon {
+  background: #26384b;
+}
+
+:host-context(.dark) .demographics-type-pill {
+  border-color: #3a4960;
+  background: #1b2634;
+  color: #c7d3df;
+}
+
+:host-context(.dark) .demographic-dialog-shell {
+  --dialog-ink: #edf3fa;
+  --dialog-muted: #a3afc0;
+  --dialog-line: #303b4d;
+  --dialog-panel: #151c28;
+  --dialog-soft: #1c2533;
+}
+
+:host-context(.dark) .demographic-dialog-header {
+  background: #1c2938;
+}
+
+:host-context(.dark) .demographic-dialog-title__icon {
+  background: rgba(247, 147, 47, 0.16);
+  color: #ffb86d;
+}
+
+:host-context(.dark) .demographic-section-heading__icon {
+  background: #26384b;
+  color: #83c7ee;
+}
+
+@media (max-width: 767px) {
+  .demographics-workspace {
+    min-height: calc(100dvh - 132px);
+  }
+
+  .demographics-toolbar,
+  .demographics-summary-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .demographics-toolbar__actions {
+    width: 100%;
+  }
+
+  .demographics-add-button {
+    flex: 1 1 auto;
+  }
+
+  .demographics-selected-org {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .demographics-table-scroll {
+    height: max(380px, calc(100dvh - 365px));
+  }
+
+  .demographic-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

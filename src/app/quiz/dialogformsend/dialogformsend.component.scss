@@ -97,6 +97,46 @@
   gap: 8px;
 }
 
+.bulk-action-button {
+  border-radius: 6px;
+}
+
+.selection-toolbar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid #f1cfab;
+  border-left: 4px solid #ff8a1f;
+  border-radius: 6px;
+  background: #fff8ef;
+}
+
+.selection-toolbar__summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: #17364a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.selection-toolbar__summary mat-icon {
+  flex: 0 0 19px;
+  width: 19px;
+  height: 19px;
+  color: #e06c0b;
+  font-size: 19px;
+}
+
+.selection-toolbar button {
+  flex: 0 0 auto;
+  color: #bd5708;
+}
+
 .survey-status-summary {
   display: flex;
   flex-wrap: wrap;
@@ -212,6 +252,29 @@
   gap: 6px;
 }
 
+.filter-group--demographic {
+  align-items: center;
+  padding-top: 4px;
+  border-top: 1px solid var(--send-border);
+}
+
+.demographic-filter-controls {
+  display: grid;
+  flex: 1 1 620px;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(280px, 1.2fr) 42px;
+  gap: 8px;
+  align-items: center;
+}
+
+.demographic-filter-controls mat-form-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.clear-demographic-filter {
+  color: #d8660b;
+}
+
 .filter-chip {
   height: 30px;
   min-height: 30px;
@@ -244,7 +307,19 @@
 }
 
 .table-wrapper table {
-  min-width: 1320px;
+  min-width: 1380px;
+}
+
+.selection-column {
+  width: 52px;
+  min-width: 52px;
+  padding-right: 8px;
+  padding-left: 12px;
+  text-align: center;
+}
+
+.selection-column .mat-mdc-checkbox {
+  vertical-align: middle;
 }
 
 .type-badge,
@@ -344,6 +419,19 @@
 
 .mat-mdc-row:hover {
   background: var(--send-surface-soft);
+}
+
+.mat-mdc-row.table-row--selected,
+.mat-mdc-row.table-row--selected:hover {
+  background: #fff7ec;
+}
+
+::ng-deep .climate-send-dialog .mat-mdc-checkbox.mat-primary {
+  --mdc-checkbox-selected-checkmark-color: #ffffff;
+  --mdc-checkbox-selected-focus-icon-color: #ff8a1f;
+  --mdc-checkbox-selected-hover-icon-color: #e77310;
+  --mdc-checkbox-selected-icon-color: #ff8a1f;
+  --mdc-checkbox-selected-pressed-icon-color: #d8660b;
 }
 
 .table-wrapper a {
@@ -456,6 +544,51 @@
 
   .loading-overlay {
     background: rgba(2, 6, 23, 0.58);
+  }
+
+  .selection-toolbar {
+    color: #f7d6b5;
+    border-color: #5d4936;
+    border-left-color: #ff9a3d;
+    background: #2a2119;
+  }
+
+  .selection-toolbar__summary {
+    color: #f4e8dc;
+  }
+
+  .mat-mdc-row.table-row--selected,
+  .mat-mdc-row.table-row--selected:hover {
+    background: rgba(255, 138, 31, 0.12);
+  }
+}
+
+@media (max-width: 900px) {
+  .demographic-filter-controls {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .demographic-filter-controls mat-form-field:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .selection-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demographic-filter-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demographic-filter-controls mat-form-field:first-child {
+    grid-column: auto;
+  }
+
+  .clear-demographic-filter {
+    justify-self: end;
   }
 }
 

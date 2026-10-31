@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -30,7 +30,11 @@ import { InfoBoxFactorComponent } from '@shared/components/info-box-factor/info-
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { OrganizacionService } from '../../organization/services/organizacion.service';
+import {
+  ClimaDashboardCommentsPayload,
+  ClimaDashboardPayload,
+  OrganizacionService,
+} from '../../organization/services/organizacion.service';
 import { CommonModule, DatePipe, DOCUMENT } from '@angular/common';
 import { NgxGaugeType } from 'ngx-gauge/gauge/gauge';
 import { ProgressTableFactorComponent, SubjectProgress } from '@shared/components/progress-table-factor/progress-table-factor.component';
@@ -75,6 +79,7 @@ type Filtro = { idCampo: number; nombreCampo?: string; valores: string[] };
 
 type DemographicSelection = { idCampo: number; nombreCampo: string; valores: string[] };
 type FilterChip = { idCampo: number; nombreCampo: string; valor: string };
+type DashboardSection = 'resumen' | 'participacion' | 'preguntas-especiales' | 'comentarios';
 
 type Campo = {
   idCampo: number;
@@ -113,7 +118,7 @@ export interface SliderQuestionRow {
   total_respuestas: number;
   promedio: number;
   // del SP: cadena JSON con [{Valor, Conteo, Porcentaje}]
-  distribucionJSON: string;
+  distribucionJSON: string | Array<{ Valor: number; Conteo: number; Porcentaje: number }>;
 }
 
 interface ComentarioAbierto {
@@ -137,6 +142,20 @@ interface ComentarioPregunta {
   _total?: number;
   _overall?: Sent;
   _counts?: Record<Sent, number>;
+}
+
+interface CommentPaginationState {
+  pagina: number;
+  limite: number;
+  totalRegistros: number;
+  totalPaginas: number;
+}
+
+interface CommentQuestionView extends ComentarioPregunta {
+  Tipo: 'TEXT' | 'IATEXT';
+  loading: boolean;
+  error: string;
+  pagination: CommentPaginationState;
 }
 
 interface SliderPiePoint {
@@ -661,6 +680,48 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
   public rowsPendientes = [];
 
+  public loadingParticipation = false;
+  public loadingSpecialQuestions = false;
+  public loadingComments = false;
+  public summaryError = '';
+  public participationError = '';
+  public specialQuestionsError = '';
+  public commentsError = '';
+  public commentsPagination = {
+    pagina: 1,
+    limite: 50,
+    totalRegistros: 0,
+    totalPaginas: 0,
+  };
+
+  public participationLoaded = false;
+  public specialQuestionsLoaded = false;
+  public commentsLoaded = false;
+  public commentQuestions: CommentQuestionView[] = [];
+  private dashboardRequestVersion = 0;
+  private grandesFactoresRequestVersion = 0;
+  private deliveryStatusRequestVersion = 0;
+  private dashboardReloadTimer?: ReturnType<typeof setTimeout>;
+  private readonly dashboardCache = new Map<string, any>();
+  private readonly dashboardControllers = new Map<string, AbortController>();
+  private readonly dashboardPanelElements = new Map<DashboardSection, HTMLElement>();
+  private readonly dashboardPanelObservers = new Map<DashboardSection, IntersectionObserver>();
+
+  @ViewChild('specialQuestionsPanel')
+  set specialQuestionsPanel(element: ElementRef<HTMLElement> | undefined) {
+    this.registerDashboardPanel('preguntas-especiales', element);
+  }
+
+  @ViewChild('participationPanel')
+  set participationPanel(element: ElementRef<HTMLElement> | undefined) {
+    this.registerDashboardPanel('participacion', element);
+  }
+
+  @ViewChild('commentsPanel')
+  set commentsPanel(element: ElementRef<HTMLElement> | undefined) {
+    this.registerDashboardPanel('comentarios', element);
+  }
+
 
   public earningOptions!: Partial<ChartOptions>;
   public performanceRateChartOptions!: Partial<ChartOptions>;
@@ -671,9 +732,20 @@ export class Dashboard1Component implements OnDestroy, OnInit {
   loadingFactores = false;
   loadingConteos = false;
   loadingPorcentajes = false;
-  loadingCalificacion = false; 
+  loadingCalificacion = false;
   loadingOrganizations = false;
   loadingClimas = false;
+  public dashboardLoadingMessageKey = 'MENUITEMS.DASHBOARD.LOADING.GETTING_DATA';
+  private dashboardLoadingMessageTimer?: ReturnType<typeof setInterval>;
+  private dashboardLoadingMessageVersion = -1;
+  private readonly dashboardLoadingMessageKeys = [
+    'MENUITEMS.DASHBOARD.LOADING.GETTING_DATA',
+    'MENUITEMS.DASHBOARD.LOADING.ORGANIZING_RESPONSES',
+    'MENUITEMS.DASHBOARD.LOADING.INTERPRETING_DATA',
+    'MENUITEMS.DASHBOARD.LOADING.CALCULATING',
+    'MENUITEMS.DASHBOARD.LOADING.PREPARING_CHARTS',
+    'MENUITEMS.DASHBOARD.LOADING.FINALIZING',
+  ];
 
 
 
@@ -962,11 +1034,66 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
     ngOnDestroy(): void {
       this.selectedOrganizationSubscription?.unsubscribe();
+      this.stopDashboardLoadingMessages();
+      this.cancelDashboardRequests();
+      if (this.dashboardReloadTimer) {
+        clearTimeout(this.dashboardReloadTimer);
+      }
+      this.dashboardPanelObservers.forEach((observer) => observer.disconnect());
+    }
+
+    private registerDashboardPanel(
+      section: Exclude<DashboardSection, 'resumen'>,
+      element: ElementRef<HTMLElement> | undefined
+    ): void {
+      this.dashboardPanelObservers.get(section)?.disconnect();
+      this.dashboardPanelObservers.delete(section);
+
+      if (!element) {
+        this.dashboardPanelElements.delete(section);
+        return;
+      }
+
+      this.dashboardPanelElements.set(section, element.nativeElement);
+      this.observeDashboardPanel(section);
+    }
+
+    private observeDashboardPanel(section: Exclude<DashboardSection, 'resumen'>): void {
+      const element = this.dashboardPanelElements.get(section);
+      if (!element || this.isDashboardSectionLoaded(section)) {
+        return;
+      }
+
+      this.dashboardPanelObservers.get(section)?.disconnect();
+
+      if (typeof IntersectionObserver === 'undefined') {
+        void this.loadDashboardSection(section);
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) {
+          return;
+        }
+        observer.disconnect();
+        this.dashboardPanelObservers.delete(section);
+        void this.loadDashboardSection(section);
+      }, { rootMargin: '300px 0px' });
+
+      observer.observe(element);
+      this.dashboardPanelObservers.set(section, observer);
+    }
+
+    private isDashboardSectionLoaded(section: Exclude<DashboardSection, 'resumen'>): boolean {
+      if (section === 'participacion') return this.participationLoaded;
+      if (section === 'preguntas-especiales') return this.specialQuestionsLoaded;
+      return this.commentsLoaded;
     }
 
     private setupSelectedOrganizationListener(): void {
       this.selectedOrganizationSubscription = this.organizacionService.selectedOrganization$.subscribe((organization) => {
         if (!organization) {
+          this.invalidateDashboardContext();
           this.idOrganization = 0;
           this.idFlujo = 0;
           this.nombreOrganizacion = '';
@@ -1158,6 +1285,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
   onOrganizationChange(selectedId: number) {
     //console.log('Se seleccionó el la organización con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
+    this.invalidateDashboardContext();
     this.selectedFilters = [];
     this.selectedGFactors = [];
     this.dataGrandesFactores = [];
@@ -1180,18 +1308,27 @@ export class Dashboard1Component implements OnDestroy, OnInit {
   }
 
   clearAll(){
+    this.clearDashboardMetricSections();
+    this.clearDeliveryStatusMetrics();
+    this.nombreFlujo = '';
+  };
 
-
-    this.single = [];
-    this.clearCorporateAiAnalysis();
-    this.metricasSatisfaccionGeneralData = {};
-    this.totalCreadas = 0;            
+  private clearDeliveryStatusMetrics(): void {
+    this.deliveryStatusRequestVersion += 1;
+    this.loadingEnvios = false;
+    this.totalCreadas = 0;
     this.totalContestadas = 0;
     this.totalEmplados = 0;
     this.porcentajeEnvio = 0;
     this.estadoEnvio = '';
     this.totalEnviadas = 0;
-    this.nombreFlujo = '';
+    this.totalPendientes = 0;
+  }
+
+  private clearDashboardMetricSections(): void {
+    this.single = [];
+    this.clearCorporateAiAnalysis();
+    this.metricasSatisfaccionGeneralData = {};
     this.metricasData = [];
     this.gMetricasData = [];
     this.metricasPorcentajeSatisfaccionFactorData = [];
@@ -1216,9 +1353,297 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
     this.participacionRows = [];
     this.rowsPendientes = [];
-      
+    this.commentsData = [];
     this.commentsDataNorm = this.enrichCommentsData([]);
-  };
+    this.commentQuestions = [];
+  }
+
+  private buildDashboardPayload(): ClimaDashboardPayload {
+    const filtrosDemograficos = (this.selectedFilters ?? [])
+      .flatMap((filter) => (filter.valores ?? []).map((valor) => ({
+        campoId: Number(filter.idCampo),
+        valor: String(valor ?? '').trim() || 'vacío',
+      })))
+      .filter((filter) => Number.isInteger(filter.campoId) && filter.campoId > 0);
+
+    const idsGrandesFactores = Array.from(new Set(
+      (this.selectedGFactors ?? [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    ));
+
+    return {
+      idOrganizacion: Number(this.idOrganization),
+      idFlujo: Number(this.idFlujo),
+      filtrosDemograficos,
+      idsGrandesFactores,
+      modo: this.tipoFiltro === 'OR' ? 'OR' : 'AND',
+    };
+  }
+
+  private buildDashboardContextKey(payload: ClimaDashboardPayload): string {
+    const filtros = [...payload.filtrosDemograficos]
+      .sort((a, b) => a.campoId - b.campoId || a.valor.localeCompare(b.valor));
+    const grandesFactores = [...payload.idsGrandesFactores].sort((a, b) => a - b);
+
+    return JSON.stringify({
+      idOrganizacion: payload.idOrganizacion,
+      idFlujo: payload.idFlujo,
+      filtrosDemograficos: filtros,
+      idsGrandesFactores: grandesFactores,
+      modo: payload.modo,
+    });
+  }
+
+  private invalidateDashboardContext(): void {
+    this.dashboardRequestVersion += 1;
+    this.dashboardCache.clear();
+    this.stopDashboardLoadingMessages();
+    this.cancelDashboardRequests();
+
+    if (this.dashboardReloadTimer) {
+      clearTimeout(this.dashboardReloadTimer);
+      this.dashboardReloadTimer = undefined;
+    }
+
+    this.participationLoaded = false;
+    this.specialQuestionsLoaded = false;
+    this.commentsLoaded = false;
+    this.loadingParticipation = false;
+    this.loadingSpecialQuestions = false;
+    this.loadingComments = false;
+    this.loadingGeneral = false;
+    this.loadingPanorama = false;
+    this.loadingFactores = false;
+    this.loadingCalificacion = false;
+    this.loadingConteos = false;
+    this.loadingPorcentajes = false;
+    this.summaryError = '';
+    this.participationError = '';
+    this.specialQuestionsError = '';
+    this.commentsError = '';
+    this.commentsPagination = { pagina: 1, limite: 50, totalRegistros: 0, totalPaginas: 0 };
+
+    this.dashboardPanelObservers.forEach((observer) => observer.disconnect());
+    this.dashboardPanelObservers.clear();
+  }
+
+  private cancelDashboardRequests(): void {
+    this.dashboardControllers.forEach((controller) => controller.abort());
+    this.dashboardControllers.clear();
+  }
+
+  private startDashboardLoadingMessages(requestVersion: number): void {
+    this.stopDashboardLoadingMessages();
+    this.dashboardLoadingMessageVersion = requestVersion;
+    let messageIndex = 0;
+    this.dashboardLoadingMessageKey = this.dashboardLoadingMessageKeys[messageIndex];
+
+    this.dashboardLoadingMessageTimer = setInterval(() => {
+      messageIndex = Math.min(messageIndex + 1, this.dashboardLoadingMessageKeys.length - 1);
+      this.dashboardLoadingMessageKey = this.dashboardLoadingMessageKeys[messageIndex];
+
+      if (messageIndex === this.dashboardLoadingMessageKeys.length - 1) {
+        clearInterval(this.dashboardLoadingMessageTimer);
+        this.dashboardLoadingMessageTimer = undefined;
+      }
+    }, 1600);
+  }
+
+  private stopDashboardLoadingMessages(requestVersion?: number): void {
+    if (requestVersion !== undefined && requestVersion !== this.dashboardLoadingMessageVersion) {
+      return;
+    }
+
+    if (this.dashboardLoadingMessageTimer) {
+      clearInterval(this.dashboardLoadingMessageTimer);
+      this.dashboardLoadingMessageTimer = undefined;
+    }
+
+    this.dashboardLoadingMessageVersion = -1;
+    this.dashboardLoadingMessageKey = this.dashboardLoadingMessageKeys[0];
+  }
+
+  private scheduleDashboardReload(): void {
+    if (!this.idFlujo || this.idFlujo <= 0) {
+      return;
+    }
+
+    const selectedClimaSnapshot = {
+      nombre: this.nombreFlujo,
+      objetivo: this.objetivoFlujo,
+      imagen: this.imgFlujo,
+    };
+
+    this.invalidateDashboardContext();
+    this.clearDashboardMetricSections();
+    this.nombreFlujo = selectedClimaSnapshot.nombre;
+    this.objetivoFlujo = selectedClimaSnapshot.objetivo;
+    this.imgFlujo = selectedClimaSnapshot.imagen;
+
+    this.dashboardPanelElements.forEach((_element, section) => {
+      if (section !== 'resumen') {
+        this.observeDashboardPanel(section);
+      }
+    });
+
+    const version = this.dashboardRequestVersion;
+    this.dashboardReloadTimer = setTimeout(() => {
+      this.dashboardReloadTimer = undefined;
+      void this.getAllMetricsAsync(this.filtrosDemograficos, this.filtrosGrandesFactores, version);
+    }, 250);
+  }
+
+  private isCanceledDashboardRequest(error: any): boolean {
+    return error?.code === 'ERR_CANCELED'
+      || error?.name === 'CanceledError'
+      || error?.name === 'AbortError';
+  }
+
+  private canUseLegacyDashboardFallback(error: any): boolean {
+    const status = Number(error?.response?.status ?? 0);
+    return [404, 405, 501].includes(status)
+      || error?.code === 'ERR_NETWORK'
+      || error?.code === 'ECONNREFUSED';
+  }
+
+  private dashboardErrorMessage(error: any, fallback: string): string {
+    return String(error?.response?.data?.message ?? error?.message ?? fallback);
+  }
+
+  private pickDashboardSection(data: any, section: DashboardSection): any {
+    if (section === 'resumen') {
+      return {
+        calificacionGeneral: data?.calificacionGeneral ?? null,
+        satisfaccionPorcentajes: data?.satisfaccionPorcentajes ?? [],
+        satisfaccionPorPregunta: data?.satisfaccionPorPregunta ?? [],
+        respuestasPorFactor: data?.respuestasPorFactor ?? [],
+        distribucionRespuestas: data?.distribucionRespuestas ?? [],
+        porcentajeSatisfaccionPorFactor: data?.porcentajeSatisfaccionPorFactor ?? [],
+      };
+    }
+
+    if (section === 'participacion') {
+      return {
+        participacionPorDemografico: data?.participacionPorDemografico ?? [],
+        pendientesPorValor: data?.pendientesPorValor ?? [],
+      };
+    }
+
+    if (section === 'preguntas-especiales') {
+      return {
+        preguntasRango: data?.preguntasRango ?? [],
+        respuestasTipoLista: data?.respuestasTipoLista ?? [],
+      };
+    }
+
+    return {
+      preguntas: data?.preguntas ?? [],
+      items: data?.items ?? data?.preguntasAbiertas ?? [],
+      legacyItemsIa: data?.preguntasAbiertasIA ?? [],
+      paginacion: data?.paginacion ?? {
+        pagina: 1,
+        limite: 50,
+        totalRegistros: Array.isArray(data?.preguntasAbiertas) ? data.preguntasAbiertas.length : 0,
+        totalPaginas: Array.isArray(data?.preguntasAbiertas) && data.preguntasAbiertas.length ? 1 : 0,
+      },
+    };
+  }
+
+  private async getLegacyDashboardData(
+    payload: ClimaDashboardPayload,
+    controller: AbortController,
+    contextKey: string
+  ): Promise<any> {
+    const cacheKey = `${contextKey}::legacy`;
+    if (this.dashboardCache.has(cacheKey)) {
+      return this.dashboardCache.get(cacheKey);
+    }
+
+    const filtros = payload.filtrosDemograficos
+      .map((filter) => `${filter.campoId}|${filter.valor}`)
+      .join(',');
+    const filtrosGf = payload.idsGrandesFactores.join(',');
+    const response: any = await this.organizacionService.getAllMetrics(
+      payload.idFlujo,
+      filtros,
+      filtrosGf,
+      payload.modo,
+      controller.signal
+    );
+    const data = response?.data?.data ?? response?.data ?? {};
+    this.dashboardCache.set(cacheKey, data);
+    return data;
+  }
+
+  private async requestDashboardSection(
+    section: DashboardSection,
+    comments?: Pick<ClimaDashboardCommentsPayload, 'tipo' | 'idPregunta' | 'pagina' | 'limite'>
+  ): Promise<any | null> {
+    const payload = this.buildDashboardPayload();
+    const contextKey = this.buildDashboardContextKey(payload);
+    const version = this.dashboardRequestVersion;
+    const sectionKey = comments
+      ? `${section}:${comments.tipo}:${comments.idPregunta ?? 'todas'}:${comments.pagina}:${comments.limite}`
+      : section;
+    const cacheKey = `${contextKey}::${sectionKey}`;
+
+    if (this.dashboardCache.has(cacheKey)) {
+      return this.dashboardCache.get(cacheKey);
+    }
+
+    const controllerKey = section === 'comentarios' && comments?.idPregunta
+      ? `${section}:${comments.idPregunta}`
+      : section;
+
+    this.dashboardControllers.get(controllerKey)?.abort();
+    const controller = new AbortController();
+    this.dashboardControllers.set(controllerKey, controller);
+
+    try {
+      let response: any;
+      if (section === 'resumen') {
+        response = await this.organizacionService.getClimaDashboardSummary(payload, controller.signal);
+      } else if (section === 'participacion') {
+        response = await this.organizacionService.getClimaDashboardParticipation(payload, controller.signal);
+      } else if (section === 'preguntas-especiales') {
+        response = await this.organizacionService.getClimaDashboardSpecialQuestions(payload, controller.signal);
+      } else {
+        response = await this.organizacionService.getClimaDashboardComments(
+          { ...payload, ...comments } as ClimaDashboardCommentsPayload,
+          controller.signal
+        );
+      }
+
+      if (version !== this.dashboardRequestVersion
+        || contextKey !== this.buildDashboardContextKey(this.buildDashboardPayload())) {
+        return null;
+      }
+
+      const data = this.pickDashboardSection(response?.data?.data ?? response?.data ?? {}, section);
+      this.dashboardCache.set(cacheKey, data);
+      return data;
+    } catch (error: any) {
+      if (this.isCanceledDashboardRequest(error)) {
+        return null;
+      }
+      if (!this.canUseLegacyDashboardFallback(error)) {
+        throw error;
+      }
+
+      const legacyData = await this.getLegacyDashboardData(payload, controller, contextKey);
+      if (version !== this.dashboardRequestVersion) {
+        return null;
+      }
+      const data = this.pickDashboardSection(legacyData, section);
+      this.dashboardCache.set(cacheKey, data);
+      return data;
+    } finally {
+      if (this.dashboardControllers.get(controllerKey) === controller) {
+        this.dashboardControllers.delete(controllerKey);
+      }
+    }
+  }
 
   private parseSliderPieSeries(distribucion: any): SliderPiePoint[] {
     let parsed: any[] = [];
@@ -1281,7 +1706,9 @@ export class Dashboard1Component implements OnDestroy, OnInit {
     }
 
     return rows.reduce<ListResponseChart[]>((charts, row: any) => {
-      const options = this.parseListResponseOptions(row?.OpcionesJSON ?? row?.opcionesJSON);
+      const options = this.parseListResponseOptions(
+        row?.opciones ?? row?.Opciones ?? row?.OpcionesJSON ?? row?.opcionesJSON
+      );
       if (options.length === 0) {
         return charts;
       }
@@ -1442,6 +1869,11 @@ export class Dashboard1Component implements OnDestroy, OnInit {
     //console.log('Se seleccionó el clima con Id:', selectedId);
     // Aquí haces lo que necesites con el ID
     this.idFlujo = selectedId;
+    this.clearDeliveryStatusMetrics();
+    this.invalidateDashboardContext();
+    this.clearDashboardMetricSections();
+    this.selectedGFactors = [];
+    this.filtrosGrandesFactores = '';
   
     const clima  = this.dataSourceClimas.find((c: { Id: number; }) => c.Id === this.idFlujo);
     this.updateMetodoAplicacion(clima?.MetodoAplicacion);
@@ -1460,7 +1892,8 @@ export class Dashboard1Component implements OnDestroy, OnInit {
     //this.getMetricaSatisfaccionPreguntas();
     //this.getMetricaCalificacionGeneralClima();
 
-    this.aplicarFiltrosSecuencial('','');
+    this.filtrosDemograficos = '';
+    this.getMetricaEstadoEnvio();
 
     //this.getMetricaEstadoEnvio();
     // this.getMetricaCommentsia();
@@ -1468,7 +1901,12 @@ export class Dashboard1Component implements OnDestroy, OnInit {
     //this.getMetricaPrcentajeSatisfaccionFactores();
 
 
-    this.getGrandesFactores();
+    const selectedFlowId = this.idFlujo;
+    void this.getGrandesFactores(selectedFlowId).then((shouldReload) => {
+      if (shouldReload && this.idFlujo === selectedFlowId) {
+        this.scheduleDashboardReload();
+      }
+    });
 
     this.getDemograficosOrgArbol();
 
@@ -1494,30 +1932,41 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
  
 
-  getGrandesFactores(): void {
+  async getGrandesFactores(flowId = this.idFlujo): Promise<boolean> {
+    const requestVersion = ++this.grandesFactoresRequestVersion;
 
-    this.organizacionService.getGrandesFactores(this.idFlujo)
-      .then((response:any) => {
-        console.log('GrandesFactores:', JSON.stringify(response.data));
-        
+    try {
+      const response: any = await this.organizacionService.getGrandesFactores(flowId);
+      if (requestVersion !== this.grandesFactoresRequestVersion || flowId !== this.idFlujo) {
+        return false;
+      }
+
+      console.log('GrandesFactores:', JSON.stringify(response.data));
+
+      this.dataGrandesFactores = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : [];
+
+      this.selectedGFactors = this.dataGrandesFactores
+        .map((g: any) => Number(g?.Id ?? g?.id))
+        .filter((id: number) => Number.isInteger(id) && id > 0);
+      this.filtrosGrandesFactores = this.selectedGFactors.join(',');
+
+      console.log('this.dataGrandesFactores:: ', this.dataGrandesFactores);
+      console.log('this.filtrosGrandesFactores::: ', this.filtrosGrandesFactores);
+      return true;
+
+    } catch (error: any) {
+      const isCurrentRequest = requestVersion === this.grandesFactoresRequestVersion
+        && flowId === this.idFlujo;
+      if (isCurrentRequest) {
+        this.dataGrandesFactores = [];
+        this.selectedGFactors = [];
         this.filtrosGrandesFactores = '';
-
-        this.dataGrandesFactores = response.data.data;
-
-        this.selectedGFactors = this.dataGrandesFactores.map((g:any) => g.Id);
-
-        console.log('this.dataGrandesFactores:: ', this.dataGrandesFactores);
-
-        this.dataGrandesFactores.forEach((gf:any) => {
-          this.filtrosGrandesFactores = this.filtrosGrandesFactores + gf.Id + ',';
-        });
-
-        console.log('this.filtrosGrandesFactores::: ', this.filtrosGrandesFactores);
-        
-      })
-      .catch((error:any) => {
-        console.error('Error al obtener organizaciones:', error);
-      });
+      }
+      console.error('Error al obtener grandes factores:', error);
+      return isCurrentRequest;
+    }
   }
 
 
@@ -2190,35 +2639,48 @@ export class Dashboard1Component implements OnDestroy, OnInit {
   }
 
   async aplicarFiltrosSecuencial(tramax: string, filtrosGF: any) {
-    try {
-      //this.loading = true;
+    this.filtrosDemograficos = tramax ?? '';
+    this.filtrosGrandesFactores = filtrosGF ?? '';
+    this.getMetricaEstadoEnvio();
+    this.scheduleDashboardReload();
+  }
 
-      //this.loadingFactores = true;
-      //this.loadingConteos = true;
-      //this.loadingCalificacion = true;
-      this.loadingGeneral = true;
-      //this.loadingPanorama = true;
-      //this.loadingPorcentajes = true;
+  private canRenderDashboardSummary(data: any): boolean {
+    const collections = [
+      data?.satisfaccionPorcentajes,
+      data?.satisfaccionPorPregunta,
+      data?.respuestasPorFactor,
+      data?.distribucionRespuestas,
+      data?.porcentajeSatisfaccionPorFactor,
+    ];
+    const hasGeneralMetric = data?.calificacionGeneral
+      && typeof data.calificacionGeneral === 'object'
+      && Object.keys(data.calificacionGeneral).length > 0;
+    const hasMetricRows = collections.some((items) => Array.isArray(items) && items.length > 0);
 
-
-
-      this.getMetricaEstadoEnvio();
-      await this.getAllMetricsAsync(tramax, filtrosGF);
-      //await this.getMetricaPorcentajeRespuestasFiltradoGF(tramax, filtrosGF);
-      //await this.getMetricaFactoresFiltradoGF(tramax, filtrosGF);
-      //await this.getMetricaSatisfaccionPreguntasFiltradoGF(tramax, filtrosGF);
-      //await this.getMetricaConteoPreguntasFactoresFiltradoGF(tramax, filtrosGF);
-      //await this.getMetricaPrcentajeSatisfaccionFactoresFiltradoGF(tramax, filtrosGF);
-      //await this.getMetricaCommentsIAGF();
-      
-      //await this.getMetricaCommentsGF();
-
-    } catch (err) {
-      console.error('Error en ejecución secuencial:', err);
-      // opcional: mostrar toast
-    } finally {
-      //this.loading = false;
+    if (!hasGeneralMetric && !hasMetricRows) {
+      return false;
     }
+
+    const rows = [
+      data?.calificacionGeneral,
+      ...collections.flatMap((items) => Array.isArray(items) ? items : []),
+    ].filter((item) => item && typeof item === 'object');
+    const respondentCounts = rows
+      .map((item) => item.empleados_respondieron
+        ?? item.empleadosRespondieron
+        ?? item.EmpleadosRespondieron
+        ?? item.total_empleados_respondieron
+        ?? item.totalEmpleadosRespondieron
+        ?? item.TotalEmpleadosRespondieron)
+      .filter((value) => value !== null && value !== undefined && value !== '')
+      .map(Number)
+      .filter(Number.isFinite);
+
+    // Algunos SP no incluyen el conteo en todas las filas. Si el backend entregó
+    // métricas sin dicho campo, se consideran válidas; si lo incluye, se respeta
+    // el mínimo de cinco respuestas usando el mayor conteo disponible.
+    return respondentCounts.length === 0 || Math.max(...respondentCounts) >= 1;
   }
 
 
@@ -3199,7 +3661,11 @@ export class Dashboard1Component implements OnDestroy, OnInit {
   }
 
 
-  async getAllMetricsAsync(filtro: string, filtroGf: string): Promise<void> {
+  async getAllMetricsAsync(
+    filtro: string,
+    filtroGf: string,
+    requestVersion = this.dashboardRequestVersion
+  ): Promise<void> {
 
     const selectedClimaSnapshot = {
       nombre: this.nombreFlujo,
@@ -3207,7 +3673,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
       imagen: this.imgFlujo,
     };
 
-    this.clearAll();
+    this.clearDashboardMetricSections();
     this.nombreFlujo = selectedClimaSnapshot.nombre;
     this.objetivoFlujo = selectedClimaSnapshot.objetivo;
     this.imgFlujo = selectedClimaSnapshot.imagen;
@@ -3217,17 +3683,19 @@ export class Dashboard1Component implements OnDestroy, OnInit {
     this.loadingFactores = true;
     this.loadingCalificacion = true;
     this.loadingConteos = true;
+    this.summaryError = '';
+    this.startDashboardLoadingMessages(requestVersion);
     //this.loadingCommentsGF = true;
 
     try {
-      const response: any = await this.organizacionService
-        .getAllMetrics(this.idFlujo, filtro, filtroGf, this.tipoFiltro);
-
-      const data = response?.data?.data ?? [];
+      const data = await this.requestDashboardSection('resumen');
+      if (!data || requestVersion !== this.dashboardRequestVersion) {
+        return;
+      }
 
       console.log('DATA OBTENIDA ALL METRICS:: ', data);
 
-      if(data.satisfaccionPorPregunta.length > 0 && data.satisfaccionPorPregunta[0].empleados_respondieron >= 5) {
+      if (this.canRenderDashboardSummary(data)) {
         
         //calificacion general  
       if (data.calificacionGeneral) {
@@ -3249,7 +3717,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
       }
 
       //porcentajes satisfación general
-      if (data.satisfaccionPorcentajes) {
+      if (Array.isArray(data.satisfaccionPorcentajes) && data.satisfaccionPorcentajes.length > 0) {
         const item = data.satisfaccionPorcentajes[0];
         this.single = [...this.buildPanoramaData(item)];
       } else {
@@ -3258,7 +3726,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
       //satisfaccion por factor
       this.metricasData = [];
-      if(data.satisfaccionPorPregunta){
+      if (Array.isArray(data.satisfaccionPorPregunta)) {
         this.metricasData = data.satisfaccionPorPregunta;
         //this.metricasData = [...this.metricasData];
 
@@ -3270,14 +3738,14 @@ export class Dashboard1Component implements OnDestroy, OnInit {
       }
 
       //porcentajes satisfacción por factor
-      if(data.distribucionRespuestas){
+      if (Array.isArray(data.distribucionRespuestas)) {
         this.metricasFactoresPreguntasData = data.distribucionRespuestas;
         console.log('antes del forEach: ', this.metricasFactoresPreguntasData);
         this.updateFactorDistributionChart(this.metricasFactoresPreguntasData);
       }
 
       //porcentaje satisfaccion e insatisfaccion
-      if(data.porcentajeSatisfaccionPorFactor){
+      if (Array.isArray(data.porcentajeSatisfaccionPorFactor)) {
 
         const factores = data.porcentajeSatisfaccionPorFactor;
         this.metricasPorcentajeSatisfaccionFactorData = factores;
@@ -3292,7 +3760,7 @@ export class Dashboard1Component implements OnDestroy, OnInit {
       this.subjects = [];
       this.subjects = [...this.subjects];
 
-      if(data.respuestasPorFactor) {
+      if (Array.isArray(data.respuestasPorFactor)) {
         
         console.log('PRINCIPE DE LAS TINIEBLAS..', data.respuestasPorFactor);
 
@@ -3589,44 +4057,480 @@ export class Dashboard1Component implements OnDestroy, OnInit {
 
 
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al obtener la métrica de satisfacción general:', error);
-      throw error; // opcional, si quieres que detenga la ejecución secuencial
+      if (!this.isCanceledDashboardRequest(error) && requestVersion === this.dashboardRequestVersion) {
+        this.summaryError = this.dashboardErrorMessage(
+          error,
+          'No fue posible cargar el resumen del dashboard.'
+        );
+      }
     } finally {
-      this.loadingGeneral = false;
-      this.loadingPanorama = false;
-      this.loadingFactores = false;
-      this.loadingCalificacion = false;
-      this.loadingConteos = false;
-      this.loadingPorcentajes = false;
+      if (requestVersion === this.dashboardRequestVersion) {
+        this.stopDashboardLoadingMessages(requestVersion);
+        this.loadingGeneral = false;
+        this.loadingPanorama = false;
+        this.loadingFactores = false;
+        this.loadingCalificacion = false;
+        this.loadingConteos = false;
+        this.loadingPorcentajes = false;
+      }
       //this.loadingCommentsGF = false;
     }
   }
 
+  public async loadDashboardSection(
+    section: Exclude<DashboardSection, 'resumen'>
+  ): Promise<void> {
+    if (section === 'participacion') {
+      await this.loadParticipationSection();
+      return;
+    }
+    if (section === 'preguntas-especiales') {
+      await this.loadSpecialQuestionsSection();
+      return;
+    }
+    await this.loadCommentsPage(this.commentsPagination.pagina);
+  }
+
+  public retryDashboardSection(section: DashboardSection): void {
+    if (section === 'resumen') {
+      this.scheduleDashboardReload();
+      return;
+    }
+
+    if (section === 'participacion') {
+      this.participationLoaded = false;
+    } else if (section === 'preguntas-especiales') {
+      this.specialQuestionsLoaded = false;
+    } else {
+      this.commentsLoaded = false;
+    }
+    void this.loadDashboardSection(section);
+  }
+
+  private async loadParticipationSection(): Promise<void> {
+    if (this.participationLoaded || this.loadingParticipation || !this.idFlujo) {
+      return;
+    }
+
+    const version = this.dashboardRequestVersion;
+    this.loadingParticipation = true;
+    this.participationError = '';
+
+    try {
+      const data = await this.requestDashboardSection('participacion');
+      if (!data || version !== this.dashboardRequestVersion) return;
+
+      this.participacionRows = (data.participacionPorDemografico ?? []).map((row: any) => ({
+        idCampoDemografico: row.IdCampoDemografico ?? row.idCampoDemografico,
+        campo: row.Campo ?? row.campo,
+        valor: row.Valor ?? row.valor,
+        total_empleados: row.total_empleados ?? row.totalEmpleados,
+        porcentaje: row.porcentaje,
+      }));
+      this.rowsPendientes = (data.pendientesPorValor ?? []).map((row: any) => ({
+        idCampoDemografico: row.IdCampoDemografico ?? row.idCampoDemografico,
+        campo: row.Campo ?? row.campo,
+        valor: row.Valor ?? row.valor,
+        total_en_campo: row.total_en_campo ?? row.totalEnCampo,
+        pendientes: row.pendientes,
+        contestadas: row.contestadas,
+        pct_pendientes: row.pct_pendientes ?? row.pctPendientes,
+        pct_contestadas: row.pct_contestadas ?? row.pctContestadas,
+      }));
+      this.participationLoaded = true;
+    } catch (error: any) {
+      if (!this.isCanceledDashboardRequest(error) && version === this.dashboardRequestVersion) {
+        this.participationError = this.dashboardErrorMessage(
+          error,
+          'No fue posible cargar la participación.'
+        );
+      }
+    } finally {
+      if (version === this.dashboardRequestVersion) {
+        this.loadingParticipation = false;
+      }
+    }
+  }
+
+  private ensureDashboardExportData(): any {
+    if (!this.resultadoParaExcel
+      || typeof this.resultadoParaExcel !== 'object'
+      || Array.isArray(this.resultadoParaExcel)) {
+      this.resultadoParaExcel = {
+        header: {
+          nombre_clima: this.nombreFlujo,
+          nombre_organizacion: this.nombreOrganizacion,
+        },
+        camposDemograficos: this.camposDemograficosParaExcel,
+        calificacionGeneral: this.metricasSatisfaccionGeneralData,
+      };
+    }
+    return this.resultadoParaExcel;
+  }
+
+  private async loadSpecialQuestionsSection(): Promise<void> {
+    if (this.specialQuestionsLoaded || this.loadingSpecialQuestions || !this.idFlujo) {
+      return;
+    }
+
+    const version = this.dashboardRequestVersion;
+    this.loadingSpecialQuestions = true;
+    this.specialQuestionsError = '';
+
+    try {
+      const data = await this.requestDashboardSection('preguntas-especiales');
+      if (!data || version !== this.dashboardRequestVersion) return;
+
+      const preguntasRango = Array.isArray(data.preguntasRango) ? data.preguntasRango : [];
+      this.sliderRows = preguntasRango.map((row: any) => {
+        const distribucion = Array.isArray(row?.distribucion) ? row.distribucion : [];
+        return {
+          idGranFactor: Number(row?.IdGranFactor ?? row?.idGranFactor ?? 0),
+          etiquetaGranFactor: String(row?.EtiquetaGranFactor ?? row?.etiquetaGranFactor ?? ''),
+          idFactor: Number(row?.IdFactor ?? row?.idFactor ?? 0),
+          factor: String(row?.Factor ?? row?.factor ?? ''),
+          idPregunta: Number(row?.IdPregunta ?? row?.idPregunta ?? 0),
+          pregunta: String(row?.Pregunta ?? row?.pregunta ?? ''),
+          rangoMin: Number(row?.RangoMin ?? row?.rangoMin ?? 0),
+          rangoMax: Number(row?.RangoMax ?? row?.rangoMax ?? 0),
+          total_respuestas: Number(row?.total_respuestas ?? row?.totalRespuestas ?? 0),
+          promedio: Number(row?.promedio ?? 0),
+          distribucionJSON: distribucion,
+          pieSeries: this.parseSliderPieSeries(distribucion),
+        };
+      });
+
+      const respuestasTipoLista = Array.isArray(data.respuestasTipoLista)
+        ? data.respuestasTipoLista
+        : [];
+      this.listResponseCharts = this.buildListResponseCharts(respuestasTipoLista);
+
+      const exportData = this.ensureDashboardExportData();
+      exportData.preguntasRango = this.sliderRows.map((row: SliderRowView) => ({
+        idGranFactor: row.idGranFactor,
+        etiquetaGranFactor: row.etiquetaGranFactor,
+        idFactor: row.idFactor,
+        factor: row.factor,
+        idPregunta: row.idPregunta,
+        pregunta: row.pregunta,
+        rangoMin: row.rangoMin,
+        rangoMax: row.rangoMax,
+        total_respuestas: row.total_respuestas,
+        promedio: row.promedio,
+        distribucion: row.distribucionJSON,
+      }));
+      exportData.respuestasTipoLista = respuestasTipoLista.map((row: any) => ({
+        idGranFactor: Number(row?.IdGranFactor ?? row?.idGranFactor ?? 0),
+        etiquetaGranFactor: String(row?.EtiquetaGranFactor ?? row?.etiquetaGranFactor ?? ''),
+        idFactor: Number(row?.IdFactor ?? row?.idFactor ?? 0),
+        factor: String(row?.Factor ?? row?.factor ?? ''),
+        idPregunta: Number(row?.IdPregunta ?? row?.idPregunta ?? 0),
+        pregunta: String(row?.Pregunta ?? row?.pregunta ?? ''),
+        totalOpciones: Number(row?.total_opciones ?? row?.totalOpciones ?? 0),
+        totalRespuestas: Number(row?.total_respuestas ?? row?.totalRespuestas ?? 0),
+        opciones: this.parseListResponseOptions(row?.opciones ?? []),
+      }));
+      this.specialQuestionsLoaded = true;
+    } catch (error: any) {
+      if (!this.isCanceledDashboardRequest(error) && version === this.dashboardRequestVersion) {
+        this.specialQuestionsError = this.dashboardErrorMessage(
+          error,
+          'No fue posible cargar las preguntas especiales.'
+        );
+      }
+    } finally {
+      if (version === this.dashboardRequestVersion) {
+        this.loadingSpecialQuestions = false;
+      }
+    }
+  }
+
+  private groupCommentItems(items: any[], type: 'TEXT' | 'IATEXT'): ComentarioPregunta[] {
+    const grouped = new Map<number, ComentarioPregunta>();
+
+    for (const item of items ?? []) {
+      if (String(item?.Tipo ?? item?.tipo ?? '').toUpperCase() !== type) continue;
+      const idPregunta = Number(item?.IdPregunta ?? item?.idPregunta ?? 0);
+      if (!grouped.has(idPregunta)) {
+        grouped.set(idPregunta, {
+          IdFactor: Number(item?.IdFactor ?? item?.idFactor ?? 0),
+          Factor: String(item?.Factor ?? item?.factor ?? ''),
+          IdPregunta: idPregunta,
+          Pregunta: String(item?.Pregunta ?? item?.pregunta ?? ''),
+          ComentariosJSON: [],
+        });
+      }
+
+      const sentiment = String(item?.Sentiment ?? item?.sentiment ?? 'NEUTRAL').toUpperCase();
+      grouped.get(idPregunta)?.ComentariosJSON.push({
+        IdRespuesta: Number(item?.IdRespuesta ?? item?.idRespuesta ?? 0),
+        Comentario: String(item?.Comentario ?? item?.comentario ?? ''),
+        Sentiment: ['POSITIVE', 'NEGATIVE', 'NEUTRAL', 'MIXED'].includes(sentiment)
+          ? sentiment as Sent
+          : 'NEUTRAL',
+        Positive: item?.Positive ?? item?.positive,
+        Negative: item?.Negative ?? item?.negative,
+        Neutral: item?.Neutral ?? item?.neutral,
+        Mixxed: item?.Mixxed ?? item?.mixxed,
+        FechaRespuesta: item?.FechaRespuesta ?? item?.fechaRespuesta,
+      });
+    }
+
+    return this.enrichCommentsData(Array.from(grouped.values()));
+  }
+
+  private normalizeCommentType(value: unknown, fallback: 'TEXT' | 'IATEXT' = 'TEXT'): 'TEXT' | 'IATEXT' {
+    return String(value ?? '').trim().toUpperCase() === 'IATEXT' ? 'IATEXT' : fallback;
+  }
+
+  private buildCommentQuestionStates(data: any, limit: number): CommentQuestionView[] {
+    const questions = new Map<number, CommentQuestionView>();
+
+    const addQuestion = (item: any, fallbackType: 'TEXT' | 'IATEXT' = 'TEXT') => {
+      const idPregunta = Number(item?.IdPregunta ?? item?.idPregunta ?? 0);
+      if (!Number.isInteger(idPregunta) || idPregunta <= 0 || questions.has(idPregunta)) return;
+
+      questions.set(idPregunta, {
+        IdFactor: Number(item?.IdFactor ?? item?.idFactor ?? 0),
+        Factor: String(item?.Factor ?? item?.factor ?? ''),
+        IdPregunta: idPregunta,
+        Pregunta: String(item?.Pregunta ?? item?.pregunta ?? ''),
+        Tipo: this.normalizeCommentType(item?.Tipo ?? item?.tipo, fallbackType),
+        ComentariosJSON: [],
+        _total: 0,
+        _overall: 'MIXED',
+        _counts: { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0, MIXED: 0 },
+        loading: false,
+        error: '',
+        pagination: { pagina: 1, limite: limit, totalRegistros: 0, totalPaginas: 0 },
+      });
+    };
+
+    (Array.isArray(data?.preguntas) ? data.preguntas : []).forEach((item: any) => addQuestion(item));
+
+    if (questions.size === 0) {
+      (Array.isArray(data?.items) ? data.items : []).forEach((item: any) => addQuestion(item, 'TEXT'));
+      (Array.isArray(data?.legacyItemsIa) ? data.legacyItemsIa : [])
+        .forEach((item: any) => addQuestion(item, 'IATEXT'));
+    }
+
+    return Array.from(questions.values());
+  }
+
+  private commentGroupFromResponse(
+    data: any,
+    question: CommentQuestionView
+  ): ComentarioPregunta {
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const legacyItemsIa = Array.isArray(data?.legacyItemsIa) ? data.legacyItemsIa : [];
+    const source = question.Tipo === 'IATEXT' && legacyItemsIa.length > 0
+      ? legacyItemsIa
+      : items;
+
+    if (source.some((item: any) => Array.isArray(item?.ComentariosJSON))) {
+      const groupedItem = source.find((item: any) =>
+        Number(item?.IdPregunta ?? item?.idPregunta ?? 0) === question.IdPregunta
+      );
+      return this.enrichCommentsData([groupedItem ?? question])[0];
+    }
+
+    return this.groupCommentItems(source, question.Tipo)
+      .find((item) => item.IdPregunta === question.IdPregunta)
+      ?? this.enrichCommentsData([question])[0];
+  }
+
+  private syncCommentCollections(): void {
+    this.commentsDataNorm = this.commentQuestions.filter((question) => question.Tipo === 'TEXT');
+    this.commentsData = this.commentQuestions.filter((question) => question.Tipo === 'IATEXT');
+
+    this.ensureDashboardExportData().preguntasAbiertas = this.commentQuestions.flatMap((question) =>
+      question.ComentariosJSON.map((comment) => ({
+        IdFactor: question.IdFactor,
+        Factor: question.Factor,
+        IdPregunta: question.IdPregunta,
+        Pregunta: question.Pregunta,
+        Tipo: question.Tipo,
+        ...comment,
+      }))
+    );
+  }
+
+  public async loadCommentsPage(page: number): Promise<void> {
+    if (this.loadingComments || !this.idFlujo) return;
+
+    const version = this.dashboardRequestVersion;
+    const requestedPage = Math.max(1, Math.trunc(Number(page) || 1));
+    const limit = Math.min(200, Math.max(1, Math.trunc(Number(this.commentsPagination.limite) || 50)));
+    this.loadingComments = true;
+    this.commentsError = '';
+
+    try {
+      const data = await this.requestDashboardSection('comentarios', {
+        tipo: 'TODOS',
+        idPregunta: null,
+        pagina: requestedPage,
+        limite: limit,
+      });
+      if (!data || version !== this.dashboardRequestVersion) return;
+
+      const pagination = data.paginacion ?? {};
+      this.commentsPagination = {
+        pagina: Number(pagination.pagina ?? requestedPage),
+        limite: Math.min(200, Number(pagination.limite ?? limit)),
+        totalRegistros: Number(pagination.totalRegistros ?? 0),
+        totalPaginas: Number(pagination.totalPaginas ?? 0),
+      };
+
+      this.commentQuestions = this.buildCommentQuestionStates(data, limit);
+      this.syncCommentCollections();
+      this.commentsLoaded = true;
+      this.loadingComments = false;
+
+      await Promise.allSettled(
+        this.commentQuestions.map((question) =>
+          this.loadCommentQuestionPage(question.IdPregunta, 1, version)
+        )
+      );
+    } catch (error: any) {
+      if (!this.isCanceledDashboardRequest(error) && version === this.dashboardRequestVersion) {
+        this.commentsError = this.dashboardErrorMessage(
+          error,
+          'No fue posible cargar los comentarios.'
+        );
+      }
+    } finally {
+      if (version === this.dashboardRequestVersion) {
+        this.loadingComments = false;
+      }
+    }
+  }
+
+  public async loadCommentQuestionPage(
+    questionId: number,
+    page: number,
+    expectedVersion = this.dashboardRequestVersion
+  ): Promise<void> {
+    const question = this.commentQuestions.find((item) => item.IdPregunta === Number(questionId));
+    if (!question || question.loading || !this.idFlujo) return;
+
+    const requestedPage = Math.max(1, Math.trunc(Number(page) || 1));
+    const limit = Math.min(200, Math.max(1, Math.trunc(Number(question.pagination.limite) || 50)));
+    question.loading = true;
+    question.error = '';
+
+    try {
+      const data = await this.requestDashboardSection('comentarios', {
+        tipo: question.Tipo,
+        idPregunta: question.IdPregunta,
+        pagina: requestedPage,
+        limite: limit,
+      });
+      if (!data || expectedVersion !== this.dashboardRequestVersion) return;
+
+      const grouped = this.commentGroupFromResponse(data, question);
+      const pagination = data.paginacion ?? {};
+      const responseItems = question.Tipo === 'IATEXT' && Array.isArray(data?.legacyItemsIa)
+        && data.legacyItemsIa.length > 0
+        ? data.legacyItemsIa
+        : (Array.isArray(data?.items) ? data.items : []);
+      const usesLegacyGroupedComments = responseItems.some(
+        (item: any) => Array.isArray(item?.ComentariosJSON)
+      );
+      question.ComentariosJSON = grouped.ComentariosJSON;
+      question._total = grouped._total;
+      question._overall = grouped._overall;
+      question._counts = grouped._counts;
+      question.pagination = {
+        pagina: usesLegacyGroupedComments ? 1 : Number(pagination.pagina ?? requestedPage),
+        limite: Math.min(200, Number(pagination.limite ?? limit)),
+        totalRegistros: usesLegacyGroupedComments
+          ? grouped.ComentariosJSON.length
+          : Number(pagination.totalRegistros ?? grouped.ComentariosJSON.length),
+        totalPaginas: usesLegacyGroupedComments
+          ? (grouped.ComentariosJSON.length > 0 ? 1 : 0)
+          : Number(
+              pagination.totalPaginas
+              ?? (grouped.ComentariosJSON.length > 0 ? 1 : 0)
+            ),
+      };
+      this.syncCommentCollections();
+    } catch (error: any) {
+      if (!this.isCanceledDashboardRequest(error) && expectedVersion === this.dashboardRequestVersion) {
+        question.error = this.dashboardErrorMessage(
+          error,
+          'No fue posible cargar las respuestas de esta pregunta.'
+        );
+      }
+    } finally {
+      if (expectedVersion === this.dashboardRequestVersion) {
+        question.loading = false;
+      }
+    }
+  }
+
+  public trackByCommentQuestion(_index: number, question: CommentQuestionView): number {
+    return question.IdPregunta;
+  }
+
+  public changeCommentsLimit(limit: number): void {
+    const normalizedLimit = Math.min(200, Math.max(1, Number(limit) || 50));
+    this.commentsPagination.limite = normalizedLimit;
+    this.commentQuestions.forEach((question) => {
+      question.pagination.limite = normalizedLimit;
+      void this.loadCommentQuestionPage(question.IdPregunta, 1);
+    });
+  }
+
 
   getMetricaEstadoEnvio(): void {
+    const requestedFlowId = Number(this.idFlujo);
+    const requestVersion = ++this.deliveryStatusRequestVersion;
+
+    if (!requestedFlowId) {
+      this.clearDeliveryStatusMetrics();
+      return;
+    }
 
     this.loadingEnvios = true;
 
-    this.organizacionService.getMetricaEstadoEnvioClima(this.idFlujo)
+    this.organizacionService.getMetricaEstadoEnvioClima(requestedFlowId)
         .then((response:any) => {
-          //console.log('Metrica Estado Envío:', JSON.stringify(response.data));
-          
-          if(response.data.data[0]){
-            this.totalCreadas = response.data.data[0].total;            
-            this.totalContestadas = response.data.data[0].total_contestadas;
-            this.totalEmplados = response.data.data[0].total_empleados_activos;
-            this.porcentajeEnvio = response.data.data[0].porcentaje;
-            this.estadoEnvio = response.data.data[0].estado_envio;
-            this.totalEnviadas = response.data.data[0].total_enviadas;
+          if (requestVersion !== this.deliveryStatusRequestVersion || requestedFlowId !== Number(this.idFlujo)) {
+            return;
           }
 
-          this.loadingEnvios = false;
+          const metrics = response?.data?.data?.[0];
+          if (!metrics) {
+            this.totalCreadas = 0;
+            this.totalContestadas = 0;
+            this.totalEmplados = 0;
+            this.porcentajeEnvio = 0;
+            this.estadoEnvio = '';
+            this.totalEnviadas = 0;
+            this.totalPendientes = 0;
+            return;
+          }
 
+          this.totalCreadas = Number(metrics.total ?? 0);
+          this.totalContestadas = Number(metrics.total_contestadas ?? 0);
+          this.totalEmplados = Number(metrics.total_empleados_activos ?? 0);
+          this.porcentajeEnvio = Number(metrics.porcentaje ?? 0);
+          this.estadoEnvio = String(metrics.estado_envio ?? '');
+          this.totalEnviadas = Number(metrics.total_enviadas ?? 0);
+          this.totalPendientes = Math.max(0, this.totalCreadas - this.totalContestadas);
         })
         .catch((error:any) => {
+          if (requestVersion !== this.deliveryStatusRequestVersion || requestedFlowId !== Number(this.idFlujo)) {
+            return;
+          }
           console.error('Error al obtener los flujos plantillas:', error);
-          this.loadingEnvios = false;
+        })
+        .finally(() => {
+          if (requestVersion === this.deliveryStatusRequestVersion && requestedFlowId === Number(this.idFlujo)) {
+            this.loadingEnvios = false;
+          }
         });
   };
 

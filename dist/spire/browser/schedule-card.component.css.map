@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/schedule-card/schedule-card.component.scss"],
+  "sourcesContent": [".schedule-list {\r\n  display: flex;\r\n  flex-direction: row;\r\n  align-items: center;\r\n  border-radius: 5px;\r\n  vertical-align: middle;\r\n  padding: 10px;\r\n  margin-bottom: 10px;\r\n  border: 1px solid #f6f4ff;\r\n}\r\n.standard-name {\r\n  padding: 0.25rem 0.75rem;\r\n  border-radius: 1rem;\r\n  font-size: 0.75rem;\r\n  font-weight: 500;\r\n\r\n  &.colorStyle1 {\r\n    background: #ffe4e6;\r\n    color: #ff4081;\r\n  }\r\n  &.colorStyle2 {\r\n    background: #d0d2ff;\r\n    color: #4049ff;\r\n  }\r\n  &.colorStyle3 {\r\n    background: #ffe8be;\r\n    color: #ffa400;\r\n  }\r\n  &.colorStyle4 {\r\n    background: #dfeee6;\r\n    color: #198754;\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA;AACE,WAAA;AACA,kBAAA;AACA,eAAA;AACA,iBAAA;AACA,kBAAA;AACA,WAAA;AACA,iBAAA;AACA,UAAA,IAAA,MAAA;;AAEF,CAAA;AACE,WAAA,QAAA;AACA,iBAAA;AACA,aAAA;AACA,eAAA;;AAEA,CANF,aAME,CAAA;AACE,cAAA;AACA,SAAA;;AAEF,CAVF,aAUE,CAAA;AACE,cAAA;AACA,SAAA;;AAEF,CAdF,aAcE,CAAA;AACE,cAAA;AACA,SAAA;;AAEF,CAlBF,aAkBE,CAAA;AACE,cAAA;AACA,SAAA;;",
+  "names": []
+}

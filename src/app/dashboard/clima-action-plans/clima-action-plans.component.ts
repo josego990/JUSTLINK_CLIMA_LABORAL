@@ -22,6 +22,7 @@ import { RouteInfo } from 'app/layout/sidebar/sidebar.metadata';
 import { Router } from '@angular/router';
 
 import { OrganizacionService } from '../../organization/services/organizacion.service';
+import { ActionPlanPdfService } from '../../shared/services/action-plan-pdf.service';
 import {
   DemographicFiltersDialogComponent,
   DemographicSelection,
@@ -279,6 +280,7 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     private organizacionService: OrganizacionService,
     private dialog: MatDialog,
     private translate: TranslateService,
+    private actionPlanPdf: ActionPlanPdfService,
   ) {}
 
    existsRoute(routes: RouteInfo[], target: string): boolean {
@@ -1489,6 +1491,79 @@ export class ClimaActionPlansComponent implements OnDestroy, OnInit {
     const buffer = await workbook.xlsx.writeBuffer();
     const fileName = `Planes_Accion_Clima_${this.selectedOrganizationId ?? 'org'}_${this.selectedClimaId ?? 'clima'}.xlsx`;
     saveAs(new Blob([buffer]), fileName);
+  }
+
+  downloadPlansPdf(): void {
+    const plans = this.visibleActionPlans;
+
+    if (!plans.length) {
+      Swal.fire('PDF', 'No hay planes creados para descargar.', 'info');
+      return;
+    }
+
+    try {
+      const filterSummary = this.filterChips.map((chip) => `${chip.label}: ${chip.value}`).join('; ') || 'Sin filtro';
+      const generatedAt = new Date().toLocaleDateString('es-GT');
+      this.actionPlanPdf.download(
+        {
+          eyebrow: this.t('EYEBROW'),
+          title: this.t('PDF_TITLE'),
+          subtitle: this.selectedClimaObjective || this.t('SUBTITLE'),
+          organization: this.selectedOrganizationName,
+          context: `${this.selectedClimaName || this.t('SURVEY_FALLBACK')} | ${filterSummary}`,
+          generatedAt,
+          summary: [
+            { label: this.t('SATISFACTION'), value: this.formatPercent(this.generalScore) },
+            { label: this.t('UNFAVORABLE'), value: this.formatPercent(this.generalUnfavorable) },
+            { label: 'NSAT', value: this.formatNumber(this.generalNsat) },
+            { label: this.t('ACTIVE_PLANS'), value: plans.length },
+            { label: this.t('GENERAL_PROGRESS'), value: `${this.planSummary.progress}%` },
+            { label: this.t('HIGH_PRIORITY'), value: this.planSummary.high },
+          ],
+          plans: plans.map((plan) => ({
+            title: plan.factor || this.t('PLAN'),
+            subtitle: plan.reason,
+            priority: this.getPriorityLabel(plan.priority),
+            status: this.getStatusLabel(this.getEffectivePlanStatus(plan)),
+            progress: `${this.getPlanProgress(plan)}%`,
+            owner: plan.owner,
+            sponsor: plan.sponsor,
+            dueDate: this.formatDate(plan.dueDate),
+            frequency: plan.followUpFrequency,
+            scope: plan.scope,
+            reason: plan.reason,
+            criticalQuestion: plan.criticalQuestion,
+            action: plan.action,
+            resources: plan.resources,
+            kpi: plan.kpi,
+            validation: plan.validation,
+            evidence: plan.evidence,
+            meta: [
+              { label: this.t('SURVEY'), value: plan.survey },
+              { label: this.t('FACTOR_AREA'), value: `${plan.factor} / ${plan.area}` },
+              { label: this.t('TERM'), value: plan.term },
+            ],
+            tasks: plan.tasks.map((task) => ({
+              title: task.title,
+              responsible: task.responsible,
+              dueDate: this.formatDate(task.dueDate),
+              evidence: task.evidence || task.deliverable,
+              done: task.done,
+            })),
+            followUps: plan.followUps.map((followUp) => ({
+              date: followUp.dateLabel || this.formatDate(followUp.createdAt),
+              author: followUp.createdBy,
+              comment: followUp.comment,
+              progress: followUp.progress !== null ? `${followUp.progress}%` : null,
+            })),
+          })),
+        },
+        `Planes_Accion_Clima_${this.selectedOrganizationName || 'Organizacion'}_${this.selectedClimaName || 'Clima'}_${generatedAt}.pdf`,
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de planes de acción de clima:', error);
+      Swal.fire('PDF', 'No fue posible generar el PDF de planes de acción.', 'error');
+    }
   }
 
   private normalizeFactorMetric(item: any): FactorMetric {

@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormBuilder, FormGroup, Validators, FormsModule,
@@ -68,6 +69,7 @@ function renderizarPlantilla(
     MatSelectModule,
     MatMenuModule,
     MatButtonModule,
+    MatCheckboxModule,
     CommonModule,
     MatProgressSpinnerModule,
     
@@ -83,6 +85,8 @@ function renderizarPlantilla(
 
 // Aquí se crea el nuevo quiz
 export class DialogformSendComponent implements OnInit {
+
+  readonly selectionColumn = 'Seleccion';
 
   readonly baseDisplayedColumns = [
     'IdEmpleado',
@@ -152,8 +156,13 @@ export class DialogformSendComponent implements OnInit {
   public showDynamicDemographicColumns = true;
   public selectedTipoEnvioFilter: number | 'ALL' = 'ALL';
   public selectedEstadoFilter = 'ALL';
+  public selectedDemographicField = 'ALL';
+  public selectedDemographicValues: string[] = [];
+  public demographicValueOptions: Array<{ value: string; count: number }> = [];
   public estadoFilterOptions = [...this.baseEstadoFilterOptions];
+  private readonly selectedEmployeeIds = new Set<string>();
   displayedColumns: string[] = [
+    this.selectionColumn,
     ...this.baseDisplayedColumns.filter((column) => !this.hiddenDisplayedColumns.has(column)),
     ...this.trailingDisplayedColumns
   ];
@@ -236,55 +245,254 @@ export class DialogformSendComponent implements OnInit {
     this.dialogRef.close(true);
   }
 
-  crearEncuestas(): void{
-    Swal.fire({
-      title: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_DIALOG_TITLE'),
-      text: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_DIALOG_TEXT'),
+  get selectedEmployeeCount(): number {
+    return this.selectedEmployeeIds.size;
+  }
+
+  get selectedVisibleEmployeeCount(): number {
+    return this.filteredTableDataSource.filter((row) => this.isRowSelected(row)).length;
+  }
+
+  isRowSelected(row: any): boolean {
+    const key = this.getEmployeeSelectionKey(row);
+    return Boolean(key && this.selectedEmployeeIds.has(key));
+  }
+
+  toggleRowSelection(row: any, checked: boolean): void {
+    const key = this.getEmployeeSelectionKey(row);
+
+    if (!key) {
+      return;
+    }
+
+    if (checked) {
+      this.selectedEmployeeIds.add(key);
+    } else {
+      this.selectedEmployeeIds.delete(key);
+    }
+  }
+
+  toggleAllFilteredRows(checked: boolean): void {
+    for (const row of this.filteredTableDataSource) {
+      const key = this.getEmployeeSelectionKey(row);
+
+      if (!key) {
+        continue;
+      }
+
+      if (checked) {
+        this.selectedEmployeeIds.add(key);
+      } else {
+        this.selectedEmployeeIds.delete(key);
+      }
+    }
+  }
+
+  areAllFilteredRowsSelected(): boolean {
+    return this.filteredTableDataSource.length > 0
+      && this.filteredTableDataSource.every((row) => this.isRowSelected(row));
+  }
+
+  areSomeFilteredRowsSelected(): boolean {
+    return this.selectedVisibleEmployeeCount > 0 && !this.areAllFilteredRowsSelected();
+  }
+
+  clearEmployeeSelection(): void {
+    this.selectedEmployeeIds.clear();
+  }
+
+  private getEmployeeSelectionKey(row: any): string {
+    return String(row?.IdEmpleado ?? '').trim();
+  }
+
+  private getSelectedRows(): any[] {
+    return this.tableDataSource.filter((row) => this.isRowSelected(row));
+  }
+
+  private reconcileEmployeeSelection(): void {
+    const availableKeys = new Set(
+      this.tableDataSource
+        .map((row) => this.getEmployeeSelectionKey(row))
+        .filter(Boolean)
+    );
+
+    for (const key of Array.from(this.selectedEmployeeIds)) {
+      if (!availableKeys.has(key)) {
+        this.selectedEmployeeIds.delete(key);
+      }
+    }
+  }
+
+  private async showSelectionRequired(): Promise<void> {
+    await Swal.fire({
+      title: this.sendText('SELECTION_REQUIRED_TITLE'),
+      text: this.sendText('SELECTION_REQUIRED_TEXT'),
+      icon: 'info'
+    });
+  }
+
+  private includesEmailDelivery(rows: any[]): boolean {
+    return rows.some((row) => [1, 3].includes(Number(row?.TipoEnvioEncuesta)));
+  }
+
+  private async confirmSurveyDelivery(options: {
+    title: string;
+    html: string;
+    confirmButtonText: string;
+    requiresEmailSubject: boolean;
+  }): Promise<string | null> {
+    const commonOptions = {
+      title: options.title,
+      html: options.html,
+      icon: 'warning' as const,
+      showCancelButton: true,
+      confirmButtonColor: '#ff8a1f',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: options.confirmButtonText,
+      cancelButtonText: this.sendText('ASSIGN_CANCEL')
+    };
+
+    const result = options.requiresEmailSubject
+      ? await Swal.fire({
+          ...commonOptions,
+          input: 'text',
+          inputLabel: this.sendText('EMAIL_SUBJECT_LABEL'),
+          inputValue: this.sendText('DEFAULT_EMAIL_SUBJECT'),
+          inputPlaceholder: this.sendText('EMAIL_SUBJECT_PLACEHOLDER'),
+          inputAttributes: {
+            maxlength: '200',
+            autocapitalize: 'sentences',
+            'aria-label': this.sendText('EMAIL_SUBJECT_LABEL')
+          },
+          inputValidator: (value) =>
+            String(value ?? '').trim() ? null : this.sendText('EMAIL_SUBJECT_REQUIRED')
+        })
+      : await Swal.fire(commonOptions);
+
+    if (!result.isConfirmed) {
+      return null;
+    }
+
+    return options.requiresEmailSubject ? String(result.value ?? '').trim() : '';
+  }
+
+  private async showBulkProcessSummary(successCount: number, errorCount: number): Promise<void> {
+    const title = errorCount === 0
+      ? this.sendText('PROCESS_SUCCESS')
+      : successCount === 0
+        ? this.sendText('PROCESS_WITHOUT_SUCCESS')
+        : this.sendText('PROCESS_PARTIAL');
+    const icon = errorCount === 0 ? 'success' : successCount === 0 ? 'error' : 'warning';
+
+    await Swal.fire({
+      icon,
+      title,
+      html: `
+        <div style="text-align:left">
+          <div><strong>${this.sendText('PROCESSED_TOTAL')}:</strong> ${successCount + errorCount}</div>
+          <div style="color:#16a34a"><strong>${this.sendText('SUCCESSFUL_TOTAL')}:</strong> ${successCount}</div>
+          <div style="color:#dc2626"><strong>${this.sendText('ERROR_TOTAL')}:</strong> ${errorCount}</div>
+        </div>
+      `
+    });
+  }
+
+  private isIncompleteSurveyRow(item: any): boolean {
+    const status = this.normalizeEstadoEncuesta(item?.EstadoEncuesta).toLowerCase();
+    return !['contestada', 'completada', 'sin encuesta'].includes(status);
+  }
+
+  async crearEncuestas(): Promise<void> {
+    const selectedRows = this.getSelectedRows();
+
+    if (!selectedRows.length) {
+      await this.showSelectionRequired();
+      return;
+    }
+
+    const assignableRows = selectedRows.filter(
+      (item) => this.normalizeEstadoEncuesta(item?.EstadoEncuesta) === 'Sin encuesta'
+    );
+
+    if (!assignableRows.length) {
+      await Swal.fire({
+        title: this.sendText('NO_ASSIGNABLE_TITLE'),
+        text: this.sendText('NO_ASSIGNABLE_TEXT'),
+        icon: 'info'
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: this.sendText('ASSIGN_DIALOG_TITLE'),
+      html: this.sendText('ASSIGN_DIALOG_TEXT', {
+        count: assignableRows.length,
+        selected: selectedRows.length
+      }),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',       
-      cancelButtonColor: '#3085d6',     
-      confirmButtonText: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_CONFIRM'),
-      cancelButtonText: this.translate.instant('MENUITEMS.TOUR.SEND_CLIMATE.ASSIGN_CANCEL')
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.loading = true;
-       //console.log('✅ Confirmado: Crear encuestas');
-        this.organizacionService.crearEnvioEncuesta(this.currentCard.id).then((resulx) => {
-
-          if(resulx.data.message === 'Envío de encuestas creado correctamente'){
-            Swal.fire({
-              title: this.sendText('SUCCESS_TITLE'),
-              text: this.sendText('ASSIGN_SUCCESS'),
-              icon: 'success',
-            });
-
-            this.currentCard.estadoEnvio = 'Creado';
-            
-            this.loading = false;
-
-            this.obtenerEncuestasEmpleados();
-          }
-    
-        }).catch((err)=>{
-          Swal.fire({
-              title: this.sendText('ERROR_TITLE'),
-              text: err,
-              icon: 'error',
-            });
-            this.loading = false;
-        })
-      } else {
-       //console.log('❌ Cancelado por el usuario');
-
-      }
+      confirmButtonColor: '#ff8a1f',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: this.sendText('ASSIGN_CONFIRM'),
+      cancelButtonText: this.sendText('ASSIGN_CANCEL')
     });
 
-    
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    this.loading = true;
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const item of assignableRows) {
+        try {
+          await this.organizacionService.crearEnvioEncuestaIndividual({
+            IdFlujo: this.currentCard.id,
+            IdEmpleado: item.IdEmpleado
+          });
+          item.EstadoEncuesta = 'Creado';
+          successCount += 1;
+        } catch (error) {
+          console.error(`No fue posible asignar la encuesta al empleado ${item.IdEmpleado}.`, error);
+          errorCount += 1;
+        }
+      }
+
+      if (successCount > 0) {
+        this.currentCard.estadoEnvio = 'Creado';
+      }
+
+      await this.showBulkProcessSummary(successCount, errorCount);
+    } finally {
+      this.loading = false;
+      this.obtenerEncuestasEmpleados();
+    }
   }
 
 
   async enviarTodas(): Promise<void> {
+    const selectedRows = this.getSelectedRows();
+
+    if (!selectedRows.length) {
+      await this.showSelectionRequired();
+      return;
+    }
+
+    const pendingRows = selectedRows.filter(
+      (item) => this.normalizeEstadoEncuesta(item?.EstadoEncuesta) === 'Creado'
+    );
+
+    if (!pendingRows.length) {
+      await Swal.fire({
+        title: this.sendText('NO_PENDING_TITLE'),
+        text: this.sendText('NO_PENDING_TEXT'),
+        icon: 'info'
+      });
+      return;
+    }
+
     if (this.isDemoClimateBulkSendBlocked) {
       await this.showDemoClimateResendBlocked();
       return;
@@ -310,18 +518,17 @@ export class DialogformSendComponent implements OnInit {
       return;
     }
 
-    const confirmado = await Swal.fire({
+    const asunto = await this.confirmSurveyDelivery({
       title: this.sendText('SEND_ALL_TITLE'),
-      text: this.sendText('SEND_ALL_TEXT'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: 'green',
-      cancelButtonColor: 'gray',
+      html: this.sendText('SEND_ALL_TEXT', {
+        count: pendingRows.length,
+        selected: selectedRows.length
+      }),
       confirmButtonText: this.sendText('SEND_ALL_CONFIRM'),
-      cancelButtonText: this.sendText('ASSIGN_CANCEL')
-    }).then((r) => r.isConfirmed);
+      requiresEmailSubject: this.includesEmailDelivery(pendingRows)
+    });
 
-    if (!confirmado) return;
+    if (asunto === null) return;
 
     this.loading = true;
 
@@ -330,9 +537,7 @@ export class DialogformSendComponent implements OnInit {
     const logs: Array<{idEmpleado:number; canal:'email'|'whatsapp'|'ambos'; ok:boolean; msg:string}> = [];
 
     try {
-      for (const element of this.tableDataSource) {
-        // Solo envía los que están creados/pendientes
-        if (element?.EstadoEncuesta !== 'Creado') continue;
+      for (const element of pendingRows) {
 
         let okItem = false;
         let canal: 'email' | 'whatsapp' | 'ambos' = 'email';
@@ -342,12 +547,6 @@ export class DialogformSendComponent implements OnInit {
           if (element.TipoEnvioEncuesta == 1) {
             canal = 'email';
             const htmlFinal = await this.prepararHtmlCorreo(element);
-
-            //IDENTIFICAR ORGANIZACION PARA LOS ENVIOS
-            var asunto = "Encuesta Clima Organizacional";
-            if(this.dataRecibida.idOrganization == 25){
-              asunto = "Encuesta de clima laboral 2025: Colegios APDE"
-            }
 
             const body = {
               destinatario: element.Email,
@@ -393,11 +592,6 @@ export class DialogformSendComponent implements OnInit {
             canal = 'ambos';
 
             const htmlFinal = await this.prepararHtmlCorreo(element);
-
-            let asunto = "Encuesta Clima Organizacional";
-            if(this.dataRecibida.idOrganization == 25){
-              asunto = "Encuesta de clima laboral 2025: Colegios APDE";
-            }
 
             const emailBody = {
               destinatario: element.Email,
@@ -469,10 +663,16 @@ export class DialogformSendComponent implements OnInit {
       }
 
       // Actualiza encabezado general (si aplica)
-      try {
-        await this.organizacionService.updateEncuestaEncabezado({ IdFlujo: this.currentCard.id, Estado: 2 });
-        this.currentCard.estadoEnvio = 'Enviado';
-      } catch (_) { /* opcional: log */ }
+      const hasPendingAssignments = this.tableDataSource.some(
+        (item) => this.normalizeEstadoEncuesta(item?.EstadoEncuesta) === 'Creado'
+      );
+
+      if (okCount > 0 && errCount === 0 && !hasPendingAssignments) {
+        try {
+          await this.organizacionService.updateEncuestaEncabezado({ IdFlujo: this.currentCard.id, Estado: 2 });
+          this.currentCard.estadoEnvio = 'Enviado';
+        } catch (_) { /* opcional: log */ }
+      }
 
       // Resumen final
       const total = okCount + errCount;
@@ -507,6 +707,26 @@ export class DialogformSendComponent implements OnInit {
   }
 
   async enviarTodasPendientes(): Promise<void> {
+    const selectedRows = this.getSelectedRows();
+
+    if (!selectedRows.length) {
+      await this.showSelectionRequired();
+      return;
+    }
+
+    const incompleteRows = selectedRows.filter(
+      (item) => this.isIncompleteSurveyRow(item)
+    );
+
+    if (!incompleteRows.length) {
+      await Swal.fire({
+        title: this.sendText('NO_INCOMPLETE_TITLE'),
+        text: this.sendText('NO_INCOMPLETE_TEXT'),
+        icon: 'info'
+      });
+      return;
+    }
+
     if (this.isDemoClimateResendBlocked) {
       await this.showDemoClimateResendBlocked();
       return;
@@ -534,18 +754,17 @@ export class DialogformSendComponent implements OnInit {
       return;
     }
 
-    const confirmado = await Swal.fire({
+    const asunto = await this.confirmSurveyDelivery({
       title: this.sendText('SEND_INCOMPLETE_TITLE'),
-      text: this.sendText('SEND_INCOMPLETE_TEXT'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: 'green',
-      cancelButtonColor: 'gray',
+      html: this.sendText('SEND_INCOMPLETE_TEXT', {
+        count: incompleteRows.length,
+        selected: selectedRows.length
+      }),
       confirmButtonText: this.sendText('SEND_INCOMPLETE_CONFIRM'),
-      cancelButtonText: this.sendText('ASSIGN_CANCEL')
-    }).then((r) => r.isConfirmed);
+      requiresEmailSubject: this.includesEmailDelivery(incompleteRows)
+    });
 
-    if (!confirmado) return;
+    if (asunto === null) return;
 
     this.loading = true;
 
@@ -554,10 +773,7 @@ export class DialogformSendComponent implements OnInit {
     const logs: Array<{idEmpleado:number; canal:'email'|'whatsapp'|'ambos'; ok:boolean; msg:string}> = [];
 
     try {
-      for (const element of this.tableDataSource) {
-
-        // Solo envía los que están creados, enviados y diferente de 
-        if (element?.EstadoEncuesta === 'Contestada' || element?.EstadoEncuesta === 'Sin encuesta') continue;
+      for (const element of incompleteRows) {
 
         let okItem = false;
         let canal: 'email' | 'whatsapp' | 'ambos' = 'email';
@@ -567,12 +783,6 @@ export class DialogformSendComponent implements OnInit {
           if (element.TipoEnvioEncuesta == 1) {
             canal = 'email';
             const htmlFinal = await this.prepararHtmlCorreo(element);
-
-            //IDENTIFICAR ORGANIZACION PARA LOS ENVIOS
-            var asunto = "Encuesta Clima Organizacional";
-            if(this.dataRecibida.idOrganization == 25){
-              asunto = "Encuesta de clima laboral 2025: Colegios APDE"
-            }
 
             const body = {
               destinatario: element.Email,
@@ -618,11 +828,6 @@ export class DialogformSendComponent implements OnInit {
             canal = 'ambos';
 
             const htmlFinal = await this.prepararHtmlCorreo(element);
-
-            let asunto = "Encuesta Clima Organizacional";
-            if(this.dataRecibida.idOrganization == 25){
-              asunto = "Encuesta de clima laboral 2025: Colegios APDE";
-            }
 
             const emailBody = {
               destinatario: element.Email,
@@ -924,19 +1129,14 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           
           if(item.TipoEnvioEncuesta == 1) {
 
-            Swal.fire({
+            this.confirmSurveyDelivery({
               title: this.sendText('SEND_EMAIL_TITLE'),
               html: this.sendText('SEND_EMAIL_TEXT', { employee: item.Empleado }),
-              icon: 'warning',
-              showCancelButton: true,
-              confirmButtonColor: 'green',
-              cancelButtonColor: 'gray',
               confirmButtonText: this.sendText('SEND_EMAIL_CONFIRM'),
-              cancelButtonText: this.sendText('ASSIGN_CANCEL')
-
-            }).then((result) => {
+              requiresEmailSubject: true
+            }).then((asunto) => {
               
-              if (result.isConfirmed) {
+              if (asunto !== null) {
                 var plantilla_con_variables = '';
                 var htmlFinal = '';
                 this.loading = true;
@@ -967,12 +1167,6 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
                     htmlFinal = renderizarPlantilla(p, DATOS);
                   //console.log('HTML-final default:: ', htmlFinal );
                   };
-
-                  //IDENTIFICAR ORGANIZACION PARA LOS ENVIOS
-                  var asunto = "Encuesta Clima Organizacional";
-                  if(this.dataRecibida.idOrganization == 25){
-                    asunto = "Encuesta de clima laboral 2025: Colegios APDE"
-                  }
 
                   const mail_body = { "destinatario": item.Email, 
                     "asunto": asunto, 
@@ -1143,17 +1337,13 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
           else if (item.TipoEnvioEncuesta == 3) { // AMBOS (CORREO + WHATSAPP) 
           // --PROBAR ESTA FUNCIONALIDAD Y REMOVER ESTE COMENTARIO
 
-            Swal.fire({
+            this.confirmSurveyDelivery({
               title: this.sendText('SEND_BOTH_TITLE'),
               html: this.sendText('SEND_BOTH_TEXT', { employee: item.Empleado }),
-              icon: 'warning',
-              showCancelButton: true,
-              confirmButtonColor: 'green',
-              cancelButtonColor: 'gray',
               confirmButtonText: this.sendText('SEND_BOTH_CONFIRM'),
-              cancelButtonText: this.sendText('ASSIGN_CANCEL')
-            }).then(async (result) => {
-              if (!result.isConfirmed) return;
+              requiresEmailSubject: true
+            }).then(async (asunto) => {
+              if (asunto === null) return;
 
               this.loading = true;
 
@@ -1174,12 +1364,6 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
                 const p = plantilla_con_variables.replaceAll('&quot;', '"');
                 htmlFinal = renderizarPlantilla(p, DATOS);
-
-                // Asunto por organización
-                let asunto = "Encuesta Clima Organizacional";
-                if (this.dataRecibida.idOrganization == 25) {
-                  asunto = "Encuesta de clima laboral 2025: Colegios APDE";
-                }
 
                 const mail_body = {
                   destinatario: item.Email,
@@ -1357,6 +1541,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
      console.log('resultix encuestas empleados:: ', resultix);
       this.tableDataSource = Array.isArray(resultix.data) ? resultix.data : [];
       this.dynamicDemographicColumns = this.getDynamicDemographicColumns(this.tableDataSource);
+      this.reconcileEmployeeSelection();
+      this.updateDemographicFilterOptions();
       this.updateDisplayedColumns();
       this.updateEstadoFilterOptions();
       this.refreshFilteredTable();
@@ -1366,6 +1552,10 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       this.tableDataSource = [];
       this.filteredTableDataSource = [];
       this.dynamicDemographicColumns = [];
+      this.clearEmployeeSelection();
+      this.selectedDemographicField = 'ALL';
+      this.selectedDemographicValues = [];
+      this.demographicValueOptions = [];
       this.updateDisplayedColumns();
       this.loading = false;
     });
@@ -1436,8 +1626,33 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
     this.refreshFilteredTable();
   }
 
+  setDemographicField(field: string): void {
+    this.selectedDemographicField = field || 'ALL';
+    this.selectedDemographicValues = [];
+    this.updateDemographicFilterOptions();
+    this.refreshFilteredTable();
+  }
+
+  setDemographicValues(values: string[]): void {
+    this.selectedDemographicValues = Array.isArray(values) ? values : [];
+    this.refreshFilteredTable();
+  }
+
+  clearDemographicFilter(): void {
+    this.selectedDemographicField = 'ALL';
+    this.selectedDemographicValues = [];
+    this.demographicValueOptions = [];
+    this.refreshFilteredTable();
+  }
+
+  getDemographicOptionLabel(value: string): string {
+    return value || this.sendText('DEMOGRAPHIC_WITHOUT_VALUE');
+  }
+
   descargarExcel(): void {
-    if (!this.filteredTableDataSource.length) {
+    const selectedRows = this.getSelectedRows();
+
+    if (!selectedRows.length) {
       Swal.fire({
         title: this.sendText('NO_EXPORT_DATA_TITLE'),
         text: this.sendText('NO_EXPORT_DATA_TEXT'),
@@ -1466,7 +1681,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       })),
     ];
 
-    const rows = this.filteredTableDataSource.map((item) => {
+    const rows = selectedRows.map((item) => {
       const row: Record<string, unknown> = {
         IdEmpleado: item.IdEmpleado ?? '-',
         Empleado: this.formatDynamicColumnValue(item.Empleado),
@@ -1496,6 +1711,12 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       ? 'Todos'
       : this.selectedEstadoFilter;
 
+    const filtroDemografico = this.selectedDemographicField === 'ALL'
+      ? this.sendText('ALL_DEMOGRAPHICS')
+      : `${this.selectedDemographicField}: ${this.selectedDemographicValues.length
+        ? this.selectedDemographicValues.map((value) => this.getDemographicOptionLabel(value)).join(', ')
+        : this.sendText('ALL_DEMOGRAPHIC_VALUES')}`;
+
     const fileSafeTitle = (this.currentCard?.title || 'Envio_Encuestas')
       .replace(/[^a-zA-Z0-9-_]+/g, '_')
       .replace(/_+/g, '_');
@@ -1506,6 +1727,8 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       filters: [
         `Filtro tipo envio: ${filtroTipo}`,
         `Filtro estado: ${filtroEstado}`,
+        `Filtro demografico: ${filtroDemografico}`,
+        `${this.sendText('SELECTED_RECORDS')}: ${rows.length}`,
       ],
       columns: exportColumns,
       rows,
@@ -1584,9 +1807,52 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
       const matchesEstado = this.selectedEstadoFilter === 'ALL'
         ? true
         : this.matchesEstadoFilter(item, this.selectedEstadoFilter);
+      const matchesDemographic = this.selectedDemographicField === 'ALL'
+        || !this.selectedDemographicValues.length
+        || this.selectedDemographicValues.includes(
+          this.normalizeDemographicValue(item?.[this.selectedDemographicField])
+        );
 
-      return matchesTipo && matchesEstado;
+      return matchesTipo && matchesEstado && matchesDemographic;
     });
+  }
+
+  private updateDemographicFilterOptions(): void {
+    if (
+      this.selectedDemographicField !== 'ALL'
+      && !this.dynamicDemographicColumns.includes(this.selectedDemographicField)
+    ) {
+      this.selectedDemographicField = 'ALL';
+      this.selectedDemographicValues = [];
+    }
+
+    if (this.selectedDemographicField === 'ALL') {
+      this.demographicValueOptions = [];
+      return;
+    }
+
+    const counts = new Map<string, number>();
+
+    for (const item of this.tableDataSource) {
+      const value = this.normalizeDemographicValue(item?.[this.selectedDemographicField]);
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+
+    this.demographicValueOptions = Array.from(counts, ([value, count]) => ({ value, count }))
+      .sort((a, b) => {
+        if (!a.value) return 1;
+        if (!b.value) return -1;
+        return a.value.localeCompare(b.value, undefined, { sensitivity: 'base' });
+      });
+
+    const availableValues = new Set(this.demographicValueOptions.map((option) => option.value));
+    this.selectedDemographicValues = this.selectedDemographicValues.filter(
+      (value) => availableValues.has(value)
+    );
+  }
+
+  private normalizeDemographicValue(value: unknown): string {
+    return value == null ? '' : String(value).trim();
   }
 
   private matchesEstadoFilter(item: any, estado: string): boolean {
@@ -1618,6 +1884,7 @@ private async registrarEnvio(element: any, estado: 'Enviado'|'No enviado', respu
 
   private updateDisplayedColumns(): void {
     this.displayedColumns = [
+      this.selectionColumn,
       ...this.baseDisplayedColumns.filter((column) => !this.hiddenDisplayedColumns.has(column)),
       ...(this.showDynamicDemographicColumns ? this.dynamicDemographicColumns : []),
       ...this.trailingDisplayedColumns

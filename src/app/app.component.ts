@@ -3,6 +3,7 @@ import { Component } from '@angular/core';
 import { Event, Router, NavigationStart, NavigationEnd, RouterModule } from '@angular/router';
 import { PageLoaderComponent } from './layout/page-loader/page-loader.component';
 import { JoyrideModule } from 'ngx-joyride';
+import { ApplicationScaleService } from './core/service/application-scale.service';
 
 @Component({
     selector: 'app-root',
@@ -17,7 +18,11 @@ import { JoyrideModule } from 'ngx-joyride';
 })
 export class AppComponent {
   currentUrl!: string;
-  constructor(public _router: Router) {
+  constructor(
+    public _router: Router,
+    private readonly applicationScaleService: ApplicationScaleService
+  ) {
+    void this.applicationScaleService;
     this._router.events.subscribe((routerEvent: Event) => {
       if (routerEvent instanceof NavigationStart) {
         this.currentUrl = routerEvent.url.substring(

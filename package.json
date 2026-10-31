@@ -9,6 +9,7 @@
     "build": "ng build",
     "build:prod": "ng build --configuration production",
     "build:demo": "ng build --configuration demo",
+    "generate:climate-templates": "node scripts/generate-climate-survey-templates.cjs",
     "test": "ng test",
     "lint": "ng lint"
   },

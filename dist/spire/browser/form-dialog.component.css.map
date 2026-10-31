@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/secure/configs/dialogs/form-dialog/form-dialog.component.scss"],
+  "sourcesContent": [".modalTitle {\n  font-size: 18px;\n  font-weight: 600;\n}\n\n.example-full-width {\n  width: 100%;\n}\n\ntextarea {\n  resize: vertical;\n}\n\n.status-field {\n  display: flex;\n  align-items: center;\n  min-height: 48px;\n}\n"],
+  "mappings": ";AAAA,CAAA;AACE,aAAA;AACA,eAAA;;AAGF,CAAA;AACE,SAAA;;AAGF;AACE,UAAA;;AAGF,CAAA;AACE,WAAA;AACA,eAAA;AACA,cAAA;;",
+  "names": []
+}

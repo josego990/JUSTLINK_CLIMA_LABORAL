@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/forms/editors/editors.component.scss"],
+  "sourcesContent": [".NgxEditorStyles {\r\n  overflow: auto;\r\n  display: block;\r\n  .NgxEditor__Content {\r\n    height: 400px;\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA;AACE,YAAA;AACA,WAAA;;AACA,CAHF,gBAGE,CAAA;AACE,UAAA;;",
+  "names": []
+}

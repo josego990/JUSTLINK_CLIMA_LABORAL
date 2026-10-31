@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/file-upload/file-upload.component.scss"],
+  "sourcesContent": [".file-drop-area {\r\n  border: 1px dashed #7c7db3;\r\n  border-radius: 3px;\r\n  position: relative;\r\n  max-width: 100%;\r\n  margin-top: 5px;\r\n  padding: 26px 20px 30px;\r\n  transition: 0.2s;\r\n}\r\n\r\n.file-input {\r\n  position: absolute;\r\n  left: 0;\r\n  top: 0;\r\n  height: 100%;\r\n  width: 100%;\r\n  cursor: pointer;\r\n  opacity: 0;\r\n}\r\n.file-msg {\r\n  display: inline-block;\r\n  margin-left: 5px;\r\n  font-size: 12px;\r\n  font-weight: 500;\r\n  color: #5b5bff;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA;AACE,UAAA,IAAA,OAAA;AACA,iBAAA;AACA,YAAA;AACA,aAAA;AACA,cAAA;AACA,WAAA,KAAA,KAAA;AACA,cAAA;;AAGF,CAAA;AACE,YAAA;AACA,QAAA;AACA,OAAA;AACA,UAAA;AACA,SAAA;AACA,UAAA;AACA,WAAA;;AAEF,CAAA;AACE,WAAA;AACA,eAAA;AACA,aAAA;AACA,eAAA;AACA,SAAA;;",
+  "names": []
+}

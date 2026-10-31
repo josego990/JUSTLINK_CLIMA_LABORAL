@@ -10,6 +10,26 @@ export interface SelectedOrganization {
   Nombre: string;
 }
 
+export interface ClimaDashboardFilter {
+  campoId: number;
+  valor: string;
+}
+
+export interface ClimaDashboardPayload {
+  idOrganizacion: number;
+  idFlujo: number;
+  filtrosDemograficos: ClimaDashboardFilter[];
+  idsGrandesFactores: number[];
+  modo: 'AND' | 'OR';
+}
+
+export interface ClimaDashboardCommentsPayload extends ClimaDashboardPayload {
+  tipo: 'TODOS' | 'TEXT' | 'IATEXT';
+  idPregunta: number | null;
+  pagina: number;
+  limite: number;
+}
+
 const SELECTED_ORGANIZATION_STORAGE_KEY = 'justlink.selectedOrganization';
 
 @Injectable({
@@ -726,6 +746,22 @@ export class OrganizacionService {
       .post(this.getApiEndpoint('update-employeeSecure'), employee);
   }
 
+  updateEmployeesSendType(
+    idOrganizacion: number,
+    idsEmpleados: number[],
+    tipoEnvioEncuesta: number,
+  ) {
+    return axios.patch(
+      this.getRestApiEndpoint('api/organization/employees/tipo-envio'),
+      {
+        idOrganizacion,
+        idsEmpleados,
+        tipoEnvioEncuesta,
+      },
+      this.getNoCacheConfig(),
+    );
+  }
+
   saveNewEmployeesExcel(employees: any) {
     return axios
       .post(this.getApiEndpoint('insert-employees-batch'), employees);
@@ -1163,8 +1199,8 @@ export class OrganizacionService {
         });
   }
 
-  getAllMetrics(idFlujo:number, filtros:string, 
-    filtrosGf:string, tipoFiltro:string) {
+  getAllMetrics(idFlujo:number, filtros:string,
+    filtrosGf:string, tipoFiltro:string, signal?: AbortSignal) {
 
     return axios
       .post(this.getApiEndpoint('get-all-dash-metrics'), 
@@ -1172,8 +1208,44 @@ export class OrganizacionService {
           IdFlujo:idFlujo,
           FiltrosDemograficos:filtros,
           FiltrosGf: filtrosGf,
-          TipoFiltro: tipoFiltro         
+          TipoFiltro: tipoFiltro
+        }, {
+          ...this.getNoCacheConfig(),
+          timeout: 120000,
+          signal,
         });
+  }
+
+  getClimaDashboardSummary(payload: ClimaDashboardPayload, signal?: AbortSignal) {
+    return this.postClimaDashboardSection('resumen', payload, signal);
+  }
+
+  getClimaDashboardParticipation(payload: ClimaDashboardPayload, signal?: AbortSignal) {
+    return this.postClimaDashboardSection('participacion', payload, signal);
+  }
+
+  getClimaDashboardSpecialQuestions(payload: ClimaDashboardPayload, signal?: AbortSignal) {
+    return this.postClimaDashboardSection('preguntas-especiales', payload, signal);
+  }
+
+  getClimaDashboardComments(payload: ClimaDashboardCommentsPayload, signal?: AbortSignal) {
+    return this.postClimaDashboardSection('comentarios', payload, signal);
+  }
+
+  private postClimaDashboardSection(
+    section: string,
+    payload: ClimaDashboardPayload | ClimaDashboardCommentsPayload,
+    signal?: AbortSignal
+  ) {
+    return axios.post(
+      this.getRestApiEndpoint(`api/clima/dashboard/${section}`),
+      payload,
+      {
+        ...this.getNoCacheConfig(),
+        timeout: 120000,
+        signal,
+      }
+    );
   }
 
   getClimaActionPlanLikertResults(idOrganizacion: number, idFlujo: number) {

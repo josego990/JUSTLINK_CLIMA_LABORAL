@@ -5,7 +5,7 @@ import {
   RouterLink,
   RouterLinkActive,
 } from '@angular/router';
-import { DOCUMENT, NgStyle, NgClass } from '@angular/common';
+import { DOCUMENT, NgClass } from '@angular/common';
 import {
   Component,
   Inject,
@@ -31,7 +31,6 @@ import { SidebarService } from './sidebar.service';
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    NgStyle,
     NgScrollbar,
     RouterLinkActive,
     NgClass,

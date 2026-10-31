@@ -626,12 +626,14 @@ export class CreateComponent implements OnDestroy, OnInit {
     }
 
     const dialogRef = this.dialogModel.open(DialogformComponent, {
-      width:  '95vw',
-      maxWidth: '95vw',      // ⚠️ anula el 80 vw por defecto
-      height: 'auto', 
-        disableClose: true,
-        data: this.BankData
-      });
+      width: '920px',
+      maxWidth: '94vw',
+      maxHeight: '90vh',
+      height: 'auto',
+      panelClass: 'new-climate-dialog-panel',
+      disableClose: true,
+      data: this.BankData,
+    });
     
       dialogRef.afterClosed().subscribe(result => {
         if (result === true) {

@@ -17,7 +17,7 @@ import {
   NgApexchartsModule,
 } from 'ng-apexcharts';
 
-type DistItem = { Valor: number; Conteo: number; Porcentaje: number };
+export type DistItem = { Valor: number; Conteo: number; Porcentaje: number };
 type SliderPiePoint = { name: string; value: number };
 type NpsSummary = {
   show: boolean;
@@ -41,7 +41,7 @@ export interface SliderQuestionRow {
   rangoMax: number;
   total_respuestas: number;
   promedio: number;
-  distribucionJSON: string;
+  distribucionJSON: string | DistItem[];
   pieSeries?: SliderPiePoint[];
 }
 
@@ -244,7 +244,9 @@ export class SliderTableComponent {
   }
 
   private buildDistribution(row: SliderQuestionRow): DistItem[] {
-    const parsed = safeParseJSON<DistItem[]>(row.distribucionJSON) ?? [];
+    const parsed = Array.isArray(row.distribucionJSON)
+      ? row.distribucionJSON
+      : safeParseJSON<DistItem[]>(row.distribucionJSON) ?? [];
     const distMap = new Map<number, DistItem>();
     parsed.forEach((item) => {
       distMap.set(Number(item.Valor), {

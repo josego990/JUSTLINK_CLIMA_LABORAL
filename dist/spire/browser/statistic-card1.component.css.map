@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/statistic-card1/statistic-card1.component.scss"],
+  "sourcesContent": [":host ::ng-deep .banner-img img {\r\n  max-width: 100%;\r\n  height: auto;\r\n}\r\n"],
+  "mappings": ";AAAA,MAAA,UAAA,CAAA,WAAA;AACE,aAAA;AACA,UAAA;;",
+  "names": []
+}

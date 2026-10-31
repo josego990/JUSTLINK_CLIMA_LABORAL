@@ -1,1 +1,0 @@
-import{c as a,d as t}from"./chunk-4G5ZQQ5G.js";var c=n=>{let o=new Date().toISOString(),e=n||"ExportResult",s=`${e}-${o}`;return{sheetName:e,fileName:s}},r=class{static exportToExcel(o,e){let{sheetName:s,fileName:m}=c(e),i=t.book_new(),p=t.json_to_sheet(o);t.book_append_sheet(i,p,s),a(i,`${m}.xlsx`)}};export{r as a};

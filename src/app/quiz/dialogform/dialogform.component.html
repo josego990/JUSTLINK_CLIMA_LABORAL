@@ -1,13 +1,92 @@
-<div>
-  <h2 mat-dialog-title>{{'MENUITEMS.QUIZ.CREATE' | translate}}</h2>
-  <div mat-dialog-content>
+<div class="new-climate-dialog">
+  <div mat-dialog-title class="new-climate-dialog__header">
+    <span class="new-climate-dialog__header-icon" aria-hidden="true">
+      <mat-icon>add_chart</mat-icon>
+    </span>
+    <div>
+      <h2>{{'MENUITEMS.QUIZ.CREATE' | translate}}</h2>
+      <p>{{'MENUITEMS.QUIZ.TEMPLATES.DIALOG_SUBTITLE' | translate}}</p>
+    </div>
+  </div>
+  <div mat-dialog-content class="new-climate-dialog__content">
 <!--
     <mat-tab-group>
       <mat-tab label="Complete los siguientes campos">
         <br>
       -->
         
-        <form style="margin-top: 5px" [formGroup]="addCusForm!" (ngSubmit)="onSubmitClick()"> 
+        <form class="new-climate-form" [formGroup]="addCusForm!" (ngSubmit)="onSubmitClick()">
+
+          <section class="creation-source">
+            <div class="creation-source__heading">
+              <div>
+                <h3>{{ 'MENUITEMS.QUIZ.TEMPLATES.START_TITLE' | translate }}</h3>
+                <p>{{ 'MENUITEMS.QUIZ.TEMPLATES.START_DESCRIPTION' | translate }}</p>
+              </div>
+            </div>
+
+            <div class="creation-mode" role="group" [attr.aria-label]="'MENUITEMS.QUIZ.TEMPLATES.START_TITLE' | translate">
+              <button
+                type="button"
+                class="creation-mode__option"
+                [class.creation-mode__option--selected]="creationMode === 'blank'"
+                [attr.aria-pressed]="creationMode === 'blank'"
+                (click)="setCreationMode('blank')">
+                <span class="creation-mode__icon" aria-hidden="true"><mat-icon>edit_note</mat-icon></span>
+                <span>
+                  <strong>{{ 'MENUITEMS.QUIZ.TEMPLATES.BLANK_TITLE' | translate }}</strong>
+                  <small>{{ 'MENUITEMS.QUIZ.TEMPLATES.BLANK_DESCRIPTION' | translate }}</small>
+                </span>
+                <mat-icon class="creation-mode__check" *ngIf="creationMode === 'blank'">check_circle</mat-icon>
+              </button>
+
+              <button
+                type="button"
+                class="creation-mode__option"
+                [class.creation-mode__option--selected]="creationMode === 'template'"
+                [attr.aria-pressed]="creationMode === 'template'"
+                (click)="setCreationMode('template')">
+                <span class="creation-mode__icon" aria-hidden="true"><mat-icon>library_books</mat-icon></span>
+                <span>
+                  <strong>{{ 'MENUITEMS.QUIZ.TEMPLATES.FROM_TEMPLATE_TITLE' | translate }}</strong>
+                  <small>{{ 'MENUITEMS.QUIZ.TEMPLATES.FROM_TEMPLATE_DESCRIPTION' | translate }}</small>
+                </span>
+                <mat-icon class="creation-mode__check" *ngIf="creationMode === 'template'">check_circle</mat-icon>
+              </button>
+            </div>
+
+            <div class="template-picker" *ngIf="creationMode === 'template'">
+              <button
+                *ngFor="let template of climateTemplates"
+                type="button"
+                class="template-option"
+                [class.template-option--selected]="isTemplateSelected(template)"
+                [attr.aria-pressed]="isTemplateSelected(template)"
+                (click)="selectClimateTemplate(template)">
+                <span class="template-option__topline">
+                  <span class="template-option__icon" aria-hidden="true"><mat-icon>{{ template.icon }}</mat-icon></span>
+                  <mat-icon class="template-option__selected-icon" *ngIf="isTemplateSelected(template)">check_circle</mat-icon>
+                </span>
+                <strong>{{ template.nameKey | translate }}</strong>
+                <span class="template-option__description">{{ template.descriptionKey | translate }}</span>
+                <span class="template-option__metrics">
+                  <span>{{ template.factorCount }} {{ 'MENUITEMS.QUIZ.TEMPLATES.FACTORS' | translate }}</span>
+                  <span>{{ template.questionCount }} {{ 'MENUITEMS.QUIZ.TEMPLATES.QUESTIONS' | translate }}</span>
+                </span>
+              </button>
+
+              <div class="template-guidance" *ngIf="selectedTemplateId === 'nom-035-mexico'">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <span>{{ 'MENUITEMS.QUIZ.TEMPLATES.NOM035_GUIDANCE' | translate }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="climate-details">
+            <div class="climate-details__heading">
+              <h3>{{ 'MENUITEMS.QUIZ.TEMPLATES.DETAILS_TITLE' | translate }}</h3>
+              <p>{{ 'MENUITEMS.QUIZ.TEMPLATES.DETAILS_DESCRIPTION' | translate }}</p>
+            </div>
 
 
           <div  class="row">
@@ -57,14 +136,15 @@
 
             <div class="col-xl-6 col-lg-6 col-md-12 col-sm-12 mb-2">
               <!-- Imagen URL -->
-              <div class="col-sm-6">
+              <div class="climate-image-field">
                 <label>{{'MENUITEMS.QUIZ.URLIMAGE' | translate}} </label>
-                <input style="margin-left: 10px" type="file" (change)="onSelectFile($event)"  />
+                <input type="file" accept="image/*" (change)="onSelectFile($event)" />
 
               </div>
 
-              <div class="col-sm-6">
-                <img *ngIf="url" [src]="url" class=" mt-2" />
+              <div class="climate-image-preview" *ngIf="fileChange && url">
+                <img [src]="url" [alt]="fileName" />
+                <span>{{ fileName }}</span>
               </div>
 
 
@@ -126,13 +206,13 @@
     
           
           
-          <div class="btn-sec">
+          <div class="btn-sec new-climate-dialog__actions">
             <button
               type="submit"
               class="btn-space save-climate-button"
               mat-raised-button
               color="primary"
-              [disabled]="isSavingClimate">
+              [disabled]="isSavingClimate || (creationMode === 'template' && !selectedTemplateId)">
               <span class="save-climate-button__content">
                 <mat-progress-spinner
                   *ngIf="isSavingClimate"
@@ -154,6 +234,7 @@
               {{'MENUITEMS.QUIZ.CANCEL' | translate}}
             </button>
           </div>
+          </section>
         </form>
 
  <!-- 

@@ -322,8 +322,15 @@
       "END_DATE": "Enddatum",
       "SCENARIOS_TITLE": "Bewertungsszenarien",
       "SCENARIOS_HELP": "Aktivieren Sie die zutreffenden Szenarien und passen Sie deren Gewichtung so an, dass die aktiven Szenarien 100 % ergeben.",
+      "SCENARIO_POSITIONS_TITLE": "Zu konfigurierende Positionen",
       "SCENARIO": "Szenario",
       "SCENARIO_ACTIVE": "Aktiv",
+      "SCENARIO_RELATION_DESCRIPTION": {
+        "BOSS_TO_EMPLOYEE": "Die Führungskraft bewertet {{position}}.",
+        "EMPLOYEE_TO_BOSS": "Mitarbeitende bewerten {{position}}.",
+        "PEER": "Kolleginnen und Kollegen bewerten {{position}}.",
+        "SELF": "Die Person in der Position {{position}} führt eine Selbsteinschätzung durch."
+      },
       "WEIGHT": "Gewichtung",
       "REQUIRED_RATING_LEVEL": "Anforderungsniveau",
       "REQUIRED_RATING_LEVEL_HINT": "Erwarteter Prozentsatz von 1 bis 100",

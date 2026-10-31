@@ -17,6 +17,7 @@
 /*                 [1. Common ]                   			*/
 
 /* Importing Bootstrap SCSS file. */
+@use "fonts/tt-interphase";
 @use "common/_variables";
 @use "common/_mixins";
 @use "common/_customanimate.scss";

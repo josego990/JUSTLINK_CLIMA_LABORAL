@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/organization/employees/employee-manager-select-dialog.component.ts"],
+  "sourcesContent": ["\n    .manager-dialog-content {\n      min-width: min(760px, 88vw);\n      padding-top: 8px;\n    }\n\n    .manager-search-field {\n      width: 100%;\n      margin-bottom: 12px;\n    }\n\n    .manager-table-wrap {\n      max-height: min(56vh, 520px);\n      overflow: auto;\n      border: 1px solid rgba(0, 0, 0, 0.08);\n      border-radius: 6px;\n    }\n\n    .manager-table {\n      width: 100%;\n    }\n\n    .manager-row-selected {\n      background: rgba(63, 81, 181, 0.08);\n    }\n\n    .manager-empty-state {\n      padding: 28px 8px;\n      text-align: center;\n      color: #68707a;\n    }\n\n    @media (max-width: 640px) {\n      .manager-dialog-content {\n        min-width: 0;\n      }\n    }\n  "],
+  "mappings": ";AACI,CAAA;AACE,aAAA,IAAA,KAAA,EAAA;AACA,eAAA;;AAGF,CAAA;AACE,SAAA;AACA,iBAAA;;AAGF,CAAA;AACE,cAAA,IAAA,IAAA,EAAA;AACA,YAAA;AACA,UAAA,IAAA,MAAA,KAAA,CAAA,EAAA,CAAA,EAAA,CAAA,EAAA;AACA,iBAAA;;AAGF,CAAA;AACE,SAAA;;AAGF,CAAA;AACE,cAAA,KAAA,EAAA,EAAA,EAAA,EAAA,GAAA,EAAA;;AAGF,CAAA;AACE,WAAA,KAAA;AACA,cAAA;AACA,SAAA;;AAGF,OAAA,CAAA,SAAA,EAAA;AACE,GAhCF;AAiCI,eAAA;;;",
+  "names": []
+}

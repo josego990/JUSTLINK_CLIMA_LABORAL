@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/emp-task-tab/emp-task-tab.component.scss"],
+  "sourcesContent": [":host ::ng-deep .tab-user-style {\r\n  border-radius: 50%;\r\n  margin: 0px 5px;\r\n}\r\n"],
+  "mappings": ";AAAA,MAAA,UAAA,CAAA;AACE,iBAAA;AACA,UAAA,IAAA;;",
+  "names": []
+}

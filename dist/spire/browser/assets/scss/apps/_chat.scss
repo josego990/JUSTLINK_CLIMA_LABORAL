@@ -173,7 +173,7 @@
       width: 100%;
       border: none;
       padding: 10px 20px;
-      font: 14px/22px Lato, Arial, sans-serif;
+      font: 14px/22px var(--app-font-family, "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif);
       margin-bottom: 10px;
       @include mixins.border-radius(5px);
       resize: none;

@@ -1,1 +1,75 @@
 
+
+.app-scale-setting {
+  padding-bottom: 18px;
+  border-bottom: 1px solid #eee;
+}
+
+.app-scale-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app-scale-option {
+  display: flex;
+  min-height: 48px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  color: #405362;
+  border: 1px solid #d9e0e4;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.app-scale-option:hover {
+  color: #a95716;
+  border-color: #efbd8b;
+  background: #fff5e9;
+}
+
+.app-scale-option.active {
+  color: #9d5012;
+  border-color: #efaa62;
+  background: #fff0df;
+  box-shadow: inset 3px 0 0 #f58b2a;
+}
+
+.app-scale-option span {
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.app-scale-option small {
+  color: #788792;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+:host-context(.dark) .app-scale-setting {
+  border-color: #3b4857;
+}
+
+:host-context(.dark) .app-scale-option {
+  color: #c8d2db;
+  border-color: #435161;
+  background: #252e39;
+}
+
+:host-context(.dark) .app-scale-option:hover,
+:host-context(.dark) .app-scale-option.active {
+  color: #ffe0ba;
+  border-color: #b66e2d;
+  background: #3b3024;
+}
+
+:host-context(.dark) .app-scale-option small {
+  color: #94a4b4;
+}

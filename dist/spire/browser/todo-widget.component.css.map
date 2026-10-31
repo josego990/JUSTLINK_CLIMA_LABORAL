@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/todo-widget/todo-widget.component.scss"],
+  "sourcesContent": [":host ::ng-deep .todoTitle {\r\n  text-overflow: ellipsis;\r\n  overflow: hidden;\r\n  white-space: nowrap;\r\n  width: 160px;\r\n}\r\n"],
+  "mappings": ";AAAA,MAAA,UAAA,CAAA;AACE,iBAAA;AACA,YAAA;AACA,eAAA;AACA,SAAA;;",
+  "names": []
+}

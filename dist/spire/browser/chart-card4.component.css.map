@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/chart-card4/chart-card4.component.scss"],
+  "sourcesContent": ["/* chart-card4.component.scss */\r\n.chart-card4 {\r\n  .chart-container {\r\n    position: relative;\r\n    width: 100%;\r\n    display: flex;\r\n    justify-content: center;\r\n    align-items: center;\r\n  }\r\n\r\n  .statistics {\r\n    display: flex;\r\n    gap: 0.5rem;\r\n    text-align: center;\r\n    margin: 20px;\r\n  }\r\n\r\n  .stat-item {\r\n    .count {\r\n      font-size: 1.5rem;\r\n      font-weight: 600;\r\n      color: #333;\r\n    }\r\n\r\n    .label {\r\n      font-size: 0.875rem;\r\n      color: #666;\r\n    }\r\n\r\n    &.male {\r\n      .count {\r\n        color: #4f58d2;\r\n      }\r\n    }\r\n\r\n    &.female {\r\n      .count {\r\n        color: #edbe27;\r\n      }\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": ";AAEE,CAAA,YAAA,CAAA;AACE,YAAA;AACA,SAAA;AACA,WAAA;AACA,mBAAA;AACA,eAAA;;AAGF,CARA,YAQA,CAAA;AACE,WAAA;AACA,OAAA;AACA,cAAA;AACA,UAAA;;AAIA,CAhBF,YAgBE,CAAA,UAAA,CAAA;AACE,aAAA;AACA,eAAA;AACA,SAAA;;AAGF,CAtBF,YAsBE,CANA,UAMA,CAAA;AACE,aAAA;AACA,SAAA;;AAIA,CA5BJ,YA4BI,CAZF,SAYE,CAAA,KAAA,CAZF;AAaI,SAAA;;AAKF,CAlCJ,YAkCI,CAlBF,SAkBE,CAAA,OAAA,CAlBF;AAmBI,SAAA;;",
+  "names": []
+}

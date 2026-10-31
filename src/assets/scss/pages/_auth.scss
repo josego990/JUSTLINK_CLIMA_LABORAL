@@ -155,7 +155,7 @@
 }
 .auth-locked-title {
   font-size: 30px;
-  font-family: Poppins, sans-serif;
+  font-family: var(--app-font-family, "TT Interphases", "Inter", "Segoe UI", Arial, sans-serif);
   color: #403866;
   line-height: 1.2;
   text-align: center;

@@ -32,6 +32,8 @@
         "DEMOGRAPHIC_FILTERS": "Demographic filters",
         "CLEAR": "Clear",
         "EXPORT": "Export",
+        "DOWNLOAD_PDF": "Download PDF",
+        "PDF_TITLE": "Workplace climate action plans",
         "ACTIVE_FILTERS": "Active filters:",
         "SELECT_CLIMATE": "Select a climate survey",
         "SELECT_CLIMATE_HELP": "The active company is taken from the header to calculate gaps, priorities, and suggested plans.",
@@ -218,6 +220,16 @@
         "DASHBOARD1": "Climate Dashboard",
         "DASHBOARD2": "Dashboard 2",
         "DASHBOARD3": "Dashboard 3"
+      },
+      "LOADING": {
+        "TITLE": "Preparing dashboard",
+        "GETTING_DATA": "Retrieving climate data...",
+        "ORGANIZING_RESPONSES": "Organizing responses...",
+        "INTERPRETING_DATA": "Interpreting the data...",
+        "CALCULATING": "Running calculations...",
+        "PREPARING_CHARTS": "Preparing charts and indicators...",
+        "FINALIZING": "Finalizing the results presentation...",
+        "HINT": "Loading time may vary depending on the climate size."
       }
     },
     "ADVANCE-TABLE": {
@@ -380,6 +392,22 @@
 
 
       "SENDTYPENONE": "None",
+      "SENDTYPEEMAIL": "Email",
+      "SENDTYPEWHATSAPP": "WhatsApp",
+      "SENDTYPEBOTH": "Email and WhatsApp",
+      "BULKSELECTED": "{{count}} selected",
+      "BULKSENDTYPE": "Delivery type",
+      "BULKAPPLY": "Apply",
+      "BULKSENDREQUIREDTITLE": "Select a delivery type",
+      "BULKSENDREQUIRED": "Choose the delivery type to assign to the selected group.",
+      "BULKSENDUNCHANGEDTITLE": "No pending changes",
+      "BULKSENDUNCHANGED": "All selected employees already have that delivery type.",
+      "BULKSENDCONFIRMTITLE": "Change delivery type?",
+      "BULKSENDCONFIRMTEXT": "{{type}} will be assigned to {{count}} employee(s). No other data will be changed.",
+      "BULKSENDCONFIRM": "Yes, change",
+      "BULKSENDPROGRESS": "Updating delivery type...",
+      "BULKSENDSUCCESS": "The delivery type was updated for {{count}} employee(s).",
+      "BULKSENDERROR": "The employee delivery type could not be updated.",
       "PRIMARYDATA": "Primary data",
       "CONTACTSENDDATA": "Contact and delivery",
       "ASSIGNEDTO": "Assigned to",
@@ -389,29 +417,49 @@
       "SEARCHPLACEHOLDER": "First or last name",
       "CLEARSEARCH": "Clear search",
       "FILTERPOSITION": "Filter by position",
+      "SHOWONLYACTIVE": "Show active employees only",
       "FILTERRESULTS": "{{visible}} of {{total}} employees",
       "LOADINGEMPLOYEES": "Loading employees...",
       "CLEARFILTERS": "Clear filters",
-      "NOFILTERRESULTS": "No employees match the selected filters."
+      "NOFILTERRESULTS": "No employees match the selected filters.",
+      "SELECTPAGE": "Select employees on the current page",
+      "PAGINATION": "Employee pagination"
     },
     "DEMOGRAPHICS": {
       "TEXT": "DEMOGRAPHICS",
+      "TITLE": "Demographic fields",
+      "SUBTITLE": "Manage the fields used to segment employees, surveys, and results.",
       "FIELD": "Field Name",
+      "FIELDHELP": "Available segmentation field",
+      "FIELDREQUIRED": "Please enter the demographic field name",
       "DATATYPE": "Data Type",
       "DATECREATE": "Creation Date",
+      "DEACTIVATE": "Deactivate field",
+      "EMPTYTITLE": "There are no demographic fields yet",
+      "EMPTYDESC": "Create the first field to segment employees and results.",
+      "GENERALDATA": "Field details",
+      "GENERALDATADESC": "Define the visible demographic name for this organization.",
+      "REFRESH": "Refresh demographics",
+      "REGISTERED": "Registered fields",
+      "SELECTEDORG": "Selected organization",
       "STATE": "Status",
       "ACTIONS": "Actions",
       "CREATENEW": "Create new demographic field",
+      "CREATEDIALOGSUBTITLE": "Add a field to classify employees and results by segments.",
       "EXPAND": "Expand - Collapse",
       "SAVE": "SAVE",
+      "SAVING": "Saving...",
       "ACTIVE": "Active",
+      "ACTIVATE": "Activate field",
+      "CANCEL": "Cancel",
+      "CLOSE": "Close",
       "INACTIVE": "Inactive",
       "MESSAGES": {
         "FIELDDEACTIVATE": "Field deactivated.",
         "ERROR": "Something went wrong",
         "ERRORMESSAGE": "An error occurred.",
         "FIELDACTIVATE": "Field activated.",
-        "FIELDADDED": "Field activated.",
+        "FIELDADDED": "Demographic field created successfully.",
         "SUCCESS": "Success"
       }
     },
@@ -419,6 +467,37 @@
       "TEXT": "WORKPLACE CLIMATE",
       "CREATE": "Create new climate",
       "REFRESH": "Refresh climates",
+      "TEMPLATES": {
+        "DIALOG_SUBTITLE": "Enter the general information and choose whether to start from scratch or from a prepared structure.",
+        "START_TITLE": "How do you want to start?",
+        "START_DESCRIPTION": "Build a new survey or use a methodology as your starting point.",
+        "BLANK_TITLE": "From scratch",
+        "BLANK_DESCRIPTION": "Create an empty climate and configure its surveys, factors, and questions afterward.",
+        "FROM_TEMPLATE_TITLE": "From a template",
+        "FROM_TEMPLATE_DESCRIPTION": "Automatically create an editable structure with factors and questions.",
+        "FACTORS": "factors",
+        "QUESTIONS": "questions",
+        "GALLUP_NAME": "Gallup Q12",
+        "GALLUP_DESCRIPTION": "Engagement and workplace experience organized into four factors.",
+        "GALLUP_DEFAULT_NAME": "Gallup Q12 engagement survey",
+        "GALLUP_DEFAULT_DESCRIPTION": "Employee engagement and workplace experience assessment based on Gallup Q12 topics.",
+        "GPTW_NAME": "Great Place to Work",
+        "GPTW_DESCRIPTION": "Organizational trust through credibility, respect, fairness, pride, and camaraderie.",
+        "GPTW_DEFAULT_NAME": "Great Place to Work climate survey",
+        "GPTW_DEFAULT_DESCRIPTION": "Organizational trust and workplace experience assessment based on five Great Place to Work dimensions.",
+        "NOM035_NAME": "NOM-035 Mexico",
+        "NOM035_DESCRIPTION": "Guides I, II, and III covering psychosocial risk factors and organizational environment.",
+        "NOM035_DEFAULT_NAME": "NOM-035 Mexico assessment",
+        "NOM035_DEFAULT_DESCRIPTION": "Assessment of traumatic events, psychosocial risk factors, and organizational environment.",
+        "NOM035_GUIDANCE": "The template contains Guides I, II, and III as separate sections. Before assigning it, keep Guide I and only Guide II or III according to the size of the workplace.",
+        "DETAILS_TITLE": "Climate details",
+        "DETAILS_DESCRIPTION": "You can adjust the name, description, scale, and image before creating the climate.",
+        "REQUIRED_TITLE": "Select a template",
+        "REQUIRED_TEXT": "Choose Gallup Q12, Great Place to Work, or NOM-035 Mexico to continue.",
+        "CREATED_SUCCESS": "The climate was created successfully from the selected template.",
+        "PARTIAL_ERROR_TITLE": "The template was not completed",
+        "PARTIAL_ERROR_TEXT": "The climate was created, but its structure could not be fully loaded. Open it to review the content and retry the upload if needed."
+      },
       "EDIT": "EDIT",
       "SEND": "DELIVERIES",
       "FACTORS": "Factors",
@@ -516,6 +595,7 @@
       "DELETECLIMA": "Delete Climate",
       "UPLOADEXCELCLIMA": "Upload Excel",
       "DOWNLOADEXCELCLIMA": "Get Excel Template",
+      "DOWNLOADCURRENTCLIMA": "Download this survey",
       "FIELDTYPE": "Question Type",
 
       "LISTSELECTION": "List Selection",
@@ -535,6 +615,9 @@
         "ONLYPERMMITED": "Only",
         "FIELDISREQUIRED": "LABEL is required.",
         "NO_SURVEY_DATA_SHEET": "No valid data sheet was found. Use the SURVEY sheet from the template.",
+        "NO_CLIMATE_DATA_TITLE": "No data to download",
+        "NO_CLIMATE_DATA_TEXT": "The current survey does not have surveys, factors, or questions configured yet.",
+        "CURRENT_CLIMATE_DOWNLOAD_ERROR": "The Excel file for the current survey could not be generated.",
         "FACTOR_WITHOUT_SURVEY": "A 'FACTOR' row was found before a 'SURVEY' row.",
         "QUESTION_WITHOUT_FACTOR": "A question row was found before a 'FACTOR' row.",
         "ISSUESFIND": "Issues found",
@@ -585,7 +668,7 @@
         "SURVEY": "survey",
         "SURVEYS": "surveys",
         "GRAND_FACTORS": "main factors",
-        "FACTORS": "factors", 
+        "FACTORS": "factors",
         "QUESTIONS": "questions",
         "NO_QUESTIONS": "This factor has no questions.",
         "SHOW_DETAILS": "View details",
@@ -744,15 +827,15 @@
       "TURNSTILE_LOAD_ERROR": "The security check could not be loaded. Refresh the page and try again.",
 
 
-      
-      "ALLRIGHTS": "All rights reserved." 
+
+      "ALLRIGHTS": "All rights reserved."
 
 
 
 
 
 
-     
+
     },
      "ALONE": {
       "HELLO": "Welcome dear collaborator",
@@ -765,7 +848,7 @@
       "CONDITION2": "*Do not close or reload the tab until you finish, or you may lose your responses.",
       "CONDITION3": "*Be honest and sincere in your answers; your opinion is completely confidential and highly valuable.",
       "CONDITION4": "*If you need to stop, make sure to answer all questions before closing.",
-      
+
 
       "GREETEENGS_APDE": "Dear collaborator,",
       "CONDITION1_APDE": "We are interested in hearing your opinion about how Colegios APDE is operating, how we can improve the work we do, and the way we are currently doing it.",
@@ -777,9 +860,9 @@
       "CONDITION3_APDE_4": "it is confidential",
       "CONDITION3_APDE_5": " so that you can use this tool in a constructive way and thus help strengthen our work environment.",
 
-      
 
-      
+
+
       "SEND": "SEND SURVEY",
       "COMPLETED": "Completed"
 
@@ -829,6 +912,18 @@
       "SELECT_SCOPE_PENDING": "Select the related climate or model",
       "SEND": "Send email",
       "SAVE_TEMPLATE": "Save template",
+      "DELIVERY_PROGRESS": {
+        "EYEBROW": "Delivery in progress",
+        "TITLE": "Sending emails",
+        "PREPARING": "Preparing the message for each recipient...",
+        "SENDING": "Processing the recipient list...",
+        "FINISHING": "Finishing delivery and preparing the result...",
+        "DETAIL": "{{completed}} of {{total}} recipients processed",
+        "PROCESSED": "Processed",
+        "SUCCESSFUL": "Sent",
+        "FAILED": "Failed",
+        "KEEP_OPEN": "Do not close this window while delivery is in progress. The summary will appear automatically."
+      },
       "TARGETS": {
         "EMAIL": "Specific email addresses",
         "ALL_ACTIVE": "All active employees",
@@ -1006,10 +1101,10 @@
         "OVERVIEW_TITLE": "Delivery management",
         "OVERVIEW_TEXT": "This dialog displays the climate status and lets you manage each employee's survey.",
         "ACTIONS_TITLE": "Bulk actions",
-        "ACTIONS_TEXT": "Assign surveys to current employees and then send pending deliveries.",
+        "ACTIONS_TEXT": "Select employees in the table to assign, send, or export only those records.",
         "ASSIGN_SURVEYS": "Assign surveys",
-        "ASSIGN_DIALOG_TITLE": "Assign surveys to all employees",
-        "ASSIGN_DIALOG_TEXT": "You are about to assign surveys to current employees. You will be able to send them afterward.",
+        "ASSIGN_DIALOG_TITLE": "Assign selected surveys",
+        "ASSIGN_DIALOG_TEXT": "Surveys will be assigned to <strong>{{count}}</strong> of the {{selected}} selected employees who do not have one yet. You will be able to send them afterward.",
         "ASSIGN_CONFIRM": "Yes, assign",
         "ASSIGN_CANCEL": "Cancel",
         "SEND_PENDING": "Send pending",
@@ -1021,8 +1116,21 @@
         "EMPLOYEE_RESULTS": "Results by employee",
         "SHOWING_RECORDS": "Showing {{shown}} of {{total}} records",
         "DOWNLOAD_EXCEL": "Download Excel",
+        "DOWNLOAD_SELECTED": "Download selected ({{count}})",
+        "SELECTED_SUMMARY": "{{selected}} employees selected · {{visible}} visible with the current filters",
+        "CLEAR_SELECTION": "Clear selection",
+        "SELECT_VISIBLE": "Select all visible employees",
+        "SELECT_EMPLOYEE": "Select {{employee}}",
         "DELIVERY_TYPE": "Delivery type",
         "STATUS": "Status",
+        "DEMOGRAPHIC_FILTER": "Demographic",
+        "DEMOGRAPHIC_FIELD": "Demographic field",
+        "DEMOGRAPHIC_VALUES": "Demographic values",
+        "ALL_DEMOGRAPHICS": "All demographics",
+        "ALL_DEMOGRAPHIC_VALUES": "All values",
+        "DEMOGRAPHIC_WITHOUT_VALUE": "No information",
+        "CLEAR_DEMOGRAPHIC_FILTER": "Clear demographic filter",
+        "SELECTED_RECORDS": "Selected records",
         "ALL": "All",
         "EMAIL_CHANNEL": "Email",
         "WHATSAPP_CHANNEL": "WhatsApp",
@@ -1061,15 +1169,27 @@
         "ERROR_TITLE": "An error occurred",
         "SOMETHING_WRONG_TITLE": "Something went wrong",
         "ASSIGN_SUCCESS": "The surveys were assigned successfully.",
+        "SELECTION_REQUIRED_TITLE": "Select employees",
+        "SELECTION_REQUIRED_TEXT": "Select at least one employee in the table to perform this operation.",
+        "NO_ASSIGNABLE_TITLE": "No surveys to assign",
+        "NO_ASSIGNABLE_TEXT": "The selected employees already have an assigned survey.",
+        "NO_PENDING_TITLE": "No pending deliveries",
+        "NO_PENDING_TEXT": "None of the selected employees has a created survey pending delivery.",
+        "NO_INCOMPLETE_TITLE": "No incomplete surveys",
+        "NO_INCOMPLETE_TEXT": "None of the selected employees has a survey pending completion.",
         "QUESTIONS_UNAVAILABLE": "The questions for this climate survey could not be retrieved.",
         "NO_QUESTIONS": "The survey does not have any questions yet. Add questions before sending it to employees.",
         "QUESTIONS_ERROR": "An error occurred while retrieving the climate survey questions: {{error}}",
         "SEND_ALL_TITLE": "Send surveys",
-        "SEND_ALL_TEXT": "Pending surveys will be sent to all current employees. Do you want to continue?",
-        "SEND_ALL_CONFIRM": "Yes, send all",
+        "SEND_ALL_TEXT": "<strong>{{count}}</strong> created surveys will be sent from the {{selected}} selected employees. Do you want to continue?",
+        "SEND_ALL_CONFIRM": "Yes, send selected",
         "SEND_INCOMPLETE_TITLE": "Send incomplete surveys",
-        "SEND_INCOMPLETE_TEXT": "The survey will be resent to employees who have not completed it yet. Do you want to continue?",
-        "SEND_INCOMPLETE_CONFIRM": "Yes, send pending surveys",
+        "SEND_INCOMPLETE_TEXT": "The survey will be resent to <strong>{{count}}</strong> of the {{selected}} selected employees who have not completed it yet. Do you want to continue?",
+        "SEND_INCOMPLETE_CONFIRM": "Yes, send selected",
+        "EMAIL_SUBJECT_LABEL": "Email subject",
+        "EMAIL_SUBJECT_PLACEHOLDER": "Enter the subject employees will receive",
+        "EMAIL_SUBJECT_REQUIRED": "Enter the email subject.",
+        "DEFAULT_EMAIL_SUBJECT": "Organizational Climate Survey",
         "PROCESS_SUCCESS": "Process completed successfully",
         "PROCESS_WITHOUT_SUCCESS": "No deliveries were successful",
         "PROCESS_PARTIAL": "Process partially completed",
@@ -1101,15 +1221,15 @@
         "BOTH_SEND_ERROR": "The survey could not be sent by email or WhatsApp.",
         "NO_DETAIL": "No details available",
         "NO_EXPORT_DATA_TITLE": "No data to export",
-        "NO_EXPORT_DATA_TEXT": "There are no visible table records to download.",
+        "NO_EXPORT_DATA_TEXT": "Select at least one employee in the table to download it.",
         "RESEND_UNAVAILABLE_TITLE": "Resending unavailable",
         "RESEND_UNAVAILABLE_TEXT": "The survey has already been sent. Demo mode does not allow it to be resent.",
         "SUMMARY_TITLE": "Status summary",
         "SUMMARY_TEXT": "These cards show how many surveys are created, sent, started, and completed.",
         "FILTERS_TITLE": "Result filters",
-        "FILTERS_TEXT": "Filter records by delivery channel or survey status to find specific cases.",
+        "FILTERS_TEXT": "Filter by channel, status, or demographic values. The header checkbox selects only the visible records.",
         "TABLE_TITLE": "Employee details",
-        "TABLE_TEXT": "Review each survey's data and status. The last column lets you create or send an individual survey."
+        "TABLE_TEXT": "Select employees for bulk actions or export. The last column retains individual actions."
       }
     },
     "APPS": {
@@ -1173,7 +1293,7 @@
     }
   },
 
-  
+
 
 
 
@@ -1192,9 +1312,9 @@
 
 
 
-   
 
-   
+
+
     "APPS": {
       "TEXT": "Apps"
     },
@@ -1572,8 +1692,15 @@
         "SCENARIOS_HELP": "Assign the applicable scenarios by position and adjust their weights so each position totals 100%.",
         "SCENARIOS_BY_POSITION_HELP": "The scenarios selected here determine which relationships will be created for this position in the model.",
         "SCENARIOS_BY_POSITION_EMPTY": "Select at least one position in the participants section to assign its evaluation scenarios.",
+        "SCENARIO_POSITIONS_TITLE": "Positions to configure",
         "SCENARIO": "Scenario",
         "SCENARIO_ACTIVE": "Active",
+        "SCENARIO_RELATION_DESCRIPTION": {
+          "BOSS_TO_EMPLOYEE": "The manager evaluates {{position}}.",
+          "EMPLOYEE_TO_BOSS": "Employees evaluate {{position}}.",
+          "PEER": "Peers evaluate {{position}}.",
+          "SELF": "The person in the {{position}} position completes a self-assessment."
+        },
         "WEIGHT": "Weight",
         "ACTIVE_SCENARIOS_COUNT": "Active scenarios: {{count}}",
         "SCENARIO_WEIGHT_TOTAL": "Total weighting: {{total}}%",

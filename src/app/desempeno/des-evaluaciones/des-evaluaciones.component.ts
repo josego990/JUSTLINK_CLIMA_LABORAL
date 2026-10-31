@@ -696,6 +696,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   };
   public draftEvaluation: DesEvaluationCard | null = null;
   public activeEditorTabIndex = 0;
+  private scenarioPositionSelection: string | null = null;
   public periodStartDatePickerValue: Date | null = null;
   public periodEndDatePickerValue: Date | null = null;
   public selectedModelCatalogId: number | null = null;
@@ -786,6 +787,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
   private modelImageFileChanged = false;
   private modelImageFormData = new FormData();
   private filteredParticipantEmployees: DesEvaluationEmployee[] = [];
+  private expandedEvaluationStructureId: number | null = null;
   private readonly retainedParticipantEmployeeIds = new Set<number>();
   private readonly scenarioApplicabilityCache =
     new WeakMap<DesEvaluationCard, DesEvaluationScenarioApplicabilityContext>();
@@ -1255,6 +1257,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
     this.editingEvaluation = null;
     this.activeEditorTabIndex = 0;
+    this.scenarioPositionSelection = null;
     this.selectedModelCatalogId = null;
     this.modelCatalogSearchTerm = '';
     this.modelExcelImportSummary = null;
@@ -1284,6 +1287,7 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
 
       this.editingEvaluation = normalizedCard;
       this.activeEditorTabIndex = 0;
+      this.scenarioPositionSelection = null;
       this.modelExcelImportSummary = null;
       this.retainedParticipantEmployeeIds.clear();
       this.resetModelImageUpload();
@@ -2952,6 +2956,19 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
     this.ensurePositionScenarioConfigs(this.draftEvaluation);
   }
 
+  get selectedScenarioPosition(): string | null {
+    const positions = this.draftEvaluation?.participants.positions ?? [];
+    return this.scenarioPositionSelection && positions.includes(this.scenarioPositionSelection)
+      ? this.scenarioPositionSelection
+      : positions[0] ?? null;
+  }
+
+  selectScenarioPosition(position: string): void {
+    if (this.draftEvaluation?.participants.positions.includes(position)) {
+      this.scenarioPositionSelection = position;
+    }
+  }
+
   openBigFactorDialog(index?: number): void {
     if (!this.draftEvaluation) {
       return;
@@ -4251,6 +4268,27 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       : 'DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_NOT_APPLICABLE';
   }
 
+  getScenarioRelationDescriptionKey(
+    scenarioKey: DesEvaluationScenarioKey | undefined
+  ): string {
+    const key = scenarioKey ?? 'BOSS_TO_EMPLOYEE';
+    return `DESEMPENO_MENUITEMS.EVALUACIONES_PAGE.SCENARIO_RELATION_DESCRIPTION.${key}`;
+  }
+
+  getScenarioRelationIcon(scenarioKey: DesEvaluationScenarioKey | undefined): string {
+    switch (scenarioKey) {
+      case 'EMPLOYEE_TO_BOSS':
+        return 'north';
+      case 'PEER':
+        return 'groups';
+      case 'SELF':
+        return 'person';
+      case 'BOSS_TO_EMPLOYEE':
+      default:
+        return 'south';
+    }
+  }
+
   getPositionScenarioWeight(
     position: string,
     scenarioKey: DesEvaluationScenarioKey | undefined,
@@ -4886,6 +4924,31 @@ export class DesEvaluacionesComponent implements OnDestroy, OnInit {
       (total, factor) => total + factor.questionCount,
       0
     );
+  }
+
+  getEvaluationCriteriaCount(evaluation: DesEvaluationCard): number {
+    return (evaluation.bigFactors ?? []).reduce(
+      (total, bigFactor) => total + this.getDistinctFactorSummaries(bigFactor).length,
+      0
+    );
+  }
+
+  getEvaluationQuestionCount(evaluation: DesEvaluationCard): number {
+    return (evaluation.bigFactors ?? []).reduce(
+      (total, bigFactor) => total + this.getBigFactorQuestionCount(bigFactor),
+      0
+    );
+  }
+
+  isEvaluationStructureExpanded(evaluation: DesEvaluationCard): boolean {
+    return this.expandedEvaluationStructureId === evaluation.id;
+  }
+
+  toggleEvaluationStructure(evaluation: DesEvaluationCard, event?: Event): void {
+    event?.stopPropagation();
+
+    this.expandedEvaluationStructureId =
+      this.expandedEvaluationStructureId === evaluation.id ? null : evaluation.id;
   }
 
   getDistinctFactorSummaries(

@@ -15,6 +15,11 @@ import { InConfiguration, DirectionService, RightSidebarService } from '@core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { NgScrollbar } from 'ngx-scrollbar';
 import { FeatherIconsComponent } from '../../shared/components/feather-icons/feather-icons.component';
+import {
+  ApplicationScale,
+  ApplicationScaleOption,
+  ApplicationScaleService,
+} from '../../core/service/application-scale.service';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +49,8 @@ export class RightSidebarComponent
   headerHeight = 60;
   isRtl = false;
   public config!: InConfiguration;
+  applicationScale: ApplicationScale = 'small';
+  readonly applicationScaleOptions: readonly ApplicationScaleOption[];
 
   constructor(
     @Inject(DOCUMENT) private document: Document,
@@ -51,9 +58,11 @@ export class RightSidebarComponent
     public elementRef: ElementRef,
     private rightSidebarService: RightSidebarService,
     private configService: ConfigService,
-    private directionService: DirectionService
+    private directionService: DirectionService,
+    private applicationScaleService: ApplicationScaleService
   ) {
     super();
+    this.applicationScaleOptions = this.applicationScaleService.options;
   }
   ngOnInit() {
     this.config = this.configService.configData;
@@ -66,6 +75,7 @@ export class RightSidebarComponent
   }
 
   ngAfterViewInit() {
+    this.applicationScale = this.applicationScaleService.getStoredScale();
     this.selectedBgColor = localStorage.getItem('choose_skin_active') as string;
 
     if (localStorage.getItem('menuOption')) {
@@ -102,6 +112,10 @@ export class RightSidebarComponent
     this.renderer.addClass(this.document.body, 'theme-' + this.selectedBgColor);
     localStorage.setItem('choose_skin', 'theme-' + this.selectedBgColor);
     localStorage.setItem('choose_skin_active', this.selectedBgColor);
+  }
+  setApplicationScale(scale: ApplicationScale): void {
+    this.applicationScaleService.setScale(scale);
+    this.applicationScale = scale;
   }
   lightSidebarBtnClick() {
     this.renderer.removeClass(this.document.body, 'menu_dark');
